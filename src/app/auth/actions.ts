@@ -1,0 +1,166 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
+
+export async function signInWithGoogle() {
+    const supabase = await createClient()
+    const origin = (await headers()).get('origin')
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: `${origin}/auth/callback`,
+        },
+    })
+
+    if (error) {
+        console.error('Auth error:', error.message)
+        return redirect('/error')
+    }
+
+    if (data.url) {
+        redirect(data.url)
+    }
+}
+
+export async function signInWithOTP(email: string) {
+    const supabase = await createClient()
+    const origin = (await headers()).get('origin')
+
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+            emailRedirectTo: `${origin}/auth/callback`,
+        },
+    })
+
+    if (error) {
+        console.error('OTP error:', error.message)
+        throw error
+    }
+}
+
+export async function signOut() {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+    redirect('/')
+}
+
+export async function saveGang(characterIds: string[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    // 1. Ensure a gang exists for the user
+    const { data: gang, error: gangError } = await supabase
+        .from('gangs')
+        .upsert({ user_id: user.id }, { onConflict: 'user_id' })
+        .select()
+        .single()
+
+    if (gangError) {
+        console.error('Error upserting gang:', gangError)
+        return
+    }
+
+    // 2. Clear old members and insert new ones
+    await supabase.from('gang_members').delete().eq('gang_id', gang.id)
+
+    const members = characterIds.map(id => ({
+        gang_id: gang.id,
+        character_id: id
+    }))
+
+    const { error: memberError } = await supabase.from('gang_members').insert(members)
+    if (memberError) console.error('Error inserting squad:', memberError)
+}
+
+export async function getSavedGang() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return null
+
+    const { data, error } = await supabase
+        .from('gang_members')
+        .select(`
+            character_id,
+            gangs!inner(user_id)
+        `)
+        .eq('gangs.user_id', user.id)
+
+    if (error) {
+        console.error('Error fetching squad:', error)
+        return null
+    }
+
+    return data.map((m: any) => m.character_id)
+}
+
+export async function saveUsername(username: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', user.id)
+
+    if (error) console.error('Error saving username:', error)
+}
+
+export async function getMemories() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return []
+
+    const { data, error } = await supabase
+        .from('memories')
+        .select('id, content, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+    if (error) {
+        console.error('Error fetching memories:', error)
+        return []
+    }
+
+    return data
+}
+
+export async function deleteMemory(id: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+        .from('memories')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id)
+
+    if (error) console.error('Error deleting memory:', error)
+}
+
+export async function updateMemory(id: string, content: string) {
+    const { generateEmbedding } = await import('@/lib/ai/memory')
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const embedding = await generateEmbedding(content)
+
+    const { error } = await supabase
+        .from('memories')
+        .update({ content, embedding })
+        .eq('id', id)
+        .eq('user_id', user.id)
+
+    if (error) console.error('Error updating memory:', error)
+}

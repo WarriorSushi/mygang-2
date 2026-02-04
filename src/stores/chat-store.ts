@@ -1,0 +1,93 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export interface Message {
+    id: string
+    speaker: string // 'user' or Character ID
+    content: string
+    created_at: string
+    is_guest?: boolean
+    reaction?: string // For "Reaction-Only Turns"
+    replyToId?: string // For "Quote-Reply UI"
+}
+
+export interface Character {
+    id: string
+    name: string
+    vibe: string
+    color: string
+    avatar?: string
+    archetype?: string
+    gradient?: string
+    voice?: string
+    sample?: string
+}
+
+interface ChatState {
+    messages: Message[]
+    activeGang: Character[]
+    isGuest: boolean
+    userName: string | null
+    userId: string | null
+    userNickname: string | null // For "Nickname Evolution"
+    characterStatuses: Record<string, string> // For "Activity Status"
+    isHydrated: boolean // To track if AuthManager has finished initial sync
+    chatMode: 'entourage' | 'ecosystem'
+    isHapticEnabled: boolean
+    setMessages: (messages: Message[]) => void
+    addMessage: (message: Message) => void
+    setActiveGang: (gang: Character[]) => void
+    setIsGuest: (isGuest: boolean) => void
+    setUserName: (name: string | null) => void
+    setUserId: (id: string | null) => void
+    setUserNickname: (nickname: string | null) => void
+    setCharacterStatus: (characterId: string, status: string) => void
+    setIsHydrated: (isHydrated: boolean) => void
+    setChatMode: (mode: 'entourage' | 'ecosystem') => void
+    setHapticEnabled: (enabled: boolean) => void
+    clearChat: () => void
+}
+
+export const useChatStore = create<ChatState>()(
+    persist(
+        (set) => ({
+            messages: [],
+            activeGang: [],
+            isGuest: true,
+            userName: null,
+            userId: null,
+            userNickname: null,
+            characterStatuses: {},
+            isHydrated: false,
+            chatMode: 'ecosystem',
+            isHapticEnabled: true,
+            setMessages: (messages) => set({ messages }),
+            addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+            setActiveGang: (gang) => set({ activeGang: gang }),
+            setIsGuest: (isGuest) => set({ isGuest }),
+            setUserName: (name) => set({ userName: name }),
+            setUserId: (userId) => set({ userId }),
+            setUserNickname: (nickname) => set({ userNickname: nickname }),
+            setCharacterStatus: (characterId, status) => set((state) => ({
+                characterStatuses: { ...state.characterStatuses, [characterId]: status }
+            })),
+            setIsHydrated: (isHydrated) => set({ isHydrated }),
+            setChatMode: (chatMode) => set({ chatMode }),
+            setHapticEnabled: (isHapticEnabled) => set({ isHapticEnabled }),
+            clearChat: () => set({ messages: [] }),
+        }),
+        {
+            name: 'mygang-chat-storage',
+            partialize: (state) => ({
+                messages: state.messages,
+                activeGang: state.activeGang,
+                isGuest: state.isGuest,
+                userName: state.userName,
+                userNickname: state.userNickname,
+                userId: state.userId,
+                chatMode: state.chatMode,
+                isHapticEnabled: state.isHapticEnabled
+            })
+        }
+    )
+)
