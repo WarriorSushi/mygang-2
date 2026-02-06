@@ -489,7 +489,7 @@ export default function ChatPage() {
                         {!hasSeenChatTips && (
                             <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] text-muted-foreground flex flex-col gap-2">
                                 <div className="font-semibold text-foreground">Quick tip</div>
-                                <div>Memory Vault keeps your long-term context. Settings lets you switch modes and squad.</div>
+                            <div>Memory Vault keeps your long-term context. Settings lets you switch modes and gang.</div>
                                 <div className="flex flex-wrap gap-2">
                                     <button
                                         className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"

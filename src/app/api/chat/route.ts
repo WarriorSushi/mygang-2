@@ -186,7 +186,7 @@ export async function POST(req: Request) {
                 events: [{
                     type: 'message',
                     character: 'system',
-                    content: "Invalid squad selection. Please pick exactly 4 characters and try again.",
+                    content: "Invalid gang selection. Please pick exactly 4 characters and try again.",
                     delay: 200
                 }]
             }, { status: 400 })
@@ -208,7 +208,7 @@ export async function POST(req: Request) {
                     {
                         type: 'message',
                         character: filteredIds[0],
-                        content: 'Mock response: squad online and ready.',
+                        content: 'Mock response: gang online and ready.',
                         delay: 200
                     },
                     {

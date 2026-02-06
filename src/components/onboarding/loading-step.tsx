@@ -41,7 +41,7 @@ export function LoadingStep() {
                 <Loader2 className="w-10 h-10 absolute inset-0 m-auto text-primary animate-pulse" />
             </div>
 
-            <h2 className="text-4xl font-bold mb-6 tracking-tight">Summoning the squad...</h2>
+            <h2 className="text-4xl font-bold mb-6 tracking-tight">Summoning the gang...</h2>
             <div className="h-8 flex items-center justify-center">
                 <p className="text-xl text-muted-foreground font-medium animate-pulse transition-all duration-300">
                     {status}

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s | MyGang.ai"
   },
   description: "Experience the group chat that never sleeps. 8 unique AI personalities ready to roar, roast, and vibe with you 24/7.",
-  keywords: ["AI Chat", "Group Chat", "Personal AI", "MyGang", "AI Personalities", "Digital Crew"],
+  keywords: ["AI Chat", "Group Chat", "Personal AI", "MyGang", "AI Personalities", "Digital Gang"],
   authors: [{ name: "MyGang Team" }],
   creator: "MyGang.ai",
   openGraph: {
@@ -39,6 +39,10 @@ export const metadata: Metadata = {
     title: "MyGang.ai | Your Premium AI Group Chat",
     description: "Experience the group chat that never sleeps. 8 unique AI personalities ready to roar, roast, and vibe with you 24/7.",
     creator: "@mygang_ai",
+  },
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
   robots: {
     index: true,

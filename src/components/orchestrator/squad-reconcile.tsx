@@ -47,9 +47,9 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
         <Dialog open={!!conflict} onOpenChange={(open) => !open && onResolve()}>
             <DialogContent className="sm:max-w-lg bg-background/80 backdrop-blur-3xl border-white/10 rounded-3xl">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-black">Squad Sync Detected</DialogTitle>
+                    <DialogTitle className="text-2xl font-black">Gang Sync Detected</DialogTitle>
                     <DialogDescription className="text-muted-foreground">
-                        This device and the cloud have different squads. Pick the one you want to keep.
+                        This device and the cloud have different gangs. Pick the one you want to keep.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -66,7 +66,7 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Cloud squad</div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Cloud gang</div>
                         <div className="flex flex-wrap gap-2">
                             {remote.map((member) => (
                                 <span key={member.id} className="px-3 py-1 rounded-full border border-white/10 text-[11px] uppercase tracking-widest">
@@ -84,7 +84,7 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
                         className="w-full rounded-2xl"
                         disabled={isSaving}
                     >
-                        Use Cloud Squad
+                        Use Cloud Gang
                     </Button>
                     <Button
                         onClick={handleUseLocal}

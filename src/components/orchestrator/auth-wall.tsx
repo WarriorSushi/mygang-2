@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MessageCircle, LogIn, Mail, Loader2, Sparkles } from 'lucide-react'
+import { LogIn, Mail, Loader2, Sparkles } from 'lucide-react'
+import Image from 'next/image'
 import { signInWithGoogle, signInWithOTP } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
 
@@ -51,7 +52,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                         <div className="relative">
                             <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
                             <div className="relative w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                                <MessageCircle size={40} />
+                                <Image src="/logo.png" alt="MyGang" width={40} height={40} className="object-contain" priority />
                             </div>
                             <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-lg">
                                 <Sparkles size={16} />
@@ -61,7 +62,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             WAIT! DON&apos;T <br />LOSE THE FLOW.
                         </DialogTitle>
                         <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[300px]">
-                            Save your squad and this conversation forever. Most people regret not joining earlier.
+                            Save your gang and this conversation forever. Most people regret not joining earlier.
                         </DialogDescription>
                     </DialogHeader>
 

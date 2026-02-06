@@ -88,7 +88,7 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
                         onClick={() => handleChatMode('entourage')}
                         className="rounded-full text-[10px] uppercase tracking-widest"
                     >
-                        Entourage
+                        Gang Focus
                     </Button>
                     <Button
                         variant={chatMode === 'ecosystem' ? 'default' : 'outline'}

@@ -74,7 +74,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             className="w-full max-w-6xl"
         >
             <div className="text-center mb-8">
-                <h2 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight">Pick your Squad</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight">Pick your Gang</h2>
                 <p className="text-muted-foreground text-base sm:text-lg">Select exactly 4 unique friends to join your gang.</p>
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
                     {tags.map(tag => (
@@ -99,7 +99,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                     </div>
                     <Button variant="ghost" size="sm" onClick={randomSquad} className="rounded-full">
                         <Shuffle className="w-4 h-4" />
-                        Random Squad
+                        Random Gang
                     </Button>
                 </div>
             </div>

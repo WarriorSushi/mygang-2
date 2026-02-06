@@ -100,7 +100,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     value="entourage"
                                     className="data-[state=active]:bg-primary/90 data-[state=active]:text-primary-foreground italic font-black text-[9px] uppercase rounded-lg transition-all"
                                 >
-                                    Entourage
+                                    Gang Focus
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="ecosystem"
@@ -145,7 +145,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
                             <Users size={12} className="text-cyan-400" />
-                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Quick Squad</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Quick Gang</Label>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {CHARACTERS.map((char) => {
@@ -175,7 +175,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             onClick={saveSquad}
                             className="w-full rounded-2xl"
                         >
-                            Save Squad
+                            Save Gang
                         </Button>
                     </div>
 

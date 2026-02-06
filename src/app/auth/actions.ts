@@ -92,13 +92,13 @@ export async function saveGang(characterIds: string[]) {
     }))
 
     const { error: memberError } = await supabase.from('gang_members').insert(members)
-    if (memberError) console.error('Error inserting squad:', memberError)
+    if (memberError) console.error('Error inserting gang:', memberError)
 
     const { error: settingsError } = await supabase
         .from('profiles')
         .update({ preferred_squad: characterIds })
         .eq('id', user.id)
-    if (settingsError) console.error('Error updating preferred squad:', settingsError)
+    if (settingsError) console.error('Error updating preferred gang:', settingsError)
 }
 
 export async function getSavedGang() {
@@ -116,7 +116,7 @@ export async function getSavedGang() {
         .eq('gangs.user_id', user.id)
 
     if (error) {
-        console.error('Error fetching squad:', error)
+        console.error('Error fetching gang:', error)
         return null
     }
 

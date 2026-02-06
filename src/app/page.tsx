@@ -7,13 +7,13 @@ import {
   ArrowRight,
   ShieldCheck,
   Users,
-  MessageCircle,
   Zap,
   Brain,
   Shapes,
   Wand2,
   ChevronRight,
 } from 'lucide-react'
+import Image from 'next/image'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { Button } from '@/components/ui/button'
 import { useChatStore } from '@/stores/chat-store'
@@ -27,12 +27,12 @@ const stats = [
 
 const steps = [
   {
-    title: 'Pick your crew',
+    title: 'Pick your gang',
     copy: 'Choose 4 unique personalities and build a balanced group dynamic.',
   },
   {
     title: 'Drop a message',
-    copy: 'Your crew replies instantly with layered reactions and banter.',
+    copy: 'Your gang replies instantly with layered reactions and banter.',
   },
   {
     title: 'Watch the evolution',
@@ -47,8 +47,8 @@ const highlights = [
     icon: <Brain className="w-6 h-6 text-emerald-400" />,
   },
   {
-    title: 'Crew Focus Mode',
-    copy: 'When you want the squad centered on you, not side chatter.',
+    title: 'Gang Focus Mode',
+    copy: 'When you want the gang centered on you, not side chatter.',
     icon: <Users className="w-6 h-6 text-cyan-400" />,
   },
   {
@@ -60,7 +60,7 @@ const highlights = [
 
 const testimonials = [
   {
-    quote: 'It feels like checking in with an actual crew. Weirdly motivating.',
+    quote: 'It feels like checking in with an actual gang. Weirdly motivating.',
     name: 'Ava',
     role: 'Founder',
   },
@@ -82,7 +82,7 @@ const faq = [
     a: 'We store lightweight memories and a rolling summary to keep context without heavy token usage.',
   },
   {
-    q: 'Can I switch my crew later?',
+    q: 'Can I switch my gang later?',
     a: 'Yes. Swap members any time in Settings without losing your overall history.',
   },
   {
@@ -102,7 +102,7 @@ export default function LandingPage() {
 
   const { userId, activeGang, isHydrated } = useChatStore()
   const hasSquad = activeGang.length > 0
-  const ctaText = !isHydrated ? 'Syncing...' : userId ? (hasSquad ? 'Return to Gang' : 'Pick Your Crew') : 'Assemble Your Gang'
+  const ctaText = !isHydrated ? 'Syncing...' : userId ? (hasSquad ? 'Return to Gang' : 'Pick Your Gang') : 'Assemble Your Gang'
   const ctaLink = hasSquad ? '/chat' : '/onboarding'
   const ctaDisabled = !isHydrated
   const safeCtaLink = ctaDisabled ? '#' : ctaLink
@@ -122,8 +122,8 @@ export default function LandingPage() {
           animate={{ opacity: 1, x: 0 }}
           className="text-2xl font-bold flex items-center gap-2"
         >
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
-            <MessageCircle size={22} />
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center border border-primary/20 shadow-lg shadow-primary/10">
+            <Image src="/logo.png" alt="MyGang" width={28} height={28} className="object-contain" priority />
           </div>
           <span className="tracking-tighter text-2xl sm:text-3xl">
             MyGang<span className="text-primary">.ai</span>
@@ -230,7 +230,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <GradientPanel
               title="Crew Focus"
-              copy="A tighter mode when you want direct replies from the squad."
+              copy="A tighter mode when you want direct replies from the gang."
               icon={<ShieldCheck className="w-5 h-5 text-emerald-300" />}
             />
             <GradientPanel
@@ -264,9 +264,9 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-primary/20 via-black/40 to-accent/20 p-8 sm:p-12 flex flex-col lg:flex-row gap-8 items-center justify-between">
             <div>
               <div className="text-xs uppercase tracking-widest text-muted-foreground">Ready to vibe?</div>
-              <h3 className="text-3xl sm:text-4xl font-black mt-3">Summon your squad in under 60 seconds.</h3>
+              <h3 className="text-3xl sm:text-4xl font-black mt-3">Summon your gang in under 60 seconds.</h3>
               <p className="text-muted-foreground mt-2 max-w-xl">
-                Build a crew, set the tone, and let the conversation evolve with you.
+                Build a gang, set the tone, and let the conversation evolve with you.
               </p>
             </div>
             <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>

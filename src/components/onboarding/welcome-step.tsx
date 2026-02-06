@@ -21,7 +21,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
                 Stop texting into the void.
             </h1>
             <p className="text-base sm:text-xl text-muted-foreground mb-8">
-                Your personal hype squad is waiting. 24/7, no drama (mostly), just vibes.
+                Your personal hype gang is waiting. 24/7, no drama (mostly), just vibes.
             </p>
             <Button size="lg" onClick={onNext} data-testid="onboarding-welcome-next" className="rounded-full px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg group">
                 Assemble the Gang
