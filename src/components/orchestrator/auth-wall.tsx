@@ -35,8 +35,22 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
         setErrorMessage(null)
         try {
             trackEvent('auth_wall_action', { metadata: { provider: 'email' } })
-            await signInWithOTP(email)
-            setIsSent(true)
+            const result = await signInWithOTP(email)
+            if (result?.ok) {
+                setIsSent(true)
+                return
+            }
+            const errorText = result?.error || ''
+            const normalized = errorText.toLowerCase()
+            if (normalized.includes('not found')) {
+                setErrorMessage('We could not find that email. Try another one or sign up with the one you used before.')
+            } else if (normalized.includes('signups')) {
+                setErrorMessage('Signups are disabled right now. Use an existing account email to log in.')
+            } else if (normalized.includes('redirect')) {
+                setErrorMessage('Magic link redirect is misconfigured. Please try again in a moment.')
+            } else {
+                setErrorMessage('Could not send the magic link. Check your email and try again.')
+            }
         } catch (err) {
             console.error(err)
             const message = err instanceof Error ? err.message : ''
@@ -44,6 +58,8 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                 setErrorMessage('We could not find that email. Try another one or sign up with the one you used before.')
             } else if (message.toLowerCase().includes('signups')) {
                 setErrorMessage('Signups are disabled right now. Use an existing account email to log in.')
+            } else if (message.toLowerCase().includes('redirect')) {
+                setErrorMessage('Magic link redirect is misconfigured. Please try again in a moment.')
             } else {
                 setErrorMessage('Could not send the magic link. Check your email and try again.')
             }

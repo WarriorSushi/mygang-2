@@ -17,7 +17,7 @@ export async function signInWithGoogle() {
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: `${origin}/auth/callback?next=/chat`,
+            redirectTo: `${origin}/auth/callback`,
         },
     })
 
@@ -35,7 +35,7 @@ export async function signInWithOTP(email: string) {
     const supabase = await createClient()
     const origin = await getOrigin()
 
-    const emailRedirectTo = `${origin}/auth/callback?next=/chat`
+    const emailRedirectTo = `${origin}/auth/callback`
     const loginAttempt = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -46,7 +46,7 @@ export async function signInWithOTP(email: string) {
 
     if (loginAttempt.error) {
         const message = loginAttempt.error.message?.toLowerCase() || ''
-        const isUserNotFound = message.includes('user') && message.includes('not found')
+        const isUserNotFound = message.includes('not found')
         if (isUserNotFound) {
             const signupAttempt = await supabase.auth.signInWithOtp({
                 email,
@@ -57,13 +57,15 @@ export async function signInWithOTP(email: string) {
             })
             if (signupAttempt.error) {
                 console.error('OTP error:', signupAttempt.error.message)
-                throw signupAttempt.error
+                return { ok: false, error: signupAttempt.error.message }
             }
-            return
+            return { ok: true }
         }
         console.error('OTP error:', loginAttempt.error.message)
-        throw loginAttempt.error
+        return { ok: false, error: loginAttempt.error.message }
     }
+
+    return { ok: true }
 }
 
 export async function signOut() {
