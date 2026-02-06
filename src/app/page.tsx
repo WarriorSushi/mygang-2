@@ -1,26 +1,122 @@
 'use client'
 
+import { useMemo, useRef } from 'react'
+import Link from 'next/link'
+import { motion, useScroll, useTransform } from 'framer-motion'
+import {
+  ArrowRight,
+  ShieldCheck,
+  Users,
+  MessageCircle,
+  Zap,
+  Brain,
+  Shapes,
+  Wand2,
+  ChevronRight,
+} from 'lucide-react'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { ArrowRight, Sparkles, Zap, MessageCircle } from 'lucide-react'
 import { useChatStore } from '@/stores/chat-store'
 
+const stats = [
+  { label: 'Active Personalities', value: '8' },
+  { label: 'Avg. Response Time', value: '<2s' },
+  { label: 'Daily Conversations', value: '24/7' },
+  { label: 'Memory Layers', value: '3' },
+]
+
+const steps = [
+  {
+    title: 'Pick your crew',
+    copy: 'Choose 4 unique personalities and build a balanced group dynamic.',
+  },
+  {
+    title: 'Drop a message',
+    copy: 'Your crew replies instantly with layered reactions and banter.',
+  },
+  {
+    title: 'Watch the evolution',
+    copy: 'Memory + relationship state make every session feel continuous.',
+  },
+]
+
+const highlights = [
+  {
+    title: 'Memory Vault',
+    copy: 'Long-term context without token bloat. Your story actually sticks.',
+    icon: <Brain className="w-6 h-6 text-emerald-400" />,
+  },
+  {
+    title: 'Crew Focus Mode',
+    copy: 'When you want the squad centered on you, not side chatter.',
+    icon: <Users className="w-6 h-6 text-cyan-400" />,
+  },
+  {
+    title: 'Autonomous Banter',
+    copy: 'Let them riff. It feels like a real group chat, not a single bot.',
+    icon: <Wand2 className="w-6 h-6 text-purple-400" />,
+  },
+]
+
+const testimonials = [
+  {
+    quote: 'It feels like checking in with an actual crew. Weirdly motivating.',
+    name: 'Ava',
+    role: 'Founder',
+  },
+  {
+    quote: 'The banter is wild. The memory makes it feel alive.',
+    name: 'Jay',
+    role: 'Designer',
+  },
+  {
+    quote: 'It’s the only AI chat that feels like a social space.',
+    name: 'Mira',
+    role: 'Creator',
+  },
+]
+
+const faq = [
+  {
+    q: 'How does MyGang remember things?',
+    a: 'We store lightweight memories and a rolling summary to keep context without heavy token usage.',
+  },
+  {
+    q: 'Can I switch my crew later?',
+    a: 'Yes. Swap members any time in Settings without losing your overall history.',
+  },
+  {
+    q: 'Is this a single bot or multiple personas?',
+    a: 'Multiple distinct personas with their own voice, timing, and relationship evolution.',
+  },
+]
+
 export default function LandingPage() {
+  const heroRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  })
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, -120])
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92])
+
   const { userId, activeGang, isHydrated } = useChatStore()
   const hasSquad = activeGang.length > 0
-  const ctaText = !isHydrated ? "Syncing..." : userId ? (hasSquad ? "Return to Gang" : "Pick Your Gang") : "Assemble Your Gang"
-  const ctaLink = hasSquad ? "/chat" : "/onboarding"
+  const ctaText = !isHydrated ? 'Syncing...' : userId ? (hasSquad ? 'Return to Gang' : 'Pick Your Crew') : 'Assemble Your Gang'
+  const ctaLink = hasSquad ? '/chat' : '/onboarding'
   const ctaDisabled = !isHydrated
-  const safeCtaLink = ctaDisabled ? "#" : ctaLink
+  const safeCtaLink = ctaDisabled ? '#' : ctaLink
+
+  const marqueeItems = useMemo(
+    () => ['Chaos Energy', 'Deep Memory', 'Live Banter', 'Crew Focus', 'Auto Reactions', 'Late-night Mode', 'Drama', 'Hype'],
+    []
+  )
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden bg-background">
+    <div className="relative min-h-screen flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
 
-      {/* Nav */}
-      <nav className="p-6 flex justify-between items-center max-w-7xl mx-auto w-full z-10">
+      <nav className="p-4 sm:p-6 flex justify-between items-center max-w-7xl mx-auto w-full z-10">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -29,121 +125,224 @@ export default function LandingPage() {
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
             <MessageCircle size={22} />
           </div>
-          <span className="tracking-tighter text-3xl">MyGang<span className="text-primary">.ai</span></span>
+          <span className="tracking-tighter text-2xl sm:text-3xl">
+            MyGang<span className="text-primary">.ai</span>
+          </span>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-4"
-        >
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
           {userId && (
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+            <span className="hidden sm:block text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
               Logged In
             </span>
           )}
           <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-            <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
-              {userId ? "Dashboard" : "Launch App"}
+            <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+              {userId ? 'Dashboard' : 'Launch App'}
             </Button>
           </Link>
         </motion.div>
       </nav>
 
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 text-center z-10 relative">
-        {/* Decorative elements */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 blur-[120px] rounded-full -z-10 animate-pulse" />
+      <main ref={heroRef} className="flex flex-col items-center text-center z-10 relative">
+        <section className="relative w-full px-6 sm:px-10 lg:px-14 pt-16 sm:pt-24 pb-20">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[600px] sm:h-[800px] bg-primary/5 blur-[140px] rounded-full -z-10 animate-pulse" />
+          <motion.div style={{ y: heroY, scale: heroScale }} className="max-w-5xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full bg-white/5 border border-white/10 text-xs sm:text-sm mb-8 backdrop-blur-md shadow-inner">
+              <Users className="w-4 h-4 text-cyan-300" />
+              <span className="text-white/90 font-medium">Meet your new digital crew</span>
+            </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-5xl"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-white/5 border border-white/10 text-sm mb-10 backdrop-blur-md shadow-inner"
-          >
-            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-            <span className="text-white/90 font-medium">Meet your new digital entourage</span>
+            <h1 className="text-5xl sm:text-7xl lg:text-[9rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
+              YOUR <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-primary to-blue-600 animate-gradient">GANG</span>
+              <br />
+              IS <span className="italic font-serif normal-case font-light text-muted-foreground/50">READY.</span>
+            </h1>
+
+            <p className="text-base sm:text-xl lg:text-3xl text-muted-foreground/80 mb-12 max-w-2xl mx-auto leading-relaxed">
+              The group chat that never sleeps. <span className="text-foreground font-semibold">8 personalities</span>, 1 user, infinite chaos.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center">
+              <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+                <Button
+                  size="xl"
+                  disabled={ctaDisabled}
+                  data-testid="landing-cta"
+                  className="rounded-full px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
+                >
+                  <span className="relative z-10 flex items-center gap-3">
+                    {ctaText}
+                    <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-2 transition-transform duration-500" />
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Button>
+              </Link>
+              <a href="#how-it-works" className="inline-flex">
+                <Button variant="outline" size="xl" className="rounded-full px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black">
+                  Watch It Flow
+                </Button>
+              </a>
+            </div>
           </motion.div>
+        </section>
 
-          <h1 className="text-8xl md:text-[10rem] font-black tracking-tighter mb-10 leading-[0.85] uppercase">
-            YOUR <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-primary to-blue-600 animate-gradient">GANG</span><br />
-            IS <span className="italic font-serif normal-case font-light text-muted-foreground/50">READY.</span>
-          </h1>
+        <section className="w-full px-6 sm:px-10 lg:px-14 pb-20">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+            {stats.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 text-left">
+                <div className="text-2xl sm:text-3xl font-black">{stat.value}</div>
+                <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-widest mt-2">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-          <p className="text-xl md:text-3xl text-muted-foreground/80 mb-14 max-w-2xl mx-auto leading-relaxed">
-            The group chat that never sleeps. <span className="text-foreground font-semibold">8 personalities</span>, 1 user, infinite chaos.
-          </p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-col sm:flex-row gap-6 justify-center"
-          >
-            <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-              <Button
-                size="xl"
-                disabled={ctaDisabled}
-                data-testid="landing-cta"
-                className="rounded-full px-16 py-10 text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
-              >
-                <span className="relative z-10 flex items-center gap-3">
-                  {ctaText}
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-500" />
+        <section className="w-full overflow-hidden border-y border-white/5 bg-white/5">
+          <div className="flex items-center gap-8 whitespace-nowrap py-6 text-xs sm:text-sm uppercase tracking-[0.3em] text-muted-foreground/70">
+            <div className="flex gap-8 animate-marquee">
+              {[...marqueeItems, ...marqueeItems].map((item, idx) => (
+                <span key={`${item}-${idx}`} className="px-6 py-2 rounded-full border border-white/10 bg-black/20">
+                  {item}
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity" />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <Section id="how-it-works" title="How it works" subtitle="Simple setup, deep immersion">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {steps.map((step, index) => (
+              <GlowCard key={step.title} index={index + 1} title={step.title} copy={step.copy} />
+            ))}
+          </div>
+        </Section>
+
+        <Section id="why-it-feels-real" title="Why it feels real" subtitle="Memory, rhythm, and personality depth working together">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {highlights.map((item) => (
+              <FeatureCard key={item.title} icon={item.icon} title={item.title} desc={item.copy} />
+            ))}
+          </div>
+        </Section>
+
+        <Section id="vibe-palette" title="The vibe palette" subtitle="Pick a mix of chaos, calm, logic, and hype">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <GradientPanel
+              title="Crew Focus"
+              copy="A tighter mode when you want direct replies from the squad."
+              icon={<ShieldCheck className="w-5 h-5 text-emerald-300" />}
+            />
+            <GradientPanel
+              title="Free-flow Banter"
+              copy="Let them bounce off each other and create group energy."
+              icon={<Shapes className="w-5 h-5 text-purple-300" />}
+            />
+          </div>
+        </Section>
+
+        <Section id="testimonials" title="Loved by night owls" subtitle="People who want a chat that feels alive">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((item) => (
+              <Testimonial key={item.name} {...item} />
+            ))}
+          </div>
+        </Section>
+
+        <Section id="faq" title="Questions, answered" subtitle="No long docs, just quick clarity">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {faq.map((item) => (
+              <div key={item.q} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <div className="text-base font-semibold">{item.q}</div>
+                <p className="text-sm text-muted-foreground mt-2">{item.a}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <section className="w-full px-6 sm:px-10 lg:px-14 pb-24">
+          <div className="max-w-6xl mx-auto rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-primary/20 via-black/40 to-accent/20 p-8 sm:p-12 flex flex-col lg:flex-row gap-8 items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Ready to vibe?</div>
+              <h3 className="text-3xl sm:text-4xl font-black mt-3">Summon your squad in under 60 seconds.</h3>
+              <p className="text-muted-foreground mt-2 max-w-xl">
+                Build a crew, set the tone, and let the conversation evolve with you.
+              </p>
+            </div>
+            <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+              <Button size="xl" className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group">
+                {ctaText}
+                <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </motion.div>
-        </motion.div>
-
-        {/* Feature Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-40 max-w-7xl w-full"
-        >
-          <FeatureCard
-            icon={<Zap className="text-yellow-400 w-6 h-6" />}
-            title="Instant Hype"
-            desc="Need a win? Kael will blow up your notifications with purely positive vibes and elite validation."
-          />
-          <FeatureCard
-            icon={<MessageCircle className="text-cyan-400 w-6 h-6" />}
-            title="Banter Engine"
-            desc="Detailed group personalities that talk to you and to each other. It's not a bot, it's an ensemble."
-          />
-          <FeatureCard
-            icon={<Sparkles className="text-purple-400 w-6 h-6" />}
-            title="Zero Friction"
-            desc="No complex signups. Pick your friends and dive straight into the digital chaos in seconds."
-          />
-        </motion.div>
+          </div>
+        </section>
       </main>
 
-      <footer className="p-12 text-center text-muted-foreground/40 text-sm border-t border-white/5 mt-20">
+      <footer className="p-8 sm:p-12 text-center text-muted-foreground/40 text-xs sm:text-sm border-t border-white/5">
         &copy; 2024 MyGang.ai - The premium AI group chat experience.
       </footer>
     </div>
   )
 }
 
-function FeatureCard({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) {
+function Section({ id, title, subtitle, children }: { id?: string; title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="p-10 rounded-[2.5rem] bg-white/[0.03] border border-white/10 text-left hover:bg-white/[0.06] hover:border-white/20 transition-all duration-500 group backdrop-blur-sm">
-      <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-8 border border-white/10 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 shadow-inner">
+    <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-20 sm:py-28">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-10">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">{subtitle}</div>
+          <h2 className="text-3xl sm:text-4xl font-black mt-2">{title}</h2>
+        </div>
+        {children}
+      </div>
+    </section>
+  )
+}
+
+function FeatureCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <div className="p-6 sm:p-8 rounded-[2rem] bg-white/[0.04] border border-white/10 text-left hover:bg-white/[0.08] hover:border-white/20 transition-all duration-500 group backdrop-blur-sm">
+      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 border border-white/10 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 shadow-inner">
         {icon}
       </div>
-      <h3 className="text-3xl font-bold mb-5 tracking-tight">{title}</h3>
-      <p className="text-muted-foreground/80 leading-relaxed text-lg">{desc}</p>
+      <h3 className="text-2xl font-bold mb-4 tracking-tight">{title}</h3>
+      <p className="text-muted-foreground/80 leading-relaxed text-base">{desc}</p>
+    </div>
+  )
+}
+
+function GlowCard({ index, title, copy }: { index: number; title: string; copy: string }) {
+  return (
+    <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-6 sm:p-8">
+      <div className="absolute top-0 right-0 h-24 w-24 bg-primary/20 blur-[60px]" />
+      <div className="text-xs uppercase tracking-widest text-muted-foreground">Step {index}</div>
+      <h3 className="text-2xl font-bold mt-3">{title}</h3>
+      <p className="text-sm text-muted-foreground mt-3">{copy}</p>
+    </div>
+  )
+}
+
+function GradientPanel({ title, copy, icon }: { title: string; copy: string; icon: React.ReactNode }) {
+  return (
+    <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-white/5 via-black/40 to-white/10 p-6 sm:p-8">
+      <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/20 blur-[80px] animate-floaty" />
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-xl bg-white/10 border border-white/10">{icon}</div>
+        <h3 className="text-2xl font-bold">{title}</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mt-4 max-w-md">{copy}</p>
+    </div>
+  )
+}
+
+function Testimonial({ quote, name, role }: { quote: string; name: string; role: string }) {
+  return (
+    <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 sm:p-8">
+      <div className="text-base font-medium leading-relaxed">“{quote}”</div>
+      <div className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
+        {name} · {role}
+      </div>
     </div>
   )
 }

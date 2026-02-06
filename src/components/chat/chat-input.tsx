@@ -28,7 +28,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
 
     return (
-        <div className="p-4 bg-gradient-to-t from-background via-background/80 to-transparent z-10">
+        <div className="p-4 pb-safe bg-gradient-to-t from-background via-background/80 to-transparent z-10">
             <form
                 onSubmit={handleSubmit}
                 className="relative flex items-end gap-2 bg-white/5 backdrop-blur-xl border border-white/10 p-2 px-3 rounded-2xl shadow-2xl transition-all focus-within:border-primary/50"

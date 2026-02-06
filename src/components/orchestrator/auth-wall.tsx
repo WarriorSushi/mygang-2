@@ -57,10 +57,10 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                 <Sparkles size={16} />
                             </div>
                         </div>
-                        <DialogTitle className="text-4xl font-black text-center tracking-tight leading-tight">
+                        <DialogTitle className="text-2xl sm:text-4xl font-black text-center tracking-tight leading-tight">
                             WAIT! DON&apos;T <br />LOSE THE FLOW.
                         </DialogTitle>
-                        <DialogDescription className="text-center text-lg text-muted-foreground/80 leading-relaxed max-w-[300px]">
+                        <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[300px]">
                             Save your squad and this conversation forever. Most people regret not joining earlier.
                         </DialogDescription>
                     </DialogHeader>
@@ -71,7 +71,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                 <Button
                                     type="submit"
                                     onClick={() => trackEvent('auth_wall_action', { metadata: { provider: 'google' } })}
-                                    className="w-full h-16 rounded-2xl text-xl font-black bg-[#4285F4] hover:bg-[#4285F4]/90 text-white shadow-lg shadow-[#4285F4]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    className="w-full h-14 sm:h-16 rounded-2xl text-lg sm:text-xl font-black bg-[#4285F4] hover:bg-[#4285F4]/90 text-white shadow-lg shadow-[#4285F4]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 >
                                     <div className="flex items-center gap-3">
                                         <LogIn className="h-6 w-6" />
@@ -95,14 +95,14 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                     placeholder="your@email.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="h-14 rounded-xl bg-white/5 border-white/10 text-lg focus-visible:ring-primary/50"
+                                    className="h-12 sm:h-14 rounded-xl bg-white/5 border-white/10 text-base sm:text-lg focus-visible:ring-primary/50"
                                     required
                                 />
                                 <Button
                                     type="submit"
                                     variant="outline"
                                     disabled={isLoading}
-                                    className="w-full h-14 rounded-xl text-lg font-bold border-white/10 bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]"
+                                    className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-white/10 bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]"
                                 >
                                     {isLoading ? (
                                         <Loader2 className="animate-spin h-5 w-5" />
@@ -120,8 +120,8 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-primary mx-auto mb-6">
                                 <Mail size={40} />
                             </div>
-                            <h3 className="text-2xl font-bold mb-2">Check your email!</h3>
-                            <p className="text-muted-foreground">We sent a magic link to <span className="text-foreground font-semibold">{email}</span>.</p>
+                            <h3 className="text-xl sm:text-2xl font-bold mb-2">Check your email!</h3>
+                            <p className="text-muted-foreground text-sm sm:text-base">We sent a magic link to <span className="text-foreground font-semibold">{email}</span>.</p>
                             <Button variant="link" onClick={() => setIsSent(false)} className="mt-4 text-primary">
                                 Try another email
                             </Button>

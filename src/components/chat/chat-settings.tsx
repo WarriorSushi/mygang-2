@@ -74,7 +74,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
-            <SheetContent side="right" className="w-[280px] sm:w-[350px] p-0 border-l border-white/5 bg-black/40 backdrop-blur-3xl text-white shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)]">
+            <SheetContent side="right" className="w-[85vw] max-w-[350px] p-0 border-l border-white/5 bg-black/40 backdrop-blur-3xl text-white shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)]">
                 <div className="flex-1 overflow-y-auto scrollbar-hide p-4 sm:p-6 space-y-6">
                     <SheetHeader className="text-left space-y-0.5 mb-2">
                         <div className="flex items-center gap-2">

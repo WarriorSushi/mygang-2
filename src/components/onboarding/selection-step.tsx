@@ -74,8 +74,8 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             className="w-full max-w-6xl"
         >
             <div className="text-center mb-8">
-                <h2 className="text-4xl font-bold mb-3 tracking-tight">Pick your Squad</h2>
-                <p className="text-muted-foreground text-lg">Select exactly 4 unique friends to join your gang.</p>
+                <h2 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight">Pick your Squad</h2>
+                <p className="text-muted-foreground text-base sm:text-lg">Select exactly 4 unique friends to join your gang.</p>
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
                     {tags.map(tag => (
                         <Button
@@ -104,7 +104,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {filteredCharacters.map((char) => {
                     const isSelected = selectedIds.includes(char.id)
                     return (
@@ -113,7 +113,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                             data-testid={`character-${char.id}`}
                             onClick={() => toggleCharacter(char.id)}
                             className={cn(
-                                "p-6 cursor-pointer relative group transition-all duration-500",
+                                "p-5 sm:p-6 cursor-pointer relative group transition-all duration-500",
                                 isSelected && "ring-2 ring-primary ring-offset-4 ring-offset-background bg-primary/5"
                             )}
                         >
@@ -149,7 +149,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                     />
                                 </div>
                             </div>
-                            <h3 className="font-bold text-xl mb-1">{char.name}</h3>
+                            <h3 className="font-bold text-lg sm:text-xl mb-1">{char.name}</h3>
                             <p className="text-xs font-black uppercase tracking-widest mb-2 opacity-60" style={{ color: char.color }}>
                                 {char.archetype}
                             </p>
@@ -187,7 +187,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                     disabled={selectedIds.length !== 4}
                     data-testid="onboarding-selection-done"
                     onClick={onNext}
-                    className="rounded-full px-16 py-8 text-xl font-bold shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95"
+                    className="rounded-full px-10 sm:px-16 py-6 sm:py-8 text-lg sm:text-xl font-bold shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95"
                 >
                     Let&apos;s Go
                 </Button>
