@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Mail, Loader2, Sparkles } from 'lucide-react'
+import { Mail, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { signInWithOTP } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
@@ -51,18 +51,15 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                     <DialogHeader className="flex flex-col items-center gap-5 py-6">
                         <div className="relative">
                             <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
-                            <div className="relative w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                                <Image src="/logo.png" alt="MyGang" width={40} height={40} className="object-contain" priority />
-                            </div>
-                            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-lg">
-                                <Sparkles size={16} />
+                            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-[2.5rem] bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                                <Image src="/logo.png" alt="MyGang" width={72} height={72} className="object-contain" priority />
                             </div>
                         </div>
                         <DialogTitle className="text-2xl sm:text-4xl font-black text-center tracking-tight leading-tight">
-                            WAIT! DON&apos;T <br />LOSE THE FLOW.
+                            Save your gang and the full chat.
                         </DialogTitle>
-                        <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[300px]">
-                            Save your gang and this conversation forever. Most people regret not joining earlier.
+                        <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[320px]">
+                            Sign up to store your squad, memory, and history so nothing gets lost when you come back.
                         </DialogDescription>
                     </DialogHeader>
 
