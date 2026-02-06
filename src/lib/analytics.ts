@@ -9,6 +9,14 @@ interface StoredSession {
     lastActivityAt: number
 }
 
+const isStoredSession = (value: unknown): value is StoredSession => {
+    if (!value || typeof value !== 'object') return false
+    const record = value as Record<string, unknown>
+    return typeof record.id === 'string'
+        && typeof record.startedAt === 'number'
+        && typeof record.lastActivityAt === 'number'
+}
+
 export function ensureAnalyticsSession() {
     if (typeof window === 'undefined') {
         return { id: 'server', startedAt: Date.now(), isNew: false }
@@ -19,7 +27,10 @@ export function ensureAnalyticsSession() {
 
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY)
-        if (raw) stored = JSON.parse(raw) as StoredSession
+        if (raw) {
+            const parsed = JSON.parse(raw) as unknown
+            stored = isStoredSession(parsed) ? parsed : null
+        }
     } catch {
         stored = null
     }

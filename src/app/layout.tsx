@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mygang.ai";
+
 export const metadata: Metadata = {
   title: {
     default: "MyGang.ai | Your Premium AI Group Chat",
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://mygang.ai",
+    url: siteUrl,
     title: "MyGang.ai | Your Premium AI Group Chat",
     description: "Experience the group chat that never sleeps. 8 unique AI personalities ready to roar, roast, and vibe with you 24/7.",
     siteName: "MyGang.ai",

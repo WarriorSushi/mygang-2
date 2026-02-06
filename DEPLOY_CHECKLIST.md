@@ -11,6 +11,7 @@
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_SITE_URL` (e.g., `https://mygang.ai`)
    - `OPENROUTER_API_KEY` (fallback model)
    - Gemini API key used by `@ai-sdk/google` (same key name you use locally)
 3. Optional:
