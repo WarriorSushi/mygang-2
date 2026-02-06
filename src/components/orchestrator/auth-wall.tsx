@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Mail, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import Image from 'next/image'
-import { signInWithOTP } from "@/app/auth/actions"
+import { signInOrSignUpWithPassword } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
 
 interface AuthWallProps {
@@ -17,8 +17,8 @@ interface AuthWallProps {
 
 export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
     const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [isSent, setIsSent] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     useEffect(() => {
@@ -27,42 +27,29 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
         }
     }, [isOpen])
 
-    const handleEmailSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!email) return
+        if (!email || !password) return
 
         setIsLoading(true)
         setErrorMessage(null)
         try {
-            trackEvent('auth_wall_action', { metadata: { provider: 'email' } })
-            const result = await signInWithOTP(email)
-            if (result?.ok) {
-                setIsSent(true)
+            if (password.length < 6) {
+                setErrorMessage('Password must be at least 6 characters.')
                 return
             }
-            const errorText = result?.error || ''
-            const normalized = errorText.toLowerCase()
-            if (normalized.includes('not found')) {
-                setErrorMessage('We could not find that email. Try another one or sign up with the one you used before.')
-            } else if (normalized.includes('signups')) {
-                setErrorMessage('Signups are disabled right now. Use an existing account email to log in.')
-            } else if (normalized.includes('redirect')) {
-                setErrorMessage('Magic link redirect is misconfigured. Please try again in a moment.')
-            } else {
-                setErrorMessage(errorText ? `Could not send the magic link: ${errorText}` : 'Could not send the magic link. Check your email and try again.')
+            trackEvent('auth_wall_action', { metadata: { provider: 'password' } })
+            const result = await signInOrSignUpWithPassword(email, password)
+            if (result?.ok) {
+                setEmail('')
+                setPassword('')
+                onSuccess()
+                return
             }
+            setErrorMessage(result?.error || 'Unable to sign in. Please try again.')
         } catch (err) {
             console.error(err)
-            const message = err instanceof Error ? err.message : ''
-            if (message.toLowerCase().includes('not found')) {
-                setErrorMessage('We could not find that email. Try another one or sign up with the one you used before.')
-            } else if (message.toLowerCase().includes('signups')) {
-                setErrorMessage('Signups are disabled right now. Use an existing account email to log in.')
-            } else if (message.toLowerCase().includes('redirect')) {
-                setErrorMessage('Magic link redirect is misconfigured. Please try again in a moment.')
-            } else {
-                setErrorMessage('Could not send the magic link. Check your email and try again.')
-            }
+            setErrorMessage('Unable to sign in. Please try again.')
         } finally {
             setIsLoading(false)
         }
@@ -85,56 +72,48 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             Sign up / log in to continue
                         </DialogTitle>
                         <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[320px]">
-                            Sign up to store your squad, memory, and history so nothing gets lost when you come back.
+                            Use email + password. We’ll sign you in or create your account automatically.
                         </DialogDescription>
                     </DialogHeader>
 
-                    {!isSent ? (
-                        <div className="grid gap-6 py-4">
-                            <form onSubmit={handleEmailSubmit} className="space-y-3">
-                                <Input
-                                    type="email"
-                                    placeholder="your@email.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="h-12 sm:h-14 rounded-xl bg-white/5 border-white/10 text-base sm:text-lg focus-visible:ring-primary/50"
-                                    required
-                                />
-                                {errorMessage && (
-                                    <div className="text-xs text-red-400">{errorMessage}</div>
+                    <div className="grid gap-6 py-4">
+                        <form onSubmit={handleSubmit} className="space-y-3">
+                            <Input
+                                type="email"
+                                placeholder="your@email.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="h-12 sm:h-14 rounded-xl bg-white/5 border-white/10 text-base sm:text-lg focus-visible:ring-primary/50"
+                                required
+                            />
+                            <Input
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="h-12 sm:h-14 rounded-xl bg-white/5 border-white/10 text-base sm:text-lg focus-visible:ring-primary/50"
+                                required
+                            />
+                            {errorMessage && (
+                                <div className="text-xs text-red-400">{errorMessage}</div>
+                            )}
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                disabled={isLoading}
+                                className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-white/10 bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]"
+                            >
+                                {isLoading ? (
+                                    <Loader2 className="animate-spin h-5 w-5" />
+                                ) : (
+                                    <span>Continue</span>
                                 )}
-                                <Button
-                                    type="submit"
-                                    variant="outline"
-                                    disabled={isLoading}
-                                    className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-white/10 bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]"
-                                >
-                                    {isLoading ? (
-                                        <Loader2 className="animate-spin h-5 w-5" />
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <Mail className="h-5 w-5" />
-                                            Send Magic Link
-                                        </div>
-                                    )}
-                                </Button>
-                            </form>
-                            <p className="text-center text-[11px] text-muted-foreground/60">
-                                We’ll email you a secure link to sign in.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="py-12 text-center animate-in zoom-in duration-500">
-                            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-primary mx-auto mb-6">
-                                <Mail size={40} />
-                            </div>
-                            <h3 className="text-xl sm:text-2xl font-bold mb-2">Check your email!</h3>
-                            <p className="text-muted-foreground text-sm sm:text-base">We sent a magic link to <span className="text-foreground font-semibold">{email}</span>.</p>
-                            <Button variant="link" onClick={() => setIsSent(false)} className="mt-4 text-primary">
-                                Try another email
                             </Button>
-                        </div>
-                    )}
+                        </form>
+                        <p className="text-center text-[11px] text-muted-foreground/60">
+                            Your session stays signed in on this device until you log out.
+                        </p>
+                    </div>
 
                     <p className="text-center text-[10px] text-muted-foreground/40 mt-6 uppercase tracking-widest font-bold">
                         Secure auth by Supabase

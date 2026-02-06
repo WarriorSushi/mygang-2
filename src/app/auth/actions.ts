@@ -31,41 +31,52 @@ export async function signInWithGoogle() {
     }
 }
 
-export async function signInWithOTP(email: string) {
+export async function signInOrSignUpWithPassword(email: string, password: string) {
     const supabase = await createClient()
     const origin = await getOrigin()
 
-    const emailRedirectTo = `${origin}/auth/callback`
-    const loginAttempt = await supabase.auth.signInWithOtp({
+    const signInAttempt = await supabase.auth.signInWithPassword({
         email,
+        password,
+    })
+
+    if (!signInAttempt.error) {
+        return { ok: true, action: 'signed_in' as const }
+    }
+
+    const signInMessage = signInAttempt.error.message?.toLowerCase() || ''
+    const shouldTrySignUp = signInMessage.includes('invalid login') || signInMessage.includes('invalid') || signInMessage.includes('credentials')
+    if (!shouldTrySignUp) {
+        return { ok: false, error: signInAttempt.error.message }
+    }
+
+    const signUpAttempt = await supabase.auth.signUp({
+        email,
+        password,
         options: {
-            emailRedirectTo,
-            shouldCreateUser: false,
+            emailRedirectTo: `${origin}/auth/callback`,
         },
     })
 
-    if (loginAttempt.error) {
-        const message = loginAttempt.error.message?.toLowerCase() || ''
-        const isUserNotFound = message.includes('not found')
-        if (isUserNotFound) {
-            const signupAttempt = await supabase.auth.signInWithOtp({
-                email,
-                options: {
-                    emailRedirectTo,
-                    shouldCreateUser: true,
-                },
-            })
-            if (signupAttempt.error) {
-                console.error('OTP error:', signupAttempt.error.message)
-                return { ok: false, error: signupAttempt.error.message }
-            }
-            return { ok: true }
+    if (signUpAttempt.error) {
+        const message = signUpAttempt.error.message || 'Unable to sign in or sign up.'
+        const normalized = message.toLowerCase()
+        if (normalized.includes('already registered') || normalized.includes('already exists')) {
+            return { ok: false, error: 'Incorrect password. Please try again.' }
         }
-        console.error('OTP error:', loginAttempt.error.message)
-        return { ok: false, error: loginAttempt.error.message }
+        return { ok: false, error: message }
     }
 
-    return { ok: true }
+    if (signUpAttempt.data?.session) {
+        return { ok: true, action: 'signed_up' as const }
+    }
+
+    const retrySignIn = await supabase.auth.signInWithPassword({ email, password })
+    if (!retrySignIn.error) {
+        return { ok: true, action: 'signed_in' as const }
+    }
+
+    return { ok: false, error: 'Check your email to confirm your account, then log in.' }
 }
 
 export async function signOut() {

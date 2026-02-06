@@ -124,7 +124,10 @@ export default function OnboardingPage() {
             <AuthWall
                 isOpen={showAuthWall}
                 onClose={() => setShowAuthWall(false)}
-                onSuccess={() => setShowAuthWall(false)}
+                onSuccess={() => {
+                    setShowAuthWall(false)
+                    router.push('/chat')
+                }}
             />
         </main>
     )

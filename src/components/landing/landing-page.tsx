@@ -15,6 +15,7 @@ import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { Button } from '@/components/ui/button'
 import { useChatStore } from '@/stores/chat-store'
 import { AuthWall } from '@/components/orchestrator/auth-wall'
+import { useRouter } from 'next/navigation'
 
 const stats = [
   { label: 'Active Personalities', value: '8' },
@@ -90,7 +91,8 @@ const faq = [
 ]
 
 export function LandingPage() {
-  const [showAuthWall, setShowAuthWall] = useState(false)
+    const [showAuthWall, setShowAuthWall] = useState(false)
+    const router = useRouter()
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -302,7 +304,10 @@ export function LandingPage() {
       <AuthWall
         isOpen={showAuthWall}
         onClose={() => setShowAuthWall(false)}
-        onSuccess={() => setShowAuthWall(false)}
+        onSuccess={() => {
+          setShowAuthWall(false)
+          router.push('/chat')
+        }}
       />
     </div>
   )
