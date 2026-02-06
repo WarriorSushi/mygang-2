@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useChatStore } from '@/stores/chat-store'
-import { getSavedGang, saveGang } from '@/app/auth/actions'
+import { getSavedGang, saveGang, saveUsername } from '@/app/auth/actions'
 import { CHARACTERS } from '@/constants/characters'
 import { useTheme } from 'next-themes'
 
@@ -19,7 +19,8 @@ export function AuthManager() {
         setIsHydrated,
         setChatMode,
         setChatWallpaper,
-        setSquadConflict
+        setSquadConflict,
+        userName
     } = useChatStore()
     const supabase = createClient()
     const hadSessionRef = useRef(false)
@@ -63,6 +64,12 @@ export function AuthManager() {
 
                     if (profile?.username) {
                         setUserName(profile.username)
+                    } else if (userName) {
+                        try {
+                            await saveUsername(userName)
+                        } catch (err) {
+                            console.error('Error saving username:', err)
+                        }
                     }
                     if (profile?.chat_mode) {
                         setChatMode(profile.chat_mode as any)
@@ -107,7 +114,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [setUserId, setIsGuest, setActiveGang, activeGang, setUserName, setUserNickname, clearChat, setIsHydrated, setChatMode, setChatWallpaper, setSquadConflict, setTheme])
+    }, [setUserId, setIsGuest, setActiveGang, activeGang, setUserName, setUserNickname, clearChat, setIsHydrated, setChatMode, setChatWallpaper, setSquadConflict, setTheme, userName])
 
     return null
 }

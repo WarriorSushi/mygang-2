@@ -142,11 +142,11 @@ export default function ChatPage() {
 
     // Initial Greeting Trigger
     useEffect(() => {
-        if (isHydrated && activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && !isGenerating) {
+        if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && !isGenerating) {
             initialGreetingRef.current = true
             handleSend("") // Empty content triggers the intro logic in API
         }
-    }, [activeGang, messages.length, isGenerating, isHydrated])
+    }, [activeGang, messages.length, isGenerating])
 
     useEffect(() => {
         if (isHydrated && messages.length > 0 && !resumeBannerRef.current) {
@@ -397,9 +397,13 @@ export default function ChatPage() {
         // 1. NON-BLOCKING INPUT: Add message to UI immediately
         if (!isIntro && !isAutonomous && content.trim()) {
             // Trigger Auth Wall before writing message to timeline
-            if (isGuest && messages.some(m => m.speaker === 'user')) {
+            if (isGuest && !messages.some(m => m.speaker === 'user')) {
                 pendingBlockedMessageRef.current = content
                 setShowAuthWall(true)
+                if (messages.length === 0 && !initialGreetingRef.current) {
+                    initialGreetingRef.current = true
+                    handleSend("") // Ensure gang greets before first user message
+                }
                 return
             }
             const userMsg: Message = {

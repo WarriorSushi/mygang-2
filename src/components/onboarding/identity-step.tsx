@@ -8,9 +8,10 @@ interface IdentityStepProps {
     name: string
     setName: (name: string) => void
     onNext: () => void
+    onLogin?: () => void
 }
 
-export function IdentityStep({ name, setName, onNext }: IdentityStepProps) {
+export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepProps) {
     return (
         <motion.div
             key="identity"
@@ -38,6 +39,15 @@ export function IdentityStep({ name, setName, onNext }: IdentityStepProps) {
                 >
                     Next
                 </Button>
+                {onLogin && (
+                    <button
+                        type="button"
+                        onClick={onLogin}
+                        className="w-full text-center text-[11px] uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                    >
+                        Already have an account? Log in
+                    </button>
+                )}
             </div>
         </motion.div>
     )

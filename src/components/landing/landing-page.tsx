@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
@@ -17,6 +17,7 @@ import Image from 'next/image'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { Button } from '@/components/ui/button'
 import { useChatStore } from '@/stores/chat-store'
+import { AuthWall } from '@/components/orchestrator/auth-wall'
 
 const stats = [
   { label: 'Active Personalities', value: '8' },
@@ -92,6 +93,7 @@ const faq = [
 ]
 
 export function LandingPage() {
+  const [showAuthWall, setShowAuthWall] = useState(false)
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -136,11 +138,21 @@ export function LandingPage() {
               Logged In
             </span>
           )}
-          <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-            <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
-              {userId ? 'Dashboard' : 'Launch App'}
+          {userId ? (
+            <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+              <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+                Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              variant="ghost"
+              className="rounded-full px-4 sm:px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all"
+              onClick={() => setShowAuthWall(true)}
+            >
+              Log in
             </Button>
-          </Link>
+          )}
         </motion.div>
       </nav>
 
@@ -282,6 +294,12 @@ export function LandingPage() {
       <footer className="p-8 sm:p-12 text-center text-muted-foreground/40 text-xs sm:text-sm border-t border-white/5">
         &copy; 2024 MyGang.ai - The premium AI group chat experience.
       </footer>
+
+      <AuthWall
+        isOpen={showAuthWall}
+        onClose={() => setShowAuthWall(false)}
+        onSuccess={() => setShowAuthWall(false)}
+      />
     </div>
   )
 }

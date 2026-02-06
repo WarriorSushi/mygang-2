@@ -6,9 +6,10 @@ import { ArrowRight } from 'lucide-react'
 
 interface WelcomeStepProps {
     onNext: () => void
+    onLogin?: () => void
 }
 
-export function WelcomeStep({ onNext }: WelcomeStepProps) {
+export function WelcomeStep({ onNext, onLogin }: WelcomeStepProps) {
     return (
         <motion.div
             key="welcome"
@@ -27,6 +28,15 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
                 Assemble the Gang
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
+            {onLogin && (
+                <button
+                    type="button"
+                    onClick={onLogin}
+                    className="mt-4 text-xs sm:text-sm uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                >
+                    Already have an account? Log in
+                </button>
+            )}
         </motion.div>
     )
 }

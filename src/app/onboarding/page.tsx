@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { saveGang, saveUsername } from '@/app/auth/actions'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
+import { AuthWall } from '@/components/orchestrator/auth-wall'
 
 // New modular components
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
@@ -22,6 +23,7 @@ export default function OnboardingPage() {
     const [step, setStep] = useState<Step>('WELCOME')
     const [name, setName] = useState('')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [showAuthWall, setShowAuthWall] = useState(false)
     const { setUserName, setActiveGang, setIsGuest, userId, activeGang, isHydrated } = useChatStore()
     const router = useRouter()
     const isSelection = step === 'SELECTION'
@@ -42,11 +44,15 @@ export default function OnboardingPage() {
     }, [])
 
     const toggleCharacter = (id: string) => {
-        if (selectedIds.includes(id)) {
-            setSelectedIds(selectedIds.filter((i) => i !== id))
-        } else if (selectedIds.length < 4) {
-            setSelectedIds([...selectedIds, id])
-        }
+        setSelectedIds((prev) => {
+            if (prev.includes(id)) {
+                return prev.filter((i) => i !== id)
+            }
+            if (prev.length >= 4) {
+                return prev
+            }
+            return [...prev, id]
+        })
     }
 
     const handleSelectionDone = async () => {
@@ -90,7 +96,7 @@ export default function OnboardingPage() {
 
             <AnimatePresence mode="wait" initial={false}>
                 {step === 'WELCOME' && (
-                    <WelcomeStep onNext={() => setStep('IDENTITY')} />
+                    <WelcomeStep onNext={() => setStep('IDENTITY')} onLogin={() => setShowAuthWall(true)} />
                 )}
 
                 {step === 'IDENTITY' && (
@@ -98,6 +104,7 @@ export default function OnboardingPage() {
                         name={name}
                         setName={setName}
                         onNext={() => setStep('SELECTION')}
+                        onLogin={() => setShowAuthWall(true)}
                     />
                 )}
 
@@ -113,6 +120,12 @@ export default function OnboardingPage() {
                     <LoadingStep />
                 )}
             </AnimatePresence>
+
+            <AuthWall
+                isOpen={showAuthWall}
+                onClose={() => setShowAuthWall(false)}
+                onSuccess={() => setShowAuthWall(false)}
+            />
         </main>
     )
 }
