@@ -14,7 +14,9 @@ test('MyGang.ai End-to-End Journey', async ({ page }) => {
     // 2. Click Start
     console.log('Clicking Assemble Your Gang...');
     const startBtn = page.locator('[data-testid="landing-cta"]');
+    await expect(startBtn).toBeEnabled({ timeout: 15000 });
     await startBtn.click({ force: true });
+    await page.waitForURL(/.*onboarding/, { timeout: 15000 });
 
     // 3. Identity Step
     console.log('Clicking Assemble the Gang (Identity)...');

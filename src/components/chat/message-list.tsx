@@ -1,25 +1,36 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
 import { TypingIndicator } from '@/components/chat/typing-indicator'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useVirtualizer } from '@tanstack/react-virtual'
 
 interface MessageListProps {
     messages: Message[]
     activeGang: Character[]
     typingUsers: string[]
+    isFastMode?: boolean
 }
 
-export function MessageList({ messages, activeGang, typingUsers }: MessageListProps) {
+export function MessageList({ messages, activeGang, typingUsers, isFastMode = false }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const [isAtBottom, setIsAtBottom] = useState(true)
     const [unreadCount, setUnreadCount] = useState(0)
     const prevMessagesLength = useRef(messages.length)
     const characterStatuses = useChatStore((state) => state.characterStatuses)
+    const hasTyping = typingUsers.length > 0
+    const itemCount = messages.length + (hasTyping ? 1 : 0)
+
+    const rowVirtualizer = useVirtualizer({
+        count: itemCount,
+        getScrollElement: () => scrollRef.current,
+        estimateSize: () => 120,
+        overscan: 8,
+        measureElement: (el) => el.getBoundingClientRect().height,
+    })
 
     // Handle scroll events
     const handleScroll = () => {
@@ -39,28 +50,19 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
         const isNewMessage = messages.length > prevMessagesLength.current
 
         if (isNewMessage) {
-            // Haptic Feedback for Mobile
-            // Haptic feedback removed for web-only experience
-
             if (isAtBottom) {
-                scrollRef.current.scrollTo({
-                    top: scrollRef.current.scrollHeight,
-                    behavior: 'smooth'
-                })
+                rowVirtualizer.scrollToIndex(Math.max(0, itemCount - 1), { align: 'end' })
             } else {
                 setUnreadCount(prev => prev + (messages.length - prevMessagesLength.current))
             }
         }
 
         prevMessagesLength.current = messages.length
-    }, [messages, isAtBottom])
+    }, [messages, isAtBottom, itemCount, rowVirtualizer])
 
     const scrollToBottom = () => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-                top: scrollRef.current.scrollHeight,
-                behavior: 'smooth'
-            })
+            rowVirtualizer.scrollToIndex(Math.max(0, itemCount - 1), { align: 'end' })
             setUnreadCount(0)
             setIsAtBottom(true)
         }
@@ -71,7 +73,8 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-2 scrollbar-hide"
+                className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 scrollbar-hide"
+                style={{ paddingBottom: 80 }}
             >
                 {!isAtBottom && (
                     <div className="sticky top-2 z-10 flex justify-center">
@@ -84,29 +87,59 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
                         </Button>
                     </div>
                 )}
-                <AnimatePresence initial={false}>
-                    {messages.map((message, index) => {
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const index = virtualRow.index
+                        const isTypingRow = hasTyping && index === messages.length
+                        if (isTypingRow) {
+                            return (
+                                <div
+                                    key="typing-row"
+                                    ref={rowVirtualizer.measureElement}
+                                    data-index={index}
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: '100%',
+                                        transform: `translateY(${virtualRow.start}px)`,
+                                    }}
+                                >
+                                    <TypingIndicator typingUsers={typingUsers} activeGang={activeGang} />
+                                </div>
+                            )
+                        }
+
+                        const message = messages[index]
+                        if (!message) return null
                         const character = activeGang.find(c => c.id.toLowerCase().trim() === message.speaker.toLowerCase().trim())
                         const isContinued = index > 0 && messages[index - 1].speaker === message.speaker
                         const status = characterStatuses[message.speaker]
 
                         return (
-                            <MessageItem
+                            <div
                                 key={message.id}
-                                message={message}
-                                character={character}
-                                isContinued={isContinued}
-                                status={status}
-                            />
+                                ref={rowVirtualizer.measureElement}
+                                data-index={index}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    transform: `translateY(${virtualRow.start}px)`,
+                                }}
+                            >
+                                <MessageItem
+                                    message={message}
+                                    character={character}
+                                    isContinued={isContinued}
+                                    status={status}
+                                    isFastMode={isFastMode}
+                                />
+                            </div>
                         )
                     })}
-                </AnimatePresence>
-
-                {typingUsers.length > 0 && (
-                    <TypingIndicator typingUsers={typingUsers} activeGang={activeGang} />
-                )
-                }
-                <div className="h-20" /> {/* Spacer for input area */}
+                </div>
             </div>
 
             {/* New Message Indicator */}

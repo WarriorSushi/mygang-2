@@ -170,3 +170,8 @@
     radial-gradient(circle at 75% 30%, rgba(148, 163, 184, 0.2), transparent 40%),
     radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.12), transparent 45%);
 }
+
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 120px 80px;
+}

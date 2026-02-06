@@ -9,15 +9,17 @@ import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { saveMemoryManual } from '@/app/auth/actions'
 import { Bookmark } from 'lucide-react'
+import Image from 'next/image'
 
 interface MessageItemProps {
     message: Message
     character?: Character
     status?: string
     isContinued?: boolean
+    isFastMode?: boolean
 }
 
-function MessageItemComponent({ message, character, status, isContinued }: MessageItemProps) {
+function MessageItemComponent({ message, character, status, isContinued, isFastMode = false }: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
     const { messages, activeGang, isGuest } = useChatStore()
@@ -47,8 +49,9 @@ function MessageItemComponent({ message, character, status, isContinued }: Messa
         <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: isFastMode ? 0.12 : 0.25, ease: 'easeOut' }}
             className={cn(
-                "group flex flex-col max-w-[85%]",
+                "group flex flex-col max-w-[85%] content-auto",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
                 isContinued ? "mt-1.5" : "mt-6" // Controlled spacing
@@ -62,7 +65,15 @@ function MessageItemComponent({ message, character, status, isContinued }: Messa
                         style={{ backgroundColor: character?.color || '#333' }}
                     >
                         {character?.avatar ? (
-                            <img src={character.avatar} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                            <Image
+                                src={character.avatar}
+                                alt={character.name || 'Avatar'}
+                                width={20}
+                                height={20}
+                                className="w-full h-full object-cover"
+                                sizes="20px"
+                                priority={false}
+                            />
                         ) : (
                             <span className="text-white uppercase">{(character?.name || message.speaker)[0]}</span>
                         )}

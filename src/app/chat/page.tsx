@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
-import { AuthWall } from '@/components/orchestrator/auth-wall'
+import dynamic from 'next/dynamic'
 import { toPng } from 'html-to-image'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
@@ -12,12 +12,13 @@ import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 // New modular components
 import { ChatHeader } from '@/components/chat/chat-header'
 import { MessageList } from '@/components/chat/message-list'
-import { MemoryVault } from '@/components/chat/memory-vault'
-import { ChatSettings } from '@/components/chat/chat-settings'
+const AuthWall = dynamic(() => import('@/components/orchestrator/auth-wall').then((m) => m.AuthWall), { ssr: false })
+const MemoryVault = dynamic(() => import('@/components/chat/memory-vault').then((m) => m.MemoryVault), { ssr: false })
+const ChatSettings = dynamic(() => import('@/components/chat/chat-settings').then((m) => m.ChatSettings), { ssr: false })
 import { ChatInput } from '@/components/chat/chat-input'
 import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 import { InlineToast } from '@/components/chat/inline-toast'
-import { SquadReconcile } from '@/components/orchestrator/squad-reconcile'
+const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
 
 export default function ChatPage() {
     const {
@@ -46,6 +47,7 @@ export default function ChatPage() {
     const [showResumeBanner, setShowResumeBanner] = useState(false)
     const [resumeBannerText, setResumeBannerText] = useState('Resumed your last session')
     const [toastMessage, setToastMessage] = useState<string | null>(null)
+    const [isFastMode, setIsFastMode] = useState(false)
 
     const chatContainerRef = useRef<HTMLDivElement>(null)
     const { theme } = useTheme()
@@ -61,6 +63,59 @@ export default function ChatPage() {
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const silentTurnsRef = useRef(0)
     const burstCountRef = useRef(0)
+    const typingUsersRef = useRef<Set<string>>(new Set())
+    const typingFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const fastModeRef = useRef({ lastAt: 0, streak: 0 })
+    const fastModeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const flushTypingUsers = () => {
+        typingFlushRef.current = null
+        setTypingUsers(Array.from(typingUsersRef.current))
+    }
+
+    const scheduleTypingFlush = () => {
+        if (typingFlushRef.current) return
+        typingFlushRef.current = setTimeout(flushTypingUsers, 120)
+    }
+
+    const queueTypingUser = (id: string) => {
+        typingUsersRef.current.add(id)
+        scheduleTypingFlush()
+    }
+
+    const removeTypingUser = (id: string) => {
+        typingUsersRef.current.delete(id)
+        scheduleTypingFlush()
+    }
+
+    const clearTypingUsers = () => {
+        typingUsersRef.current.clear()
+        if (typingFlushRef.current) {
+            clearTimeout(typingFlushRef.current)
+            typingFlushRef.current = null
+        }
+        setTypingUsers([])
+    }
+
+    const bumpFastMode = () => {
+        const now = Date.now()
+        if (now - fastModeRef.current.lastAt < 1400) {
+            fastModeRef.current.streak += 1
+        } else {
+            fastModeRef.current.streak = 1
+        }
+        fastModeRef.current.lastAt = now
+        if (fastModeRef.current.streak >= 2) {
+            setIsFastMode(true)
+        }
+        if (fastModeTimerRef.current) {
+            clearTimeout(fastModeTimerRef.current)
+        }
+        fastModeTimerRef.current = setTimeout(() => {
+            setIsFastMode(false)
+            fastModeRef.current.streak = 0
+        }, 3000)
+    }
 
     // Guard: Redirect if no squad is selected
     useEffect(() => {
@@ -77,6 +132,13 @@ export default function ChatPage() {
             trackEvent('session_start', { sessionId: session.id, metadata: { source: 'chat' } })
         }
     }, [isHydrated])
+
+    useEffect(() => {
+        return () => {
+            if (typingFlushRef.current) clearTimeout(typingFlushRef.current)
+            if (fastModeTimerRef.current) clearTimeout(fastModeTimerRef.current)
+        }
+    }, [])
 
     // Initial Greeting Trigger
     useEffect(() => {
@@ -151,7 +213,7 @@ export default function ChatPage() {
         const triggerImmediateTyping = async () => {
             for (const char of reactionSquad) {
                 if (!isGeneratingRef.current) break
-                setTypingUsers(prev => [...new Set([...prev, char.id])])
+                queueTypingUser(char.id)
                 await new Promise(r => setTimeout(r, 400 + Math.random() * 400))
             }
         }
@@ -160,6 +222,13 @@ export default function ChatPage() {
         try {
             const currentMessages = useChatStore.getState().messages
 
+            const payloadMessages = currentMessages.slice(-40).map((m) => ({
+                id: m.id,
+                speaker: m.speaker,
+                content: m.content,
+                created_at: m.created_at,
+                reaction: m.reaction
+            }))
             const mockAi = typeof window !== 'undefined' && (window.localStorage.getItem('mock_ai') === 'true' || process.env.NEXT_PUBLIC_MOCK_AI === 'true')
             const res = await fetch('/api/chat', {
                 method: 'POST',
@@ -168,7 +237,7 @@ export default function ChatPage() {
                     ...(mockAi ? { 'x-mock-ai': 'true' } : {})
                 },
                 body: JSON.stringify({
-                    messages: currentMessages,
+                    messages: payloadMessages,
                     activeGangIds: activeGang.map(c => c.id),
                     userName,
                     userNickname,
@@ -215,7 +284,7 @@ export default function ChatPage() {
                 throw new Error('Invalid response shape')
             }
 
-            setTypingUsers([])
+            clearTypingUsers()
 
             // == THE SEQUENCER (SECRET SAUCE 3.0) ==
             for (const event of data.events) {
@@ -232,7 +301,7 @@ export default function ChatPage() {
 
                 switch (event.type) {
                     case 'message': {
-                        setTypingUsers(prev => [...prev, event.character])
+                        queueTypingUser(event.character)
                         const eventContent = event.content || ''
                         const speedFactor = activeGang.find(c => c.id === event.character)?.typingSpeed || 1
                         const typingTime = Math.max(900, eventContent.length * 30 * speedFactor + Math.random() * 500)
@@ -249,7 +318,7 @@ export default function ChatPage() {
                             replyToId: event.target_message_id
                         })
                         if (isAutonomous || isIntro) silentTurnsRef.current++
-                        setTypingUsers(prev => prev.filter(u => u !== event.character))
+                        removeTypingUser(event.character)
                         break
                     }
 
@@ -274,9 +343,9 @@ export default function ChatPage() {
                         break
 
                     case 'typing_ghost':
-                        setTypingUsers(prev => [...prev, event.character])
+                        queueTypingUser(event.character)
                         await new Promise(r => setTimeout(r, 2500))
-                        setTypingUsers(prev => prev.filter(u => u !== event.character))
+                        removeTypingUser(event.character)
                         break
                 }
             }
@@ -302,7 +371,7 @@ export default function ChatPage() {
             } else {
                 setIsGenerating(false)
                 isGeneratingRef.current = false
-                setTypingUsers([])
+                clearTypingUsers()
             }
         }
     }
@@ -342,6 +411,7 @@ export default function ChatPage() {
             addMessage(userMsg)
             silentTurnsRef.current = 0 // Reset silence on user input
             burstCountRef.current = 0 // Reset burst on user input
+            bumpFastMode()
 
             const session = sessionRef.current || ensureAnalyticsSession()
             sessionRef.current = { id: session.id, startedAt: session.startedAt }
@@ -391,10 +461,10 @@ export default function ChatPage() {
 
     return (
         <main className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative">
-            <BackgroundBlobs />
+            <BackgroundBlobs isMuted={typingUsers.length > 0} />
             <div className="chat-wallpaper-layer" data-wallpaper={chatWallpaper} aria-hidden="true" />
 
-            <div className="flex-1 flex flex-col w-full relative">
+            <div className="flex-1 flex flex-col w-full relative min-h-0">
                 <ChatHeader
                     activeGang={activeGang}
                     onOpenVault={() => {
@@ -453,12 +523,13 @@ export default function ChatPage() {
                                 messages={messages}
                                 activeGang={activeGang}
                                 typingUsers={typingUsers}
+                                isFastMode={isFastMode}
                             />
                         </ErrorBoundary>
                     </div>
                 </div>
 
-                <div className="px-4 md:px-10 lg:px-20 pb-4">
+                <div className="px-4 md:px-10 lg:px-20 pb-4 shrink-0">
                     <ChatInput
                         onSend={handleSend}
                     />

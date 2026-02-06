@@ -7,6 +7,7 @@ import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { updateUserSettings } from '@/app/auth/actions'
+import Image from 'next/image'
 
 interface ChatHeaderProps {
     activeGang: Character[]
@@ -34,7 +35,17 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                             className="border border-background ring-1 ring-primary/10 w-6 h-6 sm:w-8 sm:h-8"
                             title={char.name}
                         >
-                            <img src={char.avatar} alt={char.name} className="object-cover" loading="lazy" decoding="async" />
+                            {char.avatar && (
+                                <Image
+                                    src={char.avatar}
+                                    alt={char.name}
+                                    width={32}
+                                    height={32}
+                                    className="object-cover"
+                                    sizes="(max-width: 640px) 24px, 32px"
+                                    priority={false}
+                                />
+                            )}
                             <AvatarFallback className="text-[8px] bg-muted">{char.name[0]}</AvatarFallback>
                         </Avatar>
                     ))}

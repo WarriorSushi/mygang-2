@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
-import { updateUserSettings } from '@/app/auth/actions'
+import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
 import { useChatStore } from '@/stores/chat-store'
 
 interface SettingsPanelProps {
@@ -104,6 +104,28 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-1">Resets: {resetText}</div>
                 <div className="text-[11px] text-muted-foreground mt-1">Tier: {usage.subscriptionTier || 'free'}</div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Account Actions</div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                    <form action={signOut}>
+                        <Button variant="outline" className="rounded-full text-[10px] uppercase tracking-widest">
+                            Sign Out
+                        </Button>
+                    </form>
+                    <Button
+                        variant="destructive"
+                        className="rounded-full text-[10px] uppercase tracking-widest"
+                        onClick={async () => {
+                            const confirmed = confirm('Delete your account and all data? This cannot be undone.')
+                            if (!confirmed) return
+                            await deleteAccount()
+                        }}
+                    >
+                        Delete Account
+                    </Button>
+                </div>
             </section>
         </div>
     )

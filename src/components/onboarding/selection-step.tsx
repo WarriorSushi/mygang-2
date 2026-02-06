@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/holographic/glass-card'
 import { CHARACTERS } from '@/constants/characters'
 import { Check, Shuffle, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 interface SelectionStepProps {
     selectedIds: string[]
@@ -137,12 +138,14 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                     char.gradient
                                 )} />
                                 <div className="relative w-full h-full rounded-2xl overflow-hidden border border-white/20 shadow-lg">
-                                    <img
+                                    <Image
                                         src={char.avatar}
                                         alt={char.name}
+                                        width={64}
+                                        height={64}
                                         className="w-full h-full object-cover"
-                                        loading="lazy"
-                                        decoding="async"
+                                        sizes="64px"
+                                        priority={false}
                                     />
                                 </div>
                             </div>

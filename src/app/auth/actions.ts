@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
@@ -44,6 +45,22 @@ export async function signInWithOTP(email: string) {
 
 export async function signOut() {
     const supabase = await createClient()
+    await supabase.auth.signOut()
+    redirect('/')
+}
+
+export async function deleteAccount() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const admin = createAdminClient()
+    const { error } = await admin.auth.admin.deleteUser(user.id)
+    if (error) {
+        console.error('Delete account error:', error)
+        throw error
+    }
+
     await supabase.auth.signOut()
     redirect('/')
 }
