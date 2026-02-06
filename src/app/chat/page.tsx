@@ -447,13 +447,15 @@ export default function ChatPage() {
                             </div>
                         </div>
                     )}
-                    <ErrorBoundary>
-                        <MessageList
-                            messages={messages}
-                            activeGang={activeGang}
-                            typingUsers={typingUsers}
-                        />
-                    </ErrorBoundary>
+                    <div className="flex-1 min-h-0">
+                        <ErrorBoundary>
+                            <MessageList
+                                messages={messages}
+                                activeGang={activeGang}
+                                typingUsers={typingUsers}
+                            />
+                        </ErrorBoundary>
+                    </div>
                 </div>
 
                 <div className="px-4 md:px-10 lg:px-20 pb-4">

@@ -11,7 +11,13 @@ const requestSchema = z.object({
 export async function POST(req: Request) {
     try {
         const body = await req.json()
-        const parsed = requestSchema.safeParse(body)
+        let parsed: ReturnType<typeof requestSchema.safeParse>
+        try {
+            parsed = requestSchema.safeParse(body)
+        } catch (err) {
+            console.warn('Analytics schema parse failed, ignoring event.')
+            return Response.json({ ok: false }, { status: 400 })
+        }
         if (!parsed.success) {
             return Response.json({ ok: false }, { status: 400 })
         }
@@ -38,6 +44,9 @@ export async function POST(req: Request) {
             })
 
         if (error) {
+            if (error.code === 'PGRST205') {
+                return Response.json({ ok: true })
+            }
             console.error('Analytics insert error:', error)
             return Response.json({ ok: false }, { status: 500 })
         }

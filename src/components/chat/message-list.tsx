@@ -67,11 +67,11 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
     }
 
     return (
-        <div className="relative flex-1 overflow-hidden">
+        <div className="relative flex-1 min-h-0 overflow-hidden">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="h-full overflow-y-auto overflow-x-hidden p-4 space-y-2 scrollbar-hide"
+                className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-2 scrollbar-hide"
             >
                 {!isAtBottom && (
                     <div className="sticky top-2 z-10 flex justify-center">
