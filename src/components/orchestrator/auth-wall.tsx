@@ -56,7 +56,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             </div>
                         </div>
                         <DialogTitle className="text-2xl sm:text-4xl font-black text-center tracking-tight leading-tight">
-                            Save your gang and the full chat.
+                            Sign up / log in to continue
                         </DialogTitle>
                         <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[320px]">
                             Sign up to store your squad, memory, and history so nothing gets lost when you come back.
