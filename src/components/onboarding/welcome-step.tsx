@@ -18,7 +18,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
             className="text-center max-w-2xl"
         >
             <h1 className="text-4xl sm:text-6xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-                Stop texting into the void.
+                Your hype crew just arrived.
             </h1>
             <p className="text-base sm:text-xl text-muted-foreground mb-8">
                 Your personal hype gang is waiting. 24/7, no drama (mostly), just vibes.

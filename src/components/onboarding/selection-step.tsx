@@ -108,17 +108,17 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full max-w-6xl mx-auto flex flex-col gap-6 pb-24 sm:pb-12"
+            className="w-full max-w-6xl mx-auto flex flex-col gap-6 pb-28 sm:pb-20"
         >
-            <div className="sticky top-3 sm:top-6 z-20">
-                <div className="rounded-3xl border border-white/10 bg-background/70 backdrop-blur-xl px-4 sm:px-6 py-4 sm:py-5 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Pick your Gang</h2>
-                            <p className="text-muted-foreground text-sm sm:text-base">Select exactly 4 unique friends to join your gang.</p>
+            <div className="sticky top-0 z-30">
+                <div className="rounded-b-3xl border border-white/10 bg-background/80 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Pick your Gang</h2>
+                            <p className="text-muted-foreground text-xs sm:text-sm">Select exactly 4 unique friends to join your gang.</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-mono text-xs border border-primary/20">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-mono text-[11px] border border-primary/20">
                                 <span className="relative flex h-2 w-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -131,7 +131,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                             </Button>
                         </div>
                     </div>
-                    <div className="flex items-center justify-start gap-2 mt-3 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
+                    <div className="flex items-center justify-start gap-2 mt-2 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
                         {tags.map(tag => (
                             <Button
                                 key={tag}
@@ -147,7 +147,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                 {filteredCharacters.map((char) => {
                     const isSelected = selectedIds.includes(char.id)
                     return (
@@ -156,7 +156,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                             data-testid={`character-${char.id}`}
                             onClick={() => toggleCharacter(char.id)}
                             className={cn(
-                                "p-4 sm:p-6 cursor-pointer relative group transition-all duration-500 flex items-start gap-4 sm:block",
+                                "p-3 sm:p-4 cursor-pointer relative group transition-all duration-500 flex items-start gap-3 sm:block",
                                 isSelected && "ring-2 ring-primary ring-offset-4 ring-offset-background bg-primary/5"
                             )}
                         >
@@ -175,7 +175,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                 </Button>
                             </div>
 
-                            <div className="relative w-14 h-14 sm:w-16 sm:h-16 mb-0 sm:mb-6 flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                            <div className="relative w-12 h-12 sm:w-14 sm:h-14 mb-0 sm:mb-4 flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
                                 <div className={cn(
                                     "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-50 blur-sm",
                                     char.gradient
@@ -193,11 +193,11 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                 </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-base sm:text-xl mb-1">{char.name}</h3>
-                                <p className="text-[11px] sm:text-xs font-black uppercase tracking-widest mb-1 sm:mb-2 opacity-60" style={{ color: char.color }}>
+                                <h3 className="font-bold text-sm sm:text-lg mb-1">{char.name}</h3>
+                                <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-1 sm:mb-2 opacity-60" style={{ color: char.color }}>
                                     {char.archetype}
                                 </p>
-                                <p className="text-[13px] sm:text-sm italic text-muted-foreground leading-relaxed max-h-12 overflow-hidden sm:max-h-none">
+                                <p className="text-[12px] sm:text-[13px] italic text-muted-foreground leading-relaxed max-h-10 overflow-hidden sm:max-h-none">
                                     &quot;{char.sample}&quot;
                                 </p>
                             </div>
@@ -212,46 +212,25 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                 })}
             </div>
 
-            <div className="mt-4 sm:mt-6">
-                <div className="md:hidden flex items-stretch gap-2 overflow-x-auto pb-2">
-                    {selectedChars.map((char) => (
-                        <div key={char.id} className="min-w-[150px] rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                            <div className="text-[10px] uppercase tracking-widest opacity-60" style={{ color: char.color }}>{char.archetype}</div>
-                            <div className="text-sm font-bold">{char.name}</div>
-                            <div className="text-[10px] text-muted-foreground mt-1">{char.vibe}</div>
+            <div className="sticky bottom-0 z-30">
+                <div className="rounded-t-3xl border border-white/10 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 shadow-[0_-20px_80px_-40px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">
+                            Selected
                         </div>
-                    ))}
-                    {selectedChars.length < 4 && (
-                        <div className="min-w-[150px] rounded-2xl border border-dashed border-white/10 px-3 py-2 text-xs text-muted-foreground flex items-center justify-center">
-                            Pick 4 to continue
+                        <div className="text-[11px] text-muted-foreground truncate hidden sm:block">
+                            {selectedChars.length ? selectedChars.map((c) => c.name).join(', ') : 'Pick 4 to continue'}
                         </div>
-                    )}
-                </div>
-                <div className="hidden md:grid grid-cols-1 md:grid-cols-4 gap-3">
-                    {selectedChars.map((char) => (
-                        <div key={char.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                            <div className="text-xs uppercase tracking-widest opacity-60" style={{ color: char.color }}>{char.archetype}</div>
-                            <div className="text-lg font-bold">{char.name}</div>
-                            <div className="text-[11px] text-muted-foreground mt-1">{char.vibe}</div>
+                        <div className="text-[11px] text-muted-foreground sm:hidden">
+                            {selectedIds.length} / 4
                         </div>
-                    ))}
-                    {selectedChars.length < 4 && (
-                        <div className="rounded-2xl border border-dashed border-white/10 p-4 text-sm text-muted-foreground flex items-center justify-center">
-                            Pick 4 to continue
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="sticky bottom-4 sm:static z-20">
-                <div className="rounded-3xl border border-white/10 bg-background/80 backdrop-blur-xl sm:bg-transparent sm:border-transparent sm:backdrop-blur-0 px-4 sm:px-0 py-4 sm:py-0 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)] sm:shadow-none flex flex-col items-center gap-2">
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground">Pick 4 to continue</div>
+                    </div>
                     <Button
-                        size="xl"
+                        size="lg"
                         disabled={selectedIds.length !== 4}
                         data-testid="onboarding-selection-done"
                         onClick={onNext}
-                        className="rounded-full px-10 sm:px-16 py-6 sm:py-8 text-lg sm:text-xl font-bold shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95"
+                        className="rounded-full px-8 sm:px-12 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95"
                     >
                         Let&apos;s Go
                     </Button>
