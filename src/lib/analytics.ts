@@ -43,7 +43,8 @@ export function ensureAnalyticsSession() {
             lastActivityAt: now
         }
         : {
-            ...stored,
+            id: stored!.id,
+            startedAt: stored!.startedAt,
             lastActivityAt: now
         }
 
