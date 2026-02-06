@@ -479,44 +479,46 @@ export default function ChatPage() {
                     memoryActive={!isGuest}
                 />
 
-                <div className="flex-1 flex flex-col min-h-0 relative px-4 md:px-10 lg:px-20" ref={chatContainerRef}>
-                    {showResumeBanner && (
-                        <div className="mb-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                            {resumeBannerText}
-                        </div>
-                    )}
-                    {!hasSeenChatTips && (
-                        <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] text-muted-foreground flex flex-col gap-2">
-                            <div className="font-semibold text-foreground">Quick tip</div>
-                            <div>Memory Vault keeps your long-term context. Settings lets you switch modes and squad.</div>
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
-                                    onClick={() => {
-                                        setIsVaultOpen(true)
-                                        setHasSeenChatTips(true)
-                                    }}
-                                >
-                                    Open Vault
-                                </button>
-                                <button
-                                    className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
-                                    onClick={() => {
-                                        setIsSettingsOpen(true)
-                                        setHasSeenChatTips(true)
-                                    }}
-                                >
-                                    Open Settings
-                                </button>
-                                <button
-                                    className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
-                                    onClick={() => setHasSeenChatTips(true)}
-                                >
-                                    Got it
-                                </button>
+                <div className="flex-1 flex flex-col min-h-0 relative" ref={chatContainerRef}>
+                    <div className="px-4 md:px-10 lg:px-20">
+                        {showResumeBanner && (
+                            <div className="mb-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                                {resumeBannerText}
                             </div>
-                        </div>
-                    )}
+                        )}
+                        {!hasSeenChatTips && (
+                            <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] text-muted-foreground flex flex-col gap-2">
+                                <div className="font-semibold text-foreground">Quick tip</div>
+                                <div>Memory Vault keeps your long-term context. Settings lets you switch modes and squad.</div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
+                                        onClick={() => {
+                                            setIsVaultOpen(true)
+                                            setHasSeenChatTips(true)
+                                        }}
+                                    >
+                                        Open Vault
+                                    </button>
+                                    <button
+                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
+                                        onClick={() => {
+                                            setIsSettingsOpen(true)
+                                            setHasSeenChatTips(true)
+                                        }}
+                                    >
+                                        Open Settings
+                                    </button>
+                                    <button
+                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
+                                        onClick={() => setHasSeenChatTips(true)}
+                                    >
+                                        Got it
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex-1 min-h-0 flex flex-col">
                         <ErrorBoundary>
                             <MessageList
