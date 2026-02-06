@@ -74,18 +74,19 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 scrollbar-hide"
+                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-4 scrollbar-hide"
                 style={{ paddingBottom: 80 }}
                 data-testid="chat-scroll"
             >
                 {!isAtBottom && (
-                    <div className="sticky top-2 z-10 flex justify-center">
+                    <div className="sticky top-2 z-10 flex justify-center px-4">
                         <Button
                             onClick={scrollToBottom}
                             variant="ghost"
-                            className="rounded-full bg-white/10 border border-white/10 text-[10px] uppercase tracking-widest text-muted-foreground px-4 py-2"
+                            className="rounded-full bg-white/10 border border-white/10 text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground px-3 sm:px-4 py-1.5 sm:py-2"
                         >
-                            You are reading older messages - Jump to latest
+                            <span className="sm:hidden">Jump to latest</span>
+                            <span className="hidden sm:inline">You are reading older messages - Jump to latest</span>
                         </Button>
                     </div>
                 )}
@@ -99,6 +100,7 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                     key="typing-row"
                                     ref={rowVirtualizer.measureElement}
                                     data-index={index}
+                                    className="px-4"
                                     style={{
                                         position: 'absolute',
                                         top: 0,
@@ -123,6 +125,7 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                 key={message.id}
                                 ref={rowVirtualizer.measureElement}
                                 data-index={index}
+                                className="px-4"
                                 style={{
                                     position: 'absolute',
                                     top: 0,

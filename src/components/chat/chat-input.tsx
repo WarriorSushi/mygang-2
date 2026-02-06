@@ -40,7 +40,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                     data-testid="chat-input"
                     placeholder="Send a message..."
                     maxLength={2000}
-                    className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 px-1 text-[15px] max-h-32 min-h-[44px] scrollbar-hide"
+                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-3 px-1 text-[15px] max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
                 />
                 <Button
