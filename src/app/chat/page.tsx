@@ -219,10 +219,22 @@ export default function ChatPage() {
 
     useEffect(() => {
         if (isHydrated && messages.length > 0 && !resumeBannerRef.current) {
-            resumeBannerRef.current = true
             const lastMessage = messages[messages.length - 1]
             const lastTime = lastMessage ? new Date(lastMessage.created_at).getTime() : 0
+            const sessionStart = sessionRef.current?.startedAt ?? Date.now()
             const gapMs = lastTime ? Date.now() - lastTime : 0
+            const hasUserMessages = messages.some((m) => m.speaker === 'user')
+            const fromPreviousSession = lastTime > 0 && lastTime < sessionStart - 2 * 60 * 1000
+
+            if (!hasUserMessages && !fromPreviousSession) {
+                return
+            }
+
+            if (gapMs < 10 * 60 * 1000 && !fromPreviousSession) {
+                return
+            }
+
+            resumeBannerRef.current = true
             if (gapMs > 6 * 60 * 60 * 1000) {
                 const hours = Math.floor(gapMs / (1000 * 60 * 60))
                 const days = Math.floor(hours / 24)

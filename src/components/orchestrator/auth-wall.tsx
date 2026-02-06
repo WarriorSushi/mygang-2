@@ -19,6 +19,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
     const [email, setEmail] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isSent, setIsSent] = useState(false)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     useEffect(() => {
         if (isOpen) {
@@ -31,12 +32,14 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
         if (!email) return
 
         setIsLoading(true)
+        setErrorMessage(null)
         try {
             trackEvent('auth_wall_action', { metadata: { provider: 'email' } })
             await signInWithOTP(email)
             setIsSent(true)
         } catch (err) {
             console.error(err)
+            setErrorMessage('Could not send the magic link. Check your email and try again.')
         } finally {
             setIsLoading(false)
         }
@@ -74,6 +77,9 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                     className="h-12 sm:h-14 rounded-xl bg-white/5 border-white/10 text-base sm:text-lg focus-visible:ring-primary/50"
                                     required
                                 />
+                                {errorMessage && (
+                                    <div className="text-xs text-red-400">{errorMessage}</div>
+                                )}
                                 <Button
                                     type="submit"
                                     variant="outline"

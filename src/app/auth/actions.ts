@@ -5,9 +5,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
+function getOrigin() {
+    return (headers().get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://mygang.ai').replace(/\/$/, '')
+}
+
 export async function signInWithGoogle() {
     const supabase = await createClient()
-    const origin = (await headers()).get('origin')
+    const origin = getOrigin()
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -28,7 +32,7 @@ export async function signInWithGoogle() {
 
 export async function signInWithOTP(email: string) {
     const supabase = await createClient()
-    const origin = (await headers()).get('origin')
+    const origin = getOrigin()
 
     const { error } = await supabase.auth.signInWithOtp({
         email,
