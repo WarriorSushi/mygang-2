@@ -139,7 +139,7 @@ function MessageItemComponent({ message, character, status, isContinued, isFastM
                 {isReaction ? (
                     <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
                 ) : (
-                    <p className="text-[15px] font-bold leading-relaxed select-text tracking-tight text-foreground dark:text-white">{message.content}</p>
+                    <p className="text-[15px] font-bold leading-relaxed select-text tracking-tight text-foreground dark:text-white break-words">{message.content}</p>
                 )}
             </GlassCard>
             {!isReaction && (

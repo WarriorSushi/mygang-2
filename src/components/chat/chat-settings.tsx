@@ -123,7 +123,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             <Zap size={12} className="text-fuchsia-400" />
                             <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Atmosphere</Label>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {(['default', 'neon', 'soft'] as const).map((wallpaper) => (
                                 <Button
                                     key={wallpaper}

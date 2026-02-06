@@ -8,6 +8,7 @@ import { useChatStore } from '@/stores/chat-store'
 import { useRouter } from 'next/navigation'
 import { saveGang, saveUsername } from '@/app/auth/actions'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
+import { cn } from '@/lib/utils'
 
 // New modular components
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
@@ -23,6 +24,7 @@ export default function OnboardingPage() {
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const { setUserName, setActiveGang, setIsGuest, userId, activeGang, isHydrated } = useChatStore()
     const router = useRouter()
+    const isSelection = step === 'SELECTION'
 
     // Bypassing Onboarding if squad already exists
     useEffect(() => {
@@ -76,7 +78,14 @@ export default function OnboardingPage() {
     }
 
     return (
-        <main className="h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-background">
+        <main
+            className={cn(
+                "h-dvh flex flex-col relative bg-background pt-safe pb-safe",
+                isSelection
+                    ? "items-stretch justify-start overflow-y-auto p-4 sm:p-6"
+                    : "items-center justify-center overflow-hidden p-6"
+            )}
+        >
             <BackgroundBlobs />
 
             <AnimatePresence mode="wait" initial={false}>

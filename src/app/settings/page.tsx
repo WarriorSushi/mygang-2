@@ -20,16 +20,16 @@ export default async function SettingsPage() {
     const dailyLimit = profile?.subscription_tier === 'pro' ? 300 : 80
 
     return (
-        <main className="min-h-dvh bg-background text-foreground px-4 sm:px-6 lg:px-10 py-10">
+        <main className="min-h-dvh bg-background text-foreground px-4 sm:px-6 lg:px-10 py-10 pt-safe pb-safe">
             <div className="max-w-3xl mx-auto space-y-8">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Settings</div>
-                        <h1 className="text-4xl font-black">Your Control Center</h1>
+                        <h1 className="text-3xl sm:text-4xl font-black">Your Control Center</h1>
                     </div>
                     <Link
                         href="/chat"
-                        className="text-[10px] uppercase tracking-widest border border-white/10 rounded-full px-4 py-2 hover:bg-white/10"
+                        className="text-[10px] uppercase tracking-widest border border-white/10 rounded-full px-4 py-2 hover:bg-white/10 w-fit"
                     >
                         Back to Chat
                     </Link>

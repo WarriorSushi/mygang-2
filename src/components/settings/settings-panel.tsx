@@ -127,7 +127,7 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance</div>
-                <div className="mt-4 flex items-center justify-between gap-4">
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <div className="text-sm font-semibold">Production monitoring</div>
                         <div className="text-[11px] text-muted-foreground">

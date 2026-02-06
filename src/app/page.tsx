@@ -113,10 +113,10 @@ export default function LandingPage() {
   )
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden bg-background text-foreground">
+    <div className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
 
-      <nav className="p-4 sm:p-6 flex justify-between items-center max-w-7xl mx-auto w-full z-10">
+      <nav className="p-4 sm:p-6 pt-safe flex flex-wrap justify-between items-center gap-3 max-w-7xl mx-auto w-full z-10">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -125,7 +125,7 @@ export default function LandingPage() {
           <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center border border-primary/20 shadow-lg shadow-primary/10">
             <Image src="/logo.png" alt="MyGang" width={28} height={28} className="object-contain" priority />
           </div>
-          <span className="tracking-tighter text-2xl sm:text-3xl">
+          <span className="tracking-tighter text-xl sm:text-3xl">
             MyGang<span className="text-primary">.ai</span>
           </span>
         </motion.div>
