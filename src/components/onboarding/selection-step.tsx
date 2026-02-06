@@ -33,6 +33,43 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
     const selectedChars = CHARACTERS.filter(c => selectedIds.includes(c.id))
     const previewChar = CHARACTERS.find(c => c.id === previewCharId) || null
 
+    const tagDescriptions: Record<string, string> = {
+        hype: 'Amplifies energy, celebrates wins, keeps momentum.',
+        social: 'Keeps the group talking and makes intros smooth.',
+        style: 'High taste, sharp opinions, and aesthetic flair.',
+        logic: 'Grounded reasoning with calm, structured takes.',
+        roast: 'Playful jabs, dry humor, and quick comebacks.',
+        ops: 'Direct, tactical advice with action-first bias.',
+        support: 'Protective, reassuring, and emotionally steady.',
+        empath: 'Emotionally attuned, validating, and reflective.',
+        vibes: 'Atmosphere setter with mood-sensitive responses.',
+        chaos: 'Unpredictable energy that sparks wild turns.',
+        facts: 'Evidence-first, clarifies details and context.',
+        art: 'Poetic, creative, and metaphor-driven.',
+        philosophy: 'Abstract, reflective, big-picture framing.',
+        drama: 'Spicy reactions and emotionally loud commentary.',
+    }
+
+    const getInteractionNotes = (tags: string[] = []) => {
+        const has = (t: string) => tags.includes(t)
+        if (has('chaos') && has('hype')) return 'Adds fireworks in group chats and pushes bold moves.'
+        if (has('logic') && has('facts')) return 'Balances the crew with precise, grounded thinking.'
+        if (has('empath') || has('support')) return 'Reads the room and smooths tension between others.'
+        if (has('drama') || has('social')) return 'Keeps banter alive and stirs playful reactions.'
+        if (has('art') || has('philosophy')) return 'Brings depth, perspective, and unexpected angles.'
+        return 'Flexible energy that adapts to whoever is speaking.'
+    }
+
+    const getBestWith = (tags: string[] = []) => {
+        const has = (t: string) => tags.includes(t)
+        if (has('chaos')) return 'Pairs well with Support or Ops to keep things balanced.'
+        if (has('logic') || has('facts')) return 'Pairs well with Hype or Drama to keep energy high.'
+        if (has('empath') || has('support')) return 'Pairs well with Chaos or Roast to soften edges.'
+        if (has('drama') || has('social')) return 'Pairs well with Logic for grounded counterpoints.'
+        if (has('art') || has('philosophy')) return 'Pairs well with Social for expressive back-and-forth.'
+        return 'Fits into most crews without dominating the vibe.'
+    }
+
     const applySelection = (newIds: string[]) => {
         const current = new Set(selectedIds)
         const target = new Set(newIds)
@@ -74,12 +111,27 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             className="w-full max-w-6xl mx-auto flex flex-col gap-6 pb-24 sm:pb-12"
         >
             <div className="sticky top-3 sm:top-6 z-20">
-                <div className="rounded-3xl border border-white/10 bg-background/70 backdrop-blur-xl px-4 sm:px-6 py-5 sm:py-6 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
-                    <div className="flex flex-col sm:items-center sm:text-center gap-2">
-                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Pick your Gang</h2>
-                        <p className="text-muted-foreground text-sm sm:text-base">Select exactly 4 unique friends to join your gang.</p>
+                <div className="rounded-3xl border border-white/10 bg-background/70 backdrop-blur-xl px-4 sm:px-6 py-4 sm:py-5 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Pick your Gang</h2>
+                            <p className="text-muted-foreground text-sm sm:text-base">Select exactly 4 unique friends to join your gang.</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-mono text-xs border border-primary/20">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                </span>
+                                {selectedIds.length} / 4 Selected
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={randomSquad} className="rounded-full">
+                                <Shuffle className="w-4 h-4" />
+                                Random Gang
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex items-center justify-start gap-2 mt-4 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
+                    <div className="flex items-center justify-start gap-2 mt-3 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
                         {tags.map(tag => (
                             <Button
                                 key={tag}
@@ -91,19 +143,6 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                 {tag}
                             </Button>
                         ))}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between sm:justify-center gap-3 mt-4">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-mono text-sm border border-primary/20">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                            </span>
-                            {selectedIds.length} / 4 Selected
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={randomSquad} className="rounded-full">
-                            <Shuffle className="w-4 h-4" />
-                            Random Gang
-                        </Button>
                     </div>
                 </div>
             </div>
@@ -220,12 +259,44 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             </div>
 
             <Dialog open={!!previewChar} onOpenChange={() => setPreviewCharId(null)}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Preview: {previewChar?.name}</DialogTitle>
                         <DialogDescription>{previewChar?.archetype}</DialogDescription>
                     </DialogHeader>
-                    <div className="text-sm text-muted-foreground italic">"{previewChar?.sample}"</div>
+                    <div className="space-y-4">
+                        <div className="text-sm text-muted-foreground italic">"{previewChar?.sample}"</div>
+                        <div className="grid gap-3">
+                            <div>
+                                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vibe</div>
+                                <div className="text-sm font-semibold">{previewChar?.vibe}</div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Voice</div>
+                                <div className="text-sm">{previewChar?.voice}</div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">How They Interact</div>
+                                <div className="text-sm">{getInteractionNotes(previewChar?.tags)}</div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best With</div>
+                                <div className="text-sm">{getBestWith(previewChar?.tags)}</div>
+                            </div>
+                            {previewChar?.tags?.length ? (
+                                <div>
+                                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Traits</div>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {previewChar.tags.map((tag) => (
+                                            <span key={tag} className="text-[11px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1">
+                                                {tagDescriptions[tag] || tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
         </motion.div>
