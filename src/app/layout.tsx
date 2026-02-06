@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthManager } from "@/components/orchestrator/auth-manager";
+import { PerfMonitor } from "@/components/orchestrator/perf-monitor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     template: "%s | MyGang.ai"
   },
   description: "Experience the group chat that never sleeps. 8 unique AI personalities ready to roar, roast, and vibe with you 24/7.",
-  keywords: ["AI Chat", "Group Chat", "Personal AI", "MyGang", "AI Personalities", "Digital Entourage"],
+  keywords: ["AI Chat", "Group Chat", "Personal AI", "MyGang", "AI Personalities", "Digital Crew"],
   authors: [{ name: "MyGang Team" }],
   creator: "MyGang.ai",
   openGraph: {
@@ -61,10 +62,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthManager />
+          <PerfMonitor />
           {children}
         </ThemeProvider>
       </body>
     </html>
   );
 }
-

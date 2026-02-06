@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
 import { useChatStore } from '@/stores/chat-store'
+import { Switch } from '@/components/ui/switch'
+import { trackEvent } from '@/lib/analytics'
 
 interface SettingsPanelProps {
     username: string | null
@@ -21,11 +23,20 @@ interface SettingsPanelProps {
     }
 }
 
+const PERF_KEY = 'perf_monitoring'
+
 export function SettingsPanel({ username, initialSettings, usage }: SettingsPanelProps) {
     const { setTheme } = useTheme()
     const { setChatMode, setChatWallpaper } = useChatStore()
     const [chatMode, setChatModeLocal] = useState(initialSettings.chat_mode)
     const [wallpaper, setWallpaper] = useState(initialSettings.chat_wallpaper)
+    const [perfEnabled, setPerfEnabled] = useState(false)
+    const isProd = process.env.NODE_ENV === 'production'
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        setPerfEnabled(window.localStorage.getItem(PERF_KEY) === 'true')
+    }, [])
 
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setTheme(nextTheme)
@@ -42,6 +53,14 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
         setWallpaper(next)
         setChatWallpaper(next)
         updateUserSettings({ chat_wallpaper: next })
+    }
+
+    const handlePerfToggle = (next: boolean) => {
+        setPerfEnabled(next)
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(PERF_KEY, next ? 'true' : 'false')
+        }
+        trackEvent(next ? 'perf_monitoring_enabled' : 'perf_monitoring_disabled')
     }
 
     const resetText = usage.lastReset ? new Date(usage.lastReset).toLocaleString() : 'Unknown'
@@ -104,6 +123,26 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-1">Resets: {resetText}</div>
                 <div className="text-[11px] text-muted-foreground mt-1">Tier: {usage.subscriptionTier || 'free'}</div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance</div>
+                <div className="mt-4 flex items-center justify-between gap-4">
+                    <div>
+                        <div className="text-sm font-semibold">Production monitoring</div>
+                        <div className="text-[11px] text-muted-foreground">
+                            Captures LCP, CLS, and long tasks in production.
+                        </div>
+                    </div>
+                    <Switch
+                        checked={perfEnabled}
+                        onCheckedChange={handlePerfToggle}
+                        disabled={!isProd}
+                    />
+                </div>
+                {!isProd && (
+                    <div className="mt-2 text-[11px] text-muted-foreground">Enable this in production builds.</div>
+                )}
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
