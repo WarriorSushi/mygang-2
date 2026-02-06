@@ -150,7 +150,7 @@ export default function LandingPage() {
           <motion.div style={{ y: heroY, scale: heroScale }} className="max-w-5xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full bg-white/5 border border-white/10 text-xs sm:text-sm mb-8 backdrop-blur-md shadow-inner">
               <Users className="w-4 h-4 text-cyan-300" />
-              <span className="text-white/90 font-medium">Meet your new digital crew</span>
+              <span className="text-white/90 font-medium">Group chat with your AI friends.</span>
             </div>
 
             <h1 className="text-5xl sm:text-7xl lg:text-[9rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
@@ -159,8 +159,8 @@ export default function LandingPage() {
               IS <span className="italic font-serif normal-case font-light text-muted-foreground/50">READY.</span>
             </h1>
 
-            <p className="text-base sm:text-xl lg:text-3xl text-muted-foreground/80 mb-12 max-w-2xl mx-auto leading-relaxed">
-              The group chat that never sleeps. <span className="text-foreground font-semibold">8 personalities</span>, 1 user, infinite chaos.
+            <p className="text-sm sm:text-base lg:text-xl text-muted-foreground/80 mb-10 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
+              Your personal group of AI friends. They’ll chat, laugh, cry, roast, and connect with you.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center">
