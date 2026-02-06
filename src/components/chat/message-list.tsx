@@ -70,12 +70,13 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
     }
 
     return (
-        <div className="relative flex-1 min-h-0 overflow-hidden">
+        <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 scrollbar-hide"
+                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 scrollbar-hide"
                 style={{ paddingBottom: 80 }}
+                data-testid="chat-scroll"
             >
                 {!isAtBottom && (
                     <div className="sticky top-2 z-10 flex justify-center">
