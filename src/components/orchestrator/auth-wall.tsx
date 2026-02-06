@@ -49,7 +49,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
             } else if (normalized.includes('redirect')) {
                 setErrorMessage('Magic link redirect is misconfigured. Please try again in a moment.')
             } else {
-                setErrorMessage('Could not send the magic link. Check your email and try again.')
+                setErrorMessage(errorText ? `Could not send the magic link: ${errorText}` : 'Could not send the magic link. Check your email and try again.')
             }
         } catch (err) {
             console.error(err)
