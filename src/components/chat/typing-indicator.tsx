@@ -6,12 +6,36 @@ import { Character } from '@/stores/chat-store'
 interface TypingIndicatorProps {
     typingUsers: string[]
     activeGang: Character[]
+    activityStatuses?: Record<string, string>
 }
 
-export function TypingIndicator({ typingUsers, activeGang }: TypingIndicatorProps) {
+export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {} }: TypingIndicatorProps) {
+    const activityEntries = Object.entries(activityStatuses).filter(([id, status]) => status && !typingUsers.includes(id))
     return (
         <div className="flex flex-col gap-1.5 ml-2">
             <AnimatePresence>
+                {activityEntries.map(([userId, status]) => {
+                    const character = activeGang.find(c => c.id === userId)
+                    if (!character) return null
+
+                    return (
+                        <motion.div
+                            key={`${userId}-status`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            className="flex items-center gap-2 text-[10px] text-muted-foreground"
+                        >
+                            <div className="flex gap-1 bg-white/5 p-1 rounded-full px-2 border border-white/10 shrink-0">
+                                <span className="w-1 h-1 rounded-full bg-primary" style={{ backgroundColor: character.color }} />
+                                <span className="w-1 h-1 rounded-full bg-primary" style={{ backgroundColor: character.color }} />
+                            </div>
+                            <span className="font-bold italic uppercase tracking-tighter opacity-80" style={{ color: character.color }}>
+                                {character.name} {status}
+                            </span>
+                        </motion.div>
+                    )
+                })}
                 {typingUsers.map((userId) => {
                     const character = activeGang.find(c => c.id === userId)
                     if (!character) return null

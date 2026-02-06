@@ -109,7 +109,7 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                         transform: `translateY(${virtualRow.start}px)`,
                                     }}
                                 >
-                                    <TypingIndicator typingUsers={typingUsers} activeGang={activeGang} />
+                                    <TypingIndicator typingUsers={typingUsers} activeGang={activeGang} activityStatuses={characterStatuses} />
                                 </div>
                             )
                         }

@@ -8,6 +8,7 @@ import { toPng } from 'html-to-image'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
+import { ACTIVITY_STATUSES, CHARACTER_GREETINGS } from '@/constants/character-greetings'
 
 // New modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -67,6 +68,8 @@ export default function ChatPage() {
     const typingFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const fastModeRef = useRef({ lastAt: 0, streak: 0 })
     const fastModeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const greetingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+    const statusTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
 
     const flushTypingUsers = () => {
         typingFlushRef.current = null
@@ -137,16 +140,82 @@ export default function ChatPage() {
         return () => {
             if (typingFlushRef.current) clearTimeout(typingFlushRef.current)
             if (fastModeTimerRef.current) clearTimeout(fastModeTimerRef.current)
+            greetingTimersRef.current.forEach(clearTimeout)
+            Object.values(statusTimersRef.current).forEach((timer) => {
+                if (timer) clearTimeout(timer)
+            })
         }
     }, [])
 
+    const pickRandom = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)]
+
+    const scheduleGreeting = (fn: () => void, delay: number) => {
+        const timer = setTimeout(fn, delay)
+        greetingTimersRef.current.push(timer)
+    }
+
+    const pulseStatus = (characterId: string, status: string, duration = 2400) => {
+        if (!characterId) return
+        setCharacterStatus(characterId, status)
+        if (statusTimersRef.current[characterId]) {
+            clearTimeout(statusTimersRef.current[characterId]!)
+        }
+        statusTimersRef.current[characterId] = setTimeout(() => {
+            setCharacterStatus(characterId, "")
+            statusTimersRef.current[characterId] = null
+        }, duration)
+    }
+
+    const triggerLocalGreeting = () => {
+        if (initialGreetingRef.current) return
+        if (activeGang.length === 0 || messages.length > 0) return
+        initialGreetingRef.current = true
+
+        const nameLabel = userNickname || userName || 'friend'
+        const speakers = [...activeGang].sort(() => 0.5 - Math.random()).slice(0, Math.min(3, activeGang.length))
+        let delay = 200
+
+        speakers.forEach((char) => {
+            scheduleGreeting(() => {
+                const hasUserMessage = useChatStore.getState().messages.some((m) => m.speaker === 'user')
+                if (hasUserMessage) return
+                queueTypingUser(char.id)
+                pulseStatus(char.id, pickRandom(ACTIVITY_STATUSES), 1600)
+                const line = pickRandom(CHARACTER_GREETINGS[char.id] || [`Hey ${nameLabel}, what should we talk about?`])
+                    .replace('{name}', nameLabel)
+
+                scheduleGreeting(() => {
+                    removeTypingUser(char.id)
+                    setCharacterStatus(char.id, "")
+                    const stillNoUserMessage = useChatStore.getState().messages.every((m) => m.speaker !== 'user')
+                    if (!stillNoUserMessage) return
+                    addMessage({
+                        id: `local-${char.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                        speaker: char.id,
+                        content: line,
+                        created_at: new Date().toISOString(),
+                    })
+                }, 700 + Math.random() * 600)
+            }, delay)
+            delay += 900 + Math.random() * 700
+        })
+    }
+
+    const triggerActivityPulse = () => {
+        const available = activeGang.filter(c => c.id !== 'user')
+        const picks = [...available].sort(() => 0.5 - Math.random()).slice(0, Math.min(2, available.length))
+        picks.forEach((char, idx) => {
+            const status = pickRandom(ACTIVITY_STATUSES)
+            pulseStatus(char.id, status, 2200 + idx * 400)
+        })
+    }
+
     // Initial Greeting Trigger
     useEffect(() => {
-        if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && !isGenerating) {
-            initialGreetingRef.current = true
-            handleSend("") // Empty content triggers the intro logic in API
+        if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current) {
+            triggerLocalGreeting()
         }
-    }, [activeGang, messages.length, isGenerating])
+    }, [activeGang.length, messages.length])
 
     useEffect(() => {
         if (isHydrated && messages.length > 0 && !resumeBannerRef.current) {
@@ -206,18 +275,9 @@ export default function ChatPage() {
         setIsGenerating(true)
         isGeneratingRef.current = true
 
-        // == IMMEDIATE REACTION (SQUAD ENERGY) ==
-        const otherCharacters = activeGang.filter(c => c.id !== 'user')
-        const reactionSquad = [...otherCharacters].sort(() => 0.5 - Math.random()).slice(0, Math.min(3, otherCharacters.length))
-
-        const triggerImmediateTyping = async () => {
-            for (const char of reactionSquad) {
-                if (!isGeneratingRef.current) break
-                queueTypingUser(char.id)
-                await new Promise(r => setTimeout(r, 400 + Math.random() * 400))
-            }
+        if (!isAutonomous) {
+            triggerActivityPulse()
         }
-        if (!isAutonomous) triggerImmediateTyping()
 
         try {
             const currentMessages = useChatStore.getState().messages
@@ -301,6 +361,7 @@ export default function ChatPage() {
 
                 switch (event.type) {
                     case 'message': {
+                        setCharacterStatus(event.character, "")
                         queueTypingUser(event.character)
                         const eventContent = event.content || ''
                         const speedFactor = activeGang.find(c => c.id === event.character)?.typingSpeed || 1
@@ -343,6 +404,7 @@ export default function ChatPage() {
                         break
 
                     case 'typing_ghost':
+                        setCharacterStatus(event.character, "")
                         queueTypingUser(event.character)
                         await new Promise(r => setTimeout(r, 2500))
                         removeTypingUser(event.character)
@@ -401,8 +463,7 @@ export default function ChatPage() {
                 pendingBlockedMessageRef.current = content
                 setShowAuthWall(true)
                 if (messages.length === 0 && !initialGreetingRef.current) {
-                    initialGreetingRef.current = true
-                    handleSend("") // Ensure gang greets before first user message
+                    triggerLocalGreeting()
                 }
                 return
             }
@@ -490,13 +551,25 @@ export default function ChatPage() {
                                 {resumeBannerText}
                             </div>
                         )}
-                        {!hasSeenChatTips && (
-                            <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] text-muted-foreground flex flex-col gap-2">
-                                <div className="font-semibold text-foreground">Quick tip</div>
-                            <div>Memory Vault keeps your long-term context. Settings lets you switch modes and gang.</div>
-                                <div className="flex flex-wrap gap-2">
+                        {!hasSeenChatTips && messages.length > 0 && (
+                            <div className="mb-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/15 via-white/5 to-accent/15 px-4 py-4 text-[12px] text-foreground shadow-lg shadow-primary/10">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="text-[10px] uppercase tracking-widest text-primary">Quick tip</div>
+                                        <div className="mt-1 text-sm text-muted-foreground">
+                                            Memory Vault keeps your long-term context. Settings lets you switch modes and your gang.
+                                        </div>
+                                    </div>
                                     <button
-                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
+                                        className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                                        onClick={() => setHasSeenChatTips(true)}
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                    <button
+                                        className="text-[10px] uppercase tracking-widest rounded-full border border-primary/30 bg-primary/10 px-3 py-1 hover:bg-primary/20 transition-colors"
                                         onClick={() => {
                                             setIsVaultOpen(true)
                                             setHasSeenChatTips(true)
@@ -505,19 +578,13 @@ export default function ChatPage() {
                                         Open Vault
                                     </button>
                                     <button
-                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
+                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10 transition-colors"
                                         onClick={() => {
                                             setIsSettingsOpen(true)
                                             setHasSeenChatTips(true)
                                         }}
                                     >
                                         Open Settings
-                                    </button>
-                                    <button
-                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10"
-                                        onClick={() => setHasSeenChatTips(true)}
-                                    >
-                                        Got it
                                     </button>
                                 </div>
                             </div>
