@@ -5,11 +5,8 @@ import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowRight,
-  ShieldCheck,
   Users,
-  Zap,
   Brain,
-  Shapes,
   Wand2,
   ChevronRight,
 } from 'lucide-react'
@@ -71,7 +68,7 @@ const testimonials = [
     role: 'Designer',
   },
   {
-    quote: 'Itâ€™s the only AI chat that feels like a social space.',
+    quote: "It's the only AI chat that feels like a social space.",
     name: 'Mira',
     role: 'Creator',
   },
@@ -159,42 +156,64 @@ export function LandingPage() {
       <main ref={heroRef} className="flex flex-col items-center text-center z-10 relative">
         <section className="relative w-full px-6 sm:px-10 lg:px-14 pt-16 sm:pt-24 pb-20">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[600px] sm:h-[800px] bg-primary/5 blur-[140px] rounded-full -z-10 animate-pulse" />
-          <motion.div style={{ y: heroY, scale: heroScale }} className="max-w-5xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full bg-white/5 border border-white/10 text-xs sm:text-sm mb-8 backdrop-blur-md shadow-inner">
-              <Users className="w-4 h-4 text-cyan-300" />
-              <span className="text-white/90 font-medium">Group chat with your AI friends.</span>
-            </div>
+          <motion.div style={{ y: heroY, scale: heroScale }} className="max-w-6xl mx-auto">
+            <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-10 lg:gap-16">
+              <div className="order-2 lg:order-1 text-center lg:text-left flex-1">
+                <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full bg-white/5 border border-white/10 text-xs sm:text-sm mb-8 backdrop-blur-md shadow-inner">
+                  <Users className="w-4 h-4 text-cyan-300" />
+                  <span className="text-white/90 font-medium">Group chat with your AI friends.</span>
+                </div>
 
-            <h1 className="text-5xl sm:text-7xl lg:text-[9rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
-              YOUR <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-primary to-blue-600 animate-gradient">GANG</span>
-              <br />
-              IS <span className="italic font-serif normal-case font-light text-muted-foreground/50">READY.</span>
-            </h1>
+                <h1 className="text-5xl sm:text-7xl lg:text-[8.5rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
+                  YOUR <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-primary to-blue-600 animate-gradient">GANG</span>
+                  <br />
+                  IS <span className="italic font-serif normal-case font-light text-muted-foreground/50">READY.</span>
+                </h1>
 
-            <p className="text-sm sm:text-base lg:text-xl text-muted-foreground/80 mb-10 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
-              Your personal group of AI friends. Theyâ€™ll chat, laugh, cry, roast, and connect with you.
-            </p>
+                <p className="text-sm sm:text-base lg:text-xl text-muted-foreground/80 mb-10 sm:mb-12 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                  Your personal group of AI friends. They'll chat, laugh, cry, roast, and connect with you.
+                </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center">
-              <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-                <Button
-                  size="xl"
-                  disabled={ctaDisabled}
-                  data-testid="landing-cta"
-                  className="rounded-full px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start items-center lg:items-start">
+                  <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+                    <Button
+                      size="xl"
+                      disabled={ctaDisabled}
+                      data-testid="landing-cta"
+                      className="rounded-full px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
+                    >
+                      <span className="relative z-10 flex items-center gap-3">
+                        {ctaText}
+                        <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-2 transition-transform duration-500" />
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Button>
+                  </Link>
+                  <a href="#how-it-works" className="inline-flex w-full sm:w-auto">
+                    <Button variant="outline" size="xl" className="rounded-full px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black w-full sm:w-auto">
+                      Watch It Flow
+                    </Button>
+                  </a>
+                </div>
+              </div>
+
+              <div className="order-1 lg:order-2 flex-shrink-0">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+                  className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-72 lg:h-72"
                 >
-                  <span className="relative z-10 flex items-center gap-3">
-                    {ctaText}
-                    <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-2 transition-transform duration-500" />
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Button>
-              </Link>
-              <a href="#how-it-works" className="inline-flex">
-                <Button variant="outline" size="xl" className="rounded-full px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black">
-                  Watch It Flow
-                </Button>
-              </a>
+                  <div className="absolute inset-0 rounded-full bg-primary/10 blur-3xl" />
+                  <Image
+                    src="/logo.png"
+                    alt="MyGang logo"
+                    width={288}
+                    height={288}
+                    className="relative w-full h-full object-contain drop-shadow-2xl"
+                    priority
+                  />
+                </motion.div>
+              </div>
             </div>
           </motion.div>
         </section>
@@ -235,21 +254,6 @@ export function LandingPage() {
             {highlights.map((item) => (
               <FeatureCard key={item.title} icon={item.icon} title={item.title} desc={item.copy} />
             ))}
-          </div>
-        </Section>
-
-        <Section id="vibe-palette" title="The vibe palette" subtitle="Pick a mix of chaos, calm, logic, and hype">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <GradientPanel
-              title="Crew Focus"
-              copy="A tighter mode when you want direct replies from the gang."
-              icon={<ShieldCheck className="w-5 h-5 text-emerald-300" />}
-            />
-            <GradientPanel
-              title="Free-flow Banter"
-              copy="Let them bounce off each other and create group energy."
-              icon={<Shapes className="w-5 h-5 text-purple-300" />}
-            />
           </div>
         </Section>
 
@@ -341,25 +345,12 @@ function GlowCard({ index, title, copy }: { index: number; title: string; copy: 
   )
 }
 
-function GradientPanel({ title, copy, icon }: { title: string; copy: string; icon: React.ReactNode }) {
-  return (
-    <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-white/5 via-black/40 to-white/10 p-6 sm:p-8">
-      <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/20 blur-[80px] animate-floaty" />
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-white/10 border border-white/10">{icon}</div>
-        <h3 className="text-2xl font-bold">{title}</h3>
-      </div>
-      <p className="text-sm text-muted-foreground mt-4 max-w-md">{copy}</p>
-    </div>
-  )
-}
-
 function Testimonial({ quote, name, role }: { quote: string; name: string; role: string }) {
   return (
     <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 sm:p-8">
-      <div className="text-base font-medium leading-relaxed">â€œ{quote}â€</div>
+      <div className="text-base font-medium leading-relaxed">“{quote}”</div>
       <div className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
-        {name} Â· {role}
+        {name} · {role}
       </div>
     </div>
   )
