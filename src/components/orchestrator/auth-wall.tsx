@@ -39,7 +39,14 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
             setIsSent(true)
         } catch (err) {
             console.error(err)
-            setErrorMessage('Could not send the magic link. Check your email and try again.')
+            const message = err instanceof Error ? err.message : ''
+            if (message.toLowerCase().includes('not found')) {
+                setErrorMessage('We could not find that email. Try another one or sign up with the one you used before.')
+            } else if (message.toLowerCase().includes('signups')) {
+                setErrorMessage('Signups are disabled right now. Use an existing account email to log in.')
+            } else {
+                setErrorMessage('Could not send the magic link. Check your email and try again.')
+            }
         } finally {
             setIsLoading(false)
         }

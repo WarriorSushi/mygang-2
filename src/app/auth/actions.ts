@@ -35,16 +35,34 @@ export async function signInWithOTP(email: string) {
     const supabase = await createClient()
     const origin = await getOrigin()
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const emailRedirectTo = `${origin}/auth/callback?next=/chat`
+    const loginAttempt = await supabase.auth.signInWithOtp({
         email,
         options: {
-            emailRedirectTo: `${origin}/auth/callback?next=/chat`,
+            emailRedirectTo,
+            shouldCreateUser: false,
         },
     })
 
-    if (error) {
-        console.error('OTP error:', error.message)
-        throw error
+    if (loginAttempt.error) {
+        const message = loginAttempt.error.message?.toLowerCase() || ''
+        const isUserNotFound = message.includes('user') && message.includes('not found')
+        if (isUserNotFound) {
+            const signupAttempt = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    emailRedirectTo,
+                    shouldCreateUser: true,
+                },
+            })
+            if (signupAttempt.error) {
+                console.error('OTP error:', signupAttempt.error.message)
+                throw signupAttempt.error
+            }
+            return
+        }
+        console.error('OTP error:', loginAttempt.error.message)
+        throw loginAttempt.error
     }
 }
 
