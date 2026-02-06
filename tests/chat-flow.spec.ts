@@ -3,6 +3,9 @@ import { test, expect } from '@playwright/test';
 test.setTimeout(60000);
 
 test('MyGang.ai End-to-End Journey', async ({ page }) => {
+    await page.addInitScript(() => {
+        window.localStorage.setItem('mock_ai', 'true');
+    });
     // 1. Landing Page
     console.log('--- STARTING TEST ---');
     await page.goto('http://localhost:3000');

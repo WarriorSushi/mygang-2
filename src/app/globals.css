@@ -141,3 +141,32 @@
 .animate-bounce-short {
   animation: bounce-short 0.5s ease-in-out 2;
 }
+
+.chat-wallpaper-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -5;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.chat-wallpaper-layer[data-wallpaper='default'] {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.2), transparent 45%),
+    radial-gradient(circle at 80% 30%, rgba(34, 197, 94, 0.15), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.12), transparent 45%);
+}
+
+.chat-wallpaper-layer[data-wallpaper='neon'] {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.25), transparent 45%),
+    radial-gradient(circle at 70% 25%, rgba(217, 70, 239, 0.25), transparent 40%),
+    radial-gradient(circle at 50% 85%, rgba(34, 197, 94, 0.2), transparent 50%);
+}
+
+.chat-wallpaper-layer[data-wallpaper='soft'] {
+  background:
+    radial-gradient(circle at 20% 25%, rgba(244, 114, 182, 0.18), transparent 45%),
+    radial-gradient(circle at 75% 30%, rgba(148, 163, 184, 0.2), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.12), transparent 45%);
+}

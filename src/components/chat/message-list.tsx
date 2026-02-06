@@ -20,7 +20,6 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
     const [unreadCount, setUnreadCount] = useState(0)
     const prevMessagesLength = useRef(messages.length)
     const characterStatuses = useChatStore((state) => state.characterStatuses)
-    const isHapticEnabled = useChatStore((state) => state.isHapticEnabled)
 
     // Handle scroll events
     const handleScroll = () => {
@@ -41,9 +40,7 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
 
         if (isNewMessage) {
             // Haptic Feedback for Mobile
-            if (isHapticEnabled && typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-                window.navigator.vibrate(10)
-            }
+            // Haptic feedback removed for web-only experience
 
             if (isAtBottom) {
                 scrollRef.current.scrollTo({
@@ -56,7 +53,7 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
         }
 
         prevMessagesLength.current = messages.length
-    }, [messages, isAtBottom, isHapticEnabled])
+    }, [messages, isAtBottom])
 
     const scrollToBottom = () => {
         if (scrollRef.current) {
@@ -76,6 +73,17 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
                 onScroll={handleScroll}
                 className="h-full overflow-y-auto overflow-x-hidden p-4 space-y-2 scrollbar-hide"
             >
+                {!isAtBottom && (
+                    <div className="sticky top-2 z-10 flex justify-center">
+                        <Button
+                            onClick={scrollToBottom}
+                            variant="ghost"
+                            className="rounded-full bg-white/10 border border-white/10 text-[10px] uppercase tracking-widest text-muted-foreground px-4 py-2"
+                        >
+                            You are reading older messages - Jump to latest
+                        </Button>
+                    </div>
+                )}
                 <AnimatePresence initial={false}>
                     {messages.map((message, index) => {
                         const character = activeGang.find(c => c.id.toLowerCase().trim() === message.speaker.toLowerCase().trim())

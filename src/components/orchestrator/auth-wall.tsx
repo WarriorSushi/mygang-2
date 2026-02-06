@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MessageCircle, LogIn, Mail, Loader2, Sparkles } from 'lucide-react'
 import { signInWithGoogle, signInWithOTP } from "@/app/auth/actions"
+import { trackEvent } from '@/lib/analytics'
 
 interface AuthWallProps {
     isOpen: boolean
@@ -18,12 +19,19 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [isSent, setIsSent] = useState(false)
 
+    useEffect(() => {
+        if (isOpen) {
+            trackEvent('auth_wall_shown', { metadata: { source: 'auth_wall' } })
+        }
+    }, [isOpen])
+
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!email) return
 
         setIsLoading(true)
         try {
+            trackEvent('auth_wall_action', { metadata: { provider: 'email' } })
             await signInWithOTP(email)
             setIsSent(true)
         } catch (err) {
@@ -62,6 +70,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             <form action={signInWithGoogle}>
                                 <Button
                                     type="submit"
+                                    onClick={() => trackEvent('auth_wall_action', { metadata: { provider: 'google' } })}
                                     className="w-full h-16 rounded-2xl text-xl font-black bg-[#4285F4] hover:bg-[#4285F4]/90 text-white shadow-lg shadow-[#4285F4]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 >
                                     <div className="flex items-center gap-3">

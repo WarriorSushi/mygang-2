@@ -76,6 +76,12 @@ export async function saveGang(characterIds: string[]) {
 
     const { error: memberError } = await supabase.from('gang_members').insert(members)
     if (memberError) console.error('Error inserting squad:', memberError)
+
+    const { error: settingsError } = await supabase
+        .from('profiles')
+        .update({ preferred_squad: characterIds })
+        .eq('id', user.id)
+    if (settingsError) console.error('Error updating preferred squad:', settingsError)
 }
 
 export async function getSavedGang() {
@@ -169,4 +175,50 @@ export async function updateMemory(id: string, content: string) {
         .eq('user_id', user.id)
 
     if (error) console.error('Error updating memory:', error)
+}
+
+export async function getUserSettings() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('theme, chat_mode, preferred_squad, chat_wallpaper')
+        .eq('id', user.id)
+        .single()
+
+    if (error) {
+        console.error('Error fetching user settings:', error)
+        return null
+    }
+
+    return data
+}
+
+export async function updateUserSettings(settings: { theme?: string; chat_mode?: string; preferred_squad?: string[]; chat_wallpaper?: string }) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+        .from('profiles')
+        .update(settings)
+        .eq('id', user.id)
+
+    if (error) console.error('Error updating user settings:', error)
+}
+
+export async function saveMemoryManual(content: string) {
+    const { storeMemory } = await import('@/lib/ai/memory')
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await storeMemory(user.id, content, {
+        kind: 'episodic',
+        tags: [],
+        importance: 2,
+        useEmbedding: false
+    })
 }

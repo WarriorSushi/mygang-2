@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { useChatStore } from '@/stores/chat-store'
 import {
     Sheet,
@@ -8,11 +9,13 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings2, Zap, ShieldAlert, Trash2, Camera, Brain, X } from 'lucide-react'
+import { Settings2, Zap, Trash2, Camera, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CHARACTERS } from '@/constants/characters'
+import { saveGang, updateUserSettings } from '@/app/auth/actions'
+import Link from 'next/link'
 
 interface ChatSettingsProps {
     isOpen: boolean
@@ -24,10 +27,50 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     const {
         chatMode,
         setChatMode,
-        isHapticEnabled,
-        setHapticEnabled,
-        clearChat
+        clearChat,
+        activeGang,
+        setActiveGang,
+        chatWallpaper,
+        setChatWallpaper,
     } = useChatStore()
+
+    const [draftSquad, setDraftSquad] = useState<string[]>([])
+
+    useEffect(() => {
+        if (isOpen) {
+            setDraftSquad(activeGang.map((c) => c.id))
+        }
+    }, [isOpen, activeGang])
+
+    const handleChatModeChange = (value: string) => {
+        setChatMode(value as any)
+        updateUserSettings({ chat_mode: value })
+    }
+
+    const handleWallpaperChange = (value: 'default' | 'neon' | 'soft') => {
+        setChatWallpaper(value)
+        updateUserSettings({ chat_wallpaper: value })
+    }
+
+    const toggleDraft = (id: string) => {
+        setDraftSquad((prev) => {
+            if (prev.includes(id)) return prev.filter((v) => v !== id)
+            if (prev.length >= 4) return prev
+            return [...prev, id]
+        })
+    }
+
+    const saveSquad = async () => {
+        if (draftSquad.length !== 4) return
+        const squad = CHARACTERS.filter((c) => draftSquad.includes(c.id))
+        setActiveGang(squad)
+        await saveGang(draftSquad)
+        onClose()
+    }
+
+    const squadPreview = useMemo(() => {
+        return CHARACTERS.filter((c) => draftSquad.includes(c.id))
+    }, [draftSquad])
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
@@ -51,7 +94,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             <Zap size={12} className="text-amber-400" />
                             <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Intelligence</Label>
                         </div>
-                        <Tabs value={chatMode} onValueChange={(v) => setChatMode(v as any)}>
+                        <Tabs value={chatMode} onValueChange={handleChatModeChange}>
                             <TabsList className="grid grid-cols-2 bg-white/[0.03] border border-white/5 p-1 h-9 rounded-xl">
                                 <TabsTrigger
                                     value="entourage"
@@ -74,6 +117,68 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                         </p>
                     </div>
 
+                    {/* Atmosphere */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                            <Zap size={12} className="text-fuchsia-400" />
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Atmosphere</Label>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            {(['default', 'neon', 'soft'] as const).map((wallpaper) => (
+                                <Button
+                                    key={wallpaper}
+                                    variant={chatWallpaper === wallpaper ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => handleWallpaperChange(wallpaper)}
+                                    className="rounded-xl text-[9px] uppercase tracking-widest"
+                                >
+                                    {wallpaper}
+                                </Button>
+                            ))}
+                        </div>
+                        <p className="text-[9px] text-muted-foreground/60 leading-tight px-1 italic">
+                            Change the backdrop without affecting chat history.
+                        </p>
+                    </div>
+
+                    {/* Quick Squad Switch */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                            <Users size={12} className="text-cyan-400" />
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Quick Squad</Label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {CHARACTERS.map((char) => {
+                                const isSelected = draftSquad.includes(char.id)
+                                return (
+                                    <Button
+                                        key={char.id}
+                                        variant={isSelected ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => toggleDraft(char.id)}
+                                        className="rounded-xl text-[10px] uppercase tracking-widest"
+                                    >
+                                        {char.name}
+                                    </Button>
+                                )
+                            })}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-widest text-muted-foreground/60">
+                            {squadPreview.map((c) => (
+                                <span key={c.id} className="px-2 py-1 rounded-full border border-white/10">{c.name}</span>
+                            ))}
+                            {squadPreview.length < 4 && <span>Pick 4 to switch</span>}
+                        </div>
+                        <Button
+                            variant="outline"
+                            disabled={draftSquad.length !== 4}
+                            onClick={saveSquad}
+                            className="w-full rounded-2xl"
+                        >
+                            Save Squad
+                        </Button>
+                    </div>
+
                     {/* Actions */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
@@ -91,25 +196,18 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             </div>
                             <Camera size={16} className="text-muted-foreground opacity-40 group-hover:text-primary group-hover:scale-110 transition-all" />
                         </Button>
-                    </div>
-
-                    {/* Preferences */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 px-1">
-                            <Zap size={12} className="text-purple-400" />
-                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Preferences</Label>
-                        </div>
-                        <div className="flex items-center justify-between px-4 py-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                            <div>
-                                <p className="text-[11px] font-bold uppercase tracking-wider">Tactile Feedback</p>
-                                <p className="text-[9px] text-muted-foreground opacity-60">Haptic vibrations</p>
-                            </div>
-                            <Switch
-                                checked={isHapticEnabled}
-                                onCheckedChange={setHapticEnabled}
-                                size="sm"
-                            />
-                        </div>
+                        <Button
+                            variant="ghost"
+                            asChild
+                            className="w-full justify-between px-4 py-6 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all group"
+                        >
+                            <Link href="/settings">
+                                <div className="text-left">
+                                    <p className="text-[11px] font-bold uppercase tracking-wider group-hover:text-primary transition-colors">Account Settings</p>
+                                    <p className="text-[9px] text-muted-foreground opacity-60">Usage, theme, wallpaper</p>
+                                </div>
+                            </Link>
+                        </Button>
                     </div>
 
                     {/* Reset */}

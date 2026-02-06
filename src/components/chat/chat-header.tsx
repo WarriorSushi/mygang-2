@@ -2,18 +2,21 @@
 
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Camera, Sun, Moon, Brain, Settings2 } from 'lucide-react'
+import { Sun, Moon, Brain, Settings2 } from 'lucide-react'
 import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
+import { updateUserSettings } from '@/app/auth/actions'
 
 interface ChatHeaderProps {
     activeGang: Character[]
     onOpenVault: () => void
     onOpenSettings: () => void
+    typingCount?: number
+    memoryActive?: boolean
 }
 
-export function ChatHeader({ activeGang, onOpenVault, onOpenSettings }: ChatHeaderProps) {
+export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false }: ChatHeaderProps) {
     const { theme, setTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
 
@@ -31,7 +34,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings }: ChatHead
                             className="border border-background ring-1 ring-primary/10 w-6 h-6 sm:w-8 sm:h-8"
                             title={char.name}
                         >
-                            <img src={char.avatar} alt={char.name} className="object-cover" />
+                            <img src={char.avatar} alt={char.name} className="object-cover" loading="lazy" decoding="async" />
                             <AvatarFallback className="text-[8px] bg-muted">{char.name[0]}</AvatarFallback>
                         </Avatar>
                     ))}
@@ -41,6 +44,8 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings }: ChatHead
                     <span className="text-[8px] sm:text-[10px] text-muted-foreground flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                         {activeGang.length} Online
+                        {typingCount > 0 && <span> - {typingCount} typing</span>}
+                        {memoryActive && <span> - Memory Active</span>}
                     </span>
                 </div>
             </div>
@@ -71,7 +76,11 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings }: ChatHead
                     size="icon"
                     className="rounded-full"
                     aria-label={mounted ? (theme === 'dark' ? "Switch to light theme" : "Switch to dark theme") : "Toggle theme"}
-                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    onClick={() => {
+                        const nextTheme = theme === 'dark' ? 'light' : 'dark'
+                        setTheme(nextTheme)
+                        updateUserSettings({ theme: nextTheme })
+                    }}
                 >
                     {mounted ? (
                         theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />
@@ -83,3 +92,5 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings }: ChatHead
         </header>
     )
 }
+
+

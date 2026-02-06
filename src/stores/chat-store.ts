@@ -21,6 +21,8 @@ export interface Character {
     gradient?: string
     voice?: string
     sample?: string
+    typingSpeed?: number
+    tags?: string[]
 }
 
 interface ChatState {
@@ -33,7 +35,9 @@ interface ChatState {
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
     chatMode: 'entourage' | 'ecosystem'
-    isHapticEnabled: boolean
+    chatWallpaper: 'default' | 'neon' | 'soft'
+    hasSeenChatTips: boolean
+    squadConflict: { local: Character[]; remote: Character[] } | null
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
@@ -44,7 +48,9 @@ interface ChatState {
     setCharacterStatus: (characterId: string, status: string) => void
     setIsHydrated: (isHydrated: boolean) => void
     setChatMode: (mode: 'entourage' | 'ecosystem') => void
-    setHapticEnabled: (enabled: boolean) => void
+    setChatWallpaper: (wallpaper: 'default' | 'neon' | 'soft') => void
+    setHasSeenChatTips: (seen: boolean) => void
+    setSquadConflict: (conflict: { local: Character[]; remote: Character[] } | null) => void
     clearChat: () => void
 }
 
@@ -60,7 +66,9 @@ export const useChatStore = create<ChatState>()(
             characterStatuses: {},
             isHydrated: false,
             chatMode: 'ecosystem',
-            isHapticEnabled: true,
+            chatWallpaper: 'default',
+            hasSeenChatTips: false,
+            squadConflict: null,
             setMessages: (messages) => set({ messages }),
             addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
             setActiveGang: (gang) => set({ activeGang: gang }),
@@ -73,7 +81,9 @@ export const useChatStore = create<ChatState>()(
             })),
             setIsHydrated: (isHydrated) => set({ isHydrated }),
             setChatMode: (chatMode) => set({ chatMode }),
-            setHapticEnabled: (isHapticEnabled) => set({ isHapticEnabled }),
+            setChatWallpaper: (chatWallpaper) => set({ chatWallpaper }),
+            setHasSeenChatTips: (hasSeenChatTips) => set({ hasSeenChatTips }),
+            setSquadConflict: (squadConflict) => set({ squadConflict }),
             clearChat: () => set({ messages: [] }),
         }),
         {
@@ -86,7 +96,8 @@ export const useChatStore = create<ChatState>()(
                 userNickname: state.userNickname,
                 userId: state.userId,
                 chatMode: state.chatMode,
-                isHapticEnabled: state.isHapticEnabled
+                chatWallpaper: state.chatWallpaper,
+                hasSeenChatTips: state.hasSeenChatTips
             })
         }
     )

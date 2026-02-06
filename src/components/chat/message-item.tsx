@@ -1,10 +1,14 @@
 'use client'
 
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { GlassCard } from '@/components/holographic/glass-card'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
+import { saveMemoryManual } from '@/app/auth/actions'
+import { Bookmark } from 'lucide-react'
 
 interface MessageItemProps {
     message: Message
@@ -13,22 +17,38 @@ interface MessageItemProps {
     isContinued?: boolean
 }
 
-export function MessageItem({ message, character, status, isContinued }: MessageItemProps) {
+function MessageItemComponent({ message, character, status, isContinued }: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
-    const { messages, activeGang } = useChatStore()
+    const { messages, activeGang, isGuest } = useChatStore()
     const { theme } = useTheme()
 
     // Find quoted message if it exists
     const quotedMessage = message.replyToId ? messages.find((m: Message) => m.id === message.replyToId) : null
     const quotedSpeaker = quotedMessage ? activeGang.find((c: Character) => c.id.toLowerCase().trim() === quotedMessage.speaker.toLowerCase().trim()) : null
+    const messageIndex = messages.findIndex((m: Message) => m.id === message.id)
+    const seenBy = (() => {
+        if (!isUser || messageIndex === -1) return []
+        const seen: string[] = []
+        for (let i = messageIndex + 1; i < messages.length; i++) {
+            const msg = messages[i]
+            if (msg.speaker !== 'user' && !seen.includes(msg.speaker)) {
+                const char = activeGang.find((c: Character) => c.id.toLowerCase().trim() === msg.speaker.toLowerCase().trim())
+                if (char?.name) seen.push(char.name)
+            }
+            if (seen.length >= 2) break
+        }
+        return seen
+    })()
+
+    const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             className={cn(
-                "flex flex-col max-w-[85%]",
+                "group flex flex-col max-w-[85%]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
                 isContinued ? "mt-1.5" : "mt-6" // Controlled spacing
@@ -42,7 +62,7 @@ export function MessageItem({ message, character, status, isContinued }: Message
                         style={{ backgroundColor: character?.color || '#333' }}
                     >
                         {character?.avatar ? (
-                            <img src={character.avatar} alt="" className="w-full h-full object-cover" />
+                            <img src={character.avatar} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                         ) : (
                             <span className="text-white uppercase">{(character?.name || message.speaker)[0]}</span>
                         )}
@@ -111,6 +131,34 @@ export function MessageItem({ message, character, status, isContinued }: Message
                     <p className="text-[15px] font-bold leading-relaxed select-text tracking-tight text-foreground dark:text-white">{message.content}</p>
                 )}
             </GlassCard>
+            {!isReaction && (
+                <div className={cn(
+                    "mt-1 text-[9px] uppercase tracking-widest text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity",
+                    isUser ? "self-end" : "self-start"
+                )}>
+                    {timeLabel}
+                </div>
+            )}
+            {isUser && seenBy.length > 0 && (
+                <div className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground/70">
+                    Seen by {seenBy.join(', ')}
+                </div>
+            )}
+            {isUser && !isReaction && !isGuest && (
+                <div className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => saveMemoryManual(message.content)}
+                        className="rounded-full text-[10px] uppercase tracking-widest"
+                    >
+                        <Bookmark className="w-3 h-3" />
+                        Save to Memory
+                    </Button>
+                </div>
+            )}
         </motion.div>
     )
 }
+
+export const MessageItem = memo(MessageItemComponent)

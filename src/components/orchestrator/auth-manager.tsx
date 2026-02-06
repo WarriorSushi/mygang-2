@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useChatStore } from '@/stores/chat-store'
 import { getSavedGang, saveGang } from '@/app/auth/actions'
 import { CHARACTERS } from '@/constants/characters'
+import { useTheme } from 'next-themes'
 
 export function AuthManager() {
     const {
@@ -15,10 +16,14 @@ export function AuthManager() {
         setUserName,
         setUserNickname,
         clearChat,
-        setIsHydrated
+        setIsHydrated,
+        setChatMode,
+        setChatWallpaper,
+        setSquadConflict
     } = useChatStore()
     const supabase = createClient()
     const hadSessionRef = useRef(false)
+    const { setTheme } = useTheme()
 
     useEffect(() => {
         const syncSession = async () => {
@@ -31,9 +36,16 @@ export function AuthManager() {
                     hadSessionRef.current = true
 
                     const savedIds = await getSavedGang()
-                    if (savedIds && savedIds.length > 0) {
+                    const localIds = activeGang.map((c) => c.id)
+                    const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
+
+                    if (savedIds && savedIds.length === 4) {
                         const squad = CHARACTERS.filter(c => savedIds.includes(c.id))
-                        setActiveGang(squad)
+                        if (activeGang.length === 0) {
+                            setActiveGang(squad)
+                        } else if (!sameSet(localIds, savedIds)) {
+                            setSquadConflict({ local: activeGang, remote: squad })
+                        }
                     } else if (activeGang.length > 0) {
                         try {
                             await saveGang(activeGang.map((c) => c.id))
@@ -42,15 +54,24 @@ export function AuthManager() {
                         }
                     }
 
-                    // Also sync username
+                    // Also sync username and settings
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('username')
+                        .select('username, chat_mode, theme, chat_wallpaper')
                         .eq('id', session.user.id)
                         .single()
 
                     if (profile?.username) {
                         setUserName(profile.username)
+                    }
+                    if (profile?.chat_mode) {
+                        setChatMode(profile.chat_mode as any)
+                    }
+                    if (profile?.theme) {
+                        setTheme(profile.theme)
+                    }
+                    if (profile?.chat_wallpaper) {
+                        setChatWallpaper(profile.chat_wallpaper as any)
                     }
                 }
             } catch (err) {
@@ -78,6 +99,7 @@ export function AuthManager() {
                 clearChat()
                 setUserName(null)
                 setUserNickname(null)
+                setSquadConflict(null)
                 hadSessionRef.current = false
             }
         })
@@ -85,7 +107,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [setUserId, setIsGuest, setActiveGang, activeGang.length, setUserName, setUserNickname, clearChat, setIsHydrated])
+    }, [setUserId, setIsGuest, setActiveGang, activeGang, setUserName, setUserNickname, clearChat, setIsHydrated, setChatMode, setChatWallpaper, setSquadConflict, setTheme])
 
     return null
 }

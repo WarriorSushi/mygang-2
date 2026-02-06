@@ -7,6 +7,7 @@ import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { useChatStore } from '@/stores/chat-store'
 import { useRouter } from 'next/navigation'
 import { saveGang, saveUsername } from '@/app/auth/actions'
+import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 
 // New modular components
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
@@ -30,6 +31,14 @@ export default function OnboardingPage() {
         }
     }, [isHydrated, activeGang.length, router])
 
+    useEffect(() => {
+        const session = ensureAnalyticsSession()
+        if (session.isNew) {
+            trackEvent('session_start', { sessionId: session.id, metadata: { source: 'onboarding' } })
+        }
+        trackEvent('onboarding_started', { sessionId: session.id })
+    }, [])
+
     const toggleCharacter = (id: string) => {
         if (selectedIds.includes(id)) {
             setSelectedIds(selectedIds.filter((i) => i !== id))
@@ -44,6 +53,9 @@ export default function OnboardingPage() {
         setUserName(name)
         setIsGuest(userId === null)
         setStep('LOADING')
+
+        const session = ensureAnalyticsSession()
+        trackEvent('onboarding_completed', { sessionId: session.id })
 
         // Save to DB if logged in
         if (userId) {

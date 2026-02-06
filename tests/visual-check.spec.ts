@@ -3,6 +3,9 @@ import { test, expect } from '@playwright/test';
 test.setTimeout(120000);
 
 test('Capture All Screens', async ({ page }) => {
+    await page.addInitScript(() => {
+        window.localStorage.setItem('mock_ai', 'true');
+    });
     // Set viewport to a common desktop size
     await page.setViewportSize({ width: 1440, height: 900 });
 
