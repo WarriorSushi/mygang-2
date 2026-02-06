@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 
 export default function AuthCodeErrorPage() {
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center p-6 pt-safe pb-safe text-center bg-background">
+    <main className="min-h-dvh flex flex-col items-center justify-center p-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-[calc(env(safe-area-inset-bottom)+1.5rem)] text-center bg-background">
       <div className="max-w-md space-y-4">
         <h1 className="text-3xl font-bold tracking-tight">Authentication Failed</h1>
         <p className="text-muted-foreground">

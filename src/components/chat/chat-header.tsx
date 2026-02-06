@@ -26,7 +26,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
     }, [])
 
     return (
-        <header data-testid="chat-header" className="px-4 sm:px-6 pt-safe pb-3 sm:pb-4 border-b border-white/10 flex flex-wrap justify-between items-center gap-4 backdrop-blur-md bg-white/5 z-10 w-full">
+        <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] border-b border-white/10 flex flex-wrap justify-between items-center gap-4 backdrop-blur-md bg-white/5 z-10 w-full">
             <div className="flex items-center gap-3 sm:gap-4">
                 <div className="flex -space-x-2 sm:-space-x-2">
                     {activeGang.map((char) => (

@@ -20,7 +20,7 @@ export default async function SettingsPage() {
     const dailyLimit = profile?.subscription_tier === 'pro' ? 300 : 80
 
     return (
-        <main className="min-h-dvh bg-background text-foreground px-4 sm:px-6 lg:px-10 py-10 pt-safe pb-safe">
+        <main className="min-h-dvh bg-background text-foreground px-4 sm:px-6 lg:px-10 py-10 pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-[calc(env(safe-area-inset-bottom)+2.5rem)]">
             <div className="max-w-3xl mx-auto space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>

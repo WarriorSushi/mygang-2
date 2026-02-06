@@ -86,10 +86,10 @@ export default function OnboardingPage() {
     return (
         <main
             className={cn(
-                "h-dvh flex flex-col relative bg-background pt-safe pb-safe",
+                "h-dvh flex flex-col relative bg-background pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1.5rem)]",
                 isSelection
-                    ? "items-stretch justify-start overflow-y-auto p-4 sm:p-6"
-                    : "items-center justify-center overflow-hidden p-6"
+                    ? "items-stretch justify-start overflow-y-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)]"
+                    : "items-center justify-center overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] sm:pt-[calc(env(safe-area-inset-top)+2rem)]"
             )}
         >
             <BackgroundBlobs />

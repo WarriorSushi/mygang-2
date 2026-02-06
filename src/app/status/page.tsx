@@ -9,7 +9,7 @@ export default function StatusPage() {
     const region = process.env.VERCEL_REGION
 
     return (
-        <main className="min-h-dvh bg-background text-foreground px-6 py-10 pt-safe pb-safe">
+        <main className="min-h-dvh bg-background text-foreground px-6 py-10 pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-[calc(env(safe-area-inset-bottom)+2.5rem)]">
             <div className="max-w-2xl mx-auto space-y-6">
                 <div>
                     <div className="text-xs uppercase tracking-widest text-muted-foreground">Status</div>

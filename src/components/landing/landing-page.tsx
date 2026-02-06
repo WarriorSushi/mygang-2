@@ -115,7 +115,7 @@ export function LandingPage() {
     <div className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
 
-      <nav className="p-4 sm:p-6 pt-safe flex flex-wrap justify-between items-center gap-3 max-w-7xl mx-auto w-full z-10">
+      <nav className="px-4 sm:px-6 pb-4 sm:pb-6 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] flex flex-wrap justify-between items-center gap-3 max-w-7xl mx-auto w-full z-10">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
