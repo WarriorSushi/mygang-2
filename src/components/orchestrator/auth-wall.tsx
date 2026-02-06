@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { LogIn, Mail, Loader2, Sparkles } from 'lucide-react'
+import { Mail, Loader2, Sparkles } from 'lucide-react'
 import Image from 'next/image'
-import { signInWithGoogle, signInWithOTP } from "@/app/auth/actions"
+import { signInWithOTP } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
 
 interface AuthWallProps {
@@ -68,28 +68,6 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
 
                     {!isSent ? (
                         <div className="grid gap-6 py-4">
-                            <form action={signInWithGoogle}>
-                                <Button
-                                    type="submit"
-                                    onClick={() => trackEvent('auth_wall_action', { metadata: { provider: 'google' } })}
-                                    className="w-full h-14 sm:h-16 rounded-2xl text-lg sm:text-xl font-black bg-[#4285F4] hover:bg-[#4285F4]/90 text-white shadow-lg shadow-[#4285F4]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <LogIn className="h-6 w-6" />
-                                        Continue with Google
-                                    </div>
-                                </Button>
-                            </form>
-
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-white/5"></span>
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-transparent px-2 text-muted-foreground/40 font-bold tracking-widest">or use email</span>
-                                </div>
-                            </div>
-
                             <form onSubmit={handleEmailSubmit} className="space-y-3">
                                 <Input
                                     type="email"
@@ -115,6 +93,9 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                     )}
                                 </Button>
                             </form>
+                            <p className="text-center text-[11px] text-muted-foreground/60">
+                                We’ll email you a secure link to sign in.
+                            </p>
                         </div>
                     ) : (
                         <div className="py-12 text-center animate-in zoom-in duration-500">
