@@ -76,8 +76,8 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             <div className="sticky top-3 sm:top-6 z-20">
                 <div className="rounded-3xl border border-white/10 bg-background/70 backdrop-blur-xl px-4 sm:px-6 py-5 sm:py-6 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
                     <div className="flex flex-col sm:items-center sm:text-center gap-2">
-                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Pick your Gang</h2>
-                        <p className="text-muted-foreground text-base sm:text-lg">Select exactly 4 unique friends to join your gang.</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Pick your Gang</h2>
+                        <p className="text-muted-foreground text-sm sm:text-base">Select exactly 4 unique friends to join your gang.</p>
                     </div>
                     <div className="flex items-center justify-start gap-2 mt-4 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
                         {tags.map(tag => (
@@ -121,7 +121,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                 isSelected && "ring-2 ring-primary ring-offset-4 ring-offset-background bg-primary/5"
                             )}
                         >
-                            <div className="absolute top-3 left-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-3 right-3 z-10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button
                                     variant="ghost"
                                     size="xs"
