@@ -12,6 +12,8 @@ export default function LandingPage() {
   const hasSquad = activeGang.length > 0
   const ctaText = !isHydrated ? "Syncing..." : userId ? (hasSquad ? "Return to Gang" : "Pick Your Gang") : "Assemble Your Gang"
   const ctaLink = hasSquad ? "/chat" : "/onboarding"
+  const ctaDisabled = !isHydrated
+  const safeCtaLink = ctaDisabled ? "#" : ctaLink
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-background">
@@ -40,8 +42,8 @@ export default function LandingPage() {
               Logged In
             </span>
           )}
-          <Link href={ctaLink}>
-            <Button variant="ghost" className="rounded-full px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+          <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+            <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
               {userId ? "Dashboard" : "Launch App"}
             </Button>
           </Link>
@@ -84,8 +86,13 @@ export default function LandingPage() {
             transition={{ delay: 0.4 }}
             className="flex flex-col sm:flex-row gap-6 justify-center"
           >
-            <Link href={ctaLink}>
-              <Button size="xl" className="rounded-full px-16 py-10 text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20">
+            <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+              <Button
+                size="xl"
+                disabled={ctaDisabled}
+                data-testid="landing-cta"
+                className="rounded-full px-16 py-10 text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
+              >
                 <span className="relative z-10 flex items-center gap-3">
                   {ctaText}
                   <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-500" />
@@ -123,7 +130,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="p-12 text-center text-muted-foreground/40 text-sm border-t border-white/5 mt-20">
-        © 2024 MyGang.ai — The premium AI group chat experience.
+        &copy; 2024 MyGang.ai - The premium AI group chat experience.
       </footer>
     </div>
   )

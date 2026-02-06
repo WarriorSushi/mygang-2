@@ -40,6 +40,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                     return (
                         <GlassCard
                             key={char.id}
+                            data-testid={`character-${char.id}`}
                             onClick={() => toggleCharacter(char.id)}
                             className={cn(
                                 "p-6 cursor-pointer relative group transition-all duration-500",
@@ -79,6 +80,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                 <Button
                     size="xl"
                     disabled={selectedIds.length !== 4}
+                    data-testid="onboarding-selection-done"
                     onClick={onNext}
                     className="rounded-full px-16 py-8 text-xl font-bold shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95"
                 >

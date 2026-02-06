@@ -56,7 +56,7 @@ export function MessageItem({ message, character, status, isContinued }: Message
                         </span>
                         {status && (
                             <span className="text-[9px] text-muted-foreground italic truncate animate-pulse">
-                                • {status}
+                                &bull; {status}
                             </span>
                         )}
                     </div>

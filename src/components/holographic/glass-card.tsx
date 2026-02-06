@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 
-interface GlassCardProps {
+interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
     children: React.ReactNode
     className?: string
     onClick?: () => void
@@ -10,11 +10,12 @@ interface GlassCardProps {
     variant?: 'default' | 'user' | 'ai'
 }
 
-export function GlassCard({ children, className, onClick, style, variant = 'default' }: GlassCardProps) {
+export function GlassCard({ children, className, onClick, style, variant = 'default', ...props }: GlassCardProps) {
     return (
         <div
             onClick={onClick}
             style={style}
+            {...props}
             className={cn(
                 "relative group overflow-hidden rounded-2xl border transition-all duration-500",
                 // Default Glass

@@ -6,7 +6,7 @@ import { X, Brain, Trash2, Edit3, Check, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/holographic/glass-card'
 import { getMemories, deleteMemory, updateMemory } from '@/app/auth/actions'
-import { cn } from '@/lib/utils'
+import { useChatStore } from '@/stores/chat-store'
 
 interface Memory {
     id: string
@@ -25,12 +25,18 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
+    const isGuest = useChatStore((state) => state.isGuest)
 
     useEffect(() => {
         if (isOpen) {
+            if (isGuest) {
+                setMemories([])
+                setLoading(false)
+                return
+            }
             loadMemories()
         }
-    }, [isOpen])
+    }, [isOpen, isGuest])
 
     const loadMemories = async () => {
         setLoading(true)
@@ -113,7 +119,12 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
 
                         {/* List */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            {loading ? (
+                            {isGuest ? (
+                                <div className="text-center py-12">
+                                    <p className="text-muted-foreground text-sm">Memories are saved to your account.</p>
+                                    <p className="text-[10px] uppercase mt-2 opacity-50">Sign in to unlock long‑term memory.</p>
+                                </div>
+                            ) : loading ? (
                                 <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
                                     <Loader2 className="animate-spin" size={24} />
                                     <span className="text-xs font-medium uppercase tracking-tighter">Syncing Neural Links...</span>

@@ -25,6 +25,7 @@ export function IdentityStep({ name, setName, onNext }: IdentityStepProps) {
                     placeholder="Your nickname..."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    data-testid="onboarding-name"
                     className="text-lg py-7 px-6 bg-white/5 border-white/10 rounded-2xl focus-visible:ring-primary/50"
                     autoFocus
                     onKeyDown={(e) => e.key === 'Enter' && name.length > 1 && onNext()}
@@ -32,6 +33,7 @@ export function IdentityStep({ name, setName, onNext }: IdentityStepProps) {
                 <Button
                     className="w-full py-7 rounded-2xl text-lg font-bold shadow-lg shadow-primary/10 transition-all active:scale-[0.98]"
                     disabled={name.length < 2}
+                    data-testid="onboarding-name-next"
                     onClick={onNext}
                 >
                     Next

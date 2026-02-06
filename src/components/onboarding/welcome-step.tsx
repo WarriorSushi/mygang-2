@@ -23,7 +23,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
             <p className="text-xl text-muted-foreground mb-8">
                 Your personal hype squad is waiting. 24/7, no drama (mostly), just vibes.
             </p>
-            <Button size="lg" onClick={onNext} className="rounded-full px-8 py-6 text-lg group">
+            <Button size="lg" onClick={onNext} data-testid="onboarding-welcome-next" className="rounded-full px-8 py-6 text-lg group">
                 Assemble the Gang
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>

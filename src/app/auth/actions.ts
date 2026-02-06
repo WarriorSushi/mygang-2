@@ -154,7 +154,13 @@ export async function updateMemory(id: string, content: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const embedding = await generateEmbedding(content)
+    let embedding: number[] = []
+    try {
+        embedding = await generateEmbedding(content)
+    } catch (err) {
+        console.error('Error generating embedding:', err)
+        return
+    }
 
     const { error } = await supabase
         .from('memories')

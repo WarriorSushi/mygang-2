@@ -11,6 +11,8 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.20",
     "@ai-sdk/openai": "^3.0.25",
+    "@upstash/ratelimit": "^2.0.1",
+    "@upstash/redis": "^1.35.2",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.94.0",
     "ai": "^6.0.69",

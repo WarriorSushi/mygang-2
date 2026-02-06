@@ -4,60 +4,144 @@ import { z } from 'zod'
 import { retrieveMemories, storeMemory } from '@/lib/ai/memory'
 import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
+import { CHARACTERS } from '@/constants/characters'
 
 export const maxDuration = 30
 
 const responseSchema = z.object({
     events: z.array(
-        z.object({
-            type: z.enum(['message', 'reaction', 'status_update', 'nickname_update', 'typing_ghost']),
-            character: z.string().describe('Character ID'),
-            content: z.string().optional().describe('Message text, emoji for reaction, status text, or new nickname'),
-            target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
-            delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
-        })
+        z.discriminatedUnion('type', [
+            z.object({
+                type: z.literal('message'),
+                character: z.string().describe('Character ID'),
+                content: z.string().min(1).describe('Message text'),
+                target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
+                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
+            }),
+            z.object({
+                type: z.literal('reaction'),
+                character: z.string().describe('Character ID'),
+                content: z.string().optional().describe('Emoji for reaction'),
+                target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
+                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
+            }),
+            z.object({
+                type: z.literal('status_update'),
+                character: z.string().describe('Character ID'),
+                content: z.string().optional().describe('Status text'),
+                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
+            }),
+            z.object({
+                type: z.literal('nickname_update'),
+                character: z.string().describe('Character ID'),
+                content: z.string().min(1).describe('New nickname'),
+                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
+            }),
+            z.object({
+                type: z.literal('typing_ghost'),
+                character: z.string().describe('Character ID'),
+                content: z.string().optional(),
+                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
+            }),
+        ])
     ),
     should_continue: z.boolean().optional().describe('True if the conversation flow suggests the characters should keep talking (autonomous continuation).'),
     new_memories: z.array(z.string()).optional().describe('Facts to save to long-term vault'),
 })
 
-interface ChatMessage {
-    id: string
-    speaker: string
-    content: string
-    created_at: string
-    reaction?: string
-}
-
-interface ChatCharacter {
-    id: string
-    name: string
-    archetype: string
-    voice: string
-    sample: string
-}
+const requestSchema = z.object({
+    messages: z.array(z.object({
+        id: z.string().min(1).max(128),
+        speaker: z.string().min(1).max(32),
+        content: z.string().max(2000),
+        created_at: z.string(),
+        reaction: z.string().optional(),
+    })).max(40),
+    activeGangIds: z.array(z.string().min(1).max(32)).max(4).optional(),
+    activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(4).optional(),
+    userName: z.string().nullable().optional(),
+    userNickname: z.string().nullable().optional(),
+    isFirstMessage: z.boolean().optional(),
+    silentTurns: z.number().int().min(0).max(30).optional(),
+    burstCount: z.number().int().min(0).max(3).optional(),
+    chatMode: z.enum(['entourage', 'ecosystem']).optional(),
+})
 
 export async function POST(req: Request) {
     try {
         const body = await req.json()
-        const { messages, activeGang, userName, userNickname, isFirstMessage, silentTurns = 0, burstCount = 0, chatMode = 'ecosystem' } = body as {
-            messages: ChatMessage[]
-            activeGang: ChatCharacter[]
-            userName: string | null
-            userNickname: string | null
-            isFirstMessage: boolean
-            silentTurns: number
-            burstCount: number
-            chatMode: 'entourage' | 'ecosystem'
+        const parsed = requestSchema.safeParse(body)
+        if (!parsed.success) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: "Invalid request payload. Please refresh and try again.",
+                    delay: 200
+                }]
+            }, { status: 400 })
         }
+
+        const {
+            messages,
+            activeGangIds,
+            activeGang,
+            userName,
+            userNickname,
+            isFirstMessage = false,
+            silentTurns = 0,
+            burstCount = 0,
+            chatMode = 'ecosystem'
+        } = parsed.data
+
+        const requestedIds = activeGangIds ?? activeGang?.map((c) => c.id) ?? []
+        const knownIds = new Set(CHARACTERS.map((c) => c.id))
+        const filteredIds = requestedIds.filter((id) => knownIds.has(id)).slice(0, 4)
+        if (filteredIds.length !== 4) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: "Invalid squad selection. Please pick exactly 4 characters and try again.",
+                    delay: 200
+                }]
+            }, { status: 400 })
+        }
+
+        const activeGangSafe = CHARACTERS.filter((c) => filteredIds.includes(c.id))
+        const allowedSpeakers = new Set<string>(['user', ...filteredIds])
+        const safeMessages = messages
+            .filter((m) => allowedSpeakers.has(m.speaker))
+            .map((m) => ({
+                ...m,
+                content: m.content.trim().slice(0, 2000)
+            }))
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
 
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+            || req.headers.get('x-real-ip')
+            || 'unknown'
+        const rateKey = user?.id ? `chat:user:${user.id}` : `chat:ip:${ip}`
+        const rateLimitMax = user ? 60 : 20
+        const rate = await rateLimit(rateKey, rateLimitMax, 60_000)
+        if (!rate.success) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: "You're sending messages too fast. Give it a moment and try again.",
+                    delay: 200
+                }]
+            }, { status: 429 })
+        }
+
         // 1. Retrieve Memories (based on last real user message or generic context)
         let relevantMemories: { content: string }[] = []
         if (user) {
-            const lastUserMsg = messages.filter((m) => m.speaker === 'user').pop()?.content || ''
+            const lastUserMsg = safeMessages.filter((m) => m.speaker === 'user').pop()?.content || ''
             try {
                 relevantMemories = await retrieveMemories(user.id, lastUserMsg)
             } catch (err) {
@@ -66,12 +150,8 @@ export async function POST(req: Request) {
         }
 
         // 2. Contextual Logic
-        const lastMsgTime = messages.length > 0 ? new Date(messages[messages.length - 1].created_at).getTime() : Date.now()
-        const diffDays = (Date.now() - lastMsgTime) / (1000 * 60 * 60 * 24)
-        const isWelcomeBack = diffDays > 3 && !isFirstMessage
-
         // Build the characters context
-        const characterContext = activeGang
+        const characterContext = activeGangSafe
             .map((c) => `- ID: "${c.id}", Name: "${c.name}", Archetype: "${c.archetype}", Voice: "${c.voice}", Style: "${c.sample}"`)
             .join('\n')
 
@@ -122,7 +202,7 @@ export async function POST(req: Request) {
     `
 
         // Prepare conversation for LLM with IDs
-        const historyForLLM = messages.slice(-20).map(m => ({
+        const historyForLLM = safeMessages.slice(-20).map(m => ({
             id: m.id,
             speaker: m.speaker,
             content: m.content,
@@ -147,11 +227,72 @@ export async function POST(req: Request) {
             object = result.object
         }
 
-        // 3. Store New Memories
+        // 3. Persist chat history (authenticated users only)
+        if (user) {
+            try {
+                const { data: gang, error: gangError } = await supabase
+                    .from('gangs')
+                    .upsert({ user_id: user.id }, { onConflict: 'user_id' })
+                    .select('id')
+                    .single()
+
+                if (!gangError && gang?.id) {
+                    const rows: Array<{
+                        user_id: string
+                        gang_id: string
+                        speaker: string
+                        content: string
+                        is_guest: boolean
+                    }> = []
+
+                    const lastMessage = safeMessages[safeMessages.length - 1]
+                    if (lastMessage?.speaker === 'user' && lastMessage.content?.trim()) {
+                        rows.push({
+                            user_id: user.id,
+                            gang_id: gang.id,
+                            speaker: 'user',
+                            content: lastMessage.content.trim(),
+                            is_guest: false
+                        })
+                    }
+
+                    if (object?.events?.length) {
+                        object.events.forEach((event) => {
+                            if (event.type === 'message' || event.type === 'reaction') {
+                                rows.push({
+                                    user_id: user.id,
+                                    gang_id: gang.id,
+                                    speaker: event.character,
+                                    content: event.content || '👍',
+                                    is_guest: false
+                                })
+                            }
+                        })
+                    }
+
+                    if (rows.length > 0) {
+                        const { error: historyError } = await supabase
+                            .from('chat_history')
+                            .insert(rows)
+                        if (historyError) console.error('Error writing chat history:', historyError)
+                    }
+                } else if (gangError) {
+                    console.error('Error ensuring gang exists:', gangError)
+                }
+            } catch (err) {
+                console.error('Chat history persistence error:', err)
+            }
+        }
+
+        // 4. Store New Memories
         if (user && object?.new_memories && object.new_memories.length > 0) {
-            await Promise.all(
-                object.new_memories.map((content: string) => storeMemory(user.id, content))
-            )
+            try {
+                await Promise.all(
+                    object.new_memories.map((content: string) => storeMemory(user.id, content))
+                )
+            } catch (err) {
+                console.error('Failed to store memories:', err)
+            }
         }
 
         return Response.json(object)

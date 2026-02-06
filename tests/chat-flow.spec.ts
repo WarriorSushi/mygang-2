@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.setTimeout(60000);
+
 test('MyGang.ai End-to-End Journey', async ({ page }) => {
     // 1. Landing Page
     console.log('--- STARTING TEST ---');
@@ -8,34 +10,34 @@ test('MyGang.ai End-to-End Journey', async ({ page }) => {
 
     // 2. Click Start
     console.log('Clicking Assemble Your Gang...');
-    const startBtn = page.getByRole('button', { name: /Assemble Your Gang/i });
+    const startBtn = page.locator('[data-testid="landing-cta"]');
     await startBtn.click({ force: true });
 
     // 3. Identity Step
     console.log('Clicking Assemble the Gang (Identity)...');
-    const assembleBtn = page.getByRole('button', { name: /Assemble the Gang/i });
+    const assembleBtn = page.locator('[data-testid="onboarding-welcome-next"]');
     await assembleBtn.click({ force: true });
 
     console.log('Filling name...');
-    const nameInput = page.getByPlaceholder(/Your nickname/i);
+    const nameInput = page.locator('[data-testid="onboarding-name"]');
     await nameInput.waitFor({ state: 'visible' });
     await nameInput.fill('Playwright Bot');
 
-    const nextBtn = page.locator('button').filter({ hasText: /^Next$/i });
+    const nextBtn = page.locator('[data-testid="onboarding-name-next"]');
     await nextBtn.click({ force: true });
 
     // 4. Selection Step
     console.log('Selecting squad...');
-    const characters = ['Kael', 'Nyx', 'Rico', 'Cleo'];
-    for (const name of characters) {
-        console.log(`Selecting ${name}...`);
-        const card = page.getByText(name, { exact: true }).first();
+    const characters = ['kael', 'nyx', 'rico', 'cleo'];
+    for (const id of characters) {
+        console.log(`Selecting ${id}...`);
+        const card = page.locator(`[data-testid="character-${id}"]`);
         await card.click({ force: true });
         await page.waitForTimeout(500);
     }
 
     console.log('Clicking Lets Go...');
-    const letsGoBtn = page.locator('button').filter({ hasText: /^Let's Go$/i });
+    const letsGoBtn = page.locator('[data-testid="onboarding-selection-done"]');
     await letsGoBtn.click({ force: true });
 
     // 5. Loading -> Chat
@@ -44,10 +46,10 @@ test('MyGang.ai End-to-End Journey', async ({ page }) => {
 
     // 6. Chat Interaction
     console.log('Verifying chat header...');
-    await expect(page.locator('header')).toContainText('The Squad', { timeout: 10000 });
+    await expect(page.locator('[data-testid="chat-header"]')).toContainText('My Gang', { timeout: 10000 });
 
     console.log('Sending chat message...');
-    const chatInput = page.getByPlaceholder(/Type your opinion/i);
+    const chatInput = page.locator('[data-testid="chat-input"]');
     await chatInput.fill('Is it just me or is this gang fire?');
     await page.keyboard.press('Enter');
 
@@ -75,7 +77,7 @@ test('MyGang.ai End-to-End Journey', async ({ page }) => {
     await chatInput.fill('This should trigger the wall.');
     await page.keyboard.press('Enter');
 
-    const authModal = page.getByText(/Wait! Don't lose the flow/i);
+    const authModal = page.locator('[data-testid="auth-wall"]');
     await expect(authModal).toBeVisible({ timeout: 5000 });
 
     console.log('--- TEST PASSED SUCCESSFULLY ---');

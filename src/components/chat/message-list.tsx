@@ -19,6 +19,8 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
     const [isAtBottom, setIsAtBottom] = useState(true)
     const [unreadCount, setUnreadCount] = useState(0)
     const prevMessagesLength = useRef(messages.length)
+    const characterStatuses = useChatStore((state) => state.characterStatuses)
+    const isHapticEnabled = useChatStore((state) => state.isHapticEnabled)
 
     // Handle scroll events
     const handleScroll = () => {
@@ -39,7 +41,7 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
 
         if (isNewMessage) {
             // Haptic Feedback for Mobile
-            if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+            if (isHapticEnabled && typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
                 window.navigator.vibrate(10)
             }
 
@@ -54,7 +56,7 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
         }
 
         prevMessagesLength.current = messages.length
-    }, [messages, isAtBottom])
+    }, [messages, isAtBottom, isHapticEnabled])
 
     const scrollToBottom = () => {
         if (scrollRef.current) {
@@ -78,7 +80,7 @@ export function MessageList({ messages, activeGang, typingUsers }: MessageListPr
                     {messages.map((message, index) => {
                         const character = activeGang.find(c => c.id.toLowerCase().trim() === message.speaker.toLowerCase().trim())
                         const isContinued = index > 0 && messages[index - 1].speaker === message.speaker
-                        const status = useChatStore.getState().characterStatuses[message.speaker]
+                        const status = characterStatuses[message.speaker]
 
                         return (
                             <MessageItem

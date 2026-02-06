@@ -16,14 +16,6 @@ import { ChatSettings } from '@/components/chat/chat-settings'
 import { ChatInput } from '@/components/chat/chat-input'
 import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 
-interface ChatResponse {
-    responses: {
-        character: string
-        text: string
-        delay: number
-    }[]
-}
-
 export default function ChatPage() {
     const {
         messages,
@@ -31,9 +23,9 @@ export default function ChatPage() {
         userName,
         userNickname,
         isGuest,
+        isHydrated,
         addMessage,
         setIsGuest,
-        clearChat,
         setUserNickname,
         setCharacterStatus,
         chatMode
@@ -51,23 +43,35 @@ export default function ChatPage() {
 
     const isGeneratingRef = useRef(false)
     const pendingUserMessagesRef = useRef(false)
+    const pendingBlockedMessageRef = useRef<string | null>(null)
     const silentTurnsRef = useRef(0)
     const burstCountRef = useRef(0)
 
     // Guard: Redirect if no squad is selected
     useEffect(() => {
-        if (activeGang.length === 0) {
+        if (isHydrated && activeGang.length === 0) {
             router.push('/onboarding')
         }
-    }, [activeGang, router])
+    }, [activeGang, isHydrated, router])
 
     // Initial Greeting Trigger
     useEffect(() => {
-        if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && !isGenerating) {
+        if (isHydrated && activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && !isGenerating) {
             initialGreetingRef.current = true
             handleSend("") // Empty content triggers the intro logic in API
         }
-    }, [activeGang, messages.length, isGenerating])
+    }, [activeGang, messages.length, isGenerating, isHydrated])
+
+    useEffect(() => {
+        if (showAuthWall && !isGuest) {
+            setShowAuthWall(false)
+            const pending = pendingBlockedMessageRef.current
+            pendingBlockedMessageRef.current = null
+            if (pending) {
+                handleSend(pending)
+            }
+        }
+    }, [isGuest, showAuthWall])
 
     const handleSend = async (content: string) => {
         const isIntro = content.trim() === "" && messages.length === 0
@@ -75,6 +79,12 @@ export default function ChatPage() {
 
         // 1. NON-BLOCKING INPUT: Add message to UI immediately
         if (!isIntro && !isAutonomous && content.trim()) {
+            // Trigger Auth Wall before writing message to timeline
+            if (isGuest && messages.some(m => m.speaker === 'user')) {
+                pendingBlockedMessageRef.current = content
+                setShowAuthWall(true)
+                return
+            }
             const userMsg: Message = {
                 id: Date.now().toString(),
                 speaker: 'user',
@@ -110,12 +120,6 @@ export default function ChatPage() {
             }
         }
 
-        // Trigger Auth Wall if guest tries to send their first reply
-        if (isGuest && messages.some(m => m.speaker === 'user')) {
-            setShowAuthWall(true)
-            return
-        }
-
         setIsGenerating(true)
         isGeneratingRef.current = true
 
@@ -140,7 +144,7 @@ export default function ChatPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: currentMessages,
-                    activeGang,
+                    activeGangIds: activeGang.map(c => c.id),
                     userName,
                     userNickname,
                     isFirstMessage: currentMessages.length === 0 && isIntro,
@@ -150,9 +154,40 @@ export default function ChatPage() {
                 })
             })
 
-            if (!res.ok) throw new Error('Failed to fetch')
+            let data: { events: any[], should_continue?: boolean } | null = null
+            try {
+                data = await res.json()
+            } catch (err) {
+                console.error('Failed to parse response:', err)
+            }
 
-            const data: { events: any[], should_continue?: boolean } = await res.json()
+            if (!res.ok) {
+                if (!data?.events) {
+                    addMessage({
+                        id: `ai-error-${Date.now()}`,
+                        speaker: 'system',
+                        content: "The gang portal is glitching. Try again.",
+                        created_at: new Date().toISOString()
+                    })
+                } else {
+                    data.events.forEach((event) => {
+                        if (event.type === 'message') {
+                            addMessage({
+                                id: `ai-error-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                                speaker: event.character,
+                                content: event.content || "The gang portal is glitching. Try again.",
+                                created_at: new Date().toISOString(),
+                                replyToId: event.target_message_id
+                            })
+                        }
+                    })
+                }
+                return
+            }
+
+            if (!data?.events) {
+                throw new Error('Invalid response shape')
+            }
 
             setTypingUsers([])
 
@@ -170,9 +205,10 @@ export default function ChatPage() {
                 if (pendingUserMessagesRef.current) break
 
                 switch (event.type) {
-                    case 'message':
+                    case 'message': {
                         setTypingUsers(prev => [...prev, event.character])
-                        const typingTime = Math.max(1000, event.content.length * 30 + Math.random() * 500)
+                        const eventContent = event.content || ''
+                        const typingTime = Math.max(1000, eventContent.length * 30 + Math.random() * 500)
                         await new Promise(r => setTimeout(r, typingTime))
 
                         // Final interruption check before committing message
@@ -181,21 +217,22 @@ export default function ChatPage() {
                         addMessage({
                             id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                             speaker: event.character,
-                            content: event.content,
+                            content: eventContent,
                             created_at: new Date().toISOString(),
                             replyToId: event.target_message_id
                         })
                         if (isAutonomous || isIntro) silentTurnsRef.current++
                         setTypingUsers(prev => prev.filter(u => u !== event.character))
                         break
+                    }
 
                     case 'reaction':
                         addMessage({
                             id: `ai-react-${Date.now()}`,
                             speaker: event.character,
-                            content: event.content || '👍',
+                            content: event.content || '\u{1F44D}',
                             created_at: new Date().toISOString(),
-                            reaction: event.content || '👍',
+                            reaction: event.content || '\u{1F44D}',
                             replyToId: event.target_message_id
                         })
                         if (isAutonomous || isIntro) silentTurnsRef.current++

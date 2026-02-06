@@ -50,7 +50,7 @@ export const CHARACTERS = [
         color: '#FF4500', // Orange-Red
         archetype: 'The Chaos',
         voice: 'Loud, impulsive party animal',
-        sample: 'TEXT YOUR EX!!!! DO IT!!! NO REGRETS YOLO 🚨🚨🚨',
+        sample: 'TEXT YOUR EX!!!! DO IT!!! NO REGRETS YOLO \u{1F6A8}\u{1F6A8}\u{1F6A8}',
         gradient: 'from-orange-500 to-red-600',
         avatar: '/avatars/rico.png',
     },

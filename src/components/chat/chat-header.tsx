@@ -22,7 +22,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings }: ChatHead
     }, [])
 
     return (
-        <header className="p-4 border-b border-white/10 flex justify-between items-center backdrop-blur-md bg-white/5 z-10 w-full">
+        <header data-testid="chat-header" className="p-4 border-b border-white/10 flex justify-between items-center backdrop-blur-md bg-white/5 z-10 w-full">
             <div className="flex items-center gap-2 sm:gap-3">
                 <div className="flex -space-x-3 sm:-space-x-2">
                     {activeGang.map((char) => (
