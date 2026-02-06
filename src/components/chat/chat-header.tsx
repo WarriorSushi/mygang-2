@@ -26,34 +26,34 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
     }, [])
 
     return (
-        <header data-testid="chat-header" className="p-4 pt-safe border-b border-white/10 flex flex-wrap justify-between items-center gap-3 backdrop-blur-md bg-white/5 z-10 w-full">
-            <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex -space-x-3 sm:-space-x-2">
+        <header data-testid="chat-header" className="px-4 sm:px-6 pt-safe pb-3 sm:pb-4 border-b border-white/10 flex flex-wrap justify-between items-center gap-4 backdrop-blur-md bg-white/5 z-10 w-full">
+            <div className="flex items-center gap-3 sm:gap-4">
+                <div className="flex -space-x-2 sm:-space-x-2">
                     {activeGang.map((char) => (
                         <Avatar
                             key={char.id}
-                            className="border border-background ring-1 ring-primary/10 w-6 h-6 sm:w-8 sm:h-8"
+                            className="border border-background ring-1 ring-primary/10 w-8 h-8 sm:w-9 sm:h-9"
                             title={char.name}
                         >
                             {char.avatar && (
                                 <Image
                                     src={char.avatar}
                                     alt={char.name}
-                                    width={32}
-                                    height={32}
+                                    width={36}
+                                    height={36}
                                     className="object-cover"
-                                    sizes="(max-width: 640px) 24px, 32px"
+                                    sizes="(max-width: 640px) 32px, 36px"
                                     priority={false}
                                 />
                             )}
-                            <AvatarFallback className="text-[8px] bg-muted">{char.name[0]}</AvatarFallback>
+                            <AvatarFallback className="text-[10px] bg-muted">{char.name[0]}</AvatarFallback>
                         </Avatar>
                     ))}
                 </div>
                 <div className="flex flex-col">
-                    <h1 className="font-bold text-[10px] sm:text-sm leading-none">My Gang</h1>
-                    <span className="text-[8px] sm:text-[10px] text-muted-foreground flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <h1 className="font-bold text-sm sm:text-base leading-none">My Gang</h1>
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                         {activeGang.length} Online
                         {typingCount > 0 && <span> - {typingCount} typing</span>}
                         {memoryActive && <span> - Memory Active</span>}
@@ -61,16 +61,16 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                 </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:gap-3">
                 <Button
                     variant="ghost"
                     size="icon"
                     onClick={onOpenVault}
                     title="Memory Vault"
                     aria-label="Manage AI memories"
-                    className="rounded-full text-muted-foreground hover:text-primary transition-colors"
+                    className="rounded-full text-muted-foreground hover:text-primary transition-colors size-10 sm:size-11"
                 >
-                    <Brain size={18} />
+                    <Brain size={20} />
                 </Button>
                 <Button
                     variant="ghost"
@@ -78,9 +78,9 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                     onClick={onOpenSettings}
                     title="Gang Settings"
                     aria-label="Open settings"
-                    className="rounded-full text-muted-foreground hover:text-primary transition-colors"
+                    className="rounded-full text-muted-foreground hover:text-primary transition-colors size-10 sm:size-11"
                 >
-                    <Settings2 size={18} />
+                    <Settings2 size={20} />
                 </Button>
                 <Button
                     variant="ghost"
@@ -94,7 +94,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                     }}
                 >
                     {mounted ? (
-                        theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />
+                        theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />
                     ) : (
                         <div className="w-5 h-5" />
                     )}
