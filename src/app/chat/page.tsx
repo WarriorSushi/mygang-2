@@ -834,7 +834,7 @@ export default function ChatPage() {
                 />
 
                 <div className="flex-1 flex flex-col min-h-0 relative">
-                    <div className="px-4 md:px-10 lg:px-20">
+                    <div className="px-4 md:px-10 lg:px-14">
                         {showResumeBanner && (
                             <div className="mb-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                                 {resumeBannerText}
@@ -858,7 +858,7 @@ export default function ChatPage() {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-border/70 bg-card/95 dark:bg-[rgba(14,22,37,0.9)] backdrop-blur-xl px-0 pb-0 sm:border-t sm:bg-card/90 sm:dark:bg-[rgba(14,22,37,0.86)] sm:backdrop-blur-xl sm:px-10 lg:px-20 sm:pb-3">
+                <div className="shrink-0 border-t border-border/70 bg-card/95 dark:bg-[rgba(14,22,37,0.9)] backdrop-blur-xl px-0 pb-0 sm:border-t sm:bg-card/90 sm:dark:bg-[rgba(14,22,37,0.86)] sm:backdrop-blur-xl sm:px-10 lg:px-14 sm:pb-3">
                     {!isOnline && (
                         <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
                             Offline mode - reconnect to send messages

@@ -69,15 +69,15 @@ function contrastRatio(a: Rgb, b: Rgb) {
 }
 
 function ensureReadablePersonaNameOnLight(color: Rgb) {
-    const lightBackdrop: Rgb = { r: 236, g: 242, b: 248 }
-    const darkTarget: Rgb = { r: 8, g: 14, b: 28 }
-    for (let ratio = 0; ratio <= 0.92; ratio += 0.08) {
+    const lightBackdrop: Rgb = { r: 240, g: 245, b: 250 }
+    const darkTarget: Rgb = { r: 8, g: 12, b: 18 }
+    for (let ratio = 0.72; ratio <= 0.94; ratio += 0.04) {
         const candidate = mixRgb(color, darkTarget, ratio)
-        if (contrastRatio(candidate, lightBackdrop) >= 4.8) {
+        if (contrastRatio(candidate, lightBackdrop) >= 7.0) {
             return candidate
         }
     }
-    return mixRgb(color, darkTarget, 0.78)
+    return mixRgb(color, darkTarget, 0.9)
 }
 
 interface TypingIndicatorProps {

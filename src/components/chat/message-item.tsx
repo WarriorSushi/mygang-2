@@ -90,15 +90,15 @@ function pickReadableTextColor(background: Rgb) {
 }
 
 function ensureReadablePersonaNameOnLight(color: Rgb) {
-    const lightBackdrop: Rgb = { r: 236, g: 242, b: 248 }
-    const darkTarget: Rgb = { r: 8, g: 14, b: 28 }
-    for (let ratio = 0; ratio <= 0.92; ratio += 0.08) {
+    const lightBackdrop: Rgb = { r: 240, g: 245, b: 250 }
+    const darkTarget: Rgb = { r: 8, g: 12, b: 18 }
+    for (let ratio = 0.72; ratio <= 0.94; ratio += 0.04) {
         const candidate = mixRgb(color, darkTarget, ratio)
-        if (contrastRatio(candidate, lightBackdrop) >= 4.8) {
+        if (contrastRatio(candidate, lightBackdrop) >= 7.0) {
             return candidate
         }
     }
-    return mixRgb(color, darkTarget, 0.78)
+    return mixRgb(color, darkTarget, 0.9)
 }
 
 function truncateText(value: string, maxChars: number) {
@@ -205,8 +205,8 @@ function MessageItemComponent({
     const quotePreviewRaw = quotedMessage
         ? (quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content)
         : ''
-    const quotePreviewShort = truncateText(quotePreviewRaw, 54)
-    const quotePreviewLong = truncateText(quotePreviewRaw, 104)
+    const quotePreviewShort = truncateText(quotePreviewRaw, 38)
+    const quotePreviewLong = truncateText(quotePreviewRaw, 72)
 
     const clearLongPressTimer = () => {
         if (!longPressTimerRef.current) return
@@ -254,7 +254,7 @@ function MessageItemComponent({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: animateOnMount ? (isFastMode ? 0.12 : 0.22) : 0.01, ease: 'easeOut' }}
             className={cn(
-                "group relative flex flex-col w-fit max-w-[min(84vw,30rem)] sm:max-w-[min(72vw,38rem)]",
+                "group relative flex flex-col w-auto max-w-[80vw] sm:max-w-[66vw] lg:max-w-[34rem]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
                 isContinued ? "mt-0.5" : "mt-6", // Tighter chain spacing for consecutive bubbles
@@ -298,11 +298,11 @@ function MessageItemComponent({
                 </div>
             )}
 
-            <div ref={actionWrapRef} className={cn('relative min-w-0', isUser ? 'self-end' : 'self-start')}>
+            <div ref={actionWrapRef} className={cn('relative min-w-0 max-w-full', isUser ? 'self-end' : 'self-start')}>
                 <GlassCard
                     variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
                     className={cn(
-                        "p-2.5 px-3 sm:p-3 sm:px-3.5 transition-all duration-200 z-10 border border-[1px] shadow-sm backdrop-blur-none",
+                        "max-w-full p-2.5 px-3 sm:p-3 sm:px-3.5 transition-all duration-200 z-10 border border-[1px] shadow-sm backdrop-blur-none",
                         isUser
                             ? cn("text-primary-foreground", userShape)
                             : isReaction

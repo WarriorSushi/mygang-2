@@ -84,7 +84,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
     return (
         <div className="px-3 sm:px-0 pt-1 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] sm:pb-0 z-20">
             {replyingTo && (
-                <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border/70 bg-card/85 dark:bg-[rgba(15,23,42,0.82)] px-3 py-2">
+                <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border/70 bg-card/85 dark:bg-[rgba(22,35,52,0.92)] px-3 py-2 lg:w-1/2 lg:mx-auto">
                     <div className="min-w-0">
                         <p className="text-[10px] uppercase tracking-widest text-foreground/70 dark:text-white/75">Replying to {replyingTo.speaker === 'user' ? 'You' : replyingTo.speaker}</p>
                         <p className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs text-foreground/85 dark:text-white/90">{replyingTo.content}</p>
@@ -103,7 +103,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             )}
             <form
                 onSubmit={handleSubmit}
-                className="relative flex items-end gap-2 border border-border/70 bg-card/95 dark:bg-[rgba(16,24,40,0.86)] p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/60"
+                className="relative flex items-end gap-2 border border-border/85 bg-background/96 dark:border-white/20 dark:bg-[rgba(34,51,74,0.98)] p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/70 dark:focus-within:border-white/35 lg:w-1/2 lg:mx-auto"
             >
                 <textarea
                     ref={inputRef}
@@ -112,7 +112,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     onKeyDown={handleKeyDown}
                     data-testid="chat-input"
                     placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
-                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none px-1 py-2.5 text-[16px] md:text-[15px] leading-6 max-h-32 min-h-[44px] scrollbar-hide"
+                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none px-1 py-2.5 text-[16px] md:text-[15px] leading-6 text-foreground placeholder:text-muted-foreground/80 max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
                 />
                 <Button

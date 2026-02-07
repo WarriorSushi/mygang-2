@@ -183,7 +183,7 @@ export function MessageList({
                 data-testid="chat-scroll"
             >
                 {(hasMoreHistory || loadingHistory) && (
-                    <div className="px-4 md:px-10 lg:px-20 pb-2">
+                    <div className="px-4 md:px-10 lg:px-14 pb-2">
                         <div className="flex justify-center">
                             <Button
                                 type="button"
@@ -208,7 +208,7 @@ export function MessageList({
                                     key="typing-row"
                                     ref={rowVirtualizer.measureElement}
                                     data-index={index}
-                                    className="px-4 md:px-10 lg:px-20"
+                                    className="px-4 md:px-10 lg:px-14"
                                     style={{
                                         position: 'absolute',
                                         top: 0,
@@ -247,7 +247,7 @@ export function MessageList({
                                 key={message.id}
                                 ref={rowVirtualizer.measureElement}
                                 data-index={index}
-                                className="px-4 md:px-10 lg:px-20"
+                                className="px-4 md:px-10 lg:px-14"
                                 style={{
                                     position: 'absolute',
                                     top: 0,
