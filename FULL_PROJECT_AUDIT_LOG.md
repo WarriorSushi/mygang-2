@@ -198,3 +198,28 @@ Date: 2026-02-07
 ### Verification (Chat UX Reliability Sprint)
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
+
+## Chat Scroll UX Sprint
+Date: 2026-02-07
+
+### Problem
+- "Jump to latest" appeared as a top sticky strip and did not match expected chat-app behavior.
+- Initial load could open above the latest message for resumed chats.
+- Auto-scroll needed stronger, app-like rules for incoming vs self-sent messages while scrolled up.
+
+### Fixes Implemented
+- Reworked message list scroll controls in `src/components/chat/message-list.tsx`:
+  - Removed top sticky "Jump to latest" banner.
+  - Added bottom-right floating arrow-only button (mobile + desktop responsive).
+- Added deterministic initial bottom pinning:
+  - On first render with messages, auto-scrolls to latest entry.
+- Implemented message-app style auto-scroll rules:
+  - If user is at bottom, new messages keep viewport pinned to latest.
+  - If user is scrolled up, incoming messages do not force-scroll.
+  - If a new user-authored message is appended while scrolled up, viewport snaps back to latest.
+  - Typing/status row appearance keeps bottom pin only when already at bottom.
+- Tightened bottom detection threshold for smoother behavior (`48px`).
+
+### Verification (Chat Scroll UX Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS
