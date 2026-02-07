@@ -7,10 +7,9 @@ interface TypingIndicatorProps {
     typingUsers: string[]
     activeGang: Character[]
     activityStatuses?: Record<string, string>
-    showPersonaRoles?: boolean
 }
 
-export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}, showPersonaRoles = true }: TypingIndicatorProps) {
+export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {} }: TypingIndicatorProps) {
     const activityEntries = Object.entries(activityStatuses).filter(([id, status]) => status && !typingUsers.includes(id))
     return (
         <div className="flex flex-col gap-1.5 ml-2">
@@ -32,8 +31,7 @@ export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}
                                 <span className="w-1 h-1 rounded-full bg-primary" style={{ backgroundColor: character.color }} />
                             </div>
                             <span className="font-bold italic uppercase tracking-tighter opacity-80" style={{ color: character.color }}>
-                                {character.name}
-                                {showPersonaRoles && (character.roleLabel || character.archetype) ? ` (${character.roleLabel || character.archetype})` : ''} {status}
+                                {character.name} {status}
                             </span>
                         </motion.div>
                     )
@@ -56,8 +54,7 @@ export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}
                                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ backgroundColor: character.color }} />
                             </div>
                             <span className="font-bold italic uppercase tracking-tighter opacity-80" style={{ color: character.color }}>
-                                {character.name}
-                                {showPersonaRoles && (character.roleLabel || character.archetype) ? ` (${character.roleLabel || character.archetype})` : ''} is typing...
+                                {character.name} is typing...
                             </span>
                         </motion.div>
                     )

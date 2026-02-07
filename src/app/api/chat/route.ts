@@ -292,6 +292,7 @@ export async function POST(req: Request) {
 
         const userMessages = safeMessages.filter((m) => m.speaker === 'user')
         const lastUserMessage = userMessages[userMessages.length - 1]
+        const latestUserMessageId = lastUserMessage?.id
         const previousUserMessage = userMessages[userMessages.length - 2]
         const latestMessage = safeMessages[safeMessages.length - 1]
         const hasFreshUserTurn = latestMessage?.speaker === 'user'
@@ -425,7 +426,8 @@ ${sessionSummary}
         }
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
 
-        const baseResponders = chatMode === 'entourage' ? 2 : 3
+        const isEntourageMode = chatMode === 'entourage'
+        const baseResponders = isEntourageMode ? 1 : 3
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = lastUserMsg.length < 40 ? Math.min(2, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
@@ -459,7 +461,7 @@ ${sessionSummary}
     == RULES (SQUAD BANTER 6.1: DIRECTOR EXILE) ==
     == MODE: ${chatMode.toUpperCase()} ==
     ${chatMode === 'entourage'
-                ? "- USER-CENTRIC: The gang responds to the user. Multiple characters can chime in to address the user directly in a single 'Screenplay'. Minimal side-talk between characters. Keep the user as the focal point."
+                ? "- USER-CENTRIC STRICT: Speak directly to the user only. No character-to-character side banter. Every message should clearly address the user and move their request forward."
                 : "- AUTONOMOUS: The gang can banter with each other, but keep the user included. Deep immersion."}
     
     == TEMPORAL PRIORITY (CRITICAL) ==
@@ -605,6 +607,23 @@ ${allowedStatusList}
             object.events = object.events.filter((event) => {
                 if (event.type === 'status_update' || event.type === 'nickname_update' || event.type === 'typing_ghost') return true
                 return responderSet.has(event.character)
+            })
+        }
+
+        if (isEntourageMode) {
+            object.should_continue = false
+            let focusedCount = 0
+            object.events = object.events.filter((event) => {
+                if (event.type === 'typing_ghost') return false
+                if (event.type === 'message' || event.type === 'reaction') {
+                    if (focusedCount >= 4) return false
+                    focusedCount += 1
+                    if (latestUserMessageId) {
+                        event.target_message_id = latestUserMessageId
+                    }
+                    return true
+                }
+                return true
             })
         }
 

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useChatStore } from '@/stores/chat-store'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Settings2, Zap, Trash2, Camera, ChevronRight, ArrowLeft, Paintbrush, ScanLine, Tags } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { updateUserSettings } from '@/app/auth/actions'
@@ -27,7 +26,7 @@ function wallpaperPreviewClass(id: ChatWallpaper) {
     if (id === 'aurora') return 'bg-[radial-gradient(circle_at_10%_20%,rgba(45,212,191,0.8),rgba(45,212,191,0.05)_45%),radial-gradient(circle_at_85%_20%,rgba(147,51,234,0.8),rgba(147,51,234,0.05)_45%),radial-gradient(circle_at_50%_90%,rgba(96,165,250,0.65),rgba(96,165,250,0.06)_45%)]'
     if (id === 'sunset') return 'bg-[radial-gradient(circle_at_15%_25%,rgba(251,146,60,0.8),rgba(251,146,60,0.05)_45%),radial-gradient(circle_at_80%_20%,rgba(244,63,94,0.75),rgba(244,63,94,0.05)_45%),radial-gradient(circle_at_45%_90%,rgba(250,204,21,0.65),rgba(250,204,21,0.06)_45%)]'
     if (id === 'graphite') return 'bg-[linear-gradient(155deg,rgba(30,41,59,0.95),rgba(15,23,42,0.95)),repeating-linear-gradient(135deg,rgba(255,255,255,0.03)_0,rgba(255,255,255,0.03)_2px,transparent_2px,transparent_8px)]'
-    if (id === 'midnight') return 'bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(3,7,18,0.98))]'
+    if (id === 'midnight') return 'bg-[linear-gradient(180deg,rgba(241,245,249,0.95),rgba(226,232,240,0.95))]'
     return 'bg-[radial-gradient(circle_at_20%_25%,rgba(99,102,241,0.75),rgba(99,102,241,0.06)_45%),radial-gradient(circle_at_80%_25%,rgba(16,185,129,0.7),rgba(16,185,129,0.05)_45%),radial-gradient(circle_at_50%_90%,rgba(236,72,153,0.6),rgba(236,72,153,0.06)_45%)]'
 }
 
@@ -179,14 +178,43 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <Zap size={12} className="text-amber-400" />
                                     <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Intelligence</Label>
                                 </div>
-                                <Tabs value={chatMode} onValueChange={handleChatModeChange}>
-                                    <TabsList className="grid h-10 grid-cols-2 rounded-xl border border-border/70 bg-card/60 p-1">
-                                        <TabsTrigger value="entourage" className="rounded-lg text-[10px] uppercase tracking-widest">Gang Focus</TabsTrigger>
-                                        <TabsTrigger value="ecosystem" className="rounded-lg text-[10px] uppercase tracking-widest">Ecosystem</TabsTrigger>
-                                    </TabsList>
-                                </Tabs>
+                                <div className="rounded-2xl border border-border/70 bg-card/55 p-1.5">
+                                    <div className="relative grid grid-cols-2 gap-1">
+                                        <div
+                                            className={cn(
+                                                "absolute inset-y-0 w-[calc(50%-2px)] rounded-xl bg-primary shadow-[0_8px_24px_-14px_rgba(16,185,129,0.9)] transition-transform duration-300",
+                                                chatMode === 'ecosystem' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
+                                            )}
+                                            aria-hidden="true"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleChatModeChange('entourage')}
+                                            className={cn(
+                                                "relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors",
+                                                chatMode === 'entourage' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                            )}
+                                            aria-pressed={chatMode === 'entourage'}
+                                        >
+                                            Gang Focus
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleChatModeChange('ecosystem')}
+                                            className={cn(
+                                                "relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors",
+                                                chatMode === 'ecosystem' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                            )}
+                                            aria-pressed={chatMode === 'ecosystem'}
+                                        >
+                                            Ecosystem
+                                        </button>
+                                    </div>
+                                </div>
                                 <p className="text-[11px] text-muted-foreground">
-                                    {chatMode === 'entourage' ? 'Focused on user prompt. Minimal side chatter.' : 'Natural group banter and side interactions.'}
+                                    {chatMode === 'entourage'
+                                        ? 'Focused on your message only. Minimal side chatter and no autonomous drifts.'
+                                        : 'Natural group banter, autonomous turns, and richer side interactions.'}
                                 </p>
                             </div>
                         </div>

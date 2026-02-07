@@ -186,7 +186,6 @@ export function MessageList({
                                         typingUsers={typingUsers}
                                         activeGang={activeGang}
                                         activityStatuses={characterStatuses}
-                                        showPersonaRoles={showPersonaRoles}
                                     />
                                 </div>
                             )

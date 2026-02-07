@@ -257,10 +257,20 @@
 }
 
 .chat-wallpaper-layer[data-wallpaper='midnight'] {
-  background: linear-gradient(180deg, #050505 0%, #030303 100%);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(148, 163, 184, 0.24), transparent 45%),
+    linear-gradient(180deg, rgba(241, 245, 249, 0.98) 0%, rgba(226, 232, 240, 0.98) 100%);
 }
 
 .chat-wallpaper-layer[data-wallpaper='midnight']::after {
+  opacity: 0.16;
+}
+
+.dark .chat-wallpaper-layer[data-wallpaper='midnight'] {
+  background: linear-gradient(180deg, #050505 0%, #030303 100%);
+}
+
+.dark .chat-wallpaper-layer[data-wallpaper='midnight']::after {
   opacity: 0;
 }
 

@@ -296,3 +296,34 @@ Date: 2026-02-07
 ### Verification (Chat Polish and Accessibility Sprint)
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
+
+## Chat Modes and Composer Layout Sprint
+Date: 2026-02-07
+
+### Problems
+- `midnight` wallpaper stayed dark in light theme.
+- Bottom composer area still looked like a floating boxed panel, especially on mobile.
+- Intelligence mode toggle feedback felt weak and mode behavior differences were not obvious enough.
+- Status rows showed persona role tags (e.g. `Kael (the hype man)`) when only names were desired.
+
+### Fixes Implemented
+- Wallpaper light/dark parity:
+  - `src/app/globals.css`: `midnight` now has a light-theme variant and a dark-theme override.
+  - `src/components/chat/chat-settings.tsx`: updated `midnight` preview tile to match light-mode look.
+- Composer and bottom bar behavior:
+  - `src/app/chat/page.tsx`: bottom composer container now behaves as a solid anchored bottom bar on mobile and removes extra outer rectangle on desktop.
+  - `src/components/chat/chat-input.tsx`: removed extra floating shell effect and tightened spacing for clean single-input presentation.
+- Stronger intelligence mode UX + behavior:
+  - `src/components/chat/chat-settings.tsx`: replaced basic tabs with a satisfying animated segmented control in Intelligence submenu.
+  - `src/app/api/chat/route.ts`: stricter mode enforcement:
+    - `entourage` now uses stricter user-centric rules and single responder planning.
+    - `entourage` hard-disables auto-continue and strips typing-ghost chatter.
+    - `entourage` anchors outbound events to the latest user message id where possible.
+  - `src/app/chat/page.tsx`: autonomous activity pulses now only run in `ecosystem`.
+- Status row naming:
+  - `src/components/chat/typing-indicator.tsx`: removed persona role tags from status and typing lines.
+  - `src/components/chat/message-list.tsx`: removed unused role-prop pass-through to typing indicator.
+
+### Verification (Chat Modes and Composer Layout Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS

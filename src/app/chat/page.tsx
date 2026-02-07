@@ -442,7 +442,7 @@ export default function ChatPage() {
 
         isGeneratingRef.current = true
 
-        if (isAutonomous) {
+        if (isAutonomous && chatMode === 'ecosystem') {
             triggerActivityPulse()
         }
 
@@ -715,9 +715,9 @@ export default function ChatPage() {
                     </div>
                 </div>
 
-                <div className="px-4 md:px-10 lg:px-20 pb-4 shrink-0">
+                <div className="shrink-0 border-t border-border/70 bg-card/95 backdrop-blur-xl px-0 pb-0 sm:border-t-0 sm:bg-transparent sm:backdrop-blur-0 sm:px-10 lg:px-20 sm:pb-3">
                     {!isOnline && (
-                        <div className="mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
+                        <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
                             Offline mode - reconnect to send messages
                         </div>
                     )}

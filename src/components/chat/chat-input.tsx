@@ -67,7 +67,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
     }
 
     return (
-        <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] bg-background/60 backdrop-blur-md z-20 border-t border-border/60">
+        <div className="px-3 sm:px-0 pt-2 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] sm:pb-0 z-20">
             {replyingTo && (
                 <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <div className="min-w-0">
@@ -88,7 +88,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             )}
             <form
                 onSubmit={handleSubmit}
-                className="relative flex items-end gap-2 bg-card/85 border border-border/70 p-2 px-3 rounded-2xl shadow-sm transition-colors focus-within:border-primary/60"
+                className="relative flex items-end gap-2 bg-card/95 border border-border/70 p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/60 sm:translate-y-1"
             >
                 <textarea
                     ref={inputRef}
@@ -111,7 +111,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     <Send size={18} />
                 </Button>
             </form>
-            <div className="mt-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-widest text-muted-foreground/60">
+            <div className="mt-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-widest text-muted-foreground/60 pb-1 sm:pb-0">
                 <span className="hidden sm:inline">Enter to send - Shift+Enter newline</span>
                 <span>{input.length}/{MAX_CHARS}</span>
             </div>
