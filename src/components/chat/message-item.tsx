@@ -18,6 +18,7 @@ interface MessageItemProps {
     isContinued?: boolean
     groupPosition?: 'single' | 'first' | 'middle' | 'last'
     isFastMode?: boolean
+    animateOnMount?: boolean
     quotedMessage?: Message | null
     quotedSpeaker?: Character | null
     seenBy?: string[]
@@ -34,6 +35,7 @@ function MessageItemComponent({
     isContinued,
     groupPosition = 'single',
     isFastMode = false,
+    animateOnMount = false,
     quotedMessage = null,
     quotedSpeaker = null,
     seenBy = [],
@@ -106,9 +108,9 @@ function MessageItemComponent({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            initial={animateOnMount ? { opacity: 0, y: 10, scale: 0.95 } : false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: isFastMode ? 0.12 : 0.25, ease: 'easeOut' }}
+            transition={{ duration: animateOnMount ? (isFastMode ? 0.12 : 0.22) : 0.01, ease: 'easeOut' }}
             className={cn(
                 "group relative flex flex-col max-w-[85%]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",

@@ -39,6 +39,8 @@ export function MessageList({
 }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollRafRef = useRef<number | null>(null)
+    const animationCleanupRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const animatedMessageIdsRef = useRef<Set<string>>(new Set())
     const didInitialScrollRef = useRef(false)
     const [isAtBottom, setIsAtBottom] = useState(true)
     const prevMessagesLength = useRef(messages.length)
@@ -92,7 +94,7 @@ export function MessageList({
         count: itemCount,
         getScrollElement: () => scrollRef.current,
         estimateSize: () => 120,
-        overscan: 8,
+        overscan: 12,
         measureElement: (el) => el.getBoundingClientRect().height,
     })
 
@@ -120,6 +122,9 @@ export function MessageList({
             if (scrollRafRef.current !== null) {
                 window.cancelAnimationFrame(scrollRafRef.current)
             }
+            if (animationCleanupRef.current) {
+                clearTimeout(animationCleanupRef.current)
+            }
         }
     }, [])
 
@@ -142,6 +147,14 @@ export function MessageList({
         if (isNewMessage) {
             const appendedMessages = messages.slice(previousLength)
             const hasUserMessage = appendedMessages.some((m) => m.speaker === 'user')
+            appendedMessages.forEach((m) => animatedMessageIdsRef.current.add(m.id))
+            if (animationCleanupRef.current) {
+                clearTimeout(animationCleanupRef.current)
+            }
+            animationCleanupRef.current = setTimeout(() => {
+                animatedMessageIdsRef.current.clear()
+                animationCleanupRef.current = null
+            }, 1200)
 
             if (isAtBottom || hasUserMessage) {
                 scrollToBottom()
@@ -251,6 +264,7 @@ export function MessageList({
                                     groupPosition={groupPosition}
                                     status={status}
                                     isFastMode={isFastMode}
+                                    animateOnMount={animatedMessageIdsRef.current.has(message.id)}
                                     quotedMessage={quotedMessage}
                                     quotedSpeaker={quotedSpeaker}
                                     seenBy={seenBy}
