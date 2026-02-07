@@ -11,6 +11,84 @@ import { saveMemoryManual } from '@/app/auth/actions'
 import { Bookmark, Heart, Reply } from 'lucide-react'
 import Image from 'next/image'
 
+type Rgb = { r: number; g: number; b: number }
+
+const FALLBACK_RGB: Rgb = { r: 99, g: 102, b: 241 }
+
+function clampByte(value: number) {
+    return Math.max(0, Math.min(255, Math.round(value)))
+}
+
+function parseColorToRgb(color?: string | null): Rgb {
+    if (!color) return FALLBACK_RGB
+    const value = color.trim()
+    if (value.startsWith('#')) {
+        const hex = value.slice(1)
+        if (hex.length === 3) {
+            return {
+                r: parseInt(`${hex[0]}${hex[0]}`, 16),
+                g: parseInt(`${hex[1]}${hex[1]}`, 16),
+                b: parseInt(`${hex[2]}${hex[2]}`, 16),
+            }
+        }
+        if (hex.length === 6) {
+            return {
+                r: parseInt(hex.slice(0, 2), 16),
+                g: parseInt(hex.slice(2, 4), 16),
+                b: parseInt(hex.slice(4, 6), 16),
+            }
+        }
+    }
+    const rgbMatch = value.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/i)
+    if (rgbMatch) {
+        return {
+            r: clampByte(Number(rgbMatch[1])),
+            g: clampByte(Number(rgbMatch[2])),
+            b: clampByte(Number(rgbMatch[3])),
+        }
+    }
+    return FALLBACK_RGB
+}
+
+function mixRgb(a: Rgb, b: Rgb, ratio: number): Rgb {
+    const t = Math.max(0, Math.min(1, ratio))
+    return {
+        r: clampByte(a.r * (1 - t) + b.r * t),
+        g: clampByte(a.g * (1 - t) + b.g * t),
+        b: clampByte(a.b * (1 - t) + b.b * t),
+    }
+}
+
+function toRgbString(color: Rgb) {
+    return `rgb(${color.r}, ${color.g}, ${color.b})`
+}
+
+function channelToLinear(channel: number) {
+    const v = channel / 255
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+}
+
+function luminance(color: Rgb) {
+    const r = channelToLinear(color.r)
+    const g = channelToLinear(color.g)
+    const b = channelToLinear(color.b)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+function contrastRatio(a: Rgb, b: Rgb) {
+    const l1 = luminance(a)
+    const l2 = luminance(b)
+    const lighter = Math.max(l1, l2)
+    const darker = Math.min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
+}
+
+function pickReadableTextColor(background: Rgb) {
+    const dark: Rgb = { r: 12, g: 22, b: 36 }
+    const light: Rgb = { r: 245, g: 249, b: 255 }
+    return contrastRatio(background, dark) >= contrastRatio(background, light) ? dark : light
+}
+
 interface MessageItemProps {
     message: Message
     character?: Character
@@ -45,6 +123,7 @@ function MessageItemComponent({
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
     const { theme } = useTheme()
+    const isDark = theme === 'dark'
     const [showActions, setShowActions] = useState(false)
     const actionWrapRef = useRef<HTMLDivElement>(null)
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -63,6 +142,23 @@ function MessageItemComponent({
         middle: 'rounded-2xl rounded-tl-sm rounded-bl-sm',
         last: 'rounded-2xl rounded-tl-sm',
     }[groupPosition]
+
+    const baseRgb = parseColorToRgb(character?.color)
+    const aiBubbleRgb = isDark
+        ? mixRgb(baseRgb, { r: 10, g: 18, b: 32 }, 0.58)
+        : mixRgb(baseRgb, { r: 246, g: 249, b: 252 }, 0.77)
+    const aiBorderRgb = isDark
+        ? mixRgb(baseRgb, { r: 231, g: 236, b: 245 }, 0.35)
+        : mixRgb(baseRgb, { r: 31, g: 41, b: 55 }, 0.24)
+    const aiTextRgb = pickReadableTextColor(aiBubbleRgb)
+
+    const quoteBg = isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(15, 23, 42, 0.08)'
+    const quoteBorder = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(15, 23, 42, 0.16)'
+    const quoteText = isDark ? 'rgba(240, 245, 252, 0.9)' : 'rgba(15, 23, 42, 0.78)'
+    const quoteLabelBase = parseColorToRgb(quotedSpeaker?.color)
+    const quoteLabelRgb = isDark
+        ? mixRgb(quoteLabelBase, { r: 241, g: 245, b: 249 }, 0.2)
+        : mixRgb(quoteLabelBase, { r: 15, g: 23, b: 42 }, 0.26)
 
     const clearLongPressTimer = () => {
         if (!longPressTimerRef.current) return
@@ -110,7 +206,7 @@ function MessageItemComponent({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: animateOnMount ? (isFastMode ? 0.12 : 0.22) : 0.01, ease: 'easeOut' }}
             className={cn(
-                "group relative flex flex-col max-w-[85%]",
+                "group relative flex flex-col max-w-[82%] sm:max-w-[76%]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
                 isContinued ? "mt-1.5" : "mt-6", // Controlled spacing
@@ -154,22 +250,24 @@ function MessageItemComponent({
                 </div>
             )}
 
-            <div ref={actionWrapRef} className={cn('relative', isUser ? 'self-end' : 'self-start')}>
+            <div ref={actionWrapRef} className={cn('relative min-w-0', isUser ? 'self-end' : 'self-start')}>
                 <GlassCard
                     variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
                     className={cn(
-                        "p-3 px-3.5 sm:p-3.5 sm:px-4 transition-all duration-200 z-10 border shadow-sm backdrop-blur-none",
+                        "p-2.5 px-3 sm:p-3 sm:px-3.5 transition-all duration-200 z-10 border shadow-sm backdrop-blur-none",
                         isUser
                             ? cn("text-primary-foreground", userShape)
                             : isReaction
                                 ? "bg-transparent border-none p-1 rounded-full shadow-none"
                                 : gangShape
                     )}
-                    style={(!isUser && !isReaction) ? {
-                        backgroundColor: theme === 'dark'
-                            ? `${character?.color || '#ffffff'}40`
-                            : `${character?.color || '#ffffff'}24`
-                    } : {}}
+                    style={(!isUser && !isReaction)
+                        ? {
+                            backgroundColor: toRgbString(aiBubbleRgb),
+                            borderColor: toRgbString(aiBorderRgb)
+                        }
+                        : {}
+                    }
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
                     onPointerLeave={handlePointerUp}
@@ -178,34 +276,41 @@ function MessageItemComponent({
                     {isReaction ? (
                         <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-1.5 min-w-0">
                             {quotedMessage && (
                                 <div
                                     className={cn(
-                                        "max-w-full rounded-xl border px-2.5 py-2 text-[11px]",
+                                        "max-w-full overflow-hidden rounded-lg border px-1.5 py-1 text-[10px] min-w-0",
                                         isUser ? "text-right" : "text-left"
                                     )}
                                     style={{
-                                        backgroundColor: theme === 'dark'
-                                            ? `${quotedSpeaker?.color || '#ffffff'}22`
-                                            : `${quotedSpeaker?.color || '#000000'}12`,
-                                        borderColor: isUser
-                                            ? (theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(15,23,42,0.2)')
-                                            : (quotedSpeaker?.color || 'rgba(0,0,0,0.2)')
+                                        backgroundColor: quoteBg,
+                                        borderColor: quoteBorder,
                                     }}
                                 >
-                                    <div className="mb-0.5 text-[9px] font-black uppercase tracking-tight opacity-85" style={{ color: quotedSpeaker?.color }}>
+                                    <div
+                                        className="mb-0.5 text-[8px] font-black uppercase tracking-tight"
+                                        style={{ color: toRgbString(quoteLabelRgb) }}
+                                    >
                                         {quotedSpeaker?.name || (quotedMessage.speaker === 'user' ? 'You' : quotedMessage.speaker)}
                                     </div>
-                                    <div className="truncate italic text-muted-foreground font-medium">
+                                    <div
+                                        className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap italic font-medium"
+                                        style={{ color: quoteText }}
+                                    >
                                         {quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content}
                                     </div>
                                 </div>
                             )}
-                            <p className={cn(
-                                "select-text break-words leading-[1.45] tracking-normal text-[14px] sm:text-[15px]",
-                                isUser ? "font-semibold text-primary-foreground" : "font-medium text-foreground dark:text-white"
-                            )}>{message.content}</p>
+                            <p
+                                className={cn(
+                                    "select-text break-words leading-[1.38] tracking-normal text-[13px] sm:text-[14px]",
+                                    isUser ? "font-semibold text-primary-foreground" : "font-medium"
+                                )}
+                                style={!isUser ? { color: toRgbString(aiTextRgb) } : undefined}
+                            >
+                                {message.content}
+                            </p>
                         </div>
                     )}
                 </GlassCard>
@@ -245,14 +350,14 @@ function MessageItemComponent({
             </div>
             {!isReaction && (
                 <div className={cn(
-                    "mt-1 text-[9px] uppercase tracking-widest text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity",
+                    "mt-1 text-[9px] uppercase tracking-widest text-foreground/55 dark:text-white/65 opacity-0 group-hover:opacity-100 transition-opacity",
                     isUser ? "self-end" : "self-start"
                 )}>
                     {timeLabel}
                 </div>
             )}
             {isUser && seenBy.length > 0 && (
-                <div className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground/70">
+                <div className="mt-1 text-[9px] uppercase tracking-widest text-foreground/60 dark:text-white/70">
                     Seen by {seenBy.join(', ')}
                 </div>
             )}

@@ -84,10 +84,10 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
     return (
         <div className="px-3 sm:px-0 pt-1 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] sm:pb-0 z-20">
             {replyingTo && (
-                <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border/70 bg-card/85 dark:bg-[rgba(15,23,42,0.82)] px-3 py-2">
                     <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Replying to {replyingTo.speaker === 'user' ? 'You' : replyingTo.speaker}</p>
-                        <p className="truncate text-xs">{replyingTo.content}</p>
+                        <p className="text-[10px] uppercase tracking-widest text-foreground/70 dark:text-white/75">Replying to {replyingTo.speaker === 'user' ? 'You' : replyingTo.speaker}</p>
+                        <p className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs text-foreground/85 dark:text-white/90">{replyingTo.content}</p>
                     </div>
                     <Button
                         type="button"

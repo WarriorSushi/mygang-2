@@ -24,14 +24,14 @@ export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
-                            className="flex items-center gap-2 text-[10px] text-muted-foreground"
+                            className="inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-border/70 bg-card/90 dark:border-white/15 dark:bg-[rgba(8,14,26,0.82)] px-2.5 py-1 text-[10px]"
                         >
-                            <div className="flex gap-1 bg-white/5 p-1 rounded-full px-2 border border-white/10 shrink-0">
+                            <div className="flex gap-1 rounded-full px-2 py-1 border border-white/10 bg-white/5 dark:bg-white/10 shrink-0">
                                 <span className="w-1 h-1 rounded-full bg-primary" style={{ backgroundColor: character.color }} />
                                 <span className="w-1 h-1 rounded-full bg-primary" style={{ backgroundColor: character.color }} />
                             </div>
-                            <span className="font-bold italic uppercase tracking-tighter opacity-80" style={{ color: character.color }}>
-                                {character.name} {status}
+                            <span className="min-w-0 truncate font-semibold uppercase tracking-tight text-foreground/80 dark:text-white/85">
+                                <span style={{ color: character.color }}>{character.name}</span> {status}
                             </span>
                         </motion.div>
                     )
@@ -46,15 +46,15 @@ export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
-                            className="flex items-center gap-2 text-[10px] text-muted-foreground"
+                            className="inline-flex w-fit max-w-full items-center gap-2 rounded-full border border-border/70 bg-card/90 dark:border-white/15 dark:bg-[rgba(8,14,26,0.82)] px-2.5 py-1 text-[10px]"
                         >
-                            <div className="flex gap-1 bg-white/5 p-1 rounded-full px-2 border border-white/10 shrink-0">
+                            <div className="flex gap-1 rounded-full px-2 py-1 border border-white/10 bg-white/5 dark:bg-white/10 shrink-0">
                                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" style={{ backgroundColor: character.color }} />
                                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" style={{ backgroundColor: character.color }} />
                                 <span className="w-1 h-1 rounded-full bg-primary animate-bounce" style={{ backgroundColor: character.color }} />
                             </div>
-                            <span className="font-bold italic uppercase tracking-tighter opacity-80" style={{ color: character.color }}>
-                                {character.name} is typing...
+                            <span className="min-w-0 truncate font-semibold uppercase tracking-tight text-foreground/80 dark:text-white/85">
+                                <span style={{ color: character.color }}>{character.name}</span> is typing...
                             </span>
                         </motion.div>
                     )
