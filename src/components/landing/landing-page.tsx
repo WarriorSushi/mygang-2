@@ -186,8 +186,11 @@ export function LandingPage() {
                   <span className="text-foreground/90 font-medium">Your personal crew, always online.</span>
                 </div>
 
-                <h1 className="text-5xl sm:text-7xl lg:text-[8.5rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
-                  YOUR <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 via-primary to-blue-600 animate-gradient">GANG</span>
+                <h1 className="text-5xl sm:text-7xl lg:text-[7.9rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
+                  <span className="inline-flex items-baseline gap-[0.22em] whitespace-nowrap">
+                    <span>YOUR</span>
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 via-primary to-blue-600 animate-gradient">GANG</span>
+                  </span>
                   <br />
                   IS <span className="italic font-serif normal-case font-light text-muted-foreground/70">READY.</span>
                 </h1>
@@ -212,8 +215,8 @@ export function LandingPage() {
                     </Button>
                   </Link>
                   <a href="#how-it-works" className="inline-flex w-[min(72vw,16rem)] sm:w-auto">
-                    <Button variant="outline" size="xl" className="rounded-full px-8 sm:px-12 py-5 sm:py-8 text-base sm:text-xl font-black w-full sm:w-auto border-border/80 bg-card/65 hover:bg-card">
-                      Watch It Flow
+                    <Button variant="outline" size="xl" className="rounded-full px-8 sm:px-16 py-5 sm:py-10 text-base sm:text-2xl font-black w-full sm:w-auto border-border/80 bg-card/65 hover:bg-card">
+                      How It Works
                     </Button>
                   </a>
                 </div>
