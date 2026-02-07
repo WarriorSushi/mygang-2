@@ -223,3 +223,42 @@ Date: 2026-02-07
 ### Verification (Chat Scroll UX Sprint)
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
+
+## Visual System and Settings Navigation Sprint
+Date: 2026-02-07
+
+### Problems
+- Chat top bar showed persona chips under online status, creating clutter and confusion with role-label toggle behavior.
+- Role labels above message bubbles could disappear for users with older persisted gang data.
+- Chat wallpaper controls were flat and unclear; wallpaper visuals were weak and often appeared not to change.
+- Settings UX lacked submenu navigation pattern expected from side drawers.
+- Dark mode lacked clear elevation hierarchy and appeared too flat/dark.
+
+### Fixes Implemented
+- Role-label behavior and header cleanup:
+  - Removed top-bar persona chips from `src/components/chat/chat-header.tsx`.
+  - Kept `show role next to name` toggle focused on persona/message context.
+  - Increased role-label visibility above message bubbles and added fallback to archetype in `src/components/chat/message-item.tsx`.
+  - Added character metadata fallback merge in `src/components/chat/message-list.tsx` so older persisted gang objects still show modern role labels.
+- Settings drawer navigation redesign:
+  - Rebuilt chat settings into a root menu + sliding submenus with back navigation in `src/components/chat/chat-settings.tsx`.
+  - Added dedicated wallpaper submenu and explicit visual-only explanation.
+  - Outside click now closes the sheet and resets submenu state through sheet open-state handling.
+- Wallpaper system expansion + reliability:
+  - Added shared wallpaper catalog in `src/constants/wallpapers.ts` with six presets:
+    - `default`, `neon`, `soft`, `aurora`, `sunset`, `graphite`
+  - Updated wallpaper typing across store/profile/settings:
+    - `src/stores/chat-store.ts`
+    - `src/lib/supabase/client-journey.ts`
+    - `src/components/settings/settings-panel.tsx`
+    - `src/app/settings/page.tsx`
+  - Improved wallpaper rendering strength and added texture/elevation overlays in `src/app/globals.css`.
+  - Fixed chat layering so wallpaper/blob visuals sit behind content but remain visible:
+    - `src/app/chat/page.tsx`
+    - `src/components/holographic/background-blobs.tsx`
+- Theme/elevation refinement:
+  - Rebalanced dark palette tokens in `src/app/globals.css` for clearer depth separation (`background`, `card`, `muted`, `border`, `input`, `ring`).
+
+### Verification (Visual System and Settings Navigation Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS

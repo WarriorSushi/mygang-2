@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { ChatWallpaper } from '@/constants/wallpapers'
 
 export interface Message {
     id: string
@@ -36,7 +37,7 @@ interface ChatState {
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
     chatMode: 'entourage' | 'ecosystem'
-    chatWallpaper: 'default' | 'neon' | 'soft'
+    chatWallpaper: ChatWallpaper
     showPersonaRoles: boolean
     squadConflict: { local: Character[]; remote: Character[] } | null
     setMessages: (messages: Message[]) => void
@@ -49,7 +50,7 @@ interface ChatState {
     setCharacterStatus: (characterId: string, status: string) => void
     setIsHydrated: (isHydrated: boolean) => void
     setChatMode: (mode: 'entourage' | 'ecosystem') => void
-    setChatWallpaper: (wallpaper: 'default' | 'neon' | 'soft') => void
+    setChatWallpaper: (wallpaper: ChatWallpaper) => void
     setShowPersonaRoles: (showPersonaRoles: boolean) => void
     setSquadConflict: (conflict: { local: Character[]; remote: Character[] } | null) => void
     clearChat: () => void

@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sun, Moon, Brain, Settings2 } from 'lucide-react'
-import { Character, useChatStore } from '@/stores/chat-store'
+import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
 import Image from 'next/image'
@@ -18,12 +18,11 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
-    const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
     const effectiveTheme = resolvedTheme ?? theme
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
 
     return (
-        <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] border-b border-white/10 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-md bg-white/5 z-10 w-full">
+        <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] border-b border-border/70 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/80 z-20 w-full shadow-sm">
             <div className="flex items-center gap-3 min-w-0">
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">
@@ -57,19 +56,6 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                         {typingCount > 0 && <span> - {typingCount} typing</span>}
                         {memoryActive && <span> - Memory Active</span>}
                     </span>
-                    {showPersonaRoles && (
-                        <div className="mt-1.5 flex items-center gap-1 overflow-x-auto scrollbar-hide">
-                            {activeGang.map((char) => (
-                                <span
-                                    key={`${char.id}-role`}
-                                    className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground"
-                                >
-                                    <span className="font-bold" style={{ color: char.color }}>{char.name}</span>
-                                    {char.roleLabel ? ` - ${char.roleLabel}` : ''}
-                                </span>
-                            ))}
-                        </div>
-                    )}
                 </div>
             </div>
 

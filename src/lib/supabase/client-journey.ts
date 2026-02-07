@@ -1,12 +1,13 @@
 'use client'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { ChatWallpaper } from '@/constants/wallpapers'
 
 export type JourneyProfile = {
     username: string | null
     chat_mode: 'entourage' | 'ecosystem' | null
     theme: 'light' | 'dark' | 'system' | null
-    chat_wallpaper: 'default' | 'neon' | 'soft' | null
+    chat_wallpaper: ChatWallpaper | null
     preferred_squad: string[] | null
     onboarding_completed: boolean | null
 }

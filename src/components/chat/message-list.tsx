@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { CHARACTERS } from '@/constants/characters'
 
 interface MessageListProps {
     messages: Message[]
@@ -43,9 +44,22 @@ export function MessageList({
     const hasStatusRow = hasTyping || hasActivity
     const itemCount = messages.length + (hasStatusRow ? 1 : 0)
     const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
+    const characterCatalogById = useMemo(
+        () => new Map(CHARACTERS.map((character) => [normalizeSpeaker(character.id), character])),
+        []
+    )
     const characterBySpeaker = useMemo(
-        () => new Map(activeGang.map((character) => [normalizeSpeaker(character.id), character])),
-        [activeGang]
+        () => new Map(activeGang.map((character) => {
+            const normalized = normalizeSpeaker(character.id)
+            const catalogCharacter = characterCatalogById.get(normalized)
+            return [
+                normalized,
+                catalogCharacter
+                    ? { ...catalogCharacter, ...character, roleLabel: character.roleLabel || catalogCharacter.roleLabel }
+                    : character
+            ]
+        })),
+        [activeGang, characterCatalogById]
     )
     const seenByMessageId = useMemo(() => {
         const seenMap = new Map<string, string[]>()

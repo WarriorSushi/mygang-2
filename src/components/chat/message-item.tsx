@@ -144,9 +144,9 @@ function MessageItemComponent({
                         >
                             {character?.name || message.speaker}
                         </span>
-                        {showPersonaRoles && character?.roleLabel && (
-                            <span className="text-[9px] text-muted-foreground/90 italic truncate">
-                                - {character.roleLabel}
+                        {showPersonaRoles && (character?.roleLabel || character?.archetype) && (
+                            <span className="rounded-full border border-white/20 bg-white/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-foreground/90 truncate">
+                                {character?.roleLabel || character?.archetype}
                             </span>
                         )}
                         {status && (

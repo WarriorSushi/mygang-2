@@ -82,24 +82,24 @@
 }
 
 .dark {
-  --background: oklch(0.12 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.15 0.02 240 / 0.5);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.12 0 0);
+  --background: oklch(0.18 0.01 255);
+  --foreground: oklch(0.96 0.01 255);
+  --card: oklch(0.24 0.015 255 / 0.82);
+  --card-foreground: oklch(0.96 0.01 255);
+  --popover: oklch(0.22 0.015 255);
   --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.7 0.2 160);
-  --primary-foreground: oklch(0.12 0 0);
-  --secondary: oklch(0.18 0.03 240);
+  --primary: oklch(0.72 0.16 170);
+  --primary-foreground: oklch(0.2 0.01 255);
+  --secondary: oklch(0.3 0.02 255);
   --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.18 0.03 240);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.6 0.2 330);
+  --muted: oklch(0.27 0.015 255);
+  --muted-foreground: oklch(0.75 0.01 255);
+  --accent: oklch(0.64 0.15 325);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.2 160);
+  --border: oklch(1 0 0 / 16%);
+  --input: oklch(1 0 0 / 20%);
+  --ring: oklch(0.72 0.16 170);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -187,32 +187,81 @@
 }
 
 .chat-wallpaper-layer {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: -5;
+  z-index: 0;
   pointer-events: none;
-  opacity: 0.6;
+  opacity: 0.92;
+  transition: background 220ms ease, opacity 220ms ease;
+}
+
+.chat-wallpaper-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0,
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 1px,
+    transparent 8px
+  );
 }
 
 .chat-wallpaper-layer[data-wallpaper='default'] {
   background:
-    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.2), transparent 45%),
-    radial-gradient(circle at 80% 30%, rgba(34, 197, 94, 0.15), transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.12), transparent 45%);
+    radial-gradient(circle at 18% 18%, rgba(99, 102, 241, 0.34), transparent 45%),
+    radial-gradient(circle at 82% 24%, rgba(34, 197, 94, 0.26), transparent 45%),
+    radial-gradient(circle at 52% 88%, rgba(236, 72, 153, 0.2), transparent 48%),
+    linear-gradient(180deg, rgba(148, 163, 184, 0.09), rgba(30, 41, 59, 0.08));
 }
 
 .chat-wallpaper-layer[data-wallpaper='neon'] {
   background:
-    radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.25), transparent 45%),
-    radial-gradient(circle at 70% 25%, rgba(217, 70, 239, 0.25), transparent 40%),
-    radial-gradient(circle at 50% 85%, rgba(34, 197, 94, 0.2), transparent 50%);
+    radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.42), transparent 45%),
+    radial-gradient(circle at 73% 22%, rgba(217, 70, 239, 0.4), transparent 42%),
+    radial-gradient(circle at 48% 85%, rgba(34, 197, 94, 0.32), transparent 50%),
+    linear-gradient(170deg, rgba(2, 132, 199, 0.09), rgba(168, 85, 247, 0.1));
 }
 
 .chat-wallpaper-layer[data-wallpaper='soft'] {
   background:
-    radial-gradient(circle at 20% 25%, rgba(244, 114, 182, 0.18), transparent 45%),
-    radial-gradient(circle at 75% 30%, rgba(148, 163, 184, 0.2), transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.12), transparent 45%);
+    radial-gradient(circle at 20% 24%, rgba(244, 114, 182, 0.24), transparent 45%),
+    radial-gradient(circle at 76% 26%, rgba(148, 163, 184, 0.26), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.18), transparent 45%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(226, 232, 240, 0.08));
+}
+
+.chat-wallpaper-layer[data-wallpaper='aurora'] {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(20, 184, 166, 0.42), transparent 45%),
+    radial-gradient(circle at 82% 22%, rgba(147, 51, 234, 0.38), transparent 42%),
+    radial-gradient(circle at 45% 88%, rgba(96, 165, 250, 0.3), transparent 50%),
+    linear-gradient(160deg, rgba(45, 212, 191, 0.07), rgba(129, 140, 248, 0.09));
+}
+
+.chat-wallpaper-layer[data-wallpaper='sunset'] {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(251, 146, 60, 0.42), transparent 45%),
+    radial-gradient(circle at 80% 22%, rgba(244, 63, 94, 0.34), transparent 42%),
+    radial-gradient(circle at 48% 85%, rgba(250, 204, 21, 0.28), transparent 48%),
+    linear-gradient(165deg, rgba(251, 146, 60, 0.09), rgba(251, 113, 133, 0.08));
+}
+
+.chat-wallpaper-layer[data-wallpaper='graphite'] {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(100, 116, 139, 0.28), transparent 45%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.28), rgba(30, 41, 59, 0.2));
+}
+
+.dark .chat-wallpaper-layer {
+  opacity: 0.74;
+}
+
+.dark .chat-wallpaper-layer::after {
+  opacity: 0.12;
 }
 
 .content-auto {

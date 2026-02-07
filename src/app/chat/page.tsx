@@ -671,16 +671,16 @@ export default function ChatPage() {
             setToastMessage('You are offline. Reconnect and try again.')
             return
         }
-        const sent = enqueueUserMessage('❤️', { replyToId: target.id, reaction: '❤️' })
+        const sent = enqueueUserMessage('\u2764\uFE0F', { replyToId: target.id, reaction: '\u2764\uFE0F' })
         if (sent) setReplyingTo(null)
     }
 
     return (
-        <main className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative">
-            <BackgroundBlobs isMuted={typingUsers.length > 0} />
+        <main className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative isolate">
+            <BackgroundBlobs isMuted={typingUsers.length > 0} className="absolute inset-0 z-0 overflow-hidden pointer-events-none" />
             <div className="chat-wallpaper-layer" data-wallpaper={chatWallpaper} aria-hidden="true" />
 
-            <div className="flex-1 flex flex-col w-full relative min-h-0">
+            <div className="flex-1 flex flex-col w-full relative min-h-0 z-10">
                 <ChatHeader
                     activeGang={activeGang}
                     onOpenVault={() => {
@@ -761,3 +761,4 @@ export default function ChatPage() {
         </main>
     )
 }
+

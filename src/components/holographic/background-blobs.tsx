@@ -2,9 +2,11 @@
 
 import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 interface BackgroundBlobsProps {
     isMuted?: boolean
+    className?: string
 }
 
 type NavigatorWithDeviceMemory = Navigator & { deviceMemory?: number }
@@ -17,13 +19,13 @@ function detectLowEndDevice() {
     return (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4)
 }
 
-export function BackgroundBlobs({ isMuted = false }: BackgroundBlobsProps) {
+export function BackgroundBlobs({ isMuted = false, className }: BackgroundBlobsProps) {
     const reduceMotion = useReducedMotion()
     const [isLowEnd] = useState(detectLowEndDevice)
 
     const disableMotion = useMemo(() => reduceMotion || isMuted || isLowEnd, [reduceMotion, isMuted, isLowEnd])
     return (
-        <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className={cn("fixed inset-0 -z-10 overflow-hidden pointer-events-none", className)}>
             <motion.div
                 animate={disableMotion ? undefined : {
                     x: [0, 100, 0],

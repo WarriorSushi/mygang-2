@@ -7,13 +7,14 @@ import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
 import { useChatStore } from '@/stores/chat-store'
 import { Switch } from '@/components/ui/switch'
 import { trackEvent } from '@/lib/analytics'
+import { CHAT_WALLPAPERS, type ChatWallpaper } from '@/constants/wallpapers'
 
 interface SettingsPanelProps {
     username: string | null
     initialSettings: {
         chat_mode: 'entourage' | 'ecosystem'
         theme: 'light' | 'dark'
-        chat_wallpaper: 'default' | 'neon' | 'soft'
+        chat_wallpaper: ChatWallpaper
     }
     usage: {
         dailyCount: number
@@ -47,7 +48,7 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
         updateUserSettings({ chat_mode: mode })
     }
 
-    const handleWallpaper = (next: 'default' | 'neon' | 'soft') => {
+    const handleWallpaper = (next: ChatWallpaper) => {
         setWallpaper(next)
         setChatWallpaper(next)
         updateUserSettings({ chat_wallpaper: next })
@@ -102,11 +103,7 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Chat Wallpaper</div>
                 <div className="mt-2 text-[11px] text-muted-foreground">Background look only. No impact on model behavior.</div>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {([
-                        { id: 'default', label: 'Default', desc: 'Balanced colorful glow' },
-                        { id: 'neon', label: 'Neon', desc: 'Vivid high-contrast lights' },
-                        { id: 'soft', label: 'Soft', desc: 'Calm low-contrast gradients' },
-                    ] as const).map((option) => (
+                    {CHAT_WALLPAPERS.map((option) => (
                         <Button
                             key={option.id}
                             variant={wallpaper === option.id ? 'default' : 'outline'}
@@ -115,7 +112,7 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
                         >
                             <div>
                                 <div className="text-[10px] uppercase tracking-widest font-black">{option.label}</div>
-                                <div className="text-[10px] opacity-70">{option.desc}</div>
+                                <div className="text-[10px] opacity-70">{option.description}</div>
                             </div>
                         </Button>
                     ))}

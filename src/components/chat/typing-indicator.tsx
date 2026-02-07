@@ -33,7 +33,7 @@ export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}
                             </div>
                             <span className="font-bold italic uppercase tracking-tighter opacity-80" style={{ color: character.color }}>
                                 {character.name}
-                                {showPersonaRoles && character.roleLabel ? ` (${character.roleLabel})` : ''} {status}
+                                {showPersonaRoles && (character.roleLabel || character.archetype) ? ` (${character.roleLabel || character.archetype})` : ''} {status}
                             </span>
                         </motion.div>
                     )
@@ -57,7 +57,7 @@ export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}
                             </div>
                             <span className="font-bold italic uppercase tracking-tighter opacity-80" style={{ color: character.color }}>
                                 {character.name}
-                                {showPersonaRoles && character.roleLabel ? ` (${character.roleLabel})` : ''} is typing...
+                                {showPersonaRoles && (character.roleLabel || character.archetype) ? ` (${character.roleLabel || character.archetype})` : ''} is typing...
                             </span>
                         </motion.div>
                     )
