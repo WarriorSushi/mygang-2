@@ -158,9 +158,22 @@ function MessageItemComponent({
         : mixRgb(baseRgb, { r: 31, g: 41, b: 55 }, 0.24)
     const aiTextRgb = pickReadableTextColor(aiBubbleRgb)
 
-    const quoteBg = isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(15, 23, 42, 0.08)'
-    const quoteBorder = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(15, 23, 42, 0.16)'
-    const quoteText = isDark ? 'rgba(240, 245, 252, 0.9)' : 'rgba(15, 23, 42, 0.78)'
+    const quoteFromAi = !!quotedMessage && quotedMessage.speaker !== 'user'
+    const quoteBubbleBase = parseColorToRgb(quotedSpeaker?.color)
+    const quoteBgRgb = quoteFromAi
+        ? (isDark
+            ? mixRgb(quoteBubbleBase, { r: 10, g: 18, b: 32 }, 0.62)
+            : mixRgb(quoteBubbleBase, { r: 246, g: 249, b: 252 }, 0.82))
+        : (isDark ? { r: 42, g: 54, b: 72 } : { r: 233, g: 239, b: 246 })
+    const quoteBorderRgb = quoteFromAi
+        ? (isDark
+            ? mixRgb(quoteBgRgb, { r: 148, g: 163, b: 184 }, 0.2)
+            : mixRgb(quoteBubbleBase, { r: 31, g: 41, b: 55 }, 0.22))
+        : (isDark ? { r: 126, g: 144, b: 166 } : { r: 148, g: 163, b: 184 })
+    const quoteTextRgb = pickReadableTextColor(quoteBgRgb)
+    const quoteBg = toRgbString(quoteBgRgb)
+    const quoteBorder = toRgbString(quoteBorderRgb)
+    const quoteText = toRgbString(quoteTextRgb)
     const quoteLabelBase = parseColorToRgb(quotedSpeaker?.color)
     const quoteLabelRgb = isDark
         ? mixRgb(quoteLabelBase, { r: 241, g: 245, b: 249 }, 0.2)
