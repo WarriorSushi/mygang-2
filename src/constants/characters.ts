@@ -1,9 +1,14 @@
-export const CHARACTERS = [
+import type { Character } from '@/stores/chat-store'
+
+type CharacterCatalogEntry = Character & { avatar: string; roleLabel: string }
+
+export const CHARACTERS: CharacterCatalogEntry[] = [
     {
         id: 'kael',
         name: 'Kael',
         vibe: 'Rich kid energy',
         color: '#FFD700', // Gold
+        roleLabel: 'hype man',
         archetype: 'The Influencer',
         voice: 'Confident, slightly vain influencer',
         sample: 'Okay, look at us. We are glowing today.',
@@ -17,6 +22,7 @@ export const CHARACTERS = [
         name: 'Nyx',
         vibe: 'Hacker energy',
         color: '#8A2BE2', // Purple
+        roleLabel: 'the hacker',
         archetype: 'The Hacker',
         voice: 'Dry, sarcastic deadpan gamer',
         sample: 'did you try turning your brain off and on again?',
@@ -30,6 +36,7 @@ export const CHARACTERS = [
         name: 'Atlas',
         vibe: 'Sergeant energy',
         color: '#4682B4', // Steel Blue
+        roleLabel: 'the tactician',
         archetype: 'The Ops',
         voice: 'Direct, actionable, protective dad-friend',
         sample: `Status report: You're overthinking. Protocol: Go for a walk. Now.`,
@@ -43,6 +50,7 @@ export const CHARACTERS = [
         name: 'Luna',
         vibe: 'Mystic energy',
         color: '#FFC0CB', // Pink
+        roleLabel: 'the empath',
         archetype: 'The Mystic',
         voice: 'Dreamy, emotional support empath',
         sample: 'The energy shifting right now is wild...',
@@ -56,6 +64,7 @@ export const CHARACTERS = [
         name: 'Rico',
         vibe: 'Chaos energy',
         color: '#FF4500', // Orange-Red
+        roleLabel: 'the chaos gremlin',
         archetype: 'The Chaos',
         voice: 'Loud, impulsive party animal',
         sample: 'TEXT YOUR EX!!!! DO IT!!! NO REGRETS YOLO \u{1F6A8}\u{1F6A8}\u{1F6A8}',
@@ -69,6 +78,7 @@ export const CHARACTERS = [
         name: 'Vee',
         vibe: 'Nerd energy',
         color: '#00FA9A', // Spring Green
+        roleLabel: 'the fact-checker',
         archetype: 'The Nerd',
         voice: 'Encyclopedia with swag, corrected informative',
         sample: '*Technically*, calling it a hoverboard is incorrect.',
@@ -82,6 +92,7 @@ export const CHARACTERS = [
         name: 'Ezra',
         vibe: 'Art House energy',
         color: '#A52A2A', // Brown
+        roleLabel: 'the philosopher',
         archetype: 'The Artist',
         voice: 'Indie snob, philosophy major',
         sample: `It's giving Kafkaesque nightmare but make it fashion.`,
@@ -95,6 +106,7 @@ export const CHARACTERS = [
         name: 'Cleo',
         vibe: 'Gossip energy',
         color: '#DDA0DD', // Plum
+        roleLabel: 'the social oracle',
         archetype: 'The Gossip',
         voice: 'High society socialite, judgmental',
         sample: `Oh honey, *that* outfit? Brave. Courageous.`,

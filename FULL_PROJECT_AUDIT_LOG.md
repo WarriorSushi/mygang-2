@@ -117,3 +117,27 @@ Date: 2026-02-07
 - Remaining lint warnings are non-blocking:
   - `src/app/chat/page.tsx`: hook dependency/refs warnings in advanced timer/effect orchestration.
   - `src/components/chat/message-list.tsx`: React Compiler warning for `@tanstack/react-virtual` interoperability.
+
+## Persona Role Labels Sprint
+Date: 2026-02-07
+
+### Problem
+- Persona names in chat did not clearly communicate each character's role/archetype.
+- No quick in-chat control existed for users who prefer simpler name-only labels.
+
+### Fixes Implemented
+- Added role labels for every persona in `src/constants/characters.ts`.
+- Extended chat state with persisted preference in `src/stores/chat-store.ts`:
+  - `showPersonaRoles` (default `true`)
+  - `setShowPersonaRoles` action
+- Updated chat rendering to show role labels beside persona names:
+  - Message headers in `src/components/chat/message-item.tsx`
+  - Activity + typing indicators in `src/components/chat/typing-indicator.tsx`
+  - Wiring in `src/components/chat/message-list.tsx`
+- Added settings toggle in `src/components/chat/chat-settings.tsx`:
+  - "Show role next to name"
+  - Persists locally through Zustand persistence.
+
+### Verification (Persona Role Labels Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS

@@ -28,6 +28,7 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
     const prevMessagesLength = useRef(messages.length)
     const characterStatuses = useChatStore((state) => state.characterStatuses)
     const isGuest = useChatStore((state) => state.isGuest)
+    const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
     const hasTyping = typingUsers.length > 0
     const hasActivity = Object.values(characterStatuses).some(Boolean)
     const hasStatusRow = hasTyping || hasActivity
@@ -154,7 +155,12 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                         transform: `translateY(${virtualRow.start}px)`,
                                     }}
                                 >
-                                    <TypingIndicator typingUsers={typingUsers} activeGang={activeGang} activityStatuses={characterStatuses} />
+                                    <TypingIndicator
+                                        typingUsers={typingUsers}
+                                        activeGang={activeGang}
+                                        activityStatuses={characterStatuses}
+                                        showPersonaRoles={showPersonaRoles}
+                                    />
                                 </div>
                             )
                         }
@@ -194,6 +200,7 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                     quotedSpeaker={quotedSpeaker}
                                     seenBy={seenBy}
                                     isGuest={isGuest}
+                                    showPersonaRoles={showPersonaRoles}
                                 />
                             </div>
                         )

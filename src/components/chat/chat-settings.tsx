@@ -14,6 +14,7 @@ import { Settings2, Zap, Trash2, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { updateUserSettings } from '@/app/auth/actions'
 import Link from 'next/link'
+import { Switch } from '@/components/ui/switch'
 
 interface ChatSettingsProps {
     isOpen: boolean
@@ -28,6 +29,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         clearChat,
         chatWallpaper,
         setChatWallpaper,
+        showPersonaRoles,
+        setShowPersonaRoles,
     } = useChatStore()
 
     const handleChatModeChange = (value: string) => {
@@ -39,6 +42,10 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     const handleWallpaperChange = (value: 'default' | 'neon' | 'soft') => {
         setChatWallpaper(value)
         updateUserSettings({ chat_wallpaper: value })
+    }
+
+    const handlePersonaRolesToggle = (checked: boolean) => {
+        setShowPersonaRoles(checked)
     }
 
 
@@ -109,6 +116,25 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                         <p className="text-[9px] text-muted-foreground/60 leading-tight px-1 italic">
                             Change the backdrop without affecting chat history.
                         </p>
+                    </div>
+
+                    {/* Persona Labels */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                            <Zap size={12} className="text-cyan-400" />
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Persona Labels</Label>
+                        </div>
+                        <div className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-3 py-3">
+                            <div className="pr-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wider">Show role next to name</p>
+                                <p className="text-[9px] text-muted-foreground opacity-60">Example: Luna - the empath</p>
+                            </div>
+                            <Switch
+                                checked={showPersonaRoles}
+                                onCheckedChange={handlePersonaRolesToggle}
+                                aria-label="Toggle persona role labels"
+                            />
+                        </div>
                     </div>
 
                     {/* Actions */}

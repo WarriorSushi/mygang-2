@@ -21,6 +21,7 @@ interface MessageItemProps {
     quotedSpeaker?: Character | null
     seenBy?: string[]
     isGuest?: boolean
+    showPersonaRoles?: boolean
 }
 
 function MessageItemComponent({
@@ -32,7 +33,8 @@ function MessageItemComponent({
     quotedMessage = null,
     quotedSpeaker = null,
     seenBy = [],
-    isGuest = true
+    isGuest = true,
+    showPersonaRoles = true
 }: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
@@ -80,6 +82,11 @@ function MessageItemComponent({
                         >
                             {character?.name || message.speaker}
                         </span>
+                        {showPersonaRoles && character?.roleLabel && (
+                            <span className="text-[9px] text-muted-foreground/90 italic truncate">
+                                - {character.roleLabel}
+                            </span>
+                        )}
                         {status && (
                             <span className="text-[9px] text-muted-foreground italic truncate animate-pulse">
                                 &bull; {status}

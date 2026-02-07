@@ -16,6 +16,7 @@ export interface Character {
     name: string
     vibe: string
     color: string
+    roleLabel?: string
     avatar?: string
     archetype?: string
     gradient?: string
@@ -36,6 +37,7 @@ interface ChatState {
     isHydrated: boolean // To track if AuthManager has finished initial sync
     chatMode: 'entourage' | 'ecosystem'
     chatWallpaper: 'default' | 'neon' | 'soft'
+    showPersonaRoles: boolean
     squadConflict: { local: Character[]; remote: Character[] } | null
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
@@ -48,6 +50,7 @@ interface ChatState {
     setIsHydrated: (isHydrated: boolean) => void
     setChatMode: (mode: 'entourage' | 'ecosystem') => void
     setChatWallpaper: (wallpaper: 'default' | 'neon' | 'soft') => void
+    setShowPersonaRoles: (showPersonaRoles: boolean) => void
     setSquadConflict: (conflict: { local: Character[]; remote: Character[] } | null) => void
     clearChat: () => void
 }
@@ -65,6 +68,7 @@ export const useChatStore = create<ChatState>()(
             isHydrated: false,
             chatMode: 'ecosystem',
             chatWallpaper: 'default',
+            showPersonaRoles: true,
             squadConflict: null,
             setMessages: (messages) => set({ messages }),
             addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
@@ -79,6 +83,7 @@ export const useChatStore = create<ChatState>()(
             setIsHydrated: (isHydrated) => set({ isHydrated }),
             setChatMode: (chatMode) => set({ chatMode }),
             setChatWallpaper: (chatWallpaper) => set({ chatWallpaper }),
+            setShowPersonaRoles: (showPersonaRoles) => set({ showPersonaRoles }),
             setSquadConflict: (squadConflict) => set({ squadConflict }),
             clearChat: () => set({ messages: [] }),
         }),
@@ -92,7 +97,8 @@ export const useChatStore = create<ChatState>()(
                 userNickname: state.userNickname,
                 userId: state.userId,
                 chatMode: state.chatMode,
-                chatWallpaper: state.chatWallpaper
+                chatWallpaper: state.chatWallpaper,
+                showPersonaRoles: state.showPersonaRoles
             })
         }
     )
