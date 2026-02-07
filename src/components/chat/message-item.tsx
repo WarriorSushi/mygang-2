@@ -233,7 +233,7 @@ function MessageItemComponent({
                 "group relative flex flex-col w-fit max-w-[min(84vw,30rem)] sm:max-w-[min(72vw,38rem)]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
-                isContinued ? "mt-1.5" : "mt-6", // Controlled spacing
+                isContinued ? "mt-0.5" : "mt-6", // Tighter chain spacing for consecutive bubbles
                 showActions ? "z-40" : "z-0"
             )}
         >
