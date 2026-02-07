@@ -60,6 +60,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
     const [panel, setPanel] = useState<SettingsPanel>('root')
     const [accountEmail, setAccountEmail] = useState<string | null>(null)
+    const [deleteEmailInput, setDeleteEmailInput] = useState('')
+    const [deleteEmailError, setDeleteEmailError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
 
     const supabase = useMemo(() => createClient(), [])
@@ -99,10 +101,18 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     const handleClose = (nextOpen: boolean) => {
         if (nextOpen) return
         setPanel('root')
+        setDeleteEmailInput('')
+        setDeleteEmailError(null)
         onClose()
     }
 
     const handleDeleteAccount = async () => {
+        const expectedEmail = (accountEmail || '').trim().toLowerCase()
+        const typedEmail = deleteEmailInput.trim().toLowerCase()
+        if (!expectedEmail || typedEmail !== expectedEmail) {
+            setDeleteEmailError('Type your exact signed-in email to confirm account deletion.')
+            return
+        }
         const confirmed = confirm('Delete your account and all data? This cannot be undone.')
         if (!confirmed) return
         setIsDeleting(true)
@@ -112,6 +122,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
             setIsDeleting(false)
         }
     }
+
+    const menuCardClass = 'h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/60 dark:bg-white/[0.09] dark:border-white/20 dark:hover:bg-white/[0.14] px-4 py-4'
+    const panelCardClass = 'rounded-2xl border border-border/70 bg-card/55 dark:bg-white/[0.09] dark:border-white/20'
 
     return (
         <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -161,7 +174,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                         )}>
                             <Button
                                 variant="ghost"
-                                className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
+                                className={menuCardClass}
                                 onClick={() => setPanel('mode')}
                             >
                                 <div className="text-left">
@@ -173,7 +186,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
                             <Button
                                 variant="ghost"
-                                className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
+                                className={menuCardClass}
                                 onClick={() => setPanel('wallpaper')}
                             >
                                 <div className="text-left">
@@ -185,7 +198,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
                             <Button
                                 variant="ghost"
-                                className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
+                                className={menuCardClass}
                                 onClick={() => setPanel('labels')}
                             >
                                 <div className="text-left">
@@ -197,7 +210,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
                             <Button
                                 variant="ghost"
-                                className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
+                                className={menuCardClass}
                                 onClick={async () => {
                                     await onTakeScreenshot()
                                 }}
@@ -211,7 +224,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
                             <Button
                                 variant="ghost"
-                                className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
+                                className={menuCardClass}
                                 onClick={() => setPanel('account')}
                             >
                                 <div className="text-left">
@@ -219,20 +232,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <p className="text-[11px] text-muted-foreground">Email, sign out, and account actions</p>
                                 </div>
                                 <UserRound size={16} />
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                className="mt-4 w-full rounded-2xl gap-2 h-11 border border-destructive/20 text-destructive/70 hover:bg-destructive hover:text-white"
-                                onClick={() => {
-                                    if (confirm("Clear all messages? This can't be undone.")) {
-                                        clearChat()
-                                        onClose()
-                                    }
-                                }}
-                            >
-                                <Trash2 size={14} />
-                                Clear Timeline
                             </Button>
                         </div>
 
@@ -245,7 +244,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <Zap size={12} className="text-amber-400" />
                                     <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Intelligence</Label>
                                 </div>
-                                <div className="rounded-2xl border border-border/70 bg-card/55 p-1.5">
+                                <div className={cn(panelCardClass, 'p-1.5')}>
                                     <div className="relative grid grid-cols-2 gap-1">
                                         <div
                                             className={cn(
@@ -306,7 +305,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                                 onClick={() => handleWallpaperChange(option.id)}
                                                 className={cn(
                                                     'flex w-full items-center gap-3 rounded-2xl border px-2.5 py-2 text-left transition-colors',
-                                                    active ? 'border-primary/50 bg-primary/10' : 'border-border/70 bg-card/40 hover:bg-card/70'
+                                                    active
+                                                        ? 'border-primary/50 bg-primary/10 dark:bg-primary/20'
+                                                        : 'border-border/70 bg-card/45 dark:bg-white/[0.08] dark:border-white/20 hover:bg-card/70 dark:hover:bg-white/[0.14]'
                                                 )}
                                             >
                                                 <div className={cn('h-12 w-16 shrink-0 rounded-xl border border-white/15', wallpaperPreviewClass(option.id))} />
@@ -331,7 +332,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <Tags size={12} className="text-cyan-400" />
                                     <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Persona Labels</Label>
                                 </div>
-                                <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-card/50 px-3 py-3">
+                                <div className={cn(panelCardClass, 'flex items-center justify-between px-3 py-3')}>
                                     <div className="pr-3">
                                         <p className="text-[11px] font-bold uppercase tracking-wider">Show role next to name</p>
                                         <p className="text-[11px] text-muted-foreground">Example: Nyx - the hacker</p>
@@ -355,7 +356,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Account</Label>
                                 </div>
 
-                                <div className="rounded-2xl border border-border/70 bg-card/50 px-4 py-4 space-y-2">
+                                <div className={cn(panelCardClass, 'px-4 py-4 space-y-2')}>
                                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                                         <Mail size={12} />
                                         Signed In Email
@@ -366,30 +367,19 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     </p>
                                 </div>
 
-                                <div className="rounded-2xl border border-border/70 bg-card/50 p-2 space-y-2">
+                                <div className={cn(panelCardClass, 'p-2 space-y-2')}>
                                     <form action={signOut}>
                                         <Button type="submit" variant="ghost" className="h-auto w-full justify-between rounded-xl px-3 py-3">
                                             <span className="text-[11px] font-black uppercase tracking-wider">Sign Out</span>
                                             <LogOut size={14} />
                                         </Button>
                                     </form>
-
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        onClick={handleDeleteAccount}
-                                        disabled={isDeleting}
-                                        className="h-auto w-full justify-between rounded-xl px-3 py-3 text-destructive hover:bg-destructive hover:text-white"
-                                    >
-                                        <span className="text-[11px] font-black uppercase tracking-wider">Delete Account</span>
-                                        <ShieldAlert size={14} />
-                                    </Button>
                                 </div>
 
                                 <Button
                                     variant="ghost"
                                     asChild
-                                    className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
+                                    className={menuCardClass}
                                 >
                                     <Link href="/settings" onClick={onClose}>
                                         <div className="text-left">
@@ -399,6 +389,62 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         <Gauge size={16} />
                                     </Link>
                                 </Button>
+
+                                <div className="rounded-2xl border border-destructive/40 bg-destructive/10 dark:bg-destructive/15 p-3 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <ShieldAlert size={13} className="text-destructive" />
+                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-destructive">Danger Zone</p>
+                                    </div>
+                                    <p className="text-[11px] text-destructive/90">
+                                        These actions are irreversible. Review before continuing.
+                                    </p>
+
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="h-auto w-full justify-between rounded-xl border border-destructive/40 bg-background/20 px-3 py-3 text-destructive hover:bg-destructive hover:text-white"
+                                        onClick={() => {
+                                            if (confirm("Clear all messages? This can't be undone.")) {
+                                                clearChat()
+                                                onClose()
+                                            }
+                                        }}
+                                    >
+                                        <span className="text-[11px] font-black uppercase tracking-wider">Clear Timeline</span>
+                                        <Trash2 size={14} />
+                                    </Button>
+
+                                    <div className="space-y-2 rounded-xl border border-destructive/35 bg-background/20 px-3 py-3">
+                                        <label htmlFor="delete-email-confirm" className="block text-[10px] font-black uppercase tracking-[0.15em] text-destructive">
+                                            Confirm Email To Delete Account
+                                        </label>
+                                        <input
+                                            id="delete-email-confirm"
+                                            type="email"
+                                            value={deleteEmailInput}
+                                            onChange={(event) => {
+                                                setDeleteEmailInput(event.target.value)
+                                                if (deleteEmailError) setDeleteEmailError(null)
+                                            }}
+                                            placeholder={accountEmail || 'your@email.com'}
+                                            className="h-10 w-full rounded-lg border border-destructive/40 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-destructive"
+                                            autoComplete="email"
+                                        />
+                                        {deleteEmailError && (
+                                            <p className="text-[10px] text-destructive">{deleteEmailError}</p>
+                                        )}
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={handleDeleteAccount}
+                                            disabled={isDeleting || !accountEmail}
+                                            className="h-auto w-full justify-between rounded-xl border border-destructive/40 px-3 py-3 text-destructive hover:bg-destructive hover:text-white disabled:opacity-60"
+                                        >
+                                            <span className="text-[11px] font-black uppercase tracking-wider">Delete Account</span>
+                                            <ShieldAlert size={14} />
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

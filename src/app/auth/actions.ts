@@ -266,7 +266,7 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
         .limit(limit + 1)
 
     if (params?.before) {
-        query = query.lt('created_at', params.before)
+        query = query.lte('created_at', params.before)
     }
 
     const { data, error } = await query
@@ -312,7 +312,7 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
         .limit(limit + 1)
 
     if (params?.before) {
-        query = query.lt('created_at', params.before)
+        query = query.lte('created_at', params.before)
     }
 
     const { data, error } = await query

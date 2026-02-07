@@ -154,27 +154,6 @@ function MessageItemComponent({
                 </div>
             )}
 
-            {quotedMessage && (
-                <div className={cn(
-                    "text-[11px] mb-[-12px] z-0 opacity-90 max-w-full px-3 py-2 pb-5 rounded-t-2xl border-l-4 overflow-hidden",
-                    isUser ? "mr-2 ml-0 border-r-4 border-l-0 text-right" : "ml-2"
-                )}
-                    style={{
-                        backgroundColor: theme === 'dark'
-                            ? `${quotedSpeaker?.color || '#ffffff'}30` // 30% in dark
-                            : `${quotedSpeaker?.color || '#000000'}15`, // 15% in light
-                        borderColor: quotedSpeaker?.color || 'rgba(0,0,0,0.1)'
-                    }}
-                >
-                    <div className="font-black opacity-80 mb-0.5 text-[9px] uppercase tracking-tighter" style={{ color: quotedSpeaker?.color }}>
-                        {quotedSpeaker?.name || (quotedMessage.speaker === 'user' ? 'You' : quotedMessage.speaker)}
-                    </div>
-                    <div className="truncate italic text-muted-foreground font-medium">
-                        {quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content}
-                    </div>
-                </div>
-            )}
-
             <div ref={actionWrapRef} className={cn('relative', isUser ? 'self-end' : 'self-start')}>
                 <GlassCard
                     variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
@@ -199,10 +178,35 @@ function MessageItemComponent({
                     {isReaction ? (
                         <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
                     ) : (
-                        <p className={cn(
-                            "select-text break-words leading-[1.45] tracking-normal text-[14px] sm:text-[15px]",
-                            isUser ? "font-semibold text-primary-foreground" : "font-medium text-foreground dark:text-white"
-                        )}>{message.content}</p>
+                        <div className="space-y-2">
+                            {quotedMessage && (
+                                <div
+                                    className={cn(
+                                        "max-w-full rounded-xl border px-2.5 py-2 text-[11px]",
+                                        isUser ? "text-right" : "text-left"
+                                    )}
+                                    style={{
+                                        backgroundColor: theme === 'dark'
+                                            ? `${quotedSpeaker?.color || '#ffffff'}22`
+                                            : `${quotedSpeaker?.color || '#000000'}12`,
+                                        borderColor: isUser
+                                            ? (theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(15,23,42,0.2)')
+                                            : (quotedSpeaker?.color || 'rgba(0,0,0,0.2)')
+                                    }}
+                                >
+                                    <div className="mb-0.5 text-[9px] font-black uppercase tracking-tight opacity-85" style={{ color: quotedSpeaker?.color }}>
+                                        {quotedSpeaker?.name || (quotedMessage.speaker === 'user' ? 'You' : quotedMessage.speaker)}
+                                    </div>
+                                    <div className="truncate italic text-muted-foreground font-medium">
+                                        {quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content}
+                                    </div>
+                                </div>
+                            )}
+                            <p className={cn(
+                                "select-text break-words leading-[1.45] tracking-normal text-[14px] sm:text-[15px]",
+                                isUser ? "font-semibold text-primary-foreground" : "font-medium text-foreground dark:text-white"
+                            )}>{message.content}</p>
+                        </div>
                     )}
                 </GlassCard>
                 {showActions && canShowActions && (

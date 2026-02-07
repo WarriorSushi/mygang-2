@@ -40,15 +40,17 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
         }
         try {
             const page = await getMemoriesPage({ before, limit: 30 })
+            let appendedCount = 0
             setMemories((prev) => {
                 const incoming = page.items as Memory[]
                 if (reset) return incoming
                 const seen = new Set(prev.map((m) => m.id))
                 const deduped = incoming.filter((m) => !seen.has(m.id))
+                appendedCount = deduped.length
                 return [...prev, ...deduped]
             })
             setCursor(page.nextBefore)
-            setHasMore(page.hasMore)
+            setHasMore(page.hasMore && (reset || appendedCount > 0))
         } finally {
             if (reset) {
                 setLoading(false)

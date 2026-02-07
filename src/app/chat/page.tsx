@@ -93,8 +93,8 @@ export default function ChatPage() {
     const statusTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
     const idleAutonomousTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const idleAutoCountRef = useRef(0)
+    const resumeAutonomousTriggeredRef = useRef(false)
     const lastUserMessageIdRef = useRef<string | null>(null)
-    const lastUserActivityRef = useRef<number>(Date.now())
 
     const flushTypingUsers = () => {
         typingFlushRef.current = null
@@ -224,23 +224,6 @@ export default function ChatPage() {
     }, [])
 
     useEffect(() => {
-        const markActive = () => {
-            lastUserActivityRef.current = Date.now()
-            if (idleAutonomousTimerRef.current) {
-                clearTimeout(idleAutonomousTimerRef.current)
-                idleAutonomousTimerRef.current = null
-            }
-        }
-        const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
-        events.forEach((event) => window.addEventListener(event, markActive, { passive: true }))
-        document.addEventListener('visibilitychange', markActive)
-        return () => {
-            events.forEach((event) => window.removeEventListener(event, markActive))
-            document.removeEventListener('visibilitychange', markActive)
-        }
-    }, [])
-
-    useEffect(() => {
         const goOnline = () => setIsOnline(true)
         const goOffline = () => {
             setIsOnline(false)
@@ -255,6 +238,14 @@ export default function ChatPage() {
     }, [])
 
     const pickRandom = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)]
+
+    const hasOpenFloorIntent = (text: string) => {
+        const value = text.toLowerCase()
+        return (
+            /you guys talk|talk among yourselves|keep chatting|continue without me|i'?ll listen|i will listen/.test(value)
+            || /just talk|carry on|keep going|go on without me/.test(value)
+        )
+    }
 
     const scheduleGreeting = (fn: () => void, delay: number) => {
         const timer = setTimeout(fn, delay)
@@ -342,7 +333,6 @@ export default function ChatPage() {
         if (useChatStore.getState().chatMode !== 'ecosystem') return false
         if (typeof document !== 'undefined') {
             if (document.visibilityState !== 'visible') return false
-            if (document.hasFocus && !document.hasFocus()) return false
         }
         if (typeof navigator !== 'undefined' && !navigator.onLine) return false
         return true
@@ -351,24 +341,58 @@ export default function ChatPage() {
     const scheduleIdleAutonomous = (sourceUserMessageId: string | null) => {
         if (!sourceUserMessageId) return
         if (!canRunIdleAutonomous()) return
-        if (idleAutoCountRef.current >= 3) return
+        if (idleAutoCountRef.current >= 2) return
 
         clearIdleAutonomousTimer()
-        const delay = 15000 + idleAutoCountRef.current * 7000
+        const delay = 15000 + idleAutoCountRef.current * 8000
         idleAutonomousTimerRef.current = setTimeout(() => {
-            const stillIdle = Date.now() - lastUserActivityRef.current >= delay
             const currentMessages = useChatStore.getState().messages
             const lastMessage = currentMessages[currentMessages.length - 1]
             const stillSameUserMessage = lastUserMessageIdRef.current === sourceUserMessageId
-            if (!stillIdle || !stillSameUserMessage) return
+            if (!stillSameUserMessage) return
             if (!canRunIdleAutonomous()) return
             if (!lastMessage || lastMessage.speaker === 'user') return
-            if (isGeneratingRef.current) return
+            if (isGeneratingRef.current || pendingUserMessagesRef.current) return
 
             idleAutoCountRef.current += 1
-            sendToApi({ isIntro: false, isAutonomous: true, autonomousIdle: true })
+            sendToApi({
+                isIntro: false,
+                isAutonomous: true,
+                autonomousIdle: true,
+                sourceUserMessageId,
+            })
         }, delay)
     }
+
+    // Returning users with prior history get a context-aware re-entry turn, not canned greetings.
+    useEffect(() => {
+        if (!isHydrated || !userId) return
+        if (chatMode !== 'ecosystem') return
+        if (historyStatus !== 'has_history') return
+        if (resumeAutonomousTriggeredRef.current) return
+        if (messages.length === 0) return
+        if (!canRunIdleAutonomous()) return
+
+        const lastMessage = messages[messages.length - 1]
+        const lastAt = lastMessage?.created_at ? new Date(lastMessage.created_at).getTime() : 0
+        const gapMs = lastAt ? Date.now() - lastAt : 0
+        if (gapMs < 3 * 60 * 1000) {
+            resumeAutonomousTriggeredRef.current = true
+            return
+        }
+
+        const lastUserMessage = [...messages].reverse().find((m) => m.speaker === 'user')
+        resumeAutonomousTriggeredRef.current = true
+        const timer = setTimeout(() => {
+            if (isGeneratingRef.current || pendingUserMessagesRef.current) return
+            sendToApi({
+                isIntro: false,
+                isAutonomous: true,
+                sourceUserMessageId: lastUserMessage?.id ?? null,
+            })
+        }, 700)
+        return () => clearTimeout(timer)
+    }, [chatMode, historyStatus, isHydrated, messages, userId])
 
     // Initial greeting should only run for genuine first-time sessions.
     useEffect(() => {
@@ -454,7 +478,6 @@ export default function ChatPage() {
         pendingUserMessageIdRef.current = userMsg.id
         idleAutoCountRef.current = 0
         clearIdleAutonomousTimer()
-        lastUserActivityRef.current = Date.now()
         triggerReadingStatuses()
         silentTurnsRef.current = 0 // Reset silence on user input
         burstCountRef.current = 0 // Reset burst on user input
@@ -507,6 +530,10 @@ export default function ChatPage() {
 
         try {
             const currentMessages = useChatStore.getState().messages
+            const sourceUserMessage = sourceUserMessageId
+                ? currentMessages.find((m) => m.id === sourceUserMessageId && m.speaker === 'user')
+                : null
+            const openFloorIntent = !!sourceUserMessage?.content && hasOpenFloorIntent(sourceUserMessage.content)
 
             const payloadMessages = currentMessages.slice(-24).map((m) => ({
                 id: m.id,
@@ -641,12 +668,22 @@ export default function ChatPage() {
             }
 
             // == AUTONOMOUS CONTINUATION CHECK ==
-            const burstLimit = chatMode === 'entourage' ? 1 : 3
+            const burstLimit = chatMode === 'entourage' ? 1 : 2
             if (data.should_continue && burstCountRef.current < (burstLimit - 1) && !pendingUserMessagesRef.current) {
                 burstCountRef.current++
                 await new Promise(r => setTimeout(r, 1000))
                 isGeneratingRef.current = false // Prep for next call
-                sendToApi({ isIntro: false, isAutonomous: true })
+                const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
+                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId })
+                return
+            }
+
+            if (!data.should_continue && !isAutonomous && chatMode === 'ecosystem' && openFloorIntent && !pendingUserMessagesRef.current && burstCountRef.current < 1) {
+                burstCountRef.current += 1
+                await new Promise((r) => setTimeout(r, 900))
+                isGeneratingRef.current = false
+                const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
+                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId })
                 return
             }
 
@@ -763,11 +800,13 @@ export default function ChatPage() {
             const currentMessages = useChatStore.getState().messages
             const seen = new Set(currentMessages.map((m) => m.id))
             const older = page.items.filter((m) => !seen.has(m.id))
+            let appendedCount = 0
             if (older.length > 0) {
+                appendedCount = older.length
                 setMessages([...older, ...currentMessages])
             }
             setHistoryCursor(page.nextBefore)
-            setHasMoreHistory(page.hasMore)
+            setHasMoreHistory(page.hasMore && appendedCount > 0)
         } catch (err) {
             console.error('Failed to load older history:', err)
             setToastMessage('Could not load older messages right now.')

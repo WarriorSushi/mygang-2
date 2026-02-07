@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Send, X } from 'lucide-react'
+import { ArrowRight, X } from 'lucide-react'
 
 interface ReplyTarget {
     id: string
@@ -28,6 +28,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
         return savedDraft ? savedDraft.slice(0, MAX_CHARS) : ''
     })
     const inputRef = useRef<HTMLTextAreaElement>(null)
+    const limitWarnedRef = useRef(false)
 
     useEffect(() => {
         if (typeof window === 'undefined') return
@@ -56,6 +57,20 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                 window.localStorage.removeItem(DRAFT_STORAGE_KEY)
             }
         }
+    }
+
+    const handleInputChange = (nextValue: string) => {
+        if (nextValue.length > MAX_CHARS) {
+            const clipped = nextValue.slice(0, MAX_CHARS)
+            setInput(clipped)
+            if (!limitWarnedRef.current) {
+                limitWarnedRef.current = true
+                window.alert('Message limit is 2000 characters.')
+            }
+            return
+        }
+        limitWarnedRef.current = false
+        setInput(nextValue)
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -88,22 +103,18 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             )}
             <form
                 onSubmit={handleSubmit}
-                className="relative flex items-end gap-2 bg-card/95 dark:bg-[rgba(16,24,40,0.82)] border border-border/70 p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/60 sm:translate-y-1"
+                className="relative flex items-end gap-2 border border-border/70 bg-card/95 dark:bg-[rgba(16,24,40,0.86)] p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/60"
             >
                 <textarea
                     ref={inputRef}
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     data-testid="chat-input"
                     placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
-                    maxLength={MAX_CHARS}
-                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-2.5 pb-4 px-1 text-[16px] md:text-[15px] leading-6 max-h-32 min-h-[44px] scrollbar-hide"
+                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none px-1 py-2.5 text-[16px] md:text-[15px] leading-6 max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
                 />
-                <span className="pointer-events-none absolute bottom-2 right-[3.75rem] text-[10px] uppercase tracking-widest text-muted-foreground/55">
-                    {input.length}/{MAX_CHARS}
-                </span>
                 <Button
                     type="submit"
                     size="icon"
@@ -111,7 +122,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     data-testid="chat-send"
                     className="shrink-0 self-center rounded-xl w-11 h-11 mb-0 active:scale-95 transition-transform shadow-none"
                 >
-                    <Send size={18} />
+                    <ArrowRight size={18} />
                 </Button>
             </form>
         </div>

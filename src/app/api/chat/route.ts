@@ -117,6 +117,14 @@ function scoreAbuse(text: string, previousUserMessage?: string) {
     return score
 }
 
+function hasOpenFloorIntent(text: string) {
+    const value = text.toLowerCase()
+    return (
+        /you guys talk|talk among yourselves|keep chatting|continue without me|i'?ll listen|i will listen/.test(value)
+        || /just talk|carry on|keep going|go on without me/.test(value)
+    )
+}
+
 function splitMessageForSecondBubble(content: string): [string, string] | null {
     const normalized = content.replace(/\s+/g, ' ').trim()
     if (normalized.length < 80) return null
@@ -364,6 +372,7 @@ export async function POST(req: Request) {
         const latestMessage = safeMessages[safeMessages.length - 1]
         const hasFreshUserTurn = latestMessage?.speaker === 'user'
         const lastUserMsg = lastUserMessage?.content || ''
+        const openFloorRequested = hasFreshUserTurn && hasOpenFloorIntent(lastUserMsg)
         const lastUserMsgAt = lastUserMessage?.created_at ? new Date(lastUserMessage.created_at).getTime() : 0
         const inactiveMinutes = lastUserMsgAt ? (Date.now() - lastUserMsgAt) / (1000 * 60) : 0
         const isInactive = inactiveMinutes > 5
@@ -567,6 +576,10 @@ ${allowedStatusList}
     - INACTIVE_USER: ${isInactive ? 'YES' : 'NO'}.
     - If INACTIVE_USER is YES, set should_continue to FALSE.
 
+    == OPEN FLOOR SIGNAL ==
+    - OPEN_FLOOR_REQUESTED: ${openFloorRequested ? 'YES' : 'NO'}.
+    - If OPEN_FLOOR_REQUESTED is YES and MODE is ecosystem, set should_continue to TRUE unless blocked by safety or inactivity.
+
     == IDLE AUTONOMY ==
     - IDLE_AUTONOMOUS: ${autonomousIdle ? 'YES' : 'NO'}.
     - If IDLE_AUTONOMOUS is YES, the user has not replied after the last response.
@@ -702,6 +715,9 @@ ${allowedStatusList}
         }
         if (autonomousIdle) {
             object.should_continue = false
+        }
+        if (!isEntourageMode && openFloorRequested && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0) {
+            object.should_continue = true
         }
 
         // Sometimes break one long message into two short back-to-back bubbles for realism.

@@ -73,16 +73,6 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                 <Button
                     variant="ghost"
                     size="icon"
-                    onClick={onOpenSettings}
-                    title="Gang Settings"
-                    aria-label="Open settings"
-                    className="rounded-full text-muted-foreground hover:text-primary transition-colors size-11 sm:size-12"
-                >
-                    <Settings2 size={22} />
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
                     className="rounded-full size-11 sm:size-12"
                     aria-label={currentTheme === 'dark' ? "Switch to light theme" : "Switch to dark theme"}
                     onClick={() => {
@@ -92,6 +82,16 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                     }}
                 >
                     {currentTheme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onOpenSettings}
+                    title="Gang Settings"
+                    aria-label="Open settings"
+                    className="rounded-full text-muted-foreground hover:text-primary transition-colors size-11 sm:size-12"
+                >
+                    <Settings2 size={22} />
                 </Button>
             </div>
         </header>
