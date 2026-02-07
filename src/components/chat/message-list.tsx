@@ -236,7 +236,6 @@ export function MessageList({
                                 : !samePrevious && sameNext ? 'first'
                                     : samePrevious && !sameNext ? 'last'
                                         : 'single'
-                        const status = characterStatuses[message.speaker]
                         const quotedMessage = message.replyToId ? messageById.get(message.replyToId) ?? null : null
                         const quotedSpeaker = quotedMessage
                             ? characterBySpeaker.get(normalizeSpeaker(quotedMessage.speaker)) ?? null
@@ -262,7 +261,6 @@ export function MessageList({
                                     character={character}
                                     isContinued={samePrevious}
                                     groupPosition={groupPosition}
-                                    status={status}
                                     isFastMode={isFastMode}
                                     animateOnMount={animatedMessageIdsRef.current.has(message.id)}
                                     quotedMessage={quotedMessage}

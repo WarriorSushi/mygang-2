@@ -14,7 +14,6 @@ import Image from 'next/image'
 interface MessageItemProps {
     message: Message
     character?: Character
-    status?: string
     isContinued?: boolean
     groupPosition?: 'single' | 'first' | 'middle' | 'last'
     isFastMode?: boolean
@@ -31,7 +30,6 @@ interface MessageItemProps {
 function MessageItemComponent({
     message,
     character,
-    status,
     isContinued,
     groupPosition = 'single',
     isFastMode = false,
@@ -150,11 +148,6 @@ function MessageItemComponent({
                         {showPersonaRoles && (character?.roleLabel || character?.archetype) && (
                             <span className="rounded-full border border-white/20 bg-white/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-foreground/90 truncate">
                                 {character?.roleLabel || character?.archetype}
-                            </span>
-                        )}
-                        {status && (
-                            <span className="text-[9px] text-muted-foreground italic truncate animate-pulse">
-                                &bull; {status}
                             </span>
                         )}
                     </div>

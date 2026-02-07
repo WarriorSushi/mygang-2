@@ -88,7 +88,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             )}
             <form
                 onSubmit={handleSubmit}
-                className="relative flex items-end gap-2 bg-card/95 border border-border/70 p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/60 sm:translate-y-1"
+                className="relative flex items-end gap-2 bg-card/95 dark:bg-[rgba(16,24,40,0.82)] border border-border/70 p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/60 sm:translate-y-1"
             >
                 <textarea
                     ref={inputRef}
@@ -98,10 +98,10 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     data-testid="chat-input"
                     placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
                     maxLength={MAX_CHARS}
-                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-2.5 pb-5 px-1 text-[16px] md:text-[15px] leading-6 max-h-32 min-h-[44px] scrollbar-hide"
+                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-2.5 pb-4 px-1 text-[16px] md:text-[15px] leading-6 max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
                 />
-                <span className="pointer-events-none absolute bottom-2 right-14 text-[10px] uppercase tracking-widest text-muted-foreground/55">
+                <span className="pointer-events-none absolute bottom-2 right-[3.75rem] text-[10px] uppercase tracking-widest text-muted-foreground/55">
                     {input.length}/{MAX_CHARS}
                 </span>
                 <Button
@@ -109,7 +109,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     size="icon"
                     disabled={!input.trim() || disabled}
                     data-testid="chat-send"
-                    className="shrink-0 rounded-xl w-10 h-10 mb-1 active:scale-95 transition-transform shadow-none"
+                    className="shrink-0 self-center rounded-xl w-11 h-11 mb-0 active:scale-95 transition-transform shadow-none"
                 >
                     <Send size={18} />
                 </Button>

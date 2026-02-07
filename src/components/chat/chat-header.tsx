@@ -22,7 +22,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
 
     return (
-        <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] border-b border-border/70 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/80 z-20 w-full shadow-sm">
+        <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] border-b border-border/70 dark:border-white/10 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/92 dark:bg-[rgba(14,22,37,0.9)] z-20 w-full shadow-[0_12px_30px_-24px_rgba(2,6,23,0.8)]">
             <div className="flex items-center gap-3 min-w-0">
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">

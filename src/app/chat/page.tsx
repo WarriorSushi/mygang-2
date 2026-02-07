@@ -65,8 +65,10 @@ export default function ChatPage() {
     const [replyingTo, setReplyingTo] = useState<Message | null>(null)
     const [historyCursor, setHistoryCursor] = useState<string | null>(null)
     const [hasMoreHistory, setHasMoreHistory] = useState(false)
-    const [loadingHistory, setLoadingHistory] = useState(false)
+    const [isBootstrappingHistory, setIsBootstrappingHistory] = useState(false)
+    const [isLoadingOlderHistory, setIsLoadingOlderHistory] = useState(false)
     const [historyBootstrapDone, setHistoryBootstrapDone] = useState(false)
+    const [historyStatus, setHistoryStatus] = useState<'unknown' | 'has_history' | 'empty' | 'error'>('unknown')
 
     const captureRootRef = useRef<HTMLDivElement>(null)
     const { theme } = useTheme()
@@ -152,10 +154,18 @@ export default function ChatPage() {
 
     useEffect(() => {
         if (!isHydrated) return
+        if (!userId) {
+            setHistoryStatus('empty')
+            setHistoryBootstrapDone(true)
+            setHistoryCursor(null)
+            setHasMoreHistory(false)
+            return
+        }
         if (messages.length > 0) {
+            setHistoryStatus('has_history')
             setHistoryBootstrapDone(true)
         }
-    }, [isHydrated, messages.length])
+    }, [isHydrated, messages.length, userId])
 
     useEffect(() => {
         if (!isHydrated || !userId) return
@@ -164,20 +174,24 @@ export default function ChatPage() {
 
         let cancelled = false
         const bootstrapHistory = async () => {
-            setLoadingHistory(true)
+            setIsBootstrappingHistory(true)
             try {
                 const page = await getChatHistoryPage({ limit: 40 })
                 if (cancelled) return
                 if (page.items.length > 0) {
                     setMessages(page.items)
+                    setHistoryStatus('has_history')
+                } else {
+                    setHistoryStatus('empty')
                 }
                 setHistoryCursor(page.nextBefore)
                 setHasMoreHistory(page.hasMore)
             } catch (err) {
                 console.error('Failed to load initial chat history:', err)
+                setHistoryStatus('error')
             } finally {
                 if (cancelled) return
-                setLoadingHistory(false)
+                setIsBootstrappingHistory(false)
                 setHistoryBootstrapDone(true)
             }
         }
@@ -356,12 +370,13 @@ export default function ChatPage() {
         }, delay)
     }
 
-    // Initial Greeting Trigger
+    // Initial greeting should only run for genuine first-time sessions.
     useEffect(() => {
-        if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current) {
+        const allowGreeting = !userId || historyStatus === 'empty'
+        if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && allowGreeting) {
             triggerLocalGreeting()
         }
-    }, [activeGang.length, messages.length])
+    }, [activeGang.length, historyStatus, messages.length, userId])
 
     useEffect(() => {
         if (isHydrated && messages.length > 0 && !resumeBannerRef.current) {
@@ -741,8 +756,8 @@ export default function ChatPage() {
     }
 
     const loadOlderHistory = async () => {
-        if (!userId || !historyCursor || loadingHistory || !hasMoreHistory) return
-        setLoadingHistory(true)
+        if (!userId || !historyCursor || isLoadingOlderHistory || !hasMoreHistory || isBootstrappingHistory) return
+        setIsLoadingOlderHistory(true)
         try {
             const page = await getChatHistoryPage({ before: historyCursor, limit: 40 })
             const currentMessages = useChatStore.getState().messages
@@ -757,7 +772,7 @@ export default function ChatPage() {
             console.error('Failed to load older history:', err)
             setToastMessage('Could not load older messages right now.')
         } finally {
-            setLoadingHistory(false)
+            setIsLoadingOlderHistory(false)
         }
     }
 
@@ -795,7 +810,7 @@ export default function ChatPage() {
                                 typingUsers={typingUsers}
                                 isFastMode={isFastMode}
                                 hasMoreHistory={hasMoreHistory}
-                                loadingHistory={loadingHistory}
+                                loadingHistory={isLoadingOlderHistory}
                                 onLoadOlderHistory={loadOlderHistory}
                                 onReplyMessage={(message) => setReplyingTo(message)}
                                 onLikeMessage={handleQuickLike}
@@ -804,7 +819,7 @@ export default function ChatPage() {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-border/70 bg-card/95 backdrop-blur-xl px-0 pb-0 sm:border-t-0 sm:bg-transparent sm:backdrop-blur-0 sm:px-10 lg:px-20 sm:pb-3">
+                <div className="shrink-0 border-t border-border/70 bg-card/95 dark:bg-[rgba(14,22,37,0.9)] backdrop-blur-xl px-0 pb-0 sm:border-t sm:bg-card/90 sm:dark:bg-[rgba(14,22,37,0.86)] sm:backdrop-blur-xl sm:px-10 lg:px-20 sm:pb-3">
                     {!isOnline && (
                         <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
                             Offline mode - reconnect to send messages
