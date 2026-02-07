@@ -605,14 +605,29 @@ ${allowedStatusList}
                 prompt: systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM),
             })
             object = result.object
-        } catch (err) {
-            console.error('Gemini Error, falling back to OpenRouter:', err)
-            const result = await generateObject({
-                model: openRouterModel,
-                schema: responseSchema,
-                prompt: systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM),
-            })
-            object = result.object
+        } catch (geminiErr) {
+            console.error('Gemini Error, falling back to OpenRouter:', geminiErr)
+            try {
+                const result = await generateObject({
+                    model: openRouterModel,
+                    schema: responseSchema,
+                    prompt: systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM),
+                })
+                object = result.object
+            } catch (openRouterErr) {
+                console.error('OpenRouter fallback failed:', openRouterErr)
+                const fallbackCharacter = filteredIds[0] || 'system'
+                object = {
+                    events: [{
+                        type: 'message',
+                        character: fallbackCharacter,
+                        content: 'Quick signal hiccup. I am still here. Say that again and I will pick it up.',
+                        delay: 220
+                    }],
+                    responders: [fallbackCharacter],
+                    should_continue: false
+                }
+            }
         }
 
         if (object?.events && Array.isArray(object.events)) {
@@ -899,7 +914,7 @@ ${allowedStatusList}
             events: [{
                 type: 'message',
                 character: 'system',
-                content: "The gang portal is glitching. Try again.",
+                content: "Quick hiccup on our side. Please try again.",
                 delay: 500
             }]
         }, { status: 500 })

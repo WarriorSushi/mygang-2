@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import dynamic from 'next/dynamic'
@@ -32,6 +32,22 @@ type ChatEvent =
 type ChatApiResponse = {
     events: ChatEvent[]
     should_continue?: boolean
+}
+
+function messageFingerprint(message: Message) {
+    const createdAt = Number.isFinite(Date.parse(message.created_at))
+        ? new Date(message.created_at).toISOString()
+        : message.created_at
+    return `${message.speaker}::${message.content}::${createdAt}`
+}
+
+function isSameMessageTail(localMessages: Message[], remoteMessages: Message[]) {
+    if (remoteMessages.length === 0) return localMessages.length === 0
+    if (localMessages.length < remoteMessages.length) return false
+    const localTail = localMessages.slice(-remoteMessages.length)
+    return remoteMessages.every((remoteMessage, index) => (
+        messageFingerprint(localTail[index]) === messageFingerprint(remoteMessage)
+    ))
 }
 
 export default function ChatPage() {
@@ -95,6 +111,8 @@ export default function ChatPage() {
     const idleAutoCountRef = useRef(0)
     const resumeAutonomousTriggeredRef = useRef(false)
     const lastUserMessageIdRef = useRef<string | null>(null)
+    const historySyncInFlightRef = useRef(false)
+    const lastHistorySyncAtRef = useRef(0)
 
     const flushTypingUsers = () => {
         typingFlushRef.current = null
@@ -202,6 +220,76 @@ export default function ChatPage() {
         }
     }, [historyBootstrapDone, isHydrated, messages.length, setMessages, userId])
 
+    const syncLatestHistory = useCallback(async (force = false) => {
+        if (!userId || !historyBootstrapDone) return
+        if (historySyncInFlightRef.current) return
+        if (isBootstrappingHistory || isLoadingOlderHistory) return
+        if (!force) {
+            if (!isOnline) return
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+            if (isGeneratingRef.current || pendingUserMessagesRef.current || debounceTimerRef.current) return
+            if (Date.now() - lastHistorySyncAtRef.current < 8000) return
+        }
+
+        historySyncInFlightRef.current = true
+        lastHistorySyncAtRef.current = Date.now()
+        try {
+            const page = await getChatHistoryPage({ limit: 40 })
+            setHistoryCursor(page.nextBefore)
+            setHasMoreHistory(page.hasMore)
+
+            const localMessages = useChatStore.getState().messages
+            if (page.items.length === 0) {
+                setHistoryStatus('empty')
+                if (localMessages.length > 0 && !isGeneratingRef.current && !pendingUserMessagesRef.current && !debounceTimerRef.current) {
+                    setMessages([])
+                }
+                return
+            }
+
+            setHistoryStatus('has_history')
+            if (localMessages.length === 0) {
+                setMessages(page.items)
+                return
+            }
+
+            if (!isSameMessageTail(localMessages, page.items)) {
+                setMessages(page.items)
+            }
+        } catch (err) {
+            console.error('Failed to sync cloud chat history:', err)
+        } finally {
+            historySyncInFlightRef.current = false
+        }
+    }, [historyBootstrapDone, isBootstrappingHistory, isLoadingOlderHistory, isOnline, setMessages, userId])
+
+    useEffect(() => {
+        if (!isHydrated || !userId || !historyBootstrapDone) return
+
+        const intervalId = window.setInterval(() => {
+            void syncLatestHistory(false)
+        }, 12000)
+
+        const handleFocus = () => {
+            void syncLatestHistory(true)
+        }
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                void syncLatestHistory(true)
+            }
+        }
+
+        window.addEventListener('focus', handleFocus)
+        document.addEventListener('visibilitychange', handleVisibility)
+        void syncLatestHistory(true)
+
+        return () => {
+            window.clearInterval(intervalId)
+            window.removeEventListener('focus', handleFocus)
+            document.removeEventListener('visibilitychange', handleVisibility)
+        }
+    }, [historyBootstrapDone, isHydrated, syncLatestHistory, userId])
+
     useEffect(() => {
         if (!isHydrated) return
         const session = ensureAnalyticsSession()
@@ -234,6 +322,18 @@ export default function ChatPage() {
         return () => {
             window.removeEventListener('online', goOnline)
             window.removeEventListener('offline', goOffline)
+        }
+    }, [])
+
+    useEffect(() => {
+        const handleTimelineCleared = () => {
+            setHistoryCursor(null)
+            setHasMoreHistory(false)
+            setHistoryStatus('empty')
+        }
+        window.addEventListener('mygang:timeline-cleared', handleTimelineCleared)
+        return () => {
+            window.removeEventListener('mygang:timeline-cleared', handleTimelineCleared)
         }
     }, [])
 
@@ -544,39 +644,55 @@ export default function ChatPage() {
                 replyToId: m.replyToId
             }))
             const mockAi = typeof window !== 'undefined' && (window.localStorage.getItem('mock_ai') === 'true' || process.env.NEXT_PUBLIC_MOCK_AI === 'true')
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(mockAi ? { 'x-mock-ai': 'true' } : {})
-                },
-                body: JSON.stringify({
-                    messages: payloadMessages,
-                    activeGangIds: activeGang.map(c => c.id),
-                    userName,
-                    userNickname,
-                    isFirstMessage: currentMessages.length === 0 && isIntro,
-                    silentTurns: silentTurnsRef.current,
-                    burstCount: burstCountRef.current,
-                    chatMode, // Passing the current mode
-                    autonomousIdle
-                })
-            })
+            const requestBody = {
+                messages: payloadMessages,
+                activeGangIds: activeGang.map(c => c.id),
+                userName,
+                userNickname,
+                isFirstMessage: currentMessages.length === 0 && isIntro,
+                silentTurns: silentTurnsRef.current,
+                burstCount: burstCountRef.current,
+                chatMode,
+                autonomousIdle
+            }
 
+            let res: Response | null = null
             let data: ChatApiResponse | null = null
-            try {
-                data = await res.json()
-            } catch (err) {
-                console.error('Failed to parse response:', err)
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    res = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(mockAi ? { 'x-mock-ai': 'true' } : {})
+                        },
+                        body: JSON.stringify(requestBody)
+                    })
+                    data = null
+                    try {
+                        data = await res.json()
+                    } catch (err) {
+                        console.error('Failed to parse response:', err)
+                    }
+                    if (res.ok || res.status < 500 || attempt === 1) break
+                } catch (err) {
+                    if (attempt === 1) throw err
+                }
+                await new Promise((resolve) => setTimeout(resolve, 420 + attempt * 240))
+            }
+
+            if (!res) {
+                throw new Error('No response from chat API')
             }
 
             if (!res.ok) {
-                setToastMessage(data?.events?.[0]?.content || "The gang portal is glitching. Try again.")
+                const fallbackErrorMessage = data?.events?.[0]?.content || 'Quick hiccup on our side. Please try again.'
+                setToastMessage(fallbackErrorMessage)
                 if (!data?.events) {
                     addMessage({
                         id: `ai-error-${Date.now()}`,
                         speaker: 'system',
-                        content: "The gang portal is glitching. Try again.",
+                        content: fallbackErrorMessage,
                         created_at: new Date().toISOString()
                     })
                 } else {
@@ -585,7 +701,7 @@ export default function ChatPage() {
                             addMessage({
                                 id: `ai-error-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                                 speaker: event.character,
-                                content: event.content || "The gang portal is glitching. Try again.",
+                                content: event.content || fallbackErrorMessage,
                                 created_at: new Date().toISOString(),
                                 replyToId: event.target_message_id
                             })

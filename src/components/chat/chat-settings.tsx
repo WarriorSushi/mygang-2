@@ -20,7 +20,7 @@ import {
     Gauge,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
+import { deleteAccount, deleteAllMessages, signOut, updateUserSettings } from '@/app/auth/actions'
 import Link from 'next/link'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
@@ -403,14 +403,21 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         type="button"
                                         variant="ghost"
                                         className="h-auto w-full justify-between rounded-xl border border-destructive/40 bg-background/20 px-3 py-3 text-destructive hover:bg-destructive hover:text-white"
-                                        onClick={() => {
-                                            if (confirm("Clear all messages? This can't be undone.")) {
-                                                clearChat()
-                                                onClose()
+                                        onClick={async () => {
+                                            if (!confirm("Delete all messages? This can't be undone.")) return
+                                            const result = await deleteAllMessages()
+                                            if (!result.ok) {
+                                                alert(result.error || 'Could not delete messages right now.')
+                                                return
                                             }
+                                            clearChat()
+                                            if (typeof window !== 'undefined') {
+                                                window.dispatchEvent(new CustomEvent('mygang:timeline-cleared'))
+                                            }
+                                            onClose()
                                         }}
                                     >
-                                        <span className="text-[11px] font-black uppercase tracking-wider">Clear Timeline</span>
+                                        <span className="text-[11px] font-black uppercase tracking-wider">Delete All Messages</span>
                                         <Trash2 size={14} />
                                     </Button>
 

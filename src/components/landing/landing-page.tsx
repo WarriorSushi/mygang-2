@@ -17,6 +17,9 @@ import {
   ThumbsUp,
   Layers3,
   UserRound,
+  Clock3,
+  ShieldCheck,
+  Smile,
 } from 'lucide-react'
 import Image from 'next/image'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
@@ -29,9 +32,9 @@ import { cn } from '@/lib/utils'
 
 const stats = [
   { label: 'Someone Is Always Here', value: '24/7' },
-  { label: 'Distinct Personalities', value: '8' },
+  { label: 'Different Friend Energies', value: '8' },
   { label: 'Awkward Silence', value: 'Zero' },
-  { label: 'Mood Boost Moments', value: 'Daily' },
+  { label: 'Feel-Better Moments', value: 'Daily' },
 ]
 
 const steps = [
@@ -67,6 +70,24 @@ const howItWorksPillars = [
   },
 ]
 
+const howItWorksMoments = [
+  {
+    title: 'You send one line',
+    copy: 'No perfect prompt needed. Even short messages get useful, human-feeling replies.',
+    icon: <MessageCircle className="w-4 h-4 text-cyan-500" />,
+  },
+  {
+    title: 'The room responds',
+    copy: 'Different personalities answer in sequence, so it feels social instead of robotic.',
+    icon: <Clock3 className="w-4 h-4 text-amber-500" />,
+  },
+  {
+    title: 'Momentum stays alive',
+    copy: 'You get reactions, reply chains, and a clear handoff back to you.',
+    icon: <Sparkles className="w-4 h-4 text-fuchsia-500" />,
+  },
+]
+
 type DemoBubble = {
   speaker: string
   role?: string
@@ -91,7 +112,7 @@ const demoThreads: DemoThread[] = [
     bubbles: [
       { speaker: 'You', text: 'Long day. Need a tiny win right now.', side: 'right', tone: 'user', delay: 900 },
       { speaker: 'Luna', role: 'The Empath', text: 'First, breathe. I am proud of you for showing up.', side: 'left', tone: 'crew', delay: 900 },
-      { speaker: 'Kael', role: 'Hype Man', text: 'Mini mission: water + one song + one stretch. Go.', side: 'left', tone: 'crew', delay: 900, reaction: '🔥' },
+      { speaker: 'Kael', role: 'Hype Man', text: 'Mini mission: water + one song + one stretch. Go.', side: 'left', tone: 'crew', delay: 900, reaction: 'fire' },
       { speaker: 'Rico', role: 'Chaos Gremlin', text: 'I vote dance break. 45 seconds. No excuses.', side: 'left', tone: 'crew', delay: 950, replyTo: 'Mini mission: water + one song + one stretch. Go.' },
       { speaker: 'You', text: 'Fine, dance break accepted.', side: 'right', tone: 'user', delay: 1000 },
     ],
@@ -103,7 +124,7 @@ const demoThreads: DemoThread[] = [
       { speaker: 'You', text: 'I keep procrastinating this application.', side: 'right', tone: 'user', delay: 900 },
       { speaker: 'Nyx', role: 'The Hacker', text: 'Open it now. We split it into 3 tiny chunks.', side: 'left', tone: 'crew', delay: 850 },
       { speaker: 'Atlas', role: 'The Ops', text: 'Chunk 1 in 7 mins: headline + first bullet only.', side: 'left', tone: 'crew', delay: 950 },
-      { speaker: 'Luna', role: 'The Empath', text: 'Reply here with just the headline. We cheer after.', side: 'left', tone: 'crew', delay: 900, reaction: '💛' },
+      { speaker: 'Luna', role: 'The Empath', text: 'Reply here with just the headline. We cheer after.', side: 'left', tone: 'crew', delay: 900, reaction: 'cheer' },
       { speaker: 'You', text: 'Okay. Starting now.', side: 'right', tone: 'user', delay: 1000 },
     ],
   },
@@ -113,7 +134,7 @@ const demoThreads: DemoThread[] = [
     bubbles: [
       { speaker: 'You', text: 'I need a ridiculous weekend idea.', side: 'right', tone: 'user', delay: 900 },
       { speaker: 'Rico', role: 'Chaos Gremlin', text: 'Theme dinner where everyone speaks in movie quotes.', side: 'left', tone: 'crew', delay: 900 },
-      { speaker: 'Kael', role: 'Hype Man', text: 'Yes. Dress code: dramatic entrance only.', side: 'left', tone: 'crew', delay: 850, reaction: '✨' },
+      { speaker: 'Kael', role: 'Hype Man', text: 'Yes. Dress code: dramatic entrance only.', side: 'left', tone: 'crew', delay: 850, reaction: 'spark' },
       { speaker: 'Nyx', role: 'The Hacker', text: 'I will allow this if snacks are elite.', side: 'left', tone: 'crew', delay: 900, replyTo: 'Theme dinner where everyone speaks in movie quotes.' },
       { speaker: 'You', text: 'This is objectively perfect.', side: 'right', tone: 'user', delay: 950 },
     ],
@@ -144,6 +165,24 @@ const realSignals = [
     meter: 96,
     icon: <Bot className="w-5 h-5 text-emerald-500" />,
     chips: ['Live energy', 'Fast momentum', 'Warm tone'],
+  },
+]
+
+const compareRows = [
+  {
+    label: 'Reply quality',
+    ordinary: 'Generic one-shot answer',
+    gang: 'Layered replies with different points of view',
+  },
+  {
+    label: 'Social feel',
+    ordinary: 'Single bot speaking at you',
+    gang: 'Group chat rhythm with reads, reactions, and callbacks',
+  },
+  {
+    label: 'Emotional tone',
+    ordinary: 'Flat and predictable',
+    gang: 'Warm, playful, and context-aware',
   },
 ]
 
@@ -405,6 +444,29 @@ export function LandingPage() {
         </section>
 
         <Section id="how-it-works" title="How it works" subtitle="Simple setup, rich social flow">
+          <div className="mb-8 rounded-[1.7rem] border border-border/70 bg-card/75 p-4 sm:p-5 shadow-[0_20px_36px_-30px_rgba(15,23,42,0.9)]">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="text-left">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Live Walkthrough</div>
+                <h3 className="mt-1 text-lg sm:text-xl font-black tracking-tight">From first message to real chat momentum</h3>
+              </div>
+              <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/75">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {howItWorksMoments.map((moment) => (
+                <div key={moment.title} className="rounded-xl border border-border/70 bg-background/70 px-3 py-3 text-left">
+                  <div className="flex items-center gap-2 text-xs font-semibold">
+                    {moment.icon}
+                    <span>{moment.title}</span>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{moment.copy}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.35fr] gap-8 lg:gap-10">
             <div className="space-y-4">
               {steps.map((step, index) => (
@@ -435,7 +497,7 @@ export function LandingPage() {
             <div className="md:hidden -mx-1 overflow-x-auto pb-2">
               <div className="flex gap-4 snap-x snap-mandatory px-1">
                 {demoThreads.map((thread) => (
-                  <div key={`mobile-${thread.title}`} className="snap-start w-[84vw] shrink-0">
+                  <div key={`mobile-${thread.title}`} className="snap-start w-[88vw] shrink-0">
                     <LiveDemoCard thread={thread} />
                   </div>
                 ))}
@@ -448,6 +510,28 @@ export function LandingPage() {
         </Section>
 
         <Section id="why-it-feels-real" title="Why it feels real" subtitle="Built for people who want company, not just answers">
+          <div className="mb-6 rounded-[1.7rem] border border-border/70 bg-card/75 p-4 sm:p-6 shadow-[0_20px_36px_-30px_rgba(15,23,42,0.9)]">
+            <div className="flex items-center gap-2">
+              <Smile className="w-4 h-4 text-emerald-500" />
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Why this feels different</div>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2.5">
+              {compareRows.map((row) => (
+                <div key={row.label} className="grid grid-cols-1 md:grid-cols-[150px_1fr_1fr] gap-2 rounded-xl border border-border/70 bg-background/70 px-3 py-3 text-left">
+                  <div className="text-[11px] font-black uppercase tracking-[0.14em] text-foreground/85">{row.label}</div>
+                  <div className="rounded-lg border border-border/70 bg-card/75 px-2.5 py-2 text-[11px] text-muted-foreground">
+                    <span className="block text-[9px] uppercase tracking-[0.14em] text-muted-foreground/80">Typical chat</span>
+                    <span>{row.ordinary}</span>
+                  </div>
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.08] px-2.5 py-2 text-[11px] text-foreground">
+                    <span className="block text-[9px] uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-400">MyGang</span>
+                    <span>{row.gang}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {realSignals.map((item) => (
               <RealityCard
