@@ -29,6 +29,11 @@ export const CHAT_WALLPAPERS = [
         label: 'Graphite',
         description: 'Minimal monochrome texture',
     },
+    {
+        id: 'midnight',
+        label: 'Midnight',
+        description: 'Legacy deep dark background',
+    },
 ] as const
 
 export type ChatWallpaper = (typeof CHAT_WALLPAPERS)[number]['id']

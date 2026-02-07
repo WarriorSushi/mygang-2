@@ -262,3 +262,37 @@ Date: 2026-02-07
 ### Verification (Visual System and Settings Navigation Sprint)
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
+
+## Chat Polish and Accessibility Sprint
+Date: 2026-02-07
+
+### Problems
+- Radix console warnings reported missing dialog title/description semantics for settings drawer content.
+- Composer area showed overly strong shadow/banding around the input surface.
+- AI bubble rendering felt soft/muddy and text too heavy for chat readability.
+- Requested legacy dark wallpaper option was missing from wallpaper presets.
+- Wallpaper picker needed stronger mobile scroll handling.
+
+### Fixes Implemented
+- Accessibility:
+  - Added hidden `SheetTitle` + `SheetDescription` to `src/components/chat/chat-settings.tsx` to satisfy dialog accessibility requirements.
+- Composer cleanup:
+  - Refined composer container and form surfaces in `src/components/chat/chat-input.tsx`:
+    - removed heavy `shadow-2xl` treatment
+    - switched to crisp `card` + border styling
+    - reduced visual banding at the bottom area
+- Bubble readability and crispness:
+  - Updated `src/components/chat/message-item.tsx`:
+    - reduced blur-heavy look (`backdrop-blur-none`)
+    - tightened AI tint opacity for cleaner edges
+    - adjusted typography to more messaging-standard weights/spacing
+    - mobile-first text sizing (`14px` mobile, `15px` desktop)
+- Legacy wallpaper:
+  - Added `midnight` wallpaper preset in `src/constants/wallpapers.ts`.
+  - Added matching rendering rules in `src/app/globals.css` for deep legacy dark background.
+- Wallpaper list UX:
+  - Made wallpaper options region explicitly scrollable in `src/components/chat/chat-settings.tsx` for smaller screens.
+
+### Verification (Chat Polish and Accessibility Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS

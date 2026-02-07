@@ -183,18 +183,18 @@ function MessageItemComponent({
                 <GlassCard
                     variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
                     className={cn(
-                        "p-3.5 px-4 transition-all duration-300 z-10 border shadow-sm",
+                        "p-3 px-3.5 sm:p-3.5 sm:px-4 transition-all duration-200 z-10 border shadow-sm backdrop-blur-none",
                         isUser
-                            ? cn("text-primary-foreground hover:brightness-110", userShape)
+                            ? cn("text-primary-foreground", userShape)
                             : isReaction
                                 ? "bg-transparent border-none p-1 rounded-full shadow-none"
                                 : gangShape
                     )}
                     style={(!isUser && !isReaction) ? {
                         backgroundColor: theme === 'dark'
-                            ? `${character?.color || '#ffffff'}66` // 40% Vibrant tint in dark
-                            : `${character?.color || '#ffffff'}33`, // 20% Vibrant tint in light
-                        borderLeftColor: character?.color || 'rgba(255,255,255,0.4)'
+                            ? `${character?.color || '#ffffff'}40`
+                            : `${character?.color || '#ffffff'}24`,
+                        borderLeftColor: character?.color || 'rgba(255,255,255,0.35)'
                     } : {}}
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
@@ -204,7 +204,10 @@ function MessageItemComponent({
                     {isReaction ? (
                         <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
                     ) : (
-                        <p className="text-[15px] font-bold leading-relaxed select-text tracking-tight text-foreground dark:text-white break-words">{message.content}</p>
+                        <p className={cn(
+                            "select-text break-words leading-[1.45] tracking-normal text-[14px] sm:text-[15px]",
+                            isUser ? "font-semibold text-primary-foreground" : "font-medium text-foreground dark:text-white"
+                        )}>{message.content}</p>
                     )}
                 </GlassCard>
                 {showActions && canShowActions && (

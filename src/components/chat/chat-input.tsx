@@ -67,7 +67,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
     }
 
     return (
-        <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] bg-gradient-to-t from-background via-background/80 to-transparent z-10">
+        <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] bg-background/60 backdrop-blur-md z-20 border-t border-border/60">
             {replyingTo && (
                 <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <div className="min-w-0">
@@ -88,7 +88,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             )}
             <form
                 onSubmit={handleSubmit}
-                className="relative flex items-end gap-2 bg-white/5 backdrop-blur-xl border border-white/10 p-2 px-3 rounded-2xl shadow-2xl transition-all focus-within:border-primary/50"
+                className="relative flex items-end gap-2 bg-card/85 border border-border/70 p-2 px-3 rounded-2xl shadow-sm transition-colors focus-within:border-primary/60"
             >
                 <textarea
                     ref={inputRef}
@@ -98,7 +98,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     data-testid="chat-input"
                     placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
                     maxLength={MAX_CHARS}
-                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-3 px-1 text-[15px] max-h-32 min-h-[44px] scrollbar-hide"
+                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-3 px-1 text-[14px] sm:text-[15px] max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
                 />
                 <Button
@@ -106,7 +106,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     size="icon"
                     disabled={!input.trim() || disabled}
                     data-testid="chat-send"
-                    className="shrink-0 rounded-xl w-10 h-10 mb-1 active:scale-95 transition-transform"
+                    className="shrink-0 rounded-xl w-10 h-10 mb-1 active:scale-95 transition-transform shadow-none"
                 >
                     <Send size={18} />
                 </Button>
