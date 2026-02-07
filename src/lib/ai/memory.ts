@@ -60,11 +60,30 @@ export async function storeMemory(
     try {
         const supabase = await createClient()
         const { kind = 'episodic', tags = [], importance = 1, useEmbedding = false } = options || {}
-        const embedding = useEmbedding ? await generateEmbedding(content) : null
+        const normalizedContent = content.trim().replace(/\s+/g, ' ')
+        const embedding = useEmbedding ? await generateEmbedding(normalizedContent) : null
+
+        const { data: existing } = await supabase
+            .from('memories')
+            .select('id, content, created_at')
+            .eq('user_id', userId)
+            .eq('kind', kind)
+            .order('created_at', { ascending: false })
+            .limit(5)
+
+        const duplicate = existing?.find((m: any) => {
+            if (!m?.content) return false
+            const recent = m.created_at ? (Date.now() - new Date(m.created_at).getTime()) < 10 * 60 * 1000 : false
+            return recent && m.content.trim().replace(/\s+/g, ' ') === normalizedContent
+        })
+
+        if (duplicate) {
+            return
+        }
 
         const { error } = await supabase.from('memories').insert({
             user_id: userId,
-            content,
+            content: normalizedContent,
             embedding,
             kind,
             tags,

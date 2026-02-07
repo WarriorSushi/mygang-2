@@ -23,7 +23,9 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
     const prevMessagesLength = useRef(messages.length)
     const characterStatuses = useChatStore((state) => state.characterStatuses)
     const hasTyping = typingUsers.length > 0
-    const itemCount = messages.length + (hasTyping ? 1 : 0)
+    const hasActivity = Object.values(characterStatuses).some(Boolean)
+    const hasStatusRow = hasTyping || hasActivity
+    const itemCount = messages.length + (hasStatusRow ? 1 : 0)
 
     const rowVirtualizer = useVirtualizer({
         count: itemCount,
@@ -93,7 +95,7 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                 <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                         const index = virtualRow.index
-                        const isTypingRow = hasTyping && index === messages.length
+                        const isTypingRow = hasStatusRow && index === messages.length
                         if (isTypingRow) {
                             return (
                                 <div

@@ -132,8 +132,7 @@ export async function saveGang(characterIds: string[]) {
 
     const { error: settingsError } = await supabase
         .from('profiles')
-        .update({ preferred_squad: characterIds })
-        .eq('id', user.id)
+        .upsert({ id: user.id, preferred_squad: characterIds }, { onConflict: 'id' })
     if (settingsError) console.error('Error updating preferred gang:', settingsError)
 }
 
@@ -167,8 +166,7 @@ export async function saveUsername(username: string) {
 
     const { error } = await supabase
         .from('profiles')
-        .update({ username })
-        .eq('id', user.id)
+        .upsert({ id: user.id, username }, { onConflict: 'id' })
 
     if (error) console.error('Error saving username:', error)
 }
@@ -256,8 +254,7 @@ export async function updateUserSettings(settings: { theme?: string; chat_mode?:
 
     const { error } = await supabase
         .from('profiles')
-        .update(settings)
-        .eq('id', user.id)
+        .upsert({ id: user.id, ...settings }, { onConflict: 'id' })
 
     if (error) console.error('Error updating user settings:', error)
 }

@@ -8,7 +8,7 @@ import { toPng } from 'html-to-image'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
-import { ACTIVITY_STATUSES, CHARACTER_GREETINGS } from '@/constants/character-greetings'
+import { ACTIVITY_STATUSES, CHARACTER_GREETINGS, CHARACTER_STATUS_REACTIONS } from '@/constants/character-greetings'
 
 // New modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -35,8 +35,6 @@ export default function ChatPage() {
         setCharacterStatus,
         chatMode,
         chatWallpaper,
-        hasSeenChatTips,
-        setHasSeenChatTips,
         squadConflict,
         setSquadConflict
     } = useChatStore()
@@ -61,6 +59,7 @@ export default function ChatPage() {
     const isGeneratingRef = useRef(false)
     const pendingUserMessagesRef = useRef(false)
     const pendingBlockedMessageRef = useRef<string | null>(null)
+    const pendingUserMessageIdRef = useRef<string | null>(null)
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const silentTurnsRef = useRef(0)
     const burstCountRef = useRef(0)
@@ -70,6 +69,10 @@ export default function ChatPage() {
     const fastModeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const greetingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
     const statusTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
+    const idleAutonomousTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const idleAutoCountRef = useRef(0)
+    const lastUserMessageIdRef = useRef<string | null>(null)
+    const lastUserActivityRef = useRef<number>(Date.now())
 
     const flushTypingUsers = () => {
         typingFlushRef.current = null
@@ -144,6 +147,24 @@ export default function ChatPage() {
             Object.values(statusTimersRef.current).forEach((timer) => {
                 if (timer) clearTimeout(timer)
             })
+            if (idleAutonomousTimerRef.current) clearTimeout(idleAutonomousTimerRef.current)
+        }
+    }, [])
+
+    useEffect(() => {
+        const markActive = () => {
+            lastUserActivityRef.current = Date.now()
+            if (idleAutonomousTimerRef.current) {
+                clearTimeout(idleAutonomousTimerRef.current)
+                idleAutonomousTimerRef.current = null
+            }
+        }
+        const events = ['mousemove', 'keydown', 'scroll', 'touchstart']
+        events.forEach((event) => window.addEventListener(event, markActive, { passive: true }))
+        document.addEventListener('visibilitychange', markActive)
+        return () => {
+            events.forEach((event) => window.removeEventListener(event, markActive))
+            document.removeEventListener('visibilitychange', markActive)
         }
     }, [])
 
@@ -152,6 +173,11 @@ export default function ChatPage() {
     const scheduleGreeting = (fn: () => void, delay: number) => {
         const timer = setTimeout(fn, delay)
         greetingTimersRef.current.push(timer)
+    }
+
+    const pickStatusFor = (characterId: string) => {
+        const pool = CHARACTER_STATUS_REACTIONS[characterId] || ACTIVITY_STATUSES
+        return pickRandom(pool)
     }
 
     const pulseStatus = (characterId: string, status: string, duration = 2400) => {
@@ -180,7 +206,7 @@ export default function ChatPage() {
                 const hasUserMessage = useChatStore.getState().messages.some((m) => m.speaker === 'user')
                 if (hasUserMessage) return
                 queueTypingUser(char.id)
-                pulseStatus(char.id, pickRandom(ACTIVITY_STATUSES), 1600)
+                pulseStatus(char.id, pickStatusFor(char.id), 1600)
                 const line = pickRandom(CHARACTER_GREETINGS[char.id] || [`Hey ${nameLabel}, what should we talk about?`])
                     .replace('{name}', nameLabel)
 
@@ -205,9 +231,57 @@ export default function ChatPage() {
         const available = activeGang.filter(c => c.id !== 'user')
         const picks = [...available].sort(() => 0.5 - Math.random()).slice(0, Math.min(2, available.length))
         picks.forEach((char, idx) => {
-            const status = pickRandom(ACTIVITY_STATUSES)
+            const status = pickStatusFor(char.id)
             pulseStatus(char.id, status, 2200 + idx * 400)
         })
+    }
+
+    const triggerReadingStatuses = () => {
+        const available = activeGang.filter(c => c.id !== 'user')
+        const picks = [...available].sort(() => 0.5 - Math.random()).slice(0, Math.min(3, available.length))
+        picks.forEach((char, idx) => {
+            const status = pickStatusFor(char.id)
+            pulseStatus(char.id, status, 2800 + idx * 500)
+        })
+    }
+
+    const clearIdleAutonomousTimer = () => {
+        if (idleAutonomousTimerRef.current) {
+            clearTimeout(idleAutonomousTimerRef.current)
+            idleAutonomousTimerRef.current = null
+        }
+    }
+
+    const canRunIdleAutonomous = () => {
+        if (useChatStore.getState().chatMode !== 'ecosystem') return false
+        if (typeof document !== 'undefined') {
+            if (document.visibilityState !== 'visible') return false
+            if (document.hasFocus && !document.hasFocus()) return false
+        }
+        if (typeof navigator !== 'undefined' && !navigator.onLine) return false
+        return true
+    }
+
+    const scheduleIdleAutonomous = (sourceUserMessageId: string | null) => {
+        if (!sourceUserMessageId) return
+        if (!canRunIdleAutonomous()) return
+        if (idleAutoCountRef.current >= 3) return
+
+        clearIdleAutonomousTimer()
+        const delay = 15000 + idleAutoCountRef.current * 7000
+        idleAutonomousTimerRef.current = setTimeout(() => {
+            const stillIdle = Date.now() - lastUserActivityRef.current >= delay
+            const currentMessages = useChatStore.getState().messages
+            const lastMessage = currentMessages[currentMessages.length - 1]
+            const stillSameUserMessage = lastUserMessageIdRef.current === sourceUserMessageId
+            if (!stillIdle || !stillSameUserMessage) return
+            if (!canRunIdleAutonomous()) return
+            if (!lastMessage || lastMessage.speaker === 'user') return
+            if (isGeneratingRef.current) return
+
+            idleAutoCountRef.current += 1
+            sendToApi({ isIntro: false, isAutonomous: true, autonomousIdle: true })
+        }, delay)
     }
 
     // Initial Greeting Trigger
@@ -267,7 +341,7 @@ export default function ChatPage() {
         }
     }, [isGuest, showAuthWall])
 
-    const sendToApi = async ({ isIntro, isAutonomous }: { isIntro: boolean; isAutonomous: boolean }) => {
+    const sendToApi = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId }: { isIntro: boolean; isAutonomous: boolean; autonomousIdle?: boolean; sourceUserMessageId?: string | null }) => {
         // If autonomous call, check the brakes
         if (isAutonomous) {
             if (silentTurnsRef.current >= 30) {
@@ -287,7 +361,7 @@ export default function ChatPage() {
         setIsGenerating(true)
         isGeneratingRef.current = true
 
-        if (!isAutonomous) {
+        if (isAutonomous) {
             triggerActivityPulse()
         }
 
@@ -316,7 +390,8 @@ export default function ChatPage() {
                     isFirstMessage: currentMessages.length === 0 && isIntro,
                     silentTurns: silentTurnsRef.current,
                     burstCount: burstCountRef.current,
-                    chatMode // Passing the current mode
+                    chatMode, // Passing the current mode
+                    autonomousIdle
                 })
             })
 
@@ -441,11 +516,17 @@ export default function ChatPage() {
             if (pendingUserMessagesRef.current) {
                 pendingUserMessagesRef.current = false
                 isGeneratingRef.current = false
-                sendToApi({ isIntro: false, isAutonomous: false })
+                sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: pendingUserMessageIdRef.current })
             } else {
                 setIsGenerating(false)
                 isGeneratingRef.current = false
                 clearTypingUsers()
+                if (!isIntro && !pendingUserMessagesRef.current) {
+                    const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
+                    if (sourceId && (autonomousIdle || !isAutonomous)) {
+                        scheduleIdleAutonomous(sourceId)
+                    }
+                }
             }
         }
     }
@@ -460,7 +541,9 @@ export default function ChatPage() {
                 pendingUserMessagesRef.current = true
                 return
             }
-            sendToApi({ isIntro: false, isAutonomous: false })
+            const sourceId = pendingUserMessageIdRef.current
+            pendingUserMessageIdRef.current = null
+            sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId })
         }, 600)
     }
 
@@ -486,6 +569,12 @@ export default function ChatPage() {
                 created_at: new Date().toISOString()
             }
             addMessage(userMsg)
+            lastUserMessageIdRef.current = userMsg.id
+            pendingUserMessageIdRef.current = userMsg.id
+            idleAutoCountRef.current = 0
+            clearIdleAutonomousTimer()
+            lastUserActivityRef.current = Date.now()
+            triggerReadingStatuses()
             silentTurnsRef.current = 0 // Reset silence on user input
             burstCountRef.current = 0 // Reset burst on user input
             bumpFastMode()
@@ -546,11 +635,9 @@ export default function ChatPage() {
                     activeGang={activeGang}
                     onOpenVault={() => {
                         setIsVaultOpen(true)
-                        setHasSeenChatTips(true)
                     }}
                     onOpenSettings={() => {
                         setIsSettingsOpen(true)
-                        setHasSeenChatTips(true)
                     }}
                     typingCount={typingUsers.length}
                     memoryActive={!isGuest}
@@ -561,44 +648,6 @@ export default function ChatPage() {
                         {showResumeBanner && (
                             <div className="mb-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                                 {resumeBannerText}
-                            </div>
-                        )}
-                        {!hasSeenChatTips && messages.length > 0 && (
-                            <div className="mb-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/15 via-white/5 to-accent/15 px-4 py-4 text-[12px] text-foreground shadow-lg shadow-primary/10">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="text-[10px] uppercase tracking-widest text-primary">Quick tip</div>
-                                        <div className="mt-1 text-sm text-muted-foreground">
-                                            Memory Vault keeps your long-term context. Settings lets you switch modes and your gang.
-                                        </div>
-                                    </div>
-                                    <button
-                                        className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
-                                        onClick={() => setHasSeenChatTips(true)}
-                                    >
-                                        Dismiss
-                                    </button>
-                                </div>
-                                <div className="flex flex-wrap gap-2 mt-3">
-                                    <button
-                                        className="text-[10px] uppercase tracking-widest rounded-full border border-primary/30 bg-primary/10 px-3 py-1 hover:bg-primary/20 transition-colors"
-                                        onClick={() => {
-                                            setIsVaultOpen(true)
-                                            setHasSeenChatTips(true)
-                                        }}
-                                    >
-                                        Open Vault
-                                    </button>
-                                    <button
-                                        className="text-[10px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1 hover:bg-white/10 transition-colors"
-                                        onClick={() => {
-                                            setIsSettingsOpen(true)
-                                            setHasSeenChatTips(true)
-                                        }}
-                                    >
-                                        Open Settings
-                                    </button>
-                                </div>
                             </div>
                         )}
                     </div>

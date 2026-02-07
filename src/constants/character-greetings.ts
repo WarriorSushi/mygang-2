@@ -48,5 +48,64 @@ export const ACTIVITY_STATUSES = [
     "is thinking",
     "is excited",
     "is leaning in",
-    "is locked in"
+    "is locked in",
+    "is reading",
+    "is processing",
+    "is amused",
+    "is in a good mood",
+    "is curious",
+    "is vibing",
+    "is taking notes",
+    "is ready to jump in"
 ]
+
+export const CHARACTER_STATUS_REACTIONS: Record<string, string[]> = {
+    kael: [
+        "is in a good mood",
+        "is smiling",
+        "is hyped",
+        "is vibing"
+    ],
+    nyx: [
+        "is thinking",
+        "is analyzing",
+        "is amused",
+        "is processing"
+    ],
+    atlas: [
+        "is locked in",
+        "is ready to jump in",
+        "is taking notes",
+        "is focused"
+    ],
+    luna: [
+        "is reading",
+        "is feeling it",
+        "is softening up",
+        "is listening closely"
+    ],
+    rico: [
+        "is excited",
+        "is buzzing",
+        "is ready for chaos",
+        "is fired up"
+    ],
+    vee: [
+        "is analyzing",
+        "is calculating",
+        "is ready with facts",
+        "is processing"
+    ],
+    ezra: [
+        "is intrigued",
+        "is inspired",
+        "is imagining",
+        "is leaning in"
+    ],
+    cleo: [
+        "is curious",
+        "is reading",
+        "is sipping tea",
+        "is listening closely"
+    ]
+}

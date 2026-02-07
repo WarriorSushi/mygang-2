@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
 import { useChatStore } from '@/stores/chat-store'
 import {
     Sheet,
@@ -11,10 +10,9 @@ import {
 } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings2, Zap, Trash2, Camera, Users } from 'lucide-react'
+import { Settings2, Zap, Trash2, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CHARACTERS } from '@/constants/characters'
-import { saveGang, updateUserSettings } from '@/app/auth/actions'
+import { updateUserSettings } from '@/app/auth/actions'
 import Link from 'next/link'
 
 interface ChatSettingsProps {
@@ -28,19 +26,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         chatMode,
         setChatMode,
         clearChat,
-        activeGang,
-        setActiveGang,
         chatWallpaper,
         setChatWallpaper,
     } = useChatStore()
-
-    const [draftSquad, setDraftSquad] = useState<string[]>([])
-
-    useEffect(() => {
-        if (isOpen) {
-            setDraftSquad(activeGang.map((c) => c.id))
-        }
-    }, [isOpen, activeGang])
 
     const handleChatModeChange = (value: string) => {
         setChatMode(value as any)
@@ -52,25 +40,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         updateUserSettings({ chat_wallpaper: value })
     }
 
-    const toggleDraft = (id: string) => {
-        setDraftSquad((prev) => {
-            if (prev.includes(id)) return prev.filter((v) => v !== id)
-            if (prev.length >= 4) return prev
-            return [...prev, id]
-        })
-    }
-
-    const saveSquad = async () => {
-        if (draftSquad.length !== 4) return
-        const squad = CHARACTERS.filter((c) => draftSquad.includes(c.id))
-        setActiveGang(squad)
-        await saveGang(draftSquad)
-        onClose()
-    }
-
-    const squadPreview = useMemo(() => {
-        return CHARACTERS.filter((c) => draftSquad.includes(c.id))
-    }, [draftSquad])
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
@@ -139,44 +108,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                         <p className="text-[9px] text-muted-foreground/60 leading-tight px-1 italic">
                             Change the backdrop without affecting chat history.
                         </p>
-                    </div>
-
-                    {/* Quick Squad Switch */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 px-1">
-                            <Users size={12} className="text-cyan-400" />
-                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Quick Gang</Label>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            {CHARACTERS.map((char) => {
-                                const isSelected = draftSquad.includes(char.id)
-                                return (
-                                    <Button
-                                        key={char.id}
-                                        variant={isSelected ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => toggleDraft(char.id)}
-                                        className="rounded-xl text-[10px] uppercase tracking-widest"
-                                    >
-                                        {char.name}
-                                    </Button>
-                                )
-                            })}
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-widest text-muted-foreground/60">
-                            {squadPreview.map((c) => (
-                                <span key={c.id} className="px-2 py-1 rounded-full border border-white/10">{c.name}</span>
-                            ))}
-                            {squadPreview.length < 4 && <span>Pick 4 to switch</span>}
-                        </div>
-                        <Button
-                            variant="outline"
-                            disabled={draftSquad.length !== 4}
-                            onClick={saveSquad}
-                            className="w-full rounded-2xl"
-                        >
-                            Save Gang
-                        </Button>
                     </div>
 
                     {/* Actions */}

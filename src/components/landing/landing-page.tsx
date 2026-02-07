@@ -353,9 +353,9 @@ function GlowCard({ index, title, copy }: { index: number; title: string; copy: 
 function Testimonial({ quote, name, role }: { quote: string; name: string; role: string }) {
   return (
     <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 sm:p-8">
-      <div className="text-base font-medium leading-relaxed">“{quote}”</div>
+      <div className="text-base font-medium leading-relaxed">"{quote}"</div>
       <div className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
-        {name} · {role}
+        {name} - {role}
       </div>
     </div>
   )

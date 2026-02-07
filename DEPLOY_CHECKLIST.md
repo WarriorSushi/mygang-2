@@ -19,14 +19,14 @@
    - `NEXT_PUBLIC_MOCK_AI=false`
 
 ## Supabase Auth
-1. Enable Email provider (Magic Link).
+1. Enable Email provider (Email + Password).
 2. Configure redirect URLs:
-   - `https://your-domain.com/auth/callback`
+   - `https://mygang.ai/auth/callback`
    - `http://localhost:3000/auth/callback`
 3. Optional: Enable Google provider and add OAuth credentials.
 
 ## Post-Deploy
 1. Hit `/status` to verify health, version, and commit.
-2. Test login (email magic link + Google if enabled).
+2. Test login (email/password + Google if enabled).
 3. Test chat flow, Memory Vault, Settings, and delete account.
 4. Confirm analytics inserts (`/api/analytics` returns `{ ok: true }`).

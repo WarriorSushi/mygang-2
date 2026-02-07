@@ -149,6 +149,7 @@ const requestSchema = z.object({
     silentTurns: z.number().int().min(0).max(30).optional(),
     burstCount: z.number().int().min(0).max(3).optional(),
     chatMode: z.enum(['entourage', 'ecosystem']).optional(),
+    autonomousIdle: z.boolean().optional(),
 })
 
 export async function POST(req: Request) {
@@ -175,7 +176,8 @@ export async function POST(req: Request) {
             isFirstMessage = false,
             silentTurns = 0,
             burstCount = 0,
-            chatMode = 'ecosystem'
+            chatMode = 'ecosystem',
+            autonomousIdle = false
         } = parsed.data
 
         const requestedIds = activeGangIds ?? activeGang?.map((c) => c.id) ?? []
@@ -373,7 +375,8 @@ ${sessionSummary}
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
 
         const baseResponders = chatMode === 'entourage' ? 2 : 3
-        const maxResponders = lastUserMsg.length < 40 ? Math.min(2, baseResponders) : baseResponders
+        const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
+        const maxResponders = lastUserMsg.length < 40 ? Math.min(2, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
             ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support.'
             : 'SAFETY FLAG: NO.'
@@ -440,6 +443,12 @@ ${sessionSummary}
     == INACTIVITY RULE ==
     - INACTIVE_USER: ${isInactive ? 'YES' : 'NO'}.
     - If INACTIVE_USER is YES, set should_continue to FALSE.
+
+    == IDLE AUTONOMY ==
+    - IDLE_AUTONOMOUS: ${autonomousIdle ? 'YES' : 'NO'}.
+    - If IDLE_AUTONOMOUS is YES, the user has not replied after the last response.
+      Keep this sequence short (1-3 messages), let the squad riff briefly, and end by addressing the user directly with a question.
+      Always set should_continue to FALSE when IDLE_AUTONOMOUS is YES.
     `
 
         // Prepare conversation for LLM with IDs
@@ -522,6 +531,9 @@ ${sessionSummary}
             object.should_continue = false
         }
         if (unsafeFlag.soft) {
+            object.should_continue = false
+        }
+        if (autonomousIdle) {
             object.should_continue = false
         }
 

@@ -36,7 +36,6 @@ interface ChatState {
     isHydrated: boolean // To track if AuthManager has finished initial sync
     chatMode: 'entourage' | 'ecosystem'
     chatWallpaper: 'default' | 'neon' | 'soft'
-    hasSeenChatTips: boolean
     squadConflict: { local: Character[]; remote: Character[] } | null
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
@@ -49,7 +48,6 @@ interface ChatState {
     setIsHydrated: (isHydrated: boolean) => void
     setChatMode: (mode: 'entourage' | 'ecosystem') => void
     setChatWallpaper: (wallpaper: 'default' | 'neon' | 'soft') => void
-    setHasSeenChatTips: (seen: boolean) => void
     setSquadConflict: (conflict: { local: Character[]; remote: Character[] } | null) => void
     clearChat: () => void
 }
@@ -67,7 +65,6 @@ export const useChatStore = create<ChatState>()(
             isHydrated: false,
             chatMode: 'ecosystem',
             chatWallpaper: 'default',
-            hasSeenChatTips: false,
             squadConflict: null,
             setMessages: (messages) => set({ messages }),
             addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
@@ -82,7 +79,6 @@ export const useChatStore = create<ChatState>()(
             setIsHydrated: (isHydrated) => set({ isHydrated }),
             setChatMode: (chatMode) => set({ chatMode }),
             setChatWallpaper: (chatWallpaper) => set({ chatWallpaper }),
-            setHasSeenChatTips: (hasSeenChatTips) => set({ hasSeenChatTips }),
             setSquadConflict: (squadConflict) => set({ squadConflict }),
             clearChat: () => set({ messages: [] }),
         }),
@@ -96,8 +92,7 @@ export const useChatStore = create<ChatState>()(
                 userNickname: state.userNickname,
                 userId: state.userId,
                 chatMode: state.chatMode,
-                chatWallpaper: state.chatWallpaper,
-                hasSeenChatTips: state.hasSeenChatTips
+                chatWallpaper: state.chatWallpaper
             })
         }
     )

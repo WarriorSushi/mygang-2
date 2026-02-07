@@ -12,63 +12,87 @@ export function AuthManager() {
         setUserId,
         setIsGuest,
         setActiveGang,
-        activeGang,
         setUserName,
         setUserNickname,
         clearChat,
         setIsHydrated,
         setChatMode,
         setChatWallpaper,
-        setSquadConflict,
-        userName
+        setSquadConflict
     } = useChatStore()
     const supabase = createClient()
     const hadSessionRef = useRef(false)
     const { setTheme } = useTheme()
 
     useEffect(() => {
-        const syncSession = async () => {
+        const syncSession = async (incomingSession?: any) => {
             try {
-                const { data: { session } } = await supabase.auth.getSession()
+                setIsHydrated(false)
+                const session = incomingSession ?? (await supabase.auth.getSession()).data.session
 
                 if (session?.user) {
                     setUserId(session.user.id)
                     setIsGuest(false)
                     hadSessionRef.current = true
 
+                    const { activeGang: localGang, userName: localName } = useChatStore.getState()
                     const savedIds = await getSavedGang()
-                    const localIds = activeGang.map((c) => c.id)
+                    const localIds = localGang.map((c) => c.id)
                     const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
 
-                    if (savedIds && savedIds.length === 4) {
-                        const squad = CHARACTERS.filter(c => savedIds.includes(c.id))
-                        if (activeGang.length === 0) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('username, chat_mode, theme, chat_wallpaper, preferred_squad')
+                        .eq('id', session.user.id)
+                        .single()
+
+                    const preferredSquad = Array.isArray(profile?.preferred_squad) ? profile?.preferred_squad : null
+                    const remoteIds = savedIds && savedIds.length === 4
+                        ? savedIds
+                        : (preferredSquad && preferredSquad.length === 4 ? preferredSquad : null)
+
+                    if (remoteIds && remoteIds.length === 4) {
+                        const squad = CHARACTERS.filter(c => remoteIds.includes(c.id))
+                        if (!sameSet(localIds, remoteIds)) {
                             setActiveGang(squad)
-                        } else if (!sameSet(localIds, savedIds)) {
-                            setSquadConflict({ local: activeGang, remote: squad })
+                        } else if (localGang.length === 0) {
+                            setActiveGang(squad)
                         }
-                    } else if (activeGang.length > 0) {
+                        setSquadConflict(null)
+                        if (!savedIds?.length && preferredSquad?.length === 4) {
+                            try {
+                                await saveGang(preferredSquad)
+                            } catch (err) {
+                                console.error('Error restoring preferred gang:', err)
+                            }
+                        }
+                    } else if (localIds.length === 4) {
                         try {
-                            await saveGang(activeGang.map((c) => c.id))
+                            await saveGang(localIds)
                         } catch (err) {
                             console.error('Error saving local gang:', err)
                         }
                     }
 
-                    // Also sync username and settings
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('username, chat_mode, theme, chat_wallpaper')
-                        .eq('id', session.user.id)
-                        .single()
-
                     if (profile?.username) {
                         setUserName(profile.username)
-                    } else if (userName) {
+                    } else if (localName) {
                         try {
-                            await saveUsername(userName)
+                            await saveUsername(localName)
                         } catch (err) {
                             console.error('Error saving username:', err)
+                        }
+                    } else {
+                        const fallbackName = session.user.user_metadata?.full_name
+                            || session.user.user_metadata?.name
+                            || session.user.email?.split('@')[0]
+                        if (fallbackName) {
+                            setUserName(fallbackName)
+                            try {
+                                await saveUsername(fallbackName)
+                            } catch (err) {
+                                console.error('Error saving fallback username:', err)
+                            }
                         }
                     }
                     if (profile?.chat_mode) {
@@ -92,9 +116,7 @@ export function AuthManager() {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
-                setUserId(session.user.id)
-                setIsGuest(false)
-                hadSessionRef.current = true
+                syncSession(session)
                 return
             }
 
@@ -114,7 +136,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [setUserId, setIsGuest, setActiveGang, activeGang, setUserName, setUserNickname, clearChat, setIsHydrated, setChatMode, setChatWallpaper, setSquadConflict, setTheme, userName])
+    }, [setUserId, setIsGuest, setActiveGang, setUserName, setUserNickname, clearChat, setIsHydrated, setChatMode, setChatWallpaper, setSquadConflict, setTheme])
 
     return null
 }

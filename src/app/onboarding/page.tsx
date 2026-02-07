@@ -24,7 +24,7 @@ export default function OnboardingPage() {
     const [name, setName] = useState('')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [showAuthWall, setShowAuthWall] = useState(false)
-    const { setUserName, setActiveGang, setIsGuest, userId, activeGang, isHydrated } = useChatStore()
+    const { setUserName, setActiveGang, setIsGuest, userId, activeGang, isHydrated, userName } = useChatStore()
     const router = useRouter()
     const isSelection = step === 'SELECTION'
 
@@ -34,6 +34,12 @@ export default function OnboardingPage() {
             router.push('/chat')
         }
     }, [isHydrated, activeGang.length, router])
+
+    useEffect(() => {
+        if (!name && userName) {
+            setName(userName)
+        }
+    }, [name, userName])
 
     useEffect(() => {
         const session = ensureAnalyticsSession()
