@@ -43,7 +43,7 @@ export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepPro
                     <button
                         type="button"
                         onClick={onLogin}
-                        className="w-full text-center text-[11px] uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                        className="w-full text-center text-[10px] uppercase tracking-widest text-muted-foreground/70 hover:text-primary transition-colors"
                     >
                         Already have an account? Log in
                     </button>

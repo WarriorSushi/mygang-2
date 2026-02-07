@@ -32,7 +32,7 @@ export function WelcomeStep({ onNext, onLogin }: WelcomeStepProps) {
                 <button
                     type="button"
                     onClick={onLogin}
-                    className="mt-4 text-xs sm:text-sm uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                    className="mt-3 text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/70 hover:text-primary transition-colors"
                 >
                     Already have an account? Log in
                 </button>
