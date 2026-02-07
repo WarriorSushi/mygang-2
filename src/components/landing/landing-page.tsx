@@ -107,8 +107,9 @@ export function LandingPage() {
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92])
 
   const { userId, isHydrated } = useChatStore()
-  const ctaText = !isHydrated ? 'Syncing...' : userId ? 'Continue' : 'Assemble Your Gang'
-  const ctaLink = userId ? '/post-auth' : '/onboarding'
+  const isAuthenticated = isHydrated && !!userId
+  const ctaText = !isHydrated ? 'Syncing...' : isAuthenticated ? 'Continue' : 'Assemble Your Gang'
+  const ctaLink = isAuthenticated ? '/post-auth' : '/onboarding'
   const ctaDisabled = !isHydrated
   const safeCtaLink = ctaDisabled ? '#' : ctaLink
 
@@ -153,12 +154,12 @@ export function LandingPage() {
           >
             {effectiveTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
-          {userId && (
+          {isAuthenticated && (
             <span className="hidden sm:block text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
               Logged In
             </span>
           )}
-          {userId ? (
+          {isAuthenticated ? (
             <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
               <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 border border-border/80 bg-card/70 hover:bg-card transition-all">
                 Dashboard

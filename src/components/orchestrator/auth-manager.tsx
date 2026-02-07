@@ -26,81 +26,99 @@ export function AuthManager() {
     const { setTheme } = useTheme()
 
     useEffect(() => {
+        const clearAuthState = () => {
+            setUserId(null)
+            setIsGuest(true)
+            setActiveGang([])
+            clearChat()
+            setUserName(null)
+            setUserNickname(null)
+            setSquadConflict(null)
+            hadSessionRef.current = false
+        }
+
         const syncSession = async (incomingSession?: Session | null) => {
             try {
                 setIsHydrated(false)
                 const session = incomingSession ?? (await supabase.auth.getSession()).data.session
 
-                if (session?.user) {
-                    setUserId(session.user.id)
-                    setIsGuest(false)
-                    hadSessionRef.current = true
+                if (!session?.user) {
+                    const { userId: localUserId } = useChatStore.getState()
+                    if (localUserId || hadSessionRef.current) {
+                        clearAuthState()
+                    }
+                    return
+                }
 
-                    const { activeGang: localGang, userName: localName } = useChatStore.getState()
-                    const remote = await fetchJourneyState(supabase, session.user.id)
-                    const savedIds = remote.gangIds
-                    const localIds = localGang.map((c) => c.id)
-                    const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
-                    const profile = remote.profile
-                    const remoteIds = savedIds.length === 4 ? savedIds : null
+                setUserId(session.user.id)
+                setIsGuest(false)
+                hadSessionRef.current = true
 
-                    if (remoteIds && remoteIds.length === 4) {
-                        const squad = CHARACTERS.filter(c => remoteIds.includes(c.id))
-                        if (!sameSet(localIds, remoteIds)) {
-                            setActiveGang(squad)
-                        } else if (localGang.length === 0) {
-                            setActiveGang(squad)
-                        }
-                        setSquadConflict(null)
-                    } else if (localIds.length === 4) {
+                const { activeGang: localGang, userName: localName } = useChatStore.getState()
+                const remote = await fetchJourneyState(supabase, session.user.id)
+                const savedIds = remote.gangIds
+                const localIds = localGang.map((c) => c.id)
+                const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
+                const profile = remote.profile
+                const remoteIds = savedIds.length === 4 ? savedIds : null
+
+                if (remoteIds && remoteIds.length === 4) {
+                    const squad = CHARACTERS.filter(c => remoteIds.includes(c.id))
+                    if (!sameSet(localIds, remoteIds)) {
+                        setActiveGang(squad)
+                    } else if (localGang.length === 0) {
+                        setActiveGang(squad)
+                    }
+                    setSquadConflict(null)
+                } else if (localIds.length === 4) {
+                    try {
+                        await persistUserJourney(supabase, session.user.id, {
+                            gangIds: localIds,
+                            onboardingCompleted: true
+                        })
+                    } catch (err) {
+                        console.error('Error saving local gang:', err)
+                    }
+                }
+
+                if (profile?.username) {
+                    setUserName(profile.username)
+                } else if (localName) {
+                    try {
+                        await persistUserJourney(supabase, session.user.id, {
+                            username: localName
+                        })
+                    } catch (err) {
+                        console.error('Error saving username:', err)
+                    }
+                } else {
+                    const fallbackName = session.user.user_metadata?.full_name
+                        || session.user.user_metadata?.name
+                        || session.user.email?.split('@')[0]
+                    if (fallbackName) {
+                        setUserName(fallbackName)
                         try {
                             await persistUserJourney(supabase, session.user.id, {
-                                gangIds: localIds,
-                                onboardingCompleted: true
+                                username: fallbackName
                             })
                         } catch (err) {
-                            console.error('Error saving local gang:', err)
+                            console.error('Error saving fallback username:', err)
                         }
                     }
+                }
 
-                    if (profile?.username) {
-                        setUserName(profile.username)
-                    } else if (localName) {
-                        try {
-                            await persistUserJourney(supabase, session.user.id, {
-                                username: localName
-                            })
-                        } catch (err) {
-                            console.error('Error saving username:', err)
-                        }
-                    } else {
-                        const fallbackName = session.user.user_metadata?.full_name
-                            || session.user.user_metadata?.name
-                            || session.user.email?.split('@')[0]
-                        if (fallbackName) {
-                            setUserName(fallbackName)
-                            try {
-                                await persistUserJourney(supabase, session.user.id, {
-                                    username: fallbackName
-                                })
-                            } catch (err) {
-                                console.error('Error saving fallback username:', err)
-                            }
-                        }
+                if (profile?.chat_mode) {
+                    setChatMode(profile.chat_mode)
+                }
+                if (profile?.theme) {
+                    const localTheme = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null
+                    // Respect an explicit local user choice and avoid server-driven theme flip-flop.
+                    if (!localTheme || localTheme === 'system') {
+                        setTheme(profile.theme)
                     }
-                    if (profile?.chat_mode) {
-                        setChatMode(profile.chat_mode)
-                    }
-                    if (profile?.theme) {
-                        const localTheme = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null
-                        // Respect an explicit local user choice and avoid server-driven theme flip-flop.
-                        if (!localTheme || localTheme === 'system') {
-                            setTheme(profile.theme)
-                        }
-                    }
-                    if (profile?.chat_wallpaper) {
-                        setChatWallpaper(profile.chat_wallpaper)
-                    }
+                }
+                if (profile?.chat_wallpaper) {
+                    setChatWallpaper(profile.chat_wallpaper)
                 }
             } catch (err) {
                 console.error('Auth sync error:', err)
@@ -117,16 +135,10 @@ export function AuthManager() {
                 return
             }
 
-            // Only clear state on explicit sign-out or after a real session existed.
-            if (event === 'SIGNED_OUT' || hadSessionRef.current) {
-                setUserId(null)
-                setIsGuest(true)
-                setActiveGang([]) // Clear on logout
-                clearChat()
-                setUserName(null)
-                setUserNickname(null)
-                setSquadConflict(null)
-                hadSessionRef.current = false
+            // Clear stale local auth state on sign out or missing session.
+            const { userId: localUserId } = useChatStore.getState()
+            if (event === 'SIGNED_OUT' || hadSessionRef.current || !!localUserId) {
+                clearAuthState()
             }
         })
 
