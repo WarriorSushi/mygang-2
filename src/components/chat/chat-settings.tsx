@@ -94,27 +94,34 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                         </p>
                     </div>
 
-                    {/* Atmosphere */}
+                    {/* Wallpaper */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
                             <Zap size={12} className="text-fuchsia-400" />
-                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Atmosphere</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Chat Wallpaper</Label>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {(['default', 'neon', 'soft'] as const).map((wallpaper) => (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {([
+                                { id: 'default', label: 'Default', desc: 'Balanced colorful glow' },
+                                { id: 'neon', label: 'Neon', desc: 'Vivid high-contrast lights' },
+                                { id: 'soft', label: 'Soft', desc: 'Calm low-contrast gradients' },
+                            ] as const).map((option) => (
                                 <Button
-                                    key={wallpaper}
-                                    variant={chatWallpaper === wallpaper ? 'default' : 'ghost'}
+                                    key={option.id}
+                                    variant={chatWallpaper === option.id ? 'default' : 'ghost'}
                                     size="sm"
-                                    onClick={() => handleWallpaperChange(wallpaper)}
-                                    className="rounded-xl text-[9px] uppercase tracking-widest"
+                                    onClick={() => handleWallpaperChange(option.id)}
+                                    className="h-auto min-h-14 rounded-xl justify-start px-3 py-2 text-left"
                                 >
-                                    {wallpaper}
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest">{option.label}</p>
+                                        <p className="text-[9px] opacity-70">{option.desc}</p>
+                                    </div>
                                 </Button>
                             ))}
                         </div>
                         <p className="text-[9px] text-muted-foreground/60 leading-tight px-1 italic">
-                            Change the backdrop without affecting chat history.
+                            Visual background only. It does not change AI behavior, mode, or history.
                         </p>
                     </div>
 

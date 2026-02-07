@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Character, Message } from '@/stores/chat-store'
 import { GlassCard } from '@/components/holographic/glass-card'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { saveMemoryManual } from '@/app/auth/actions'
-import { Bookmark } from 'lucide-react'
+import { Bookmark, Heart, Reply } from 'lucide-react'
 import Image from 'next/image'
 
 interface MessageItemProps {
@@ -16,12 +16,15 @@ interface MessageItemProps {
     character?: Character
     status?: string
     isContinued?: boolean
+    groupPosition?: 'single' | 'first' | 'middle' | 'last'
     isFastMode?: boolean
     quotedMessage?: Message | null
     quotedSpeaker?: Character | null
     seenBy?: string[]
     isGuest?: boolean
     showPersonaRoles?: boolean
+    onReply?: (message: Message) => void
+    onLike?: (message: Message) => void
 }
 
 function MessageItemComponent({
@@ -29,18 +32,77 @@ function MessageItemComponent({
     character,
     status,
     isContinued,
+    groupPosition = 'single',
     isFastMode = false,
     quotedMessage = null,
     quotedSpeaker = null,
     seenBy = [],
     isGuest = true,
-    showPersonaRoles = true
+    showPersonaRoles = true,
+    onReply,
+    onLike
 }: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
     const { theme } = useTheme()
+    const [showActions, setShowActions] = useState(false)
+    const actionWrapRef = useRef<HTMLDivElement>(null)
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const canShowActions = !isReaction && message.speaker !== 'system'
 
     const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const userShape = {
+        single: 'rounded-2xl rounded-br-sm',
+        first: 'rounded-2xl rounded-br-sm',
+        middle: 'rounded-2xl rounded-tr-sm rounded-br-sm',
+        last: 'rounded-2xl rounded-tr-sm',
+    }[groupPosition]
+    const gangShape = {
+        single: 'rounded-2xl rounded-bl-sm border-l-[3px]',
+        first: 'rounded-2xl rounded-bl-sm border-l-[3px]',
+        middle: 'rounded-2xl rounded-tl-sm rounded-bl-sm border-l-[3px]',
+        last: 'rounded-2xl rounded-tl-sm border-l-[3px]',
+    }[groupPosition]
+
+    const clearLongPressTimer = () => {
+        if (!longPressTimerRef.current) return
+        clearTimeout(longPressTimerRef.current)
+        longPressTimerRef.current = null
+    }
+
+    const handlePointerDown = () => {
+        if (!canShowActions) return
+        clearLongPressTimer()
+        longPressTimerRef.current = setTimeout(() => {
+            setShowActions(true)
+        }, 350)
+    }
+
+    const handlePointerUp = () => {
+        clearLongPressTimer()
+    }
+
+    const handleContextMenu = (e: React.MouseEvent) => {
+        if (!canShowActions) return
+        e.preventDefault()
+        setShowActions(true)
+    }
+
+    useEffect(() => {
+        return () => clearLongPressTimer()
+    }, [])
+
+    useEffect(() => {
+        if (!showActions) return
+        const onDocPointerDown = (e: PointerEvent) => {
+            const node = actionWrapRef.current
+            if (!node) return
+            if (node.contains(e.target as Node)) return
+            setShowActions(false)
+        }
+        document.addEventListener('pointerdown', onDocPointerDown)
+        return () => document.removeEventListener('pointerdown', onDocPointerDown)
+    }, [showActions])
 
     return (
         <motion.div
@@ -117,33 +179,68 @@ function MessageItemComponent({
                 </div>
             )}
 
-            <GlassCard
-                variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
-                className={cn(
-                    "p-3.5 px-4 rounded-2xl transition-all duration-300 z-10 border shadow-sm",
-                    isUser
-                        ? cn("text-primary-foreground rounded-tr-none hover:brightness-110", isContinued && "rounded-tr-2xl")
-                        : isReaction
-                            ? "bg-transparent border-none p-1 rounded-full shadow-none"
-                            : cn(
-                                "rounded-tl-none",
-                                isContinued && "rounded-tl-2xl",
-                                !isContinued && "border-l-[3px]"
-                            )
+            <div ref={actionWrapRef} className={cn('relative', isUser ? 'self-end' : 'self-start')}>
+                <GlassCard
+                    variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
+                    className={cn(
+                        "p-3.5 px-4 transition-all duration-300 z-10 border shadow-sm",
+                        isUser
+                            ? cn("text-primary-foreground hover:brightness-110", userShape)
+                            : isReaction
+                                ? "bg-transparent border-none p-1 rounded-full shadow-none"
+                                : gangShape
+                    )}
+                    style={(!isUser && !isReaction) ? {
+                        backgroundColor: theme === 'dark'
+                            ? `${character?.color || '#ffffff'}66` // 40% Vibrant tint in dark
+                            : `${character?.color || '#ffffff'}33`, // 20% Vibrant tint in light
+                        borderLeftColor: character?.color || 'rgba(255,255,255,0.4)'
+                    } : {}}
+                    onPointerDown={handlePointerDown}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={handlePointerUp}
+                    onContextMenu={handleContextMenu}
+                >
+                    {isReaction ? (
+                        <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
+                    ) : (
+                        <p className="text-[15px] font-bold leading-relaxed select-text tracking-tight text-foreground dark:text-white break-words">{message.content}</p>
+                    )}
+                </GlassCard>
+                {showActions && canShowActions && (
+                    <div className={cn(
+                        "absolute z-20 mt-2 flex items-center gap-1 rounded-full border border-white/15 bg-background/95 p-1 shadow-xl backdrop-blur-xl",
+                        isUser ? 'right-0' : 'left-0'
+                    )}>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="xs"
+                            className="rounded-full text-[10px] uppercase tracking-widest"
+                            onClick={() => {
+                                onLike?.(message)
+                                setShowActions(false)
+                            }}
+                        >
+                            <Heart className="w-3 h-3" />
+                            Like
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="xs"
+                            className="rounded-full text-[10px] uppercase tracking-widest"
+                            onClick={() => {
+                                onReply?.(message)
+                                setShowActions(false)
+                            }}
+                        >
+                            <Reply className="w-3 h-3" />
+                            Reply
+                        </Button>
+                    </div>
                 )}
-                style={(!isUser && !isReaction) ? {
-                    backgroundColor: theme === 'dark'
-                        ? `${character?.color || '#ffffff'}66` // 40% Vibrant tint in dark
-                        : `${character?.color || '#ffffff'}33`, // 20% Vibrant tint in light
-                    borderLeftColor: character?.color || 'rgba(255,255,255,0.4)'
-                } : {}}
-            >
-                {isReaction ? (
-                    <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
-                ) : (
-                    <p className="text-[15px] font-bold leading-relaxed select-text tracking-tight text-foreground dark:text-white break-words">{message.content}</p>
-                )}
-            </GlassCard>
+            </div>
             {!isReaction && (
                 <div className={cn(
                     "mt-1 text-[9px] uppercase tracking-widest text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity",

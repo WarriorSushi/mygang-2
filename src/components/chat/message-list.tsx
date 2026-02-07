@@ -14,13 +14,22 @@ interface MessageListProps {
     activeGang: Character[]
     typingUsers: string[]
     isFastMode?: boolean
+    onReplyMessage?: (message: Message) => void
+    onLikeMessage?: (message: Message) => void
 }
 
 function normalizeSpeaker(value: string) {
     return value.toLowerCase().trim()
 }
 
-export function MessageList({ messages, activeGang, typingUsers, isFastMode = false }: MessageListProps) {
+export function MessageList({
+    messages,
+    activeGang,
+    typingUsers,
+    isFastMode = false,
+    onReplyMessage,
+    onLikeMessage
+}: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollRafRef = useRef<number | null>(null)
     const [isAtBottom, setIsAtBottom] = useState(true)
@@ -168,7 +177,13 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                         const message = messages[index]
                         if (!message) return null
                         const character = characterBySpeaker.get(normalizeSpeaker(message.speaker))
-                        const isContinued = index > 0 && messages[index - 1].speaker === message.speaker
+                        const samePrevious = index > 0 && messages[index - 1].speaker === message.speaker
+                        const sameNext = index < messages.length - 1 && messages[index + 1].speaker === message.speaker
+                        const groupPosition =
+                            samePrevious && sameNext ? 'middle'
+                                : !samePrevious && sameNext ? 'first'
+                                    : samePrevious && !sameNext ? 'last'
+                                        : 'single'
                         const status = characterStatuses[message.speaker]
                         const quotedMessage = message.replyToId ? messageById.get(message.replyToId) ?? null : null
                         const quotedSpeaker = quotedMessage
@@ -193,7 +208,8 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                 <MessageItem
                                     message={message}
                                     character={character}
-                                    isContinued={isContinued}
+                                    isContinued={samePrevious}
+                                    groupPosition={groupPosition}
                                     status={status}
                                     isFastMode={isFastMode}
                                     quotedMessage={quotedMessage}
@@ -201,6 +217,8 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                     seenBy={seenBy}
                                     isGuest={isGuest}
                                     showPersonaRoles={showPersonaRoles}
+                                    onReply={onReplyMessage}
+                                    onLike={onLikeMessage}
                                 />
                             </div>
                         )

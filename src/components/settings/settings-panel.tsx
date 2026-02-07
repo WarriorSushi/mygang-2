@@ -99,16 +99,24 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Wallpaper</div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                    {(['default', 'neon', 'soft'] as const).map((option) => (
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Chat Wallpaper</div>
+                <div className="mt-2 text-[11px] text-muted-foreground">Background look only. No impact on model behavior.</div>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {([
+                        { id: 'default', label: 'Default', desc: 'Balanced colorful glow' },
+                        { id: 'neon', label: 'Neon', desc: 'Vivid high-contrast lights' },
+                        { id: 'soft', label: 'Soft', desc: 'Calm low-contrast gradients' },
+                    ] as const).map((option) => (
                         <Button
-                            key={option}
-                            variant={wallpaper === option ? 'default' : 'outline'}
-                            onClick={() => handleWallpaper(option)}
-                            className="rounded-full text-[10px] uppercase tracking-widest"
+                            key={option.id}
+                            variant={wallpaper === option.id ? 'default' : 'outline'}
+                            onClick={() => handleWallpaper(option.id)}
+                            className="h-auto min-h-14 rounded-2xl text-left justify-start px-3 py-2"
                         >
-                            {option}
+                            <div>
+                                <div className="text-[10px] uppercase tracking-widest font-black">{option.label}</div>
+                                <div className="text-[10px] opacity-70">{option.desc}</div>
+                            </div>
                         </Button>
                     ))}
                 </div>

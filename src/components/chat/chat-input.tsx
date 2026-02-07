@@ -2,18 +2,26 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Send } from 'lucide-react'
+import { Send, X } from 'lucide-react'
+
+interface ReplyTarget {
+    id: string
+    speaker: string
+    content: string
+}
 
 interface ChatInputProps {
-    onSend: (message: string) => void
+    onSend: (message: string, options?: { replyToId?: string }) => void
     disabled?: boolean
     online?: boolean
+    replyingTo?: ReplyTarget | null
+    onCancelReply?: () => void
 }
 
 const DRAFT_STORAGE_KEY = 'mygang-chat-draft'
 const MAX_CHARS = 2000
 
-export function ChatInput({ onSend, disabled, online = true }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply }: ChatInputProps) {
     const [input, setInput] = useState(() => {
         if (typeof window === 'undefined') return ''
         const savedDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY)
@@ -41,8 +49,9 @@ export function ChatInput({ onSend, disabled, online = true }: ChatInputProps) {
     const handleSubmit = (e?: React.FormEvent) => {
         e?.preventDefault()
         if (input.trim() && !disabled) {
-            onSend(input)
+            onSend(input, { replyToId: replyingTo?.id })
             setInput('')
+            onCancelReply?.()
             if (typeof window !== 'undefined') {
                 window.localStorage.removeItem(DRAFT_STORAGE_KEY)
             }
@@ -59,6 +68,24 @@ export function ChatInput({ onSend, disabled, online = true }: ChatInputProps) {
 
     return (
         <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] bg-gradient-to-t from-background via-background/80 to-transparent z-10">
+            {replyingTo && (
+                <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Replying to {replyingTo.speaker === 'user' ? 'You' : replyingTo.speaker}</p>
+                        <p className="truncate text-xs">{replyingTo.content}</p>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="shrink-0 rounded-full"
+                        onClick={() => onCancelReply?.()}
+                        aria-label="Cancel reply"
+                    >
+                        <X size={14} />
+                    </Button>
+                </div>
+            )}
             <form
                 onSubmit={handleSubmit}
                 className="relative flex items-end gap-2 bg-white/5 backdrop-blur-xl border border-white/10 p-2 px-3 rounded-2xl shadow-2xl transition-all focus-within:border-primary/50"
@@ -69,7 +96,7 @@ export function ChatInput({ onSend, disabled, online = true }: ChatInputProps) {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     data-testid="chat-input"
-                    placeholder={online ? "Send a message..." : "You are offline. Reconnect to send."}
+                    placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
                     maxLength={MAX_CHARS}
                     className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-3 px-1 text-[15px] max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
@@ -85,7 +112,7 @@ export function ChatInput({ onSend, disabled, online = true }: ChatInputProps) {
                 </Button>
             </form>
             <div className="mt-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-widest text-muted-foreground/60">
-                <span>Enter to send • Shift+Enter newline</span>
+                <span className="hidden sm:inline">Enter to send - Shift+Enter newline</span>
                 <span>{input.length}/{MAX_CHARS}</span>
             </div>
         </div>

@@ -60,6 +60,7 @@ export default function ChatPage() {
     const [toastMessage, setToastMessage] = useState<string | null>(null)
     const [isFastMode, setIsFastMode] = useState(false)
     const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null)
 
     const chatContainerRef = useRef<HTMLDivElement>(null)
     const { theme } = useTheme()
@@ -71,7 +72,7 @@ export default function ChatPage() {
 
     const isGeneratingRef = useRef(false)
     const pendingUserMessagesRef = useRef(false)
-    const pendingBlockedMessageRef = useRef<string | null>(null)
+    const pendingBlockedMessageRef = useRef<{ content: string; replyToId?: string; reaction?: string } | null>(null)
     const pendingUserMessageIdRef = useRef<string | null>(null)
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const silentTurnsRef = useRef(0)
@@ -363,10 +364,66 @@ export default function ChatPage() {
             const pending = pendingBlockedMessageRef.current
             pendingBlockedMessageRef.current = null
             if (pending) {
-                handleSend(pending)
+                handleSend(pending.content, { replyToId: pending.replyToId, reaction: pending.reaction })
             }
         }
     }, [isGuest, showAuthWall])
+
+    const enqueueUserMessage = (content: string, options?: { replyToId?: string; reaction?: string }) => {
+        const trimmed = content.trim()
+        if (!trimmed) return false
+
+        if (isGuest && !messages.some(m => m.speaker === 'user')) {
+            pendingBlockedMessageRef.current = { content: trimmed, replyToId: options?.replyToId, reaction: options?.reaction }
+            setShowAuthWall(true)
+            if (messages.length === 0 && !initialGreetingRef.current) {
+                triggerLocalGreeting()
+            }
+            return false
+        }
+
+        const userMsg: Message = {
+            id: Date.now().toString(),
+            speaker: 'user',
+            content: trimmed,
+            created_at: new Date().toISOString(),
+            replyToId: options?.replyToId,
+            reaction: options?.reaction
+        }
+        addMessage(userMsg)
+        lastUserMessageIdRef.current = userMsg.id
+        pendingUserMessageIdRef.current = userMsg.id
+        idleAutoCountRef.current = 0
+        clearIdleAutonomousTimer()
+        lastUserActivityRef.current = Date.now()
+        triggerReadingStatuses()
+        silentTurnsRef.current = 0 // Reset silence on user input
+        burstCountRef.current = 0 // Reset burst on user input
+        bumpFastMode()
+
+        const session = sessionRef.current || ensureAnalyticsSession()
+        sessionRef.current = { id: session.id, startedAt: session.startedAt }
+        trackEvent('message_sent', {
+            sessionId: session.id,
+            metadata: { length: trimmed.length }
+        })
+        if (!firstMessageLoggedRef.current) {
+            firstMessageLoggedRef.current = true
+            const elapsedMs = Date.now() - session.startedAt
+            trackEvent('time_to_first_message', {
+                sessionId: session.id,
+                value: Math.max(1, Math.round(elapsedMs / 1000))
+            })
+        }
+
+        if (isGeneratingRef.current) {
+            pendingUserMessagesRef.current = true
+            return true
+        }
+
+        scheduleDebouncedSend()
+        return true
+    }
 
     const sendToApi = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId }: { isIntro: boolean; isAutonomous: boolean; autonomousIdle?: boolean; sourceUserMessageId?: string | null }) => {
         // If autonomous call, check the brakes
@@ -397,7 +454,8 @@ export default function ChatPage() {
                 speaker: m.speaker,
                 content: m.content,
                 created_at: m.created_at,
-                reaction: m.reaction
+                reaction: m.reaction,
+                replyToId: m.replyToId
             }))
             const mockAi = typeof window !== 'undefined' && (window.localStorage.getItem('mock_ai') === 'true' || process.env.NEXT_PUBLIC_MOCK_AI === 'true')
             const res = await fetch('/api/chat', {
@@ -572,7 +630,7 @@ export default function ChatPage() {
         }, 600)
     }
 
-    const handleSend = async (content: string) => {
+    const handleSend = async (content: string, options?: { replyToId?: string; reaction?: string }) => {
         if (!isOnline) {
             setToastMessage('You are offline. Reconnect and try again.')
             return
@@ -582,54 +640,8 @@ export default function ChatPage() {
 
         // 1. NON-BLOCKING INPUT: Add message to UI immediately
         if (!isIntro && !isAutonomous && content.trim()) {
-            // Trigger Auth Wall before writing message to timeline
-            if (isGuest && !messages.some(m => m.speaker === 'user')) {
-                pendingBlockedMessageRef.current = content
-                setShowAuthWall(true)
-                if (messages.length === 0 && !initialGreetingRef.current) {
-                    triggerLocalGreeting()
-                }
-                return
-            }
-            const userMsg: Message = {
-                id: Date.now().toString(),
-                speaker: 'user',
-                content,
-                created_at: new Date().toISOString()
-            }
-            addMessage(userMsg)
-            lastUserMessageIdRef.current = userMsg.id
-            pendingUserMessageIdRef.current = userMsg.id
-            idleAutoCountRef.current = 0
-            clearIdleAutonomousTimer()
-            lastUserActivityRef.current = Date.now()
-            triggerReadingStatuses()
-            silentTurnsRef.current = 0 // Reset silence on user input
-            burstCountRef.current = 0 // Reset burst on user input
-            bumpFastMode()
-
-            const session = sessionRef.current || ensureAnalyticsSession()
-            sessionRef.current = { id: session.id, startedAt: session.startedAt }
-            trackEvent('message_sent', {
-                sessionId: session.id,
-                metadata: { length: content.length }
-            })
-            if (!firstMessageLoggedRef.current) {
-                firstMessageLoggedRef.current = true
-                const elapsedMs = Date.now() - session.startedAt
-                trackEvent('time_to_first_message', {
-                    sessionId: session.id,
-                    value: Math.max(1, Math.round(elapsedMs / 1000))
-                })
-            }
-
-            // If already generating, queue it and return
-            if (isGeneratingRef.current) {
-                pendingUserMessagesRef.current = true
-                return
-            }
-
-            scheduleDebouncedSend()
+            const sent = enqueueUserMessage(content, options)
+            if (sent) setReplyingTo(null)
             return
         } else if (!isIntro && !isAutonomous && !content.trim()) {
             return
@@ -652,6 +664,15 @@ export default function ChatPage() {
         } catch (err) {
             console.error('Screenshot failed:', err)
         }
+    }
+
+    const handleQuickLike = (target: Message) => {
+        if (!isOnline) {
+            setToastMessage('You are offline. Reconnect and try again.')
+            return
+        }
+        const sent = enqueueUserMessage('❤️', { replyToId: target.id, reaction: '❤️' })
+        if (sent) setReplyingTo(null)
     }
 
     return (
@@ -687,6 +708,8 @@ export default function ChatPage() {
                                 activeGang={activeGang}
                                 typingUsers={typingUsers}
                                 isFastMode={isFastMode}
+                                onReplyMessage={(message) => setReplyingTo(message)}
+                                onLikeMessage={handleQuickLike}
                             />
                         </ErrorBoundary>
                     </div>
@@ -702,6 +725,14 @@ export default function ChatPage() {
                         onSend={handleSend}
                         disabled={!isOnline}
                         online={isOnline}
+                        replyingTo={replyingTo ? {
+                            id: replyingTo.id,
+                            speaker: replyingTo.speaker === 'user'
+                                ? 'user'
+                                : (activeGang.find((c) => c.id === replyingTo.speaker)?.name || replyingTo.speaker),
+                            content: replyingTo.content
+                        } : null}
+                        onCancelReply={() => setReplyingTo(null)}
                     />
                 </div>
             </div>

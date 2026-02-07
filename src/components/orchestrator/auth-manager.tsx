@@ -92,7 +92,11 @@ export function AuthManager() {
                         setChatMode(profile.chat_mode)
                     }
                     if (profile?.theme) {
-                        setTheme(profile.theme)
+                        const localTheme = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null
+                        // Respect an explicit local user choice and avoid server-driven theme flip-flop.
+                        if (!localTheme || localTheme === 'system') {
+                            setTheme(profile.theme)
+                        }
                     }
                     if (profile?.chat_wallpaper) {
                         setChatWallpaper(profile.chat_wallpaper)

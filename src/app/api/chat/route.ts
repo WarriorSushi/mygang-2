@@ -186,6 +186,7 @@ const requestSchema = z.object({
         content: z.string().max(2000),
         created_at: z.string(),
         reaction: z.string().optional(),
+        replyToId: z.string().max(128).optional(),
     })).max(40),
     activeGangIds: z.array(z.string().min(1).max(32)).max(4).optional(),
     activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(4).optional(),
@@ -510,7 +511,8 @@ ${allowedStatusList}
             id: m.id,
             speaker: m.speaker,
             content: m.content,
-            type: m.reaction ? 'reaction' : 'message'
+            type: m.reaction ? 'reaction' : 'message',
+            target_message_id: m.replyToId
         }))
 
         let object: RouteResponseObject

@@ -162,3 +162,39 @@ Date: 2026-02-07
 ### Verification (Status Realism Sprint)
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
+
+## Chat UX Reliability Sprint
+Date: 2026-02-07
+
+### Problems
+- Theme toggle could appear to flip back to dark due remote sync overriding local preference.
+- Wallpaper options (`default`, `neon`, `soft`) were under-explained.
+- Persona role labels were easy to miss in message-only contexts.
+- No native-feeling per-message quick actions (like/reply) on mobile.
+- Consecutive messages from the same speaker did not merge naturally.
+- Desktop keyboard hint text under composer was cluttering mobile UI.
+
+### Fixes Implemented
+- Theme stability:
+  - `src/components/chat/chat-header.tsx`: theme toggle now derives from `resolvedTheme ?? theme`.
+  - `src/components/orchestrator/auth-manager.tsx`: remote theme is only applied if local theme is unset or `system`, preventing involuntary local override.
+- Wallpaper clarity:
+  - `src/components/chat/chat-settings.tsx`: renamed section to `Chat Wallpaper` and added concrete descriptions for `Default`, `Neon`, `Soft`.
+  - `src/components/settings/settings-panel.tsx`: mirrored same descriptions and clarified that wallpaper is visual-only.
+- Persona labels visibility:
+  - `src/components/chat/chat-header.tsx`: added top-bar persona chips (`Name - role`) when role-label toggle is enabled.
+- Long-press actions + reply flow:
+  - `src/components/chat/message-item.tsx`: long-press/context menu now reveals `Like` and `Reply` action pill.
+  - `src/components/chat/message-list.tsx`: wired `onReplyMessage` and `onLikeMessage` callbacks.
+  - `src/app/chat/page.tsx`: added reply target state, quick-like enqueue path, and send pipeline support for `replyToId`.
+  - `src/components/chat/chat-input.tsx`: added reply-preview strip with cancel control.
+  - `src/app/api/chat/route.ts`: accepts `replyToId` in payload and passes `target_message_id` context into LLM history.
+- Bubble grouping:
+  - `src/components/chat/message-list.tsx`: computes group position (`single/first/middle/last`) for consecutive messages.
+  - `src/components/chat/message-item.tsx`: bubble corner geometry now adapts per group position for molded chains.
+- Mobile composer cleanup:
+  - `src/components/chat/chat-input.tsx`: `Enter to send - Shift+Enter newline` hint is hidden on mobile, retained on desktop.
+
+### Verification (Chat UX Reliability Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS
