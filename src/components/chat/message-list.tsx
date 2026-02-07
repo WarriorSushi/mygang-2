@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
 import { TypingIndicator } from '@/components/chat/typing-indicator'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -16,16 +16,47 @@ interface MessageListProps {
     isFastMode?: boolean
 }
 
+function normalizeSpeaker(value: string) {
+    return value.toLowerCase().trim()
+}
+
 export function MessageList({ messages, activeGang, typingUsers, isFastMode = false }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
+    const scrollRafRef = useRef<number | null>(null)
     const [isAtBottom, setIsAtBottom] = useState(true)
     const [unreadCount, setUnreadCount] = useState(0)
     const prevMessagesLength = useRef(messages.length)
     const characterStatuses = useChatStore((state) => state.characterStatuses)
+    const isGuest = useChatStore((state) => state.isGuest)
     const hasTyping = typingUsers.length > 0
     const hasActivity = Object.values(characterStatuses).some(Boolean)
     const hasStatusRow = hasTyping || hasActivity
     const itemCount = messages.length + (hasStatusRow ? 1 : 0)
+    const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
+    const characterBySpeaker = useMemo(
+        () => new Map(activeGang.map((character) => [normalizeSpeaker(character.id), character])),
+        [activeGang]
+    )
+    const seenByMessageId = useMemo(() => {
+        const seenMap = new Map<string, string[]>()
+        for (let i = 0; i < messages.length; i++) {
+            const current = messages[i]
+            if (current.speaker !== 'user') continue
+            const seenNames: string[] = []
+            const seenSpeakerIds = new Set<string>()
+            for (let j = i + 1; j < messages.length && seenNames.length < 2; j++) {
+                const next = messages[j]
+                if (next.speaker === 'user') continue
+                const normalized = normalizeSpeaker(next.speaker)
+                if (seenSpeakerIds.has(normalized)) continue
+                seenSpeakerIds.add(normalized)
+                const name = characterBySpeaker.get(normalized)?.name
+                if (name) seenNames.push(name)
+            }
+            seenMap.set(current.id, seenNames)
+        }
+        return seenMap
+    }, [messages, characterBySpeaker])
 
     const rowVirtualizer = useVirtualizer({
         count: itemCount,
@@ -37,16 +68,28 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
 
     // Handle scroll events
     const handleScroll = () => {
-        if (!scrollRef.current) return
-        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
-        const atBottom = scrollHeight - scrollTop - clientHeight < 100
-        setIsAtBottom(atBottom)
-        if (atBottom) {
-            setUnreadCount(0)
-        }
+        if (scrollRafRef.current !== null) return
+        scrollRafRef.current = window.requestAnimationFrame(() => {
+            scrollRafRef.current = null
+            if (!scrollRef.current) return
+            const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+            const atBottom = scrollHeight - scrollTop - clientHeight < 100
+            setIsAtBottom(atBottom)
+            if (atBottom) {
+                setUnreadCount(0)
+            }
+        })
     }
 
     // Auto-scroll logic
+    useEffect(() => {
+        return () => {
+            if (scrollRafRef.current !== null) {
+                window.cancelAnimationFrame(scrollRafRef.current)
+            }
+        }
+    }, [])
+
     useEffect(() => {
         if (!scrollRef.current) return
 
@@ -118,9 +161,14 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
 
                         const message = messages[index]
                         if (!message) return null
-                        const character = activeGang.find(c => c.id.toLowerCase().trim() === message.speaker.toLowerCase().trim())
+                        const character = characterBySpeaker.get(normalizeSpeaker(message.speaker))
                         const isContinued = index > 0 && messages[index - 1].speaker === message.speaker
                         const status = characterStatuses[message.speaker]
+                        const quotedMessage = message.replyToId ? messageById.get(message.replyToId) ?? null : null
+                        const quotedSpeaker = quotedMessage
+                            ? characterBySpeaker.get(normalizeSpeaker(quotedMessage.speaker)) ?? null
+                            : null
+                        const seenBy = seenByMessageId.get(message.id) ?? []
 
                         return (
                             <div
@@ -142,6 +190,10 @@ export function MessageList({ messages, activeGang, typingUsers, isFastMode = fa
                                     isContinued={isContinued}
                                     status={status}
                                     isFastMode={isFastMode}
+                                    quotedMessage={quotedMessage}
+                                    quotedSpeaker={quotedSpeaker}
+                                    seenBy={seenBy}
+                                    isGuest={isGuest}
                                 />
                             </div>
                         )

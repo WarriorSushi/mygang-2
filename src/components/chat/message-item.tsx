@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import { motion } from 'framer-motion'
-import { Character, Message, useChatStore } from '@/stores/chat-store'
+import { Character, Message } from '@/stores/chat-store'
 import { GlassCard } from '@/components/holographic/glass-card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -17,31 +17,26 @@ interface MessageItemProps {
     status?: string
     isContinued?: boolean
     isFastMode?: boolean
+    quotedMessage?: Message | null
+    quotedSpeaker?: Character | null
+    seenBy?: string[]
+    isGuest?: boolean
 }
 
-function MessageItemComponent({ message, character, status, isContinued, isFastMode = false }: MessageItemProps) {
+function MessageItemComponent({
+    message,
+    character,
+    status,
+    isContinued,
+    isFastMode = false,
+    quotedMessage = null,
+    quotedSpeaker = null,
+    seenBy = [],
+    isGuest = true
+}: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
-    const { messages, activeGang, isGuest } = useChatStore()
     const { theme } = useTheme()
-
-    // Find quoted message if it exists
-    const quotedMessage = message.replyToId ? messages.find((m: Message) => m.id === message.replyToId) : null
-    const quotedSpeaker = quotedMessage ? activeGang.find((c: Character) => c.id.toLowerCase().trim() === quotedMessage.speaker.toLowerCase().trim()) : null
-    const messageIndex = messages.findIndex((m: Message) => m.id === message.id)
-    const seenBy = (() => {
-        if (!isUser || messageIndex === -1) return []
-        const seen: string[] = []
-        for (let i = messageIndex + 1; i < messages.length; i++) {
-            const msg = messages[i]
-            if (msg.speaker !== 'user' && !seen.includes(msg.speaker)) {
-                const char = activeGang.find((c: Character) => c.id.toLowerCase().trim() === msg.speaker.toLowerCase().trim())
-                if (char?.name) seen.push(char.name)
-            }
-            if (seen.length >= 2) break
-        }
-        return seen
-    })()
 
     const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 

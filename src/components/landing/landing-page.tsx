@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
@@ -113,6 +113,12 @@ export function LandingPage() {
     []
   )
 
+  useEffect(() => {
+    if (!isHydrated) return
+    router.prefetch('/onboarding')
+    router.prefetch('/chat')
+  }, [isHydrated, router])
+
   return (
     <div className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
@@ -138,7 +144,7 @@ export function LandingPage() {
             </span>
           )}
           {userId ? (
-            <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+            <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
               <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
                 Dashboard
               </Button>
@@ -177,7 +183,7 @@ export function LandingPage() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start items-center lg:items-start">
-                  <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+                  <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
                     <Button
                       size="xl"
                       disabled={ctaDisabled}
@@ -287,7 +293,7 @@ export function LandingPage() {
                 Build a gang, set the tone, and let the conversation evolve with you.
               </p>
             </div>
-            <Link href={safeCtaLink} aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+            <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
               <Button size="xl" className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group">
                 {ctaText}
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />

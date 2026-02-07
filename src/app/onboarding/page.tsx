@@ -41,7 +41,8 @@ export default function OnboardingPage() {
             trackEvent('session_start', { sessionId: session.id, metadata: { source: 'onboarding' } })
         }
         trackEvent('onboarding_started', { sessionId: session.id })
-    }, [])
+        router.prefetch('/chat')
+    }, [router])
 
     const toggleCharacter = (id: string) => {
         setSelectedIds((prev) => {
@@ -80,7 +81,7 @@ export default function OnboardingPage() {
         // Simulate summoning delay
         setTimeout(() => {
             router.push('/chat')
-        }, 3600)
+        }, 2200)
     }
 
     return (

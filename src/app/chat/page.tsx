@@ -58,6 +58,7 @@ export default function ChatPage() {
     const [resumeBannerText, setResumeBannerText] = useState('Resumed your last session')
     const [toastMessage, setToastMessage] = useState<string | null>(null)
     const [isFastMode, setIsFastMode] = useState(false)
+    const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
 
     const chatContainerRef = useRef<HTMLDivElement>(null)
     const { theme } = useTheme()
@@ -176,6 +177,20 @@ export default function ChatPage() {
         return () => {
             events.forEach((event) => window.removeEventListener(event, markActive))
             document.removeEventListener('visibilitychange', markActive)
+        }
+    }, [])
+
+    useEffect(() => {
+        const goOnline = () => setIsOnline(true)
+        const goOffline = () => {
+            setIsOnline(false)
+            setToastMessage('You are offline. Messages will send after reconnecting.')
+        }
+        window.addEventListener('online', goOnline)
+        window.addEventListener('offline', goOffline)
+        return () => {
+            window.removeEventListener('online', goOnline)
+            window.removeEventListener('offline', goOffline)
         }
     }, [])
 
@@ -557,6 +572,10 @@ export default function ChatPage() {
     }
 
     const handleSend = async (content: string) => {
+        if (!isOnline) {
+            setToastMessage('You are offline. Reconnect and try again.')
+            return
+        }
         const isIntro = content.trim() === "" && messages.length === 0
         const isAutonomous = content.trim() === "" && messages.length > 0
 
@@ -673,8 +692,15 @@ export default function ChatPage() {
                 </div>
 
                 <div className="px-4 md:px-10 lg:px-20 pb-4 shrink-0">
+                    {!isOnline && (
+                        <div className="mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
+                            Offline mode - reconnect to send messages
+                        </div>
+                    )}
                     <ChatInput
                         onSend={handleSend}
+                        disabled={!isOnline}
+                        online={isOnline}
                     />
                 </div>
             </div>

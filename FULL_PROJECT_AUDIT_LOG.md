@@ -43,6 +43,42 @@ Scope: Full repository technical review and direct implementation pass.
 - Replaced effect-based state initialization patterns flagged by React lint rules in chat header, settings panel, onboarding page, and background blobs.
 - Corrected JSX escaping and text artifacts in landing/onboarding/auth/memory components.
 
+## Improvement Sprint (Post-Audit)
+Date: 2026-02-07
+
+### Functional Improvements Implemented
+- Chat input draft persistence:
+  - Added local draft save/restore in `src/components/chat/chat-input.tsx`.
+  - Impact: accidental refresh/navigation no longer loses unsent user text.
+- Better offline behavior:
+  - Added online/offline state wiring in `src/app/chat/page.tsx`.
+  - Disabled send while offline, added explicit banner and toast feedback.
+  - Impact: clearer UX and fewer failed sends.
+- Faster chat rendering path:
+  - Removed per-message repeated scans from `src/components/chat/message-item.tsx`.
+  - Moved quoted message + "seen by" derivation to memoized structures in `src/components/chat/message-list.tsx`.
+  - Impact: lower render cost and smoother scrolling in longer chats.
+- Scroll handler throttling:
+  - Added `requestAnimationFrame` throttling in `src/components/chat/message-list.tsx`.
+  - Impact: reduced scroll jank on mobile and low-end devices.
+- Navigation snappiness:
+  - Added route prefetch to landing and onboarding (`src/components/landing/landing-page.tsx`, `src/app/onboarding/page.tsx`).
+  - Reduced onboarding transition wait from `3600ms` to `2200ms`.
+  - Impact: faster-feeling path into chat.
+
+### UI/UX and Responsiveness Improvements Implemented
+- Chat input UX upgrade (`src/components/chat/chat-input.tsx`):
+  - Auto-resizing textarea.
+  - Inline send/newline hint.
+  - Character counter (`0/2000`).
+  - Safer mobile bottom padding with safe-area support.
+  - Offline-aware placeholder text.
+  - Impact: cleaner composing experience on both desktop and mobile.
+
+### Verification (Post-Improvement Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS
+
 ## Open Items
 - Remaining lint warnings are non-blocking:
   - `src/app/chat/page.tsx`: hook dependency/refs warnings in advanced timer/effect orchestration.
