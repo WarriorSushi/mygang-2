@@ -89,6 +89,12 @@ function pickReadableTextColor(background: Rgb) {
     return contrastRatio(background, dark) >= contrastRatio(background, light) ? dark : light
 }
 
+function truncateText(value: string, maxChars: number) {
+    const normalized = value.replace(/\s+/g, ' ').trim()
+    if (normalized.length <= maxChars) return normalized
+    return `${normalized.slice(0, Math.max(0, maxChars - 1)).trimEnd()}...`
+}
+
 interface MessageItemProps {
     message: Message
     character?: Character
@@ -148,7 +154,7 @@ function MessageItemComponent({
         ? mixRgb(baseRgb, { r: 10, g: 18, b: 32 }, 0.58)
         : mixRgb(baseRgb, { r: 246, g: 249, b: 252 }, 0.77)
     const aiBorderRgb = isDark
-        ? mixRgb(baseRgb, { r: 231, g: 236, b: 245 }, 0.35)
+        ? mixRgb(aiBubbleRgb, { r: 148, g: 163, b: 184 }, 0.14)
         : mixRgb(baseRgb, { r: 31, g: 41, b: 55 }, 0.24)
     const aiTextRgb = pickReadableTextColor(aiBubbleRgb)
 
@@ -159,6 +165,11 @@ function MessageItemComponent({
     const quoteLabelRgb = isDark
         ? mixRgb(quoteLabelBase, { r: 241, g: 245, b: 249 }, 0.2)
         : mixRgb(quoteLabelBase, { r: 15, g: 23, b: 42 }, 0.26)
+    const quotePreviewRaw = quotedMessage
+        ? (quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content)
+        : ''
+    const quotePreviewShort = truncateText(quotePreviewRaw, 54)
+    const quotePreviewLong = truncateText(quotePreviewRaw, 104)
 
     const clearLongPressTimer = () => {
         if (!longPressTimerRef.current) return
@@ -206,7 +217,7 @@ function MessageItemComponent({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: animateOnMount ? (isFastMode ? 0.12 : 0.22) : 0.01, ease: 'easeOut' }}
             className={cn(
-                "group relative flex flex-col max-w-[82%] sm:max-w-[76%]",
+                "group relative flex flex-col w-fit max-w-[min(84vw,30rem)] sm:max-w-[min(72vw,38rem)]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
                 isContinued ? "mt-1.5" : "mt-6", // Controlled spacing
@@ -254,7 +265,7 @@ function MessageItemComponent({
                 <GlassCard
                     variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
                     className={cn(
-                        "p-2.5 px-3 sm:p-3 sm:px-3.5 transition-all duration-200 z-10 border shadow-sm backdrop-blur-none",
+                        "p-2.5 px-3 sm:p-3 sm:px-3.5 transition-all duration-200 z-10 border border-[1px] shadow-sm backdrop-blur-none",
                         isUser
                             ? cn("text-primary-foreground", userShape)
                             : isReaction
@@ -264,7 +275,8 @@ function MessageItemComponent({
                     style={(!isUser && !isReaction)
                         ? {
                             backgroundColor: toRgbString(aiBubbleRgb),
-                            borderColor: toRgbString(aiBorderRgb)
+                            borderColor: toRgbString(aiBorderRgb),
+                            borderWidth: '1px',
                         }
                         : {}
                     }
@@ -280,7 +292,7 @@ function MessageItemComponent({
                             {quotedMessage && (
                                 <div
                                     className={cn(
-                                        "max-w-full overflow-hidden rounded-lg border px-1.5 py-1 text-[10px] min-w-0",
+                                        "w-full max-w-full overflow-hidden rounded-lg border px-1.5 py-1 text-[10px] min-w-0",
                                         isUser ? "text-right" : "text-left"
                                     )}
                                     style={{
@@ -298,7 +310,8 @@ function MessageItemComponent({
                                         className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap italic font-medium"
                                         style={{ color: quoteText }}
                                     >
-                                        {quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content}
+                                        <span className="sm:hidden">{quotePreviewShort}</span>
+                                        <span className="hidden sm:inline">{quotePreviewLong}</span>
                                     </div>
                                 </div>
                             )}
