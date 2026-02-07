@@ -141,3 +141,24 @@ Date: 2026-02-07
 ### Verification (Persona Role Labels Sprint)
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
+
+## Status Realism Sprint
+Date: 2026-02-07
+
+### Problem
+- Activity status lines felt fake (examples like "is smiling", "is excited") and reduced believability.
+
+### Fixes Implemented
+- Restricted all temporary status lines to exactly three options:
+  - `is reading your message`
+  - `saw your message`
+  - `opened your message`
+- Updated local client status generation in `src/app/chat/page.tsx` to use only these statuses.
+- Added normalization guard in `src/constants/character-greetings.ts`.
+- Added API-side enforcement in `src/app/api/chat/route.ts`:
+  - Prompt now instructs model to use only allowed status strings.
+  - Sanitizer drops any non-compliant `status_update` content.
+
+### Verification (Status Realism Sprint)
+- `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
+- `npm run build`: PASS

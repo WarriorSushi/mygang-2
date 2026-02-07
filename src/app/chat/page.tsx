@@ -8,7 +8,7 @@ import { toPng } from 'html-to-image'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
-import { ACTIVITY_STATUSES, CHARACTER_GREETINGS, CHARACTER_STATUS_REACTIONS } from '@/constants/character-greetings'
+import { ACTIVITY_STATUSES, CHARACTER_GREETINGS, normalizeActivityStatus } from '@/constants/character-greetings'
 
 // New modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -203,8 +203,8 @@ export default function ChatPage() {
     }
 
     const pickStatusFor = (characterId: string) => {
-        const pool = CHARACTER_STATUS_REACTIONS[characterId] || ACTIVITY_STATUSES
-        return pickRandom(pool)
+        if (!characterId) return ACTIVITY_STATUSES[0]
+        return pickRandom([...ACTIVITY_STATUSES])
     }
 
     const pulseStatus = (characterId: string, status: string, duration = 2400) => {
@@ -507,7 +507,7 @@ export default function ChatPage() {
                         break
 
                     case 'status_update':
-                        setCharacterStatus(event.character, event.content || "")
+                        setCharacterStatus(event.character, normalizeActivityStatus(event.content))
                         break
 
                     case 'nickname_update':

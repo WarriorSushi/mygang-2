@@ -6,6 +6,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
 import { CHARACTERS } from '@/constants/characters'
+import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const maxDuration = 30
@@ -429,6 +430,7 @@ ${sessionSummary}
         const safetyDirective = unsafeFlag.soft
             ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support.'
             : 'SAFETY FLAG: NO.'
+        const allowedStatusList = ACTIVITY_STATUSES.map((status) => `- "${status}"`).join('\n')
 
         const systemPrompt = `
     You are the invisible meta-level "Director" for a group chat called "MyGang".
@@ -476,6 +478,8 @@ ${sessionSummary}
     7. REACTIONS: Include occasional reaction-only events (emoji) to mimic real group chat.
     8. INTERRUPTIONS: Lightly allow characters to reply to each other or quote earlier messages when natural.
     9. CALLBACKS: If relevant, include a brief callback like "Earlier you said..." to show continuity.
+    10. STATUS TEXT RULE: If you emit a status_update event, content MUST be one of exactly:
+${allowedStatusList}
 
     == MEMORY + RELATIONSHIP RULES ==
     - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
@@ -554,8 +558,27 @@ ${sessionSummary}
                     sanitized.push({ ...rawEvent, content: reactionContent, delay })
                     continue
                 }
+                if (rawEvent.type === 'status_update') {
+                    const statusContent = normalizeActivityStatus(rawEvent.content)
+                    if (!statusContent) continue
+                    const nextTotal = totalChars + statusContent.length
+                    if (nextTotal > MAX_TOTAL_RESPONSE_CHARS) break
+                    totalChars = nextTotal
+                    sanitized.push({ ...rawEvent, content: statusContent, delay })
+                    continue
+                }
 
-                sanitized.push({ ...rawEvent, delay })
+                if (rawEvent.type === 'nickname_update') {
+                    const nextNickname = (rawEvent.content || '').trim().slice(0, 64)
+                    if (!nextNickname) continue
+                    sanitized.push({ ...rawEvent, content: nextNickname, delay })
+                    continue
+                }
+
+                if (rawEvent.type === 'typing_ghost') {
+                    sanitized.push({ ...rawEvent, delay })
+                    continue
+                }
             }
             object.events = sanitized
         }
