@@ -37,6 +37,7 @@ export default function ChatPage() {
     const {
         messages,
         activeGang,
+        userId,
         userName,
         userNickname,
         isGuest,
@@ -138,9 +139,9 @@ export default function ChatPage() {
     // Guard: Redirect if no squad is selected
     useEffect(() => {
         if (isHydrated && activeGang.length === 0) {
-            router.push('/onboarding')
+            router.replace(userId ? '/post-auth' : '/onboarding')
         }
-    }, [activeGang, isHydrated, router])
+    }, [activeGang, isHydrated, router, userId])
 
     useEffect(() => {
         if (!isHydrated) return

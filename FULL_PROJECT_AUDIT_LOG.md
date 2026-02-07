@@ -79,6 +79,40 @@ Date: 2026-02-07
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
 
+## Auth Journey Fix Sprint
+Date: 2026-02-07
+
+### Problem
+- Returning users were sometimes routed to onboarding/welcome after successful login.
+- Display name and gang persistence could fail in client-auth flows due server-action/session-cookie dependency mismatch.
+
+### Fixes Implemented
+- Added centralized post-auth resolver page: `src/app/post-auth/page.tsx`.
+  - Resolves session, pulls profile + gang from Supabase client APIs, updates store, then routes:
+    - Returning user with gang -> `/chat`
+    - New user without gang -> `/onboarding`
+    - Logged-out/invalid -> `/`
+- Updated auth callback default destination:
+  - `src/app/auth/callback/route.ts` now defaults to `/post-auth`.
+- Updated auth success navigation:
+  - `src/components/landing/landing-page.tsx` auth success now routes to `/post-auth`.
+  - `src/app/onboarding/page.tsx` auth success now routes to `/post-auth`.
+  - Logged-in CTA now targets `/post-auth` as the canonical journey resolver.
+- Added robust client-side journey sync helper:
+  - `src/lib/supabase/client-journey.ts` for fetching and persisting profile/gang data.
+- Switched profile writes to `update` (not `upsert`) where appropriate:
+  - `src/app/auth/actions.ts`
+  - `src/lib/supabase/client-journey.ts`
+  - This aligns with existing RLS update policy and prevents silent insert-path mismatches.
+- Hardened chat guard:
+  - `src/app/chat/page.tsx` now routes logged-in users missing local squad to `/post-auth` instead of directly to onboarding.
+- Updated auth sync orchestration:
+  - `src/components/orchestrator/auth-manager.tsx` now uses client journey sync helpers for profile/gang restoration and username fallback persistence.
+
+### Outcome
+- New and returning user journeys now diverge consistently after successful authentication.
+- Display name persistence is aligned with current schema + RLS expectations.
+
 ## Open Items
 - Remaining lint warnings are non-blocking:
   - `src/app/chat/page.tsx`: hook dependency/refs warnings in advanced timer/effect orchestration.

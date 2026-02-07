@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { CHARACTERS } from '@/constants/characters'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { useChatStore } from '@/stores/chat-store'
 import { useRouter } from 'next/navigation'
-import { saveGang, saveUsername } from '@/app/auth/actions'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import { AuthWall } from '@/components/orchestrator/auth-wall'
+import { createClient } from '@/lib/supabase/client'
+import { persistUserJourney } from '@/lib/supabase/client-journey'
 
 // New modular components
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
@@ -27,8 +28,9 @@ export default function OnboardingPage() {
     const { setUserName, setActiveGang, setIsGuest, userId, activeGang, isHydrated } = useChatStore()
     const router = useRouter()
     const isSelection = step === 'SELECTION'
+    const supabase = useMemo(() => createClient(), [])
 
-    // Bypassing Onboarding if squad already exists
+    // Bypass onboarding once squad exists locally
     useEffect(() => {
         if (isHydrated && activeGang.length > 0) {
             router.push('/chat')
@@ -66,13 +68,14 @@ export default function OnboardingPage() {
         const session = ensureAnalyticsSession()
         trackEvent('onboarding_completed', { sessionId: session.id })
 
-        // Save to DB if logged in
+        // Persist to cloud if logged in
         if (userId) {
             try {
-                await Promise.all([
-                    saveGang(selectedIds),
-                    saveUsername(name)
-                ])
+                await persistUserJourney(supabase, userId, {
+                    username: name,
+                    gangIds: selectedIds,
+                    onboardingCompleted: true
+                })
             } catch (err) {
                 console.error('Failed to auto-save to cloud:', err)
             }
@@ -127,7 +130,7 @@ export default function OnboardingPage() {
                 onClose={() => setShowAuthWall(false)}
                 onSuccess={() => {
                     setShowAuthWall(false)
-                    router.push('/chat')
+                    router.push('/post-auth')
                 }}
             />
         </main>

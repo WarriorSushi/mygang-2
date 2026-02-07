@@ -101,10 +101,9 @@ export function LandingPage() {
   const heroY = useTransform(scrollYProgress, [0, 1], [0, -120])
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92])
 
-  const { userId, activeGang, isHydrated } = useChatStore()
-  const hasSquad = activeGang.length > 0
-  const ctaText = !isHydrated ? 'Syncing...' : userId ? (hasSquad ? 'Return to Gang' : 'Pick Your Gang') : 'Assemble Your Gang'
-  const ctaLink = hasSquad ? '/chat' : '/onboarding'
+  const { userId, isHydrated } = useChatStore()
+  const ctaText = !isHydrated ? 'Syncing...' : userId ? 'Continue' : 'Assemble Your Gang'
+  const ctaLink = userId ? '/post-auth' : '/onboarding'
   const ctaDisabled = !isHydrated
   const safeCtaLink = ctaDisabled ? '#' : ctaLink
 
@@ -115,6 +114,7 @@ export function LandingPage() {
 
   useEffect(() => {
     if (!isHydrated) return
+    router.prefetch('/post-auth')
     router.prefetch('/onboarding')
     router.prefetch('/chat')
   }, [isHydrated, router])
@@ -312,7 +312,7 @@ export function LandingPage() {
         onClose={() => setShowAuthWall(false)}
         onSuccess={() => {
           setShowAuthWall(false)
-          router.push('/chat')
+          router.push('/post-auth')
         }}
       />
     </div>

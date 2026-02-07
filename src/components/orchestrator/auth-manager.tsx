@@ -3,18 +3,10 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useChatStore } from '@/stores/chat-store'
-import { getSavedGang, saveGang, saveUsername } from '@/app/auth/actions'
 import { CHARACTERS } from '@/constants/characters'
 import { useTheme } from 'next-themes'
 import type { Session } from '@supabase/supabase-js'
-
-type ProfileSyncRow = {
-    username: string | null
-    chat_mode: 'entourage' | 'ecosystem' | null
-    theme: 'light' | 'dark' | 'system' | null
-    chat_wallpaper: 'default' | 'neon' | 'soft' | null
-    preferred_squad: string[] | null
-}
+import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-journey'
 
 export function AuthManager() {
     const {
@@ -45,20 +37,12 @@ export function AuthManager() {
                     hadSessionRef.current = true
 
                     const { activeGang: localGang, userName: localName } = useChatStore.getState()
-                    const savedIds = await getSavedGang()
+                    const remote = await fetchJourneyState(supabase, session.user.id)
+                    const savedIds = remote.gangIds
                     const localIds = localGang.map((c) => c.id)
                     const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
-
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('username, chat_mode, theme, chat_wallpaper, preferred_squad')
-                        .eq('id', session.user.id)
-                        .single<ProfileSyncRow>()
-
-                    const preferredSquad = Array.isArray(profile?.preferred_squad) ? profile?.preferred_squad : null
-                    const remoteIds = savedIds && savedIds.length === 4
-                        ? savedIds
-                        : (preferredSquad && preferredSquad.length === 4 ? preferredSquad : null)
+                    const profile = remote.profile
+                    const remoteIds = savedIds.length === 4 ? savedIds : null
 
                     if (remoteIds && remoteIds.length === 4) {
                         const squad = CHARACTERS.filter(c => remoteIds.includes(c.id))
@@ -68,16 +52,12 @@ export function AuthManager() {
                             setActiveGang(squad)
                         }
                         setSquadConflict(null)
-                        if (!savedIds?.length && preferredSquad?.length === 4) {
-                            try {
-                                await saveGang(preferredSquad)
-                            } catch (err) {
-                                console.error('Error restoring preferred gang:', err)
-                            }
-                        }
                     } else if (localIds.length === 4) {
                         try {
-                            await saveGang(localIds)
+                            await persistUserJourney(supabase, session.user.id, {
+                                gangIds: localIds,
+                                onboardingCompleted: true
+                            })
                         } catch (err) {
                             console.error('Error saving local gang:', err)
                         }
@@ -87,7 +67,9 @@ export function AuthManager() {
                         setUserName(profile.username)
                     } else if (localName) {
                         try {
-                            await saveUsername(localName)
+                            await persistUserJourney(supabase, session.user.id, {
+                                username: localName
+                            })
                         } catch (err) {
                             console.error('Error saving username:', err)
                         }
@@ -98,7 +80,9 @@ export function AuthManager() {
                         if (fallbackName) {
                             setUserName(fallbackName)
                             try {
-                                await saveUsername(fallbackName)
+                                await persistUserJourney(supabase, session.user.id, {
+                                    username: fallbackName
+                                })
                             } catch (err) {
                                 console.error('Error saving fallback username:', err)
                             }
