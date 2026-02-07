@@ -72,7 +72,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             Sign up / log in to continue
                         </DialogTitle>
                         <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[320px]">
-                            Use email + password. We'll sign you in or create your account automatically.
+                            Use email + password. We&apos;ll sign you in or create your account automatically.
                         </DialogDescription>
                     </DialogHeader>
 

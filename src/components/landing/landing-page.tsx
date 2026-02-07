@@ -173,7 +173,7 @@ export function LandingPage() {
                 </h1>
 
                 <p className="text-sm sm:text-base lg:text-xl text-muted-foreground/80 mb-10 sm:mb-12 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-                  Your personal group of AI friends. They'll chat, laugh, cry, roast, and connect with you.
+                  Your personal group of AI friends. They&apos;ll chat, laugh, cry, roast, and connect with you.
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start items-center lg:items-start">
@@ -353,7 +353,7 @@ function GlowCard({ index, title, copy }: { index: number; title: string; copy: 
 function Testimonial({ quote, name, role }: { quote: string; name: string; role: string }) {
   return (
     <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 sm:p-8">
-      <div className="text-base font-medium leading-relaxed">"{quote}"</div>
+      <div className="text-base font-medium leading-relaxed">&quot;{quote}&quot;</div>
       <div className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
         {name} - {role}
       </div>

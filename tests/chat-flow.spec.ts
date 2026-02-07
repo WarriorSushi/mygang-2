@@ -65,7 +65,6 @@ test('MyGang.ai End-to-End Journey', async ({ page }) => {
 
     // 8. Test Theme Toggle
     console.log('Testing Theme Toggle...');
-    const themeBtn = page.locator('button').filter({ hasText: '' }).nth(1); // Assuming 2nd icon button in header
     // Better selector: by SVG or title if available. In header we have Camera and Theme.
     // Let's use the title "Save Moment" for camera to distinguish.
     // The theme button doesn't have a title prop in the snippet I recall, checking page.tsx...

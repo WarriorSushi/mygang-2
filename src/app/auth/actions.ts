@@ -155,7 +155,9 @@ export async function getSavedGang() {
         return null
     }
 
-    return data.map((m: any) => m.character_id)
+    return data
+        .map((m) => m.character_id)
+        .filter((id): id is string => typeof id === 'string')
 }
 
 export async function saveUsername(username: string) {

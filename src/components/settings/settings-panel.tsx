@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
@@ -30,13 +30,11 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
     const { setChatMode, setChatWallpaper } = useChatStore()
     const [chatMode, setChatModeLocal] = useState(initialSettings.chat_mode)
     const [wallpaper, setWallpaper] = useState(initialSettings.chat_wallpaper)
-    const [perfEnabled, setPerfEnabled] = useState(false)
+    const [perfEnabled, setPerfEnabled] = useState(() => {
+        if (typeof window === 'undefined') return false
+        return window.localStorage.getItem(PERF_KEY) === 'true'
+    })
     const isProd = process.env.NODE_ENV === 'production'
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return
-        setPerfEnabled(window.localStorage.getItem(PERF_KEY) === 'true')
-    }, [])
 
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setTheme(nextTheme)

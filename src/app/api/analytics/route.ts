@@ -5,19 +5,13 @@ const requestSchema = z.object({
     event: z.string().min(1).max(64),
     session_id: z.string().min(8).max(128),
     value: z.number().int().optional(),
-    metadata: z.record(z.any()).optional()
+    metadata: z.record(z.unknown()).optional()
 })
 
 export async function POST(req: Request) {
     try {
         const body = await req.json()
-        let parsed: ReturnType<typeof requestSchema.safeParse>
-        try {
-            parsed = requestSchema.safeParse(body)
-        } catch (err) {
-            console.warn('Analytics schema parse failed, ignoring event.')
-            return Response.json({ ok: false }, { status: 400 })
-        }
+        const parsed = requestSchema.safeParse(body)
         if (!parsed.success) {
             return Response.json({ ok: false }, { status: 400 })
         }

@@ -244,7 +244,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                         <DialogDescription>{previewChar?.archetype}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div className="text-sm text-muted-foreground italic">"{previewChar?.sample}"</div>
+                        <div className="text-sm text-muted-foreground italic">&quot;{previewChar?.sample}&quot;</div>
                         <div className="grid gap-3">
                             <div>
                                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vibe</div>

@@ -6,6 +6,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
 import { CHARACTERS } from '@/constants/characters'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const maxDuration = 30
 
@@ -23,11 +24,54 @@ const CHARACTER_PROMPT_BLOCKS = new Map(
 
 let cachedDbPromptBlocks: Record<string, string> | null = null
 
-async function getDbPromptBlocks(supabase: any) {
+type DbCharacterPromptRow = {
+    id: string
+    prompt_block: string | null
+    name: string
+    archetype: string
+    voice_description: string
+    sample_line: string
+}
+
+type RelationshipState = {
+    affinity: number
+    trust: number
+    banter: number
+    protectiveness: number
+    note?: string
+}
+
+type ProfileStateRow = {
+    user_profile: Record<string, unknown> | null
+    relationship_state: Record<string, RelationshipState> | null
+    session_summary: string | null
+    summary_turns: number | null
+    daily_msg_count: number | null
+    last_msg_reset: string | null
+    subscription_tier: string | null
+    abuse_score: number | null
+}
+
+type ProfileUpdatesPayload = {
+    last_active_at: string
+    user_profile?: Record<string, unknown>
+    relationship_state?: Record<string, RelationshipState>
+    session_summary?: string
+    summary_turns?: number
+    daily_msg_count?: number
+    abuse_score?: number
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+async function getDbPromptBlocks(supabase: SupabaseClient) {
     if (cachedDbPromptBlocks) return cachedDbPromptBlocks
     const { data, error } = await supabase
         .from('characters')
         .select('id, prompt_block, name, archetype, voice_description, sample_line')
+        .returns<DbCharacterPromptRow[]>()
 
     if (error || !data) {
         if (error) console.error('Error loading character prompt blocks:', error)
@@ -35,7 +79,7 @@ async function getDbPromptBlocks(supabase: any) {
     }
 
     const map: Record<string, string> = {}
-    data.forEach((row: any) => {
+    data.forEach((row) => {
         const block = row.prompt_block
             ? row.prompt_block
             : `- ID: "${row.id}", Name: "${row.name}", Archetype: "${row.archetype}", Voice: "${row.voice_description}", Style: "${row.sample_line}"`
@@ -132,6 +176,7 @@ const responseSchema = z.object({
     })).optional(),
     session_summary_update: z.string().optional()
 })
+type RouteResponseObject = z.infer<typeof responseSchema>
 
 const requestSchema = z.object({
     messages: z.array(z.object({
@@ -173,9 +218,7 @@ export async function POST(req: Request) {
             activeGang,
             userName,
             userNickname,
-            isFirstMessage = false,
             silentTurns = 0,
-            burstCount = 0,
             chatMode = 'ecosystem',
             autonomousIdle = false
         } = parsed.data
@@ -248,6 +291,8 @@ export async function POST(req: Request) {
         const userMessages = safeMessages.filter((m) => m.speaker === 'user')
         const lastUserMessage = userMessages[userMessages.length - 1]
         const previousUserMessage = userMessages[userMessages.length - 2]
+        const latestMessage = safeMessages[safeMessages.length - 1]
+        const hasFreshUserTurn = latestMessage?.speaker === 'user'
         const lastUserMsg = lastUserMessage?.content || ''
         const lastUserMsgAt = lastUserMessage?.created_at ? new Date(lastUserMessage.created_at).getTime() : 0
         const inactiveMinutes = lastUserMsgAt ? (Date.now() - lastUserMsgAt) / (1000 * 60) : 0
@@ -273,7 +318,7 @@ export async function POST(req: Request) {
         let shouldUpdateSummary = false
         let allowMemoryUpdates = false
         let summaryTurns = 0
-        let profileRow: any = null
+        let profileRow: ProfileStateRow | null = null
         let nextAbuseScore: number | null = null
 
         if (user) {
@@ -282,7 +327,7 @@ export async function POST(req: Request) {
                     .from('profiles')
                     .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score')
                     .eq('id', user.id)
-                    .single()
+                    .single<ProfileStateRow>()
 
                 profileRow = profile
 
@@ -298,7 +343,7 @@ export async function POST(req: Request) {
                 }
 
                 const dailyLimit = profile?.subscription_tier === 'pro' ? 300 : 80
-                if (dailyCount >= dailyLimit) {
+                if (hasFreshUserTurn && dailyCount >= dailyLimit) {
                     return Response.json({
                         events: [{
                             type: 'message',
@@ -309,29 +354,33 @@ export async function POST(req: Request) {
                     }, { status: 429 })
                 }
 
-                const currentAbuse = profile?.abuse_score ?? 0
-                nextAbuseScore = Math.max(0, currentAbuse + abuseDelta - 1)
-                if (nextAbuseScore >= 12) {
-                    return Response.json({
-                        events: [{
-                            type: 'message',
-                            character: 'system',
-                            content: "You're sending too many risky or repeated messages. Pause and try again later.",
-                            delay: 200
-                        }]
-                    }, { status: 429 })
+                if (hasFreshUserTurn) {
+                    const currentAbuse = profile?.abuse_score ?? 0
+                    nextAbuseScore = Math.max(0, currentAbuse + abuseDelta - 1)
+                    if (nextAbuseScore >= 12) {
+                        return Response.json({
+                            events: [{
+                                type: 'message',
+                                character: 'system',
+                                content: "You're sending too many risky or repeated messages. Pause and try again later.",
+                                delay: 200
+                            }]
+                        }, { status: 429 })
+                    }
                 }
 
                 summaryTurns = profile?.summary_turns ?? 0
                 shouldUpdateSummary = summaryTurns >= 8
-                allowMemoryUpdates = shouldTriggerMemoryUpdate(lastUserMsg)
+                allowMemoryUpdates = hasFreshUserTurn && shouldTriggerMemoryUpdate(lastUserMsg)
 
-                const memories = await retrieveMemoriesLite(user.id, lastUserMsg, 5)
-                relevantMemories = memories.map(m => ({ id: m.id, content: m.content }))
-                await touchMemories(memories.map(m => m.id))
+                if (lastUserMsg.trim()) {
+                    const memories = await retrieveMemoriesLite(user.id, lastUserMsg, 5)
+                    relevantMemories = memories.map((m) => ({ id: m.id, content: m.content }))
+                    await touchMemories(memories.map((m) => m.id))
+                }
 
-                const userProfile = profile?.user_profile || {}
-                const relationshipState = profile?.relationship_state || {}
+                const userProfile = isObject(profile?.user_profile) ? profile.user_profile : {}
+                const relationshipState = isObject(profile?.relationship_state) ? (profile.relationship_state as Record<string, RelationshipState>) : {}
                 const sessionSummary = profile?.session_summary || 'No summary yet.'
 
                 const relationshipBoard = activeGangSafe.map((c) => {
@@ -452,7 +501,7 @@ ${sessionSummary}
     `
 
         // Prepare conversation for LLM with IDs
-        const HISTORY_LIMIT = 16
+        const HISTORY_LIMIT = autonomousIdle ? 10 : 16
         const historyForLLM = safeMessages.slice(-HISTORY_LIMIT).map(m => ({
             id: m.id,
             speaker: m.speaker,
@@ -460,7 +509,7 @@ ${sessionSummary}
             type: m.reaction ? 'reaction' : 'message'
         }))
 
-        let object;
+        let object: RouteResponseObject
         try {
             const result = await generateObject({
                 model: geminiModel,
@@ -479,27 +528,34 @@ ${sessionSummary}
         }
 
         if (object?.events && Array.isArray(object.events)) {
-            const sanitized: any[] = []
+            const sanitized: RouteResponseObject['events'] = []
             let totalChars = 0
             for (const rawEvent of object.events.slice(0, MAX_EVENTS)) {
                 const delay = typeof rawEvent.delay === 'number'
                     ? Math.min(MAX_DELAY_MS, Math.max(0, rawEvent.delay))
                     : 0
-                let content = typeof rawEvent.content === 'string'
-                    ? rawEvent.content.trim().slice(0, MAX_EVENT_CONTENT)
-                    : rawEvent.content
-                if (rawEvent.type === 'reaction' && (!content || typeof content !== 'string')) {
-                    content = '\u{1F44D}'
-                }
-                if (rawEvent.type === 'message' && (!content || typeof content !== 'string')) {
+                if (rawEvent.type === 'message') {
+                    const messageContent = rawEvent.content.trim().slice(0, MAX_EVENT_CONTENT)
+                    if (!messageContent) continue
+                    const nextTotal = totalChars + messageContent.length
+                    if (nextTotal > MAX_TOTAL_RESPONSE_CHARS) break
+                    totalChars = nextTotal
+                    sanitized.push({ ...rawEvent, content: messageContent, delay })
                     continue
                 }
-                const nextTotal = totalChars + (typeof content === 'string' ? content.length : 0)
-                if (nextTotal > MAX_TOTAL_RESPONSE_CHARS && (rawEvent.type === 'message' || rawEvent.type === 'reaction')) {
-                    break
+
+                if (rawEvent.type === 'reaction') {
+                    const reactionContent = typeof rawEvent.content === 'string' && rawEvent.content.trim()
+                        ? rawEvent.content.trim().slice(0, MAX_EVENT_CONTENT)
+                        : '\u{1F44D}'
+                    const nextTotal = totalChars + reactionContent.length
+                    if (nextTotal > MAX_TOTAL_RESPONSE_CHARS) break
+                    totalChars = nextTotal
+                    sanitized.push({ ...rawEvent, content: reactionContent, delay })
+                    continue
                 }
-                if (typeof content === 'string') totalChars = nextTotal
-                sanitized.push({ ...rawEvent, content, delay })
+
+                sanitized.push({ ...rawEvent, delay })
             }
             object.events = sanitized
         }
@@ -521,7 +577,7 @@ ${sessionSummary}
         if (limitedResponders.length > 0) {
             object.responders = limitedResponders
             const responderSet = new Set(limitedResponders)
-            object.events = object.events.filter((event: any) => {
+            object.events = object.events.filter((event) => {
                 if (event.type === 'status_update' || event.type === 'nickname_update' || event.type === 'typing_ghost') return true
                 return responderSet.has(event.character)
             })
@@ -540,12 +596,16 @@ ${sessionSummary}
         // Persist memory + relationship state (authenticated users only)
         if (user) {
             const nowIso = new Date().toISOString()
-            const profileUpdates: any = { last_active_at: nowIso }
-            let relationshipState = profileRow?.relationship_state || {}
-            const userProfile = profileRow?.user_profile || {}
+            const profileUpdates: ProfileUpdatesPayload = { last_active_at: nowIso }
+            const relationshipState: Record<string, RelationshipState> = isObject(profileRow?.relationship_state)
+                ? (profileRow?.relationship_state as Record<string, RelationshipState>)
+                : {}
+            const userProfile: Record<string, unknown> = isObject(profileRow?.user_profile)
+                ? profileRow.user_profile
+                : {}
 
             if (allowMemoryUpdates && object?.memory_updates?.profile?.length) {
-                object.memory_updates.profile.forEach((item: any) => {
+                object.memory_updates.profile.forEach((item) => {
                     userProfile[item.key] = item.value
                 })
                 profileUpdates.user_profile = userProfile
@@ -553,7 +613,7 @@ ${sessionSummary}
 
             if (object?.relationship_updates?.length) {
                 const clamp = (n: number) => Math.max(0, Math.min(100, n))
-                object.relationship_updates.forEach((update: any) => {
+                object.relationship_updates.forEach((update) => {
                     if (!filteredIds.includes(update.character)) return
                     const current = relationshipState[update.character] || {
                         affinity: 50,
@@ -580,10 +640,10 @@ ${sessionSummary}
             if (shouldUpdateSummary && object?.session_summary_update) {
                 profileUpdates.session_summary = object.session_summary_update
                 profileUpdates.summary_turns = 0
-            } else if (lastUserMsg) {
+            } else if (hasFreshUserTurn && lastUserMsg) {
                 profileUpdates.summary_turns = summaryTurns + 1
             }
-            if (lastUserMsg) {
+            if (hasFreshUserTurn && lastUserMsg) {
                 profileUpdates.daily_msg_count = (profileRow?.daily_msg_count ?? 0) + 1
             }
             if (nextAbuseScore !== null) {
@@ -596,10 +656,10 @@ ${sessionSummary}
                 console.error('Error updating profile state:', err)
             }
 
-            if (allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
+            if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
                 const useEmbedding = lastUserMsg.toLowerCase().includes('remember this')
                 await Promise.all(
-                    object.memory_updates.episodic.map((m: any) =>
+                    object.memory_updates.episodic.map((m) =>
                         storeMemory(user.id, m.content, {
                             kind: 'episodic',
                             tags: m.tags || [],
@@ -631,13 +691,32 @@ ${sessionSummary}
 
                     const lastMessage = safeMessages[safeMessages.length - 1]
                     if (lastMessage?.speaker === 'user' && lastMessage.content?.trim()) {
-                        rows.push({
-                            user_id: user.id,
-                            gang_id: gang.id,
-                            speaker: 'user',
-                            content: lastMessage.content.trim(),
-                            is_guest: false
-                        })
+                        const userContent = lastMessage.content.trim()
+                        let shouldInsertUserMessage = true
+                        const { data: recentRows } = await supabase
+                            .from('chat_history')
+                            .select('content, created_at')
+                            .eq('user_id', user.id)
+                            .eq('gang_id', gang.id)
+                            .eq('speaker', 'user')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                        const recent = recentRows?.[0]
+                        if (recent?.content === userContent && recent?.created_at) {
+                            const recentMs = new Date(recent.created_at).getTime()
+                            if (Date.now() - recentMs < 30_000) {
+                                shouldInsertUserMessage = false
+                            }
+                        }
+                        if (shouldInsertUserMessage) {
+                            rows.push({
+                                user_id: user.id,
+                                gang_id: gang.id,
+                                speaker: 'user',
+                                content: userContent,
+                                is_guest: false
+                            })
+                        }
                     }
 
                     if (object?.events?.length) {

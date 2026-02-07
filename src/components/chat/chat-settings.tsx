@@ -31,7 +31,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     } = useChatStore()
 
     const handleChatModeChange = (value: string) => {
-        setChatMode(value as any)
+        if (value !== 'entourage' && value !== 'ecosystem') return
+        setChatMode(value)
         updateUserSettings({ chat_mode: value })
     }
 

@@ -5,7 +5,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sun, Moon, Brain, Settings2 } from 'lucide-react'
 import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
 import { updateUserSettings } from '@/app/auth/actions'
 import Image from 'next/image'
 
@@ -18,12 +17,8 @@ interface ChatHeaderProps {
 }
 
 export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false }: ChatHeaderProps) {
-    const { theme, setTheme } = useTheme()
-    const [mounted, setMounted] = useState(false)
-
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+    const { resolvedTheme, setTheme } = useTheme()
+    const currentTheme = resolvedTheme === 'light' ? 'light' : 'dark'
 
     return (
         <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] border-b border-white/10 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-md bg-white/5 z-10 w-full">
@@ -88,18 +83,14 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                     variant="ghost"
                     size="icon"
                     className="rounded-full"
-                    aria-label={mounted ? (theme === 'dark' ? "Switch to light theme" : "Switch to dark theme") : "Toggle theme"}
+                    aria-label={currentTheme === 'dark' ? "Switch to light theme" : "Switch to dark theme"}
                     onClick={() => {
-                        const nextTheme = theme === 'dark' ? 'light' : 'dark'
+                        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark'
                         setTheme(nextTheme)
                         updateUserSettings({ theme: nextTheme })
                     }}
                 >
-                    {mounted ? (
-                        theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />
-                    ) : (
-                        <div className="w-5 h-5" />
-                    )}
+                    {currentTheme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
                 </Button>
             </div>
         </header>

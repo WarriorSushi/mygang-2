@@ -21,6 +21,18 @@ import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 import { InlineToast } from '@/components/chat/inline-toast'
 const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
 
+type ChatEvent =
+    | { type: 'message'; character: string; content?: string; delay: number; target_message_id?: string }
+    | { type: 'reaction'; character: string; content?: string; delay: number; target_message_id?: string }
+    | { type: 'status_update'; character: string; content?: string; delay: number }
+    | { type: 'nickname_update'; character: string; content?: string; delay: number }
+    | { type: 'typing_ghost'; character: string; content?: string; delay: number }
+
+type ChatApiResponse = {
+    events: ChatEvent[]
+    should_continue?: boolean
+}
+
 export default function ChatPage() {
     const {
         messages,
@@ -42,7 +54,6 @@ export default function ChatPage() {
     const [showAuthWall, setShowAuthWall] = useState(false)
     const [isVaultOpen, setIsVaultOpen] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-    const [isGenerating, setIsGenerating] = useState(false)
     const [showResumeBanner, setShowResumeBanner] = useState(false)
     const [resumeBannerText, setResumeBannerText] = useState('Resumed your last session')
     const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -346,19 +357,16 @@ export default function ChatPage() {
         if (isAutonomous) {
             if (silentTurnsRef.current >= 30) {
                 console.log("Autonomous flow stopped: 30 message limit reached.")
-                setIsGenerating(false)
                 isGeneratingRef.current = false
                 return
             }
             if (burstCountRef.current >= 3) {
                 console.log("Autonomous flow stopped: 3-burst limit reached.")
-                setIsGenerating(false)
                 isGeneratingRef.current = false
                 return
             }
         }
 
-        setIsGenerating(true)
         isGeneratingRef.current = true
 
         if (isAutonomous) {
@@ -368,7 +376,7 @@ export default function ChatPage() {
         try {
             const currentMessages = useChatStore.getState().messages
 
-            const payloadMessages = currentMessages.slice(-40).map((m) => ({
+            const payloadMessages = currentMessages.slice(-24).map((m) => ({
                 id: m.id,
                 speaker: m.speaker,
                 content: m.content,
@@ -395,7 +403,7 @@ export default function ChatPage() {
                 })
             })
 
-            let data: { events: any[], should_continue?: boolean } | null = null
+            let data: ChatApiResponse | null = null
             try {
                 data = await res.json()
             } catch (err) {
@@ -516,9 +524,10 @@ export default function ChatPage() {
             if (pendingUserMessagesRef.current) {
                 pendingUserMessagesRef.current = false
                 isGeneratingRef.current = false
-                sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: pendingUserMessageIdRef.current })
+                const sourceId = pendingUserMessageIdRef.current
+                pendingUserMessageIdRef.current = null
+                sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId })
             } else {
-                setIsGenerating(false)
                 isGeneratingRef.current = false
                 clearTypingUsers()
                 if (!isIntro && !pendingUserMessagesRef.current) {

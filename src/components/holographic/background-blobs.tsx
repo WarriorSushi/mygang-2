@@ -1,24 +1,25 @@
 'use client'
 
 import { motion, useReducedMotion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 interface BackgroundBlobsProps {
     isMuted?: boolean
 }
 
+type NavigatorWithDeviceMemory = Navigator & { deviceMemory?: number }
+
+function detectLowEndDevice() {
+    if (typeof navigator === 'undefined') return false
+    const nav = navigator as NavigatorWithDeviceMemory
+    const memory = nav.deviceMemory ?? 0
+    const cores = nav.hardwareConcurrency || 0
+    return (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4)
+}
+
 export function BackgroundBlobs({ isMuted = false }: BackgroundBlobsProps) {
     const reduceMotion = useReducedMotion()
-    const [isLowEnd, setIsLowEnd] = useState(false)
-
-    useEffect(() => {
-        if (typeof navigator === 'undefined') return
-        const memory = (navigator as any).deviceMemory || 0
-        const cores = navigator.hardwareConcurrency || 0
-        if ((memory && memory <= 4) || (cores && cores <= 4)) {
-            setIsLowEnd(true)
-        }
-    }, [])
+    const [isLowEnd] = useState(detectLowEndDevice)
 
     const disableMotion = useMemo(() => reduceMotion || isMuted || isLowEnd, [reduceMotion, isMuted, isLowEnd])
     return (

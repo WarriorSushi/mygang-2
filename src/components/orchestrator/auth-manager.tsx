@@ -1,11 +1,20 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useChatStore } from '@/stores/chat-store'
 import { getSavedGang, saveGang, saveUsername } from '@/app/auth/actions'
 import { CHARACTERS } from '@/constants/characters'
 import { useTheme } from 'next-themes'
+import type { Session } from '@supabase/supabase-js'
+
+type ProfileSyncRow = {
+    username: string | null
+    chat_mode: 'entourage' | 'ecosystem' | null
+    theme: 'light' | 'dark' | 'system' | null
+    chat_wallpaper: 'default' | 'neon' | 'soft' | null
+    preferred_squad: string[] | null
+}
 
 export function AuthManager() {
     const {
@@ -20,12 +29,12 @@ export function AuthManager() {
         setChatWallpaper,
         setSquadConflict
     } = useChatStore()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
     const hadSessionRef = useRef(false)
     const { setTheme } = useTheme()
 
     useEffect(() => {
-        const syncSession = async (incomingSession?: any) => {
+        const syncSession = async (incomingSession?: Session | null) => {
             try {
                 setIsHydrated(false)
                 const session = incomingSession ?? (await supabase.auth.getSession()).data.session
@@ -44,7 +53,7 @@ export function AuthManager() {
                         .from('profiles')
                         .select('username, chat_mode, theme, chat_wallpaper, preferred_squad')
                         .eq('id', session.user.id)
-                        .single()
+                        .single<ProfileSyncRow>()
 
                     const preferredSquad = Array.isArray(profile?.preferred_squad) ? profile?.preferred_squad : null
                     const remoteIds = savedIds && savedIds.length === 4
@@ -96,13 +105,13 @@ export function AuthManager() {
                         }
                     }
                     if (profile?.chat_mode) {
-                        setChatMode(profile.chat_mode as any)
+                        setChatMode(profile.chat_mode)
                     }
                     if (profile?.theme) {
                         setTheme(profile.theme)
                     }
                     if (profile?.chat_wallpaper) {
-                        setChatWallpaper(profile.chat_wallpaper as any)
+                        setChatWallpaper(profile.chat_wallpaper)
                     }
                 }
             } catch (err) {
@@ -136,7 +145,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [setUserId, setIsGuest, setActiveGang, setUserName, setUserNickname, clearChat, setIsHydrated, setChatMode, setChatWallpaper, setSquadConflict, setTheme])
+    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setIsGuest, setIsHydrated, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
 
     return null
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Brain, Trash2, Edit3, Check, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,16 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
     const [editContent, setEditContent] = useState('')
     const isGuest = useChatStore((state) => state.isGuest)
 
+    async function loadMemories() {
+        setLoading(true)
+        try {
+            const data = await getMemories()
+            setMemories(data)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     useEffect(() => {
         if (isOpen) {
             if (isGuest) {
@@ -37,13 +47,6 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
             loadMemories()
         }
     }, [isOpen, isGuest])
-
-    const loadMemories = async () => {
-        setLoading(true)
-        const data = await getMemories()
-        setMemories(data)
-        setLoading(false)
-    }
 
     const handleDelete = async (id: string) => {
         await deleteMemory(id)
@@ -63,9 +66,10 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
         await updateMemory(id, editContent)
     }
 
-    const filteredMemories = memories.filter(m =>
-        m.content.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredMemories = useMemo(() => {
+        const query = searchQuery.toLowerCase()
+        return memories.filter((m) => m.content.toLowerCase().includes(query))
+    }, [memories, searchQuery])
 
     return (
         <AnimatePresence>
@@ -122,7 +126,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                             {isGuest ? (
                                 <div className="text-center py-12">
                                     <p className="text-muted-foreground text-sm">Memories are saved to your account.</p>
-                                    <p className="text-[10px] uppercase mt-2 opacity-50">Sign in to unlock long‑term memory.</p>
+                                    <p className="text-[10px] uppercase mt-2 opacity-50">Sign in to unlock long-term memory.</p>
                                 </div>
                             ) : loading ? (
                                 <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
@@ -132,7 +136,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                             ) : filteredMemories.length === 0 ? (
                                 <div className="text-center py-12">
                                     <p className="text-muted-foreground text-sm">No memories found.</p>
-                                    <p className="text-[10px] uppercase mt-2 opacity-50">The gang hasn't saved any facts yet.</p>
+                                    <p className="text-[10px] uppercase mt-2 opacity-50">The gang hasn&apos;t saved any facts yet.</p>
                                 </div>
                             ) : (
                                 filteredMemories.map((memory) => (

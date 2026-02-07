@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { trackEvent } from '@/lib/analytics'
 
 const STORAGE_KEY = 'perf_monitoring'
+type LayoutShiftEntry = PerformanceEntry & { hadRecentInput: boolean; value: number }
 
 export function PerfMonitor() {
     useEffect(() => {
@@ -50,7 +51,8 @@ export function PerfMonitor() {
 
                 let clsValue = 0
                 const clsObserver = new PerformanceObserver((entryList) => {
-                    for (const entry of entryList.getEntries() as any) {
+                    const entries = entryList.getEntries() as LayoutShiftEntry[]
+                    for (const entry of entries) {
                         if (!entry.hadRecentInput) {
                             clsValue += entry.value
                         }

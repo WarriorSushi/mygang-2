@@ -9,7 +9,7 @@ export default function AuthCodeErrorPage() {
       <div className="max-w-md space-y-4">
         <h1 className="text-3xl font-bold tracking-tight">Authentication Failed</h1>
         <p className="text-muted-foreground">
-          We couldn't complete your sign-in. This can happen if the link expired or was already used.
+          We couldn&apos;t complete your sign-in. This can happen if the link expired or was already used.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
           <Link href="/onboarding">

@@ -71,7 +71,7 @@ export async function storeMemory(
             .order('created_at', { ascending: false })
             .limit(5)
 
-        const duplicate = existing?.find((m: any) => {
+        const duplicate = existing?.find((m) => {
             if (!m?.content) return false
             const recent = m.created_at ? (Date.now() - new Date(m.created_at).getTime()) < 10 * 60 * 1000 : false
             return recent && m.content.trim().replace(/\s+/g, ' ') === normalizedContent
