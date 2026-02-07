@@ -316,14 +316,14 @@ function MessageItemComponent({
                 </GlassCard>
                 {showActions && canShowActions && (
                     <div className={cn(
-                        "absolute z-50 bottom-full mb-2 flex items-center gap-1 rounded-full border border-white/15 bg-background/95 p-1 shadow-xl backdrop-blur-xl",
+                        "absolute z-50 bottom-full mb-2 flex items-center gap-1 rounded-full border border-border/80 bg-card/96 dark:border-white/20 dark:bg-[rgba(10,18,32,0.96)] p-1 shadow-xl backdrop-blur-xl",
                         isUser ? 'right-0' : 'left-0'
                     )}>
                         <Button
                             type="button"
                             variant="ghost"
                             size="xs"
-                            className="rounded-full text-[10px] uppercase tracking-widest"
+                            className="rounded-full border border-transparent text-[10px] uppercase tracking-widest text-foreground/90 dark:text-white/90 hover:bg-primary/10 dark:hover:bg-white/12 hover:border-primary/30 dark:hover:border-white/20"
                             onClick={() => {
                                 onLike?.(message)
                                 setShowActions(false)
@@ -336,7 +336,7 @@ function MessageItemComponent({
                             type="button"
                             variant="ghost"
                             size="xs"
-                            className="rounded-full text-[10px] uppercase tracking-widest"
+                            className="rounded-full border border-transparent text-[10px] uppercase tracking-widest text-foreground/90 dark:text-white/90 hover:bg-primary/10 dark:hover:bg-white/12 hover:border-primary/30 dark:hover:border-white/20"
                             onClick={() => {
                                 onReply?.(message)
                                 setShowActions(false)
