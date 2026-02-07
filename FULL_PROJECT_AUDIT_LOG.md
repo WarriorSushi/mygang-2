@@ -327,3 +327,37 @@ Date: 2026-02-07
 ### Verification (Chat Modes and Composer Layout Sprint)
 - `npm run lint`: PASS with warnings only (`0` errors, `5` warnings)
 - `npm run build`: PASS
+
+## Landing UX Refresh Sprint
+Date: 2026-02-07.
+
+### Request Goals.
+- Fix broken/ugly appearance in light theme.
+- Add light/dark toggle on landing top bar beside auth CTA.
+- Improve mobile CTA proportions (`Continue` larger, `Watch It Flow` smaller).
+- Increase rotating hero logo size by ~30% mobile and ~60% desktop.
+- Rewrite landing copy for non-technical audience.
+- Improve mobile marquee readability with two rows moving in opposite directions.
+- Replace technical stat messaging with emotionally relevant outcomes.
+
+### Implemented.
+- Rebuilt landing presentation and copy in `src/components/landing/landing-page.tsx`.
+- Added theme toggle button in nav using `next-themes` (`Sun`/`Moon`) beside login/dashboard.
+- Converted landing surfaces to token-based color system (`bg-card`, `border-border`, `text-foreground`) to render correctly in light and dark themes.
+- Updated hero CTA sizing logic:
+  - Primary CTA width increased on mobile.
+  - Secondary `Watch It Flow` width reduced on mobile.
+- Enlarged rotating logo container:
+  - Mobile from ~`w-48` to `w-64` (~+33%).
+  - Desktop from `lg:w-72` to `lg:w-[29rem]` (~+61%).
+- Replaced technical/dev-heavy copy across:
+  - Hero subtitle.
+  - Stats cards.
+  - Steps, highlights, and FAQ.
+  - Final conversion block.
+- Implemented dual mobile marquee rows with opposite animation directions and smaller chips/text for better viewport fit.
+- Added richer motion polish (hover-lift cards) without extra dependency footprint.
+
+### Verification.
+- `npm run lint`: PASS (warnings only, existing known warnings outside landing scope).
+- `npm run build`: PASS.
