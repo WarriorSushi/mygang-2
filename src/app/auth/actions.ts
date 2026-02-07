@@ -292,27 +292,20 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { items: [], hasMore: false, nextBefore: null as string | null }
 
-    const { data: gang } = await supabase
-        .from('gangs')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle<{ id: string }>()
-
-    if (!gang?.id) {
-        return { items: [], hasMore: false, nextBefore: null as string | null }
-    }
-
     const limit = Math.min(Math.max(params?.limit ?? 40, 10), 120)
     let query = supabase
         .from('chat_history')
         .select('id, speaker, content, created_at')
         .eq('user_id', user.id)
-        .eq('gang_id', gang.id)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(limit + 1)
 
     if (params?.before) {
-        query = query.lte('created_at', params.before)
+        const beforeCreatedAt = params.before.includes('|')
+            ? params.before.split('|')[0]
+            : params.before
+        query = query.lt('created_at', beforeCreatedAt)
     }
 
     const { data, error } = await query
@@ -324,7 +317,8 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     const rows = data ?? []
     const hasMore = rows.length > limit
     const pageRows = (hasMore ? rows.slice(0, limit) : rows)
-    const nextBefore = hasMore ? pageRows[pageRows.length - 1]?.created_at ?? null : null
+    const lastRow = pageRows[pageRows.length - 1]
+    const nextBefore = hasMore && lastRow ? `${lastRow.created_at}|${lastRow.id}` : null
 
     const items = pageRows
         .reverse()

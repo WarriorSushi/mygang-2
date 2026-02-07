@@ -820,25 +820,31 @@ ${allowedStatusList}
                         speaker: string
                         content: string
                         is_guest: boolean
+                        created_at: string
                     }> = []
 
-                    const lastMessage = safeMessages[safeMessages.length - 1]
-                    if (lastMessage?.speaker === 'user' && lastMessage.content?.trim()) {
-                        const userContent = lastMessage.content.trim()
+                    const recentUserCandidates = safeMessages
+                        .filter((message) => message.speaker === 'user' && message.content?.trim())
+                        .slice(-4)
+                    const { data: recentRows } = await supabase
+                        .from('chat_history')
+                        .select('content, created_at')
+                        .eq('user_id', user.id)
+                        .eq('gang_id', gang.id)
+                        .eq('speaker', 'user')
+                        .order('created_at', { ascending: false })
+                        .limit(8)
+                    const recentUserRows = recentRows ?? []
+
+                    for (const candidate of recentUserCandidates) {
+                        const userContent = candidate.content.trim()
                         let shouldInsertUserMessage = true
-                        const { data: recentRows } = await supabase
-                            .from('chat_history')
-                            .select('content, created_at')
-                            .eq('user_id', user.id)
-                            .eq('gang_id', gang.id)
-                            .eq('speaker', 'user')
-                            .order('created_at', { ascending: false })
-                            .limit(1)
-                        const recent = recentRows?.[0]
-                        if (recent?.content === userContent && recent?.created_at) {
-                            const recentMs = new Date(recent.created_at).getTime()
-                            if (Date.now() - recentMs < 30_000) {
+                        const candidateMs = candidate.created_at ? new Date(candidate.created_at).getTime() : Date.now()
+                        for (const recent of recentUserRows) {
+                            const recentMs = recent?.created_at ? new Date(recent.created_at).getTime() : 0
+                            if (recent?.content === userContent && Math.abs(candidateMs - recentMs) < 30_000) {
                                 shouldInsertUserMessage = false
+                                break
                             }
                         }
                         if (shouldInsertUserMessage) {
@@ -847,24 +853,30 @@ ${allowedStatusList}
                                 gang_id: gang.id,
                                 speaker: 'user',
                                 content: userContent,
-                                is_guest: false
+                                is_guest: false,
+                                created_at: candidate.created_at || new Date().toISOString()
                             })
                         }
                     }
 
                     if (object?.events?.length) {
+                        let eventTimeMs = Date.now()
                         object.events.forEach((event) => {
                             if (event.type === 'message' || event.type === 'reaction') {
+                                eventTimeMs += Math.max(1, Math.min(50, Math.round((event.delay || 0) / 35)))
                                 rows.push({
                                     user_id: user.id,
                                     gang_id: gang.id,
                                     speaker: event.character,
                                     content: event.content || '\u{1F44D}',
-                                    is_guest: false
+                                    is_guest: false,
+                                    created_at: new Date(eventTimeMs).toISOString()
                                 })
                             }
                         })
                     }
+
+                    rows.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
                     if (rows.length > 0) {
                         const { error: historyError } = await supabase
