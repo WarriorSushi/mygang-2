@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
@@ -242,6 +242,12 @@ export function LandingPage() {
   const router = useRouter()
   const { theme, resolvedTheme, setTheme } = useTheme()
   const effectiveTheme = resolvedTheme ?? theme
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
+  const isDarkTheme = isMounted ? effectiveTheme === 'dark' : true
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -291,10 +297,10 @@ export function LandingPage() {
             variant="ghost"
             size="icon"
             className="rounded-full border border-border/80 bg-card/70 hover:bg-card"
-            onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
-            aria-label={`Switch to ${effectiveTheme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
+            aria-label={`Switch to ${isDarkTheme ? 'light' : 'dark'} mode`}
           >
-            {effectiveTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDarkTheme ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
           {isAuthenticated && (
             <span className="hidden sm:block text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
