@@ -250,15 +250,15 @@ export function MessageList({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute bottom-24 right-4 sm:right-6 z-50"
+                        className="absolute bottom-[calc(env(safe-area-inset-bottom)+0.6rem)] right-3 sm:right-4 z-50"
                     >
                         <Button
                             onClick={scrollToBottom}
                             size="icon"
-                            className="relative rounded-full shadow-2xl bg-primary hover:bg-primary/90 text-white size-11 border border-white/20 backdrop-blur-xl"
+                            className="relative rounded-full shadow-lg bg-black hover:bg-black/90 text-white size-9 border border-white/25"
                             aria-label="Jump to latest"
                         >
-                            <ChevronDown className="w-5 h-5" />
+                            <ChevronDown className="w-4 h-4" />
                         </Button>
                     </motion.div>
                 )}
