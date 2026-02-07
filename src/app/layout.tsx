@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     images: ["/icon-512.png"]
   },
   icons: {
-    icon: "/logo.png",
+    icon: "/logo.webp",
     apple: "/logo.png",
   },
   manifest: "/manifest.json",

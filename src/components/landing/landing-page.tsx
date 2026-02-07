@@ -135,9 +135,7 @@ export function LandingPage() {
           animate={{ opacity: 1, x: 0 }}
           className="text-2xl font-bold flex items-center gap-2"
         >
-          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center border border-primary/20 shadow-lg shadow-primary/10">
-            <Image src="/logo.png" alt="MyGang" width={28} height={28} className="object-contain" priority />
-          </div>
+          <Image src="/logo.png" alt="MyGang" width={40} height={40} className="object-contain" priority />
           <span className="tracking-tighter text-xl sm:text-3xl">
             MyGang<span className="text-primary">.ai</span>
           </span>
