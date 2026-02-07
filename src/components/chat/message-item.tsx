@@ -89,6 +89,18 @@ function pickReadableTextColor(background: Rgb) {
     return contrastRatio(background, dark) >= contrastRatio(background, light) ? dark : light
 }
 
+function ensureReadablePersonaNameOnLight(color: Rgb) {
+    const lightBackdrop: Rgb = { r: 236, g: 242, b: 248 }
+    const darkTarget: Rgb = { r: 8, g: 14, b: 28 }
+    for (let ratio = 0; ratio <= 0.92; ratio += 0.08) {
+        const candidate = mixRgb(color, darkTarget, ratio)
+        if (contrastRatio(candidate, lightBackdrop) >= 4.8) {
+            return candidate
+        }
+    }
+    return mixRgb(color, darkTarget, 0.78)
+}
+
 function truncateText(value: string, maxChars: number) {
     const normalized = value.replace(/\s+/g, ' ').trim()
     if (normalized.length <= maxChars) return normalized
@@ -156,7 +168,19 @@ function MessageItemComponent({
     const aiBorderRgb = isDark
         ? mixRgb(aiBubbleRgb, { r: 148, g: 163, b: 184 }, 0.14)
         : mixRgb(baseRgb, { r: 31, g: 41, b: 55 }, 0.24)
+    const aiBorderDisplayRgb = mixRgb(
+        aiBorderRgb,
+        isDark ? { r: 235, g: 242, b: 252 } : { r: 255, g: 255, b: 255 },
+        0.5
+    )
     const aiTextRgb = pickReadableTextColor(aiBubbleRgb)
+    const personaNameRgb = isDark ? baseRgb : ensureReadablePersonaNameOnLight(baseRgb)
+    const userBorderBase = isDark ? { r: 141, g: 230, b: 199 } : { r: 18, g: 99, b: 74 }
+    const userBorderDisplayRgb = mixRgb(
+        userBorderBase,
+        isDark ? { r: 238, g: 245, b: 252 } : { r: 255, g: 255, b: 255 },
+        0.5
+    )
 
     const quoteFromAi = !!quotedMessage && quotedMessage.speaker !== 'user'
     const quoteBubbleBase = parseColorToRgb(quotedSpeaker?.color)
@@ -177,7 +201,7 @@ function MessageItemComponent({
     const quoteLabelBase = parseColorToRgb(quotedSpeaker?.color)
     const quoteLabelRgb = isDark
         ? mixRgb(quoteLabelBase, { r: 241, g: 245, b: 249 }, 0.2)
-        : mixRgb(quoteLabelBase, { r: 15, g: 23, b: 42 }, 0.26)
+        : ensureReadablePersonaNameOnLight(quoteLabelBase)
     const quotePreviewRaw = quotedMessage
         ? (quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content)
         : ''
@@ -261,7 +285,7 @@ function MessageItemComponent({
                     <div className="flex items-center gap-1.5 min-w-0">
                         <span
                             className="text-[10px] font-black uppercase tracking-widest opacity-70 shrink-0"
-                            style={{ color: character?.color }}
+                            style={{ color: toRgbString(personaNameRgb) }}
                         >
                             {character?.name || message.speaker}
                         </span>
@@ -285,13 +309,18 @@ function MessageItemComponent({
                                 ? "bg-transparent border-none p-1 rounded-full shadow-none"
                                 : gangShape
                     )}
-                    style={(!isUser && !isReaction)
-                        ? {
-                            backgroundColor: toRgbString(aiBubbleRgb),
-                            borderColor: toRgbString(aiBorderRgb),
-                            borderWidth: '1px',
-                        }
-                        : {}
+                    style={isReaction
+                        ? {}
+                        : isUser
+                            ? {
+                                borderColor: toRgbString(userBorderDisplayRgb),
+                                borderWidth: '1px',
+                            }
+                            : {
+                                backgroundColor: toRgbString(aiBubbleRgb),
+                                borderColor: toRgbString(aiBorderDisplayRgb),
+                                borderWidth: '1px',
+                            }
                     }
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
