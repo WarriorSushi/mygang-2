@@ -110,10 +110,11 @@ function MessageItemComponent({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: isFastMode ? 0.12 : 0.25, ease: 'easeOut' }}
             className={cn(
-                "group flex flex-col max-w-[85%] content-auto",
+                "group relative flex flex-col max-w-[85%]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
-                isContinued ? "mt-1.5" : "mt-6" // Controlled spacing
+                isContinued ? "mt-1.5" : "mt-6", // Controlled spacing
+                showActions ? "z-40" : "z-0"
             )}
         >
             {/* Context Header (Avatar + Name) - Only show if NOT continued and NOT user */}
@@ -212,7 +213,7 @@ function MessageItemComponent({
                 </GlassCard>
                 {showActions && canShowActions && (
                     <div className={cn(
-                        "absolute z-20 mt-2 flex items-center gap-1 rounded-full border border-white/15 bg-background/95 p-1 shadow-xl backdrop-blur-xl",
+                        "absolute z-50 bottom-full mb-2 flex items-center gap-1 rounded-full border border-white/15 bg-background/95 p-1 shadow-xl backdrop-blur-xl",
                         isUser ? 'right-0' : 'left-0'
                     )}>
                         <Button
