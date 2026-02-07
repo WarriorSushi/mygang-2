@@ -58,10 +58,10 @@ function MessageItemComponent({
         last: 'rounded-2xl rounded-tr-sm',
     }[groupPosition]
     const gangShape = {
-        single: 'rounded-2xl rounded-bl-sm border-l-[3px]',
-        first: 'rounded-2xl rounded-bl-sm border-l-[3px]',
-        middle: 'rounded-2xl rounded-tl-sm rounded-bl-sm border-l-[3px]',
-        last: 'rounded-2xl rounded-tl-sm border-l-[3px]',
+        single: 'rounded-2xl rounded-bl-sm',
+        first: 'rounded-2xl rounded-bl-sm',
+        middle: 'rounded-2xl rounded-tl-sm rounded-bl-sm',
+        last: 'rounded-2xl rounded-tl-sm',
     }[groupPosition]
 
     const clearLongPressTimer = () => {
@@ -194,8 +194,7 @@ function MessageItemComponent({
                     style={(!isUser && !isReaction) ? {
                         backgroundColor: theme === 'dark'
                             ? `${character?.color || '#ffffff'}40`
-                            : `${character?.color || '#ffffff'}24`,
-                        borderLeftColor: character?.color || 'rgba(255,255,255,0.35)'
+                            : `${character?.color || '#ffffff'}24`
                     } : {}}
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
