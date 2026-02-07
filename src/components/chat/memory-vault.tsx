@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Brain, Trash2, Edit3, Check, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/holographic/glass-card'
-import { getMemories, deleteMemory, updateMemory } from '@/app/auth/actions'
+import { getMemoriesPage, deleteMemory, updateMemory } from '@/app/auth/actions'
 import { useChatStore } from '@/stores/chat-store'
 
 interface Memory {
@@ -22,20 +22,41 @@ interface MemoryVaultProps {
 export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
     const [memories, setMemories] = useState<Memory[]>([])
     const [loading, setLoading] = useState(true)
+    const [loadingMore, setLoadingMore] = useState(false)
+    const [hasMore, setHasMore] = useState(false)
+    const [cursor, setCursor] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
     const isGuest = useChatStore((state) => state.isGuest)
 
-    async function loadMemories() {
-        setLoading(true)
-        try {
-            const data = await getMemories()
-            setMemories(data)
-        } finally {
-            setLoading(false)
+    const loadMemories = useCallback(async (options?: { reset?: boolean; before?: string | null }) => {
+        const reset = options?.reset ?? false
+        const before = options?.before ?? null
+        if (reset) {
+            setLoading(true)
+        } else {
+            setLoadingMore(true)
         }
-    }
+        try {
+            const page = await getMemoriesPage({ before, limit: 30 })
+            setMemories((prev) => {
+                const incoming = page.items as Memory[]
+                if (reset) return incoming
+                const seen = new Set(prev.map((m) => m.id))
+                const deduped = incoming.filter((m) => !seen.has(m.id))
+                return [...prev, ...deduped]
+            })
+            setCursor(page.nextBefore)
+            setHasMore(page.hasMore)
+        } finally {
+            if (reset) {
+                setLoading(false)
+            } else {
+                setLoadingMore(false)
+            }
+        }
+    }, [])
 
     useEffect(() => {
         if (isOpen) {
@@ -44,9 +65,11 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                 setLoading(false)
                 return
             }
-            loadMemories()
+            setCursor(null)
+            setHasMore(false)
+            loadMemories({ reset: true, before: null })
         }
-    }, [isOpen, isGuest])
+    }, [isOpen, isGuest, loadMemories])
 
     const handleDelete = async (id: string) => {
         await deleteMemory(id)
@@ -139,53 +162,75 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                     <p className="text-[10px] uppercase mt-2 opacity-50">The gang hasn&apos;t saved any facts yet.</p>
                                 </div>
                             ) : (
-                                filteredMemories.map((memory) => (
-                                    <GlassCard key={memory.id} className="p-4 border-white/10 group relative transition-all hover:border-primary/30">
-                                        {editingId === memory.id ? (
-                                            <div className="space-y-3">
-                                                <textarea
-                                                    value={editContent}
-                                                    onChange={(e) => setEditContent(e.target.value)}
-                                                    className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-24 resize-none"
-                                                    autoFocus
-                                                />
-                                                <div className="flex justify-end gap-2">
-                                                    <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} className="text-xs h-8">Cancel</Button>
-                                                    <Button size="sm" onClick={() => handleSave(memory.id)} className="text-xs h-8 gap-1">
-                                                        <Check size={14} /> Save
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <p className="text-sm leading-relaxed pr-8">{memory.content}</p>
-                                                <div className="mt-3 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
-                                                    <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
-                                                        {new Date(memory.created_at).toLocaleDateString()}
-                                                    </span>
-                                                    <div className="flex items-center gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(memory)}
-                                                            className="h-7 w-7 rounded-full hover:bg-white/10"
-                                                        >
-                                                            <Edit3 size={14} />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDelete(memory.id)}
-                                                            className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
-                                                        >
-                                                            <Trash2 size={14} />
+                                <>
+                                    {filteredMemories.map((memory) => (
+                                        <GlassCard key={memory.id} className="p-4 border-white/10 group relative transition-all hover:border-primary/30">
+                                            {editingId === memory.id ? (
+                                                <div className="space-y-3">
+                                                    <textarea
+                                                        value={editContent}
+                                                        onChange={(e) => setEditContent(e.target.value)}
+                                                        className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-24 resize-none"
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} className="text-xs h-8">Cancel</Button>
+                                                        <Button size="sm" onClick={() => handleSave(memory.id)} className="text-xs h-8 gap-1">
+                                                            <Check size={14} /> Save
                                                         </Button>
                                                     </div>
                                                 </div>
-                                            </>
-                                        )}
-                                    </GlassCard>
-                                ))
+                                            ) : (
+                                                <>
+                                                    <p className="text-sm leading-relaxed pr-8">{memory.content}</p>
+                                                    <div className="mt-3 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
+                                                        <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
+                                                            {new Date(memory.created_at).toLocaleDateString()}
+                                                        </span>
+                                                        <div className="flex items-center gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleEdit(memory)}
+                                                                className="h-7 w-7 rounded-full hover:bg-white/10"
+                                                            >
+                                                                <Edit3 size={14} />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleDelete(memory.id)}
+                                                                className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </GlassCard>
+                                    ))}
+                                    {hasMore && !searchQuery && (
+                                        <div className="flex justify-center pt-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => loadMemories({ reset: false, before: cursor })}
+                                                disabled={loadingMore}
+                                                className="rounded-full text-[10px] uppercase tracking-widest"
+                                            >
+                                                {loadingMore ? (
+                                                    <>
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        Loading
+                                                    </>
+                                                ) : (
+                                                    'Load More'
+                                                )}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 

@@ -17,6 +17,9 @@ interface MessageListProps {
     isFastMode?: boolean
     onReplyMessage?: (message: Message) => void
     onLikeMessage?: (message: Message) => void
+    hasMoreHistory?: boolean
+    loadingHistory?: boolean
+    onLoadOlderHistory?: () => void
 }
 
 function normalizeSpeaker(value: string) {
@@ -29,7 +32,10 @@ export function MessageList({
     typingUsers,
     isFastMode = false,
     onReplyMessage,
-    onLikeMessage
+    onLikeMessage,
+    hasMoreHistory = false,
+    loadingHistory = false,
+    onLoadOlderHistory
 }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollRafRef = useRef<number | null>(null)
@@ -163,6 +169,22 @@ export function MessageList({
                 style={{ paddingBottom: 80 }}
                 data-testid="chat-scroll"
             >
+                {(hasMoreHistory || loadingHistory) && (
+                    <div className="px-4 md:px-10 lg:px-20 pb-2">
+                        <div className="flex justify-center">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full text-[10px] uppercase tracking-widest"
+                                onClick={onLoadOlderHistory}
+                                disabled={loadingHistory || !hasMoreHistory}
+                            >
+                                {loadingHistory ? 'Loading earlier messages...' : 'Load earlier messages'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
                 <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                         const index = virtualRow.index
@@ -255,6 +277,7 @@ export function MessageList({
                         <Button
                             onClick={scrollToBottom}
                             size="icon"
+                            data-screenshot-exclude="true"
                             className="relative rounded-full shadow-lg bg-black hover:bg-black/90 text-white size-9 border border-white/25"
                             aria-label="Jump to latest"
                         >

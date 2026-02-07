@@ -251,6 +251,97 @@ export async function getUserSettings() {
     return data
 }
 
+export async function getMemoriesPage(params?: { before?: string | null; limit?: number }) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { items: [], hasMore: false, nextBefore: null as string | null }
+
+    const limit = Math.min(Math.max(params?.limit ?? 30, 10), 80)
+    let query = supabase
+        .from('memories')
+        .select('id, content, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(limit + 1)
+
+    if (params?.before) {
+        query = query.lt('created_at', params.before)
+    }
+
+    const { data, error } = await query
+    if (error) {
+        console.error('Error fetching memory page:', error)
+        return { items: [], hasMore: false, nextBefore: null as string | null }
+    }
+
+    const safeRows = data ?? []
+    const hasMore = safeRows.length > limit
+    const items = (hasMore ? safeRows.slice(0, limit) : safeRows)
+    const nextBefore = hasMore ? items[items.length - 1]?.created_at ?? null : null
+
+    return {
+        items,
+        hasMore,
+        nextBefore,
+    }
+}
+
+export async function getChatHistoryPage(params?: { before?: string | null; limit?: number }) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { items: [], hasMore: false, nextBefore: null as string | null }
+
+    const { data: gang } = await supabase
+        .from('gangs')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle<{ id: string }>()
+
+    if (!gang?.id) {
+        return { items: [], hasMore: false, nextBefore: null as string | null }
+    }
+
+    const limit = Math.min(Math.max(params?.limit ?? 40, 10), 120)
+    let query = supabase
+        .from('chat_history')
+        .select('id, speaker, content, created_at')
+        .eq('user_id', user.id)
+        .eq('gang_id', gang.id)
+        .order('created_at', { ascending: false })
+        .limit(limit + 1)
+
+    if (params?.before) {
+        query = query.lt('created_at', params.before)
+    }
+
+    const { data, error } = await query
+    if (error) {
+        console.error('Error fetching chat history page:', error)
+        return { items: [], hasMore: false, nextBefore: null as string | null }
+    }
+
+    const rows = data ?? []
+    const hasMore = rows.length > limit
+    const pageRows = (hasMore ? rows.slice(0, limit) : rows)
+    const nextBefore = hasMore ? pageRows[pageRows.length - 1]?.created_at ?? null : null
+
+    const items = pageRows
+        .reverse()
+        .map((row) => ({
+            id: `history-${row.id}`,
+            speaker: row.speaker,
+            content: row.content,
+            created_at: row.created_at,
+        }))
+
+    return {
+        items,
+        hasMore,
+        nextBefore,
+    }
+}
+
 export async function updateUserSettings(settings: { theme?: string; chat_mode?: string; preferred_squad?: string[]; chat_wallpaper?: string }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

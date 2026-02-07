@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { ACTIVITY_STATUSES, CHARACTER_GREETINGS, normalizeActivityStatus } from '@/constants/character-greetings'
+import { getChatHistoryPage } from '@/app/auth/actions'
 
 // New modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -43,6 +44,7 @@ export default function ChatPage() {
         isGuest,
         isHydrated,
         addMessage,
+        setMessages,
         setIsGuest,
         setUserNickname,
         setCharacterStatus,
@@ -61,8 +63,12 @@ export default function ChatPage() {
     const [isFastMode, setIsFastMode] = useState(false)
     const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
     const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+    const [historyCursor, setHistoryCursor] = useState<string | null>(null)
+    const [hasMoreHistory, setHasMoreHistory] = useState(false)
+    const [loadingHistory, setLoadingHistory] = useState(false)
+    const [historyBootstrapDone, setHistoryBootstrapDone] = useState(false)
 
-    const chatContainerRef = useRef<HTMLDivElement>(null)
+    const captureRootRef = useRef<HTMLDivElement>(null)
     const { theme } = useTheme()
     const router = useRouter()
     const initialGreetingRef = useRef(false)
@@ -143,6 +149,44 @@ export default function ChatPage() {
             router.replace(userId ? '/post-auth' : '/onboarding')
         }
     }, [activeGang, isHydrated, router, userId])
+
+    useEffect(() => {
+        if (!isHydrated) return
+        if (messages.length > 0) {
+            setHistoryBootstrapDone(true)
+        }
+    }, [isHydrated, messages.length])
+
+    useEffect(() => {
+        if (!isHydrated || !userId) return
+        if (historyBootstrapDone) return
+        if (messages.length > 0) return
+
+        let cancelled = false
+        const bootstrapHistory = async () => {
+            setLoadingHistory(true)
+            try {
+                const page = await getChatHistoryPage({ limit: 40 })
+                if (cancelled) return
+                if (page.items.length > 0) {
+                    setMessages(page.items)
+                }
+                setHistoryCursor(page.nextBefore)
+                setHasMoreHistory(page.hasMore)
+            } catch (err) {
+                console.error('Failed to load initial chat history:', err)
+            } finally {
+                if (cancelled) return
+                setLoadingHistory(false)
+                setHistoryBootstrapDone(true)
+            }
+        }
+
+        bootstrapHistory()
+        return () => {
+            cancelled = true
+        }
+    }, [historyBootstrapDone, isHydrated, messages.length, setMessages, userId])
 
     useEffect(() => {
         if (!isHydrated) return
@@ -651,18 +695,39 @@ export default function ChatPage() {
     }
 
     const takeScreenshot = async () => {
-        if (chatContainerRef.current === null) return
+        if (captureRootRef.current === null) return
+
+        const waitForFrame = () => new Promise<void>((resolve) => {
+            requestAnimationFrame(() => resolve())
+        })
+
         try {
-            const dataUrl = await toPng(chatContainerRef.current, {
+            setIsSettingsOpen(false)
+            setIsVaultOpen(false)
+            await waitForFrame()
+            await waitForFrame()
+            await new Promise((resolve) => setTimeout(resolve, 120))
+            if (typeof document !== 'undefined' && 'fonts' in document) {
+                await document.fonts.ready
+            }
+
+            const dataUrl = await toPng(captureRootRef.current, {
                 cacheBust: true,
-                backgroundColor: theme === 'dark' ? '#050505' : '#F0F4F8'
+                pixelRatio: 2,
+                backgroundColor: theme === 'dark' ? '#0b0f17' : '#eff3f8',
+                filter: (node) => {
+                    if (!(node instanceof HTMLElement)) return true
+                    return node.dataset.screenshotExclude !== 'true'
+                },
             })
             const link = document.createElement('a')
             link.download = `mygang-moment-${Date.now()}.png`
             link.href = dataUrl
             link.click()
+            setToastMessage('Moment captured.')
         } catch (err) {
             console.error('Screenshot failed:', err)
+            setToastMessage('Could not capture this moment. Try again.')
         }
     }
 
@@ -675,12 +740,33 @@ export default function ChatPage() {
         if (sent) setReplyingTo(null)
     }
 
+    const loadOlderHistory = async () => {
+        if (!userId || !historyCursor || loadingHistory || !hasMoreHistory) return
+        setLoadingHistory(true)
+        try {
+            const page = await getChatHistoryPage({ before: historyCursor, limit: 40 })
+            const currentMessages = useChatStore.getState().messages
+            const seen = new Set(currentMessages.map((m) => m.id))
+            const older = page.items.filter((m) => !seen.has(m.id))
+            if (older.length > 0) {
+                setMessages([...older, ...currentMessages])
+            }
+            setHistoryCursor(page.nextBefore)
+            setHasMoreHistory(page.hasMore)
+        } catch (err) {
+            console.error('Failed to load older history:', err)
+            setToastMessage('Could not load older messages right now.')
+        } finally {
+            setLoadingHistory(false)
+        }
+    }
+
     return (
         <main className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative isolate">
             <BackgroundBlobs isMuted={typingUsers.length > 0} className="absolute inset-0 z-0 overflow-hidden pointer-events-none" />
             <div className="chat-wallpaper-layer" data-wallpaper={chatWallpaper} aria-hidden="true" />
 
-            <div className="flex-1 flex flex-col w-full relative min-h-0 z-10">
+            <div ref={captureRootRef} className="flex-1 flex flex-col w-full relative min-h-0 z-10">
                 <ChatHeader
                     activeGang={activeGang}
                     onOpenVault={() => {
@@ -693,7 +779,7 @@ export default function ChatPage() {
                     memoryActive={!isGuest}
                 />
 
-                <div className="flex-1 flex flex-col min-h-0 relative" ref={chatContainerRef}>
+                <div className="flex-1 flex flex-col min-h-0 relative">
                     <div className="px-4 md:px-10 lg:px-20">
                         {showResumeBanner && (
                             <div className="mb-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -708,6 +794,9 @@ export default function ChatPage() {
                                 activeGang={activeGang}
                                 typingUsers={typingUsers}
                                 isFastMode={isFastMode}
+                                hasMoreHistory={hasMoreHistory}
+                                loadingHistory={loadingHistory}
+                                onLoadOlderHistory={loadOlderHistory}
                                 onReplyMessage={(message) => setReplyingTo(message)}
                                 onLikeMessage={handleQuickLike}
                             />

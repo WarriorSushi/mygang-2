@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsPanel } from '@/components/settings/settings-panel'
-import type { ChatWallpaper } from '@/constants/wallpapers'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -14,7 +13,7 @@ export default async function SettingsPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('username, chat_mode, theme, chat_wallpaper, subscription_tier, daily_msg_count, last_msg_reset')
+        .select('username, theme, subscription_tier, daily_msg_count, last_msg_reset')
         .eq('id', user.id)
         .single()
 
@@ -38,10 +37,9 @@ export default async function SettingsPage() {
 
                 <SettingsPanel
                     username={profile?.username ?? null}
+                    email={user.email ?? null}
                     initialSettings={{
-                        chat_mode: (profile?.chat_mode as 'entourage' | 'ecosystem') || 'ecosystem',
                         theme: (profile?.theme as 'light' | 'dark') || 'dark',
-                        chat_wallpaper: (profile?.chat_wallpaper as ChatWallpaper) || 'default'
                     }}
                     usage={{
                         dailyCount: profile?.daily_msg_count ?? 0,

@@ -117,6 +117,73 @@ function scoreAbuse(text: string, previousUserMessage?: string) {
     return score
 }
 
+function splitMessageForSecondBubble(content: string): [string, string] | null {
+    const normalized = content.replace(/\s+/g, ' ').trim()
+    if (normalized.length < 80) return null
+
+    const middle = Math.floor(normalized.length / 2)
+    const breakpoints: number[] = []
+    const punct = /[.!?;:]\s+|,\s+|\)\s+|-\s+/g
+    let match: RegExpExecArray | null
+    while ((match = punct.exec(normalized)) !== null) {
+        const idx = match.index + match[0].length
+        if (idx > 20 && idx < normalized.length - 20) breakpoints.push(idx)
+    }
+
+    let splitAt = -1
+    if (breakpoints.length > 0) {
+        splitAt = breakpoints.reduce((best, current) => (
+            Math.abs(current - middle) < Math.abs(best - middle) ? current : best
+        ), breakpoints[0])
+    } else {
+        const left = normalized.lastIndexOf(' ', middle)
+        const right = normalized.indexOf(' ', middle)
+        splitAt = left > 20 ? left : right
+    }
+
+    if (splitAt < 20 || splitAt > normalized.length - 20) return null
+    const first = normalized.slice(0, splitAt).trim()
+    const second = normalized.slice(splitAt).trim()
+    if (first.length < 12 || second.length < 12) return null
+    return [first, second]
+}
+
+function maybeSplitAiMessages(
+    events: RouteResponseObject['events'],
+    splitChance: number
+): RouteResponseObject['events'] {
+    const expanded: RouteResponseObject['events'] = []
+
+    for (const event of events) {
+        if (event.type !== 'message') {
+            expanded.push(event)
+            continue
+        }
+
+        const shouldSplit = Math.random() < splitChance
+        if (!shouldSplit) {
+            expanded.push(event)
+            continue
+        }
+
+        const parts = splitMessageForSecondBubble(event.content)
+        if (!parts) {
+            expanded.push(event)
+            continue
+        }
+
+        const [first, second] = parts
+        expanded.push({ ...event, content: first })
+        expanded.push({
+            ...event,
+            content: second,
+            delay: Math.min(MAX_DELAY_MS, Math.max(180, Math.round(240 + Math.random() * 360)))
+        })
+    }
+
+    return expanded.slice(0, MAX_EVENTS)
+}
+
 const responseSchema = z.object({
     events: z.array(
         z.discriminatedUnion('type', [
@@ -635,6 +702,12 @@ ${allowedStatusList}
         }
         if (autonomousIdle) {
             object.should_continue = false
+        }
+
+        // Sometimes break one long message into two short back-to-back bubbles for realism.
+        if (object?.events?.length) {
+            const splitChance = isEntourageMode ? 0.34 : 0.42
+            object.events = maybeSplitAiMessages(object.events, splitChance)
         }
 
         // Persist memory + relationship state (authenticated users only)

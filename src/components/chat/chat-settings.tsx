@@ -1,23 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useChatStore } from '@/stores/chat-store'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
-import { Settings2, Zap, Trash2, Camera, ChevronRight, ArrowLeft, Paintbrush, ScanLine, Tags } from 'lucide-react'
+import {
+    Settings2,
+    Zap,
+    Trash2,
+    Camera,
+    ChevronRight,
+    ArrowLeft,
+    Paintbrush,
+    Tags,
+    UserRound,
+    Mail,
+    LogOut,
+    ShieldAlert,
+    Gauge,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { updateUserSettings } from '@/app/auth/actions'
+import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
 import Link from 'next/link'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { CHAT_WALLPAPERS, type ChatWallpaper } from '@/constants/wallpapers'
+import { createClient } from '@/lib/supabase/client'
 
-type SettingsPanel = 'root' | 'mode' | 'wallpaper' | 'labels' | 'media'
+type SettingsPanel = 'root' | 'mode' | 'wallpaper' | 'labels' | 'account'
 
 interface ChatSettingsProps {
     isOpen: boolean
     onClose: () => void
-    onTakeScreenshot: () => void
+    onTakeScreenshot: () => Promise<void> | void
 }
 
 function wallpaperPreviewClass(id: ChatWallpaper) {
@@ -39,9 +54,36 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setChatWallpaper,
         showPersonaRoles,
         setShowPersonaRoles,
+        userName,
+        isGuest,
     } = useChatStore()
 
     const [panel, setPanel] = useState<SettingsPanel>('root')
+    const [accountEmail, setAccountEmail] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+
+    const supabase = useMemo(() => createClient(), [])
+
+    useEffect(() => {
+        if (!isOpen) return
+        let mounted = true
+
+        const loadUser = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!mounted) return
+                setAccountEmail(user?.email ?? null)
+            } catch {
+                if (!mounted) return
+                setAccountEmail(null)
+            }
+        }
+
+        loadUser()
+        return () => {
+            mounted = false
+        }
+    }, [isOpen, supabase])
 
     const handleChatModeChange = (value: string) => {
         if (value !== 'entourage' && value !== 'ecosystem') return
@@ -60,6 +102,17 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         onClose()
     }
 
+    const handleDeleteAccount = async () => {
+        const confirmed = confirm('Delete your account and all data? This cannot be undone.')
+        if (!confirmed) return
+        setIsDeleting(true)
+        try {
+            await deleteAccount()
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
     return (
         <Sheet open={isOpen} onOpenChange={handleClose}>
             <SheetContent
@@ -68,7 +121,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                 className="w-[88vw] max-w-[380px] p-0 border-l border-white/10 bg-background/95 backdrop-blur-2xl text-foreground shadow-[0_0_45px_-10px_rgba(0,0,0,0.5)]"
             >
                 <SheetTitle className="sr-only">Gang Controls</SheetTitle>
-                <SheetDescription className="sr-only">Adjust mode, wallpaper, labels, and media settings.</SheetDescription>
+                <SheetDescription className="sr-only">Adjust mode, wallpaper, labels, account settings, and media controls.</SheetDescription>
                 <div className="flex h-full flex-col">
                     <div className="border-b border-border/70 px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -94,7 +147,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         {panel === 'mode' && 'Intelligence'}
                                         {panel === 'wallpaper' && 'Chat Wallpaper'}
                                         {panel === 'labels' && 'Persona Labels'}
-                                        {panel === 'media' && 'Media'}
+                                        {panel === 'account' && 'Account'}
                                     </p>
                                 </div>
                             </div>
@@ -145,13 +198,27 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             <Button
                                 variant="ghost"
                                 className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
-                                onClick={() => setPanel('media')}
+                                onClick={async () => {
+                                    await onTakeScreenshot()
+                                }}
                             >
                                 <div className="text-left">
-                                    <p className="text-[11px] font-black uppercase tracking-wider">Media & Account</p>
-                                    <p className="text-[11px] text-muted-foreground">Capture moment and account settings</p>
+                                    <p className="text-[11px] font-black uppercase tracking-wider">Capture Moment</p>
+                                    <p className="text-[11px] text-muted-foreground">Download chat as PNG</p>
                                 </div>
-                                <ScanLine size={16} />
+                                <Camera size={16} />
+                            </Button>
+
+                            <Button
+                                variant="ghost"
+                                className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
+                                onClick={() => setPanel('account')}
+                            >
+                                <div className="text-left">
+                                    <p className="text-[11px] font-black uppercase tracking-wider">Account</p>
+                                    <p className="text-[11px] text-muted-foreground">Email, sign out, and account actions</p>
+                                </div>
+                                <UserRound size={16} />
                             </Button>
 
                             <Button
@@ -182,7 +249,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <div className="relative grid grid-cols-2 gap-1">
                                         <div
                                             className={cn(
-                                                "absolute inset-y-0 w-[calc(50%-2px)] rounded-xl bg-primary shadow-[0_8px_24px_-14px_rgba(16,185,129,0.9)] transition-transform duration-300",
+                                                'absolute inset-y-0 w-[calc(50%-2px)] rounded-xl bg-primary shadow-[0_8px_24px_-14px_rgba(16,185,129,0.9)] transition-transform duration-300',
                                                 chatMode === 'ecosystem' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
                                             )}
                                             aria-hidden="true"
@@ -191,7 +258,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                             type="button"
                                             onClick={() => handleChatModeChange('entourage')}
                                             className={cn(
-                                                "relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors",
+                                                'relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors',
                                                 chatMode === 'entourage' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                                             )}
                                             aria-pressed={chatMode === 'entourage'}
@@ -202,7 +269,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                             type="button"
                                             onClick={() => handleChatModeChange('ecosystem')}
                                             className={cn(
-                                                "relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors",
+                                                'relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors',
                                                 chatMode === 'ecosystem' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                                             )}
                                             aria-pressed={chatMode === 'ecosystem'}
@@ -280,34 +347,56 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
                         <div className={cn(
                             'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
-                            panel === 'media' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                            panel === 'account' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                         )}>
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 px-1">
-                                    <Camera size={12} className="text-blue-400" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Media & Account</Label>
+                                    <UserRound size={12} className="text-blue-400" />
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Account</Label>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    onClick={onTakeScreenshot}
-                                    className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
-                                >
-                                    <div className="text-left">
-                                        <p className="text-[11px] font-black uppercase tracking-wider">Capture Moment</p>
-                                        <p className="text-[11px] text-muted-foreground">Download chat as PNG</p>
+
+                                <div className="rounded-2xl border border-border/70 bg-card/50 px-4 py-4 space-y-2">
+                                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                                        <Mail size={12} />
+                                        Signed In Email
                                     </div>
-                                    <Camera size={16} />
-                                </Button>
+                                    <p className="text-sm font-semibold break-all">{accountEmail || (isGuest ? 'Guest mode' : 'Email unavailable')}</p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        {userName ? `Display name: ${userName}` : 'No display name saved yet.'}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-2xl border border-border/70 bg-card/50 p-2 space-y-2">
+                                    <form action={signOut}>
+                                        <Button type="submit" variant="ghost" className="h-auto w-full justify-between rounded-xl px-3 py-3">
+                                            <span className="text-[11px] font-black uppercase tracking-wider">Sign Out</span>
+                                            <LogOut size={14} />
+                                        </Button>
+                                    </form>
+
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={handleDeleteAccount}
+                                        disabled={isDeleting}
+                                        className="h-auto w-full justify-between rounded-xl px-3 py-3 text-destructive hover:bg-destructive hover:text-white"
+                                    >
+                                        <span className="text-[11px] font-black uppercase tracking-wider">Delete Account</span>
+                                        <ShieldAlert size={14} />
+                                    </Button>
+                                </div>
+
                                 <Button
                                     variant="ghost"
                                     asChild
                                     className="h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/50 px-4 py-4"
                                 >
-                                    <Link href="/settings">
+                                    <Link href="/settings" onClick={onClose}>
                                         <div className="text-left">
-                                            <p className="text-[11px] font-black uppercase tracking-wider">Account Settings</p>
-                                            <p className="text-[11px] text-muted-foreground">Theme, usage, preferences</p>
+                                            <p className="text-[11px] font-black uppercase tracking-wider">Usage & Preferences</p>
+                                            <p className="text-[11px] text-muted-foreground">Detailed account and usage view</p>
                                         </div>
+                                        <Gauge size={16} />
                                     </Link>
                                 </Button>
                             </div>
@@ -315,7 +404,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                     </div>
 
                     <div className="border-t border-border/70 px-4 py-2 text-center text-[9px] uppercase tracking-[0.35em] text-muted-foreground/70">
-                        MyGang Stable v1.6
+                        MyGang Stable v1.7
                     </div>
                 </div>
             </SheetContent>

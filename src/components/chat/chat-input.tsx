@@ -67,7 +67,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
     }
 
     return (
-        <div className="px-3 sm:px-0 pt-2 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] sm:pb-0 z-20">
+        <div className="px-3 sm:px-0 pt-1 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] sm:pb-0 z-20">
             {replyingTo && (
                 <div className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <div className="min-w-0">
@@ -98,9 +98,12 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     data-testid="chat-input"
                     placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
                     maxLength={MAX_CHARS}
-                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-3 px-1 text-[14px] sm:text-[15px] max-h-32 min-h-[44px] scrollbar-hide"
+                    className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none py-2.5 pb-5 px-1 text-[16px] md:text-[15px] leading-6 max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
                 />
+                <span className="pointer-events-none absolute bottom-2 right-14 text-[10px] uppercase tracking-widest text-muted-foreground/55">
+                    {input.length}/{MAX_CHARS}
+                </span>
                 <Button
                     type="submit"
                     size="icon"
@@ -111,10 +114,6 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     <Send size={18} />
                 </Button>
             </form>
-            <div className="mt-2 flex items-center justify-between px-1 text-[10px] uppercase tracking-widest text-muted-foreground/60 pb-1 sm:pb-0">
-                <span className="hidden sm:inline">Enter to send - Shift+Enter newline</span>
-                <span>{input.length}/{MAX_CHARS}</span>
-            </div>
         </div>
     )
 }

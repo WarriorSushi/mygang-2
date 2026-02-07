@@ -361,3 +361,57 @@ Date: 2026-02-07.
 ### Verification.
 - `npm run lint`: PASS (warnings only, existing known warnings outside landing scope).
 - `npm run build`: PASS.
+
+## Settings + Pagination Reliability Sprint
+Date: 2026-02-07.
+
+### Scope Completed.
+- Executed pending roadmap items for account/settings flow, screenshot reliability, and pagination/resource efficiency.
+
+### 1) Chat Settings Refactor (`src/components/chat/chat-settings.tsx`).
+- Moved `Capture Moment` into root Gang Controls menu.
+- Removed old `Media & Account` routing dependency pattern.
+- Added dedicated `Account` sub-panel (same slide-in pattern as other submenus).
+- Added signed-in email display (fetched from Supabase auth session).
+- Added account actions directly in sub-panel:
+  - `Sign Out`
+  - `Delete Account`
+- Preserved existing mode/wallpaper/label controls.
+
+### 2) Simplified `/settings` Surface.
+- Updated `src/components/settings/settings-panel.tsx` to remove redundant chat controls from full page:
+  - Removed `Chat Mode` section.
+  - Removed `Chat Wallpaper` section.
+- Kept account-level controls and usage/performance views.
+- Added visible email display in account section.
+- Updated `src/app/settings/page.tsx` query/props accordingly.
+
+### 3) Capture Moment Hardening (`src/app/chat/page.tsx`).
+- Replaced fragile direct capture path with resilient flow:
+  - Closes overlays before capture.
+  - Waits animation frames + short settle delay.
+  - Waits for fonts readiness.
+  - Captures stable root node with explicit background per theme.
+  - Excludes ephemeral UI controls via `data-screenshot-exclude` filter.
+- Added success/failure toast feedback.
+
+### 4) Pagination + Resource Improvements.
+- Added server actions in `src/app/auth/actions.ts`:
+  - `getMemoriesPage` (cursor-based paging by `created_at`).
+  - `getChatHistoryPage` (cursor-based paging for history bootstrap + older fetches).
+- Updated `src/components/chat/memory-vault.tsx`:
+  - Initial paged load.
+  - `Load More` pagination for memories.
+  - De-duplication when appending pages.
+- Updated `src/app/chat/page.tsx` + `src/components/chat/message-list.tsx`:
+  - Bootstrap latest chat history from cloud for signed-in users when local store is empty.
+  - Added `Load earlier messages` pagination control.
+- Added client storage cap in `src/stores/chat-store.ts`:
+  - Retains only latest `600` messages in persisted store.
+- Added DB indexes migration:
+  - `supabase/migrations/20260207061000_add_history_memory_indexes.sql`.
+  - Covers history + memory pagination paths and memory text lookup.
+
+### Verification.
+- `npm run lint`: PASS (warnings only; existing known warnings remain in chat orchestration and virtualization).
+- `npm run build`: PASS.

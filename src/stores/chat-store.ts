@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ChatWallpaper } from '@/constants/wallpapers'
 
+const MAX_PERSISTED_MESSAGES = 600
+
 export interface Message {
     id: string
     speaker: string // 'user' or Character ID
@@ -71,8 +73,8 @@ export const useChatStore = create<ChatState>()(
             chatWallpaper: 'default',
             showPersonaRoles: true,
             squadConflict: null,
-            setMessages: (messages) => set({ messages }),
-            addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+            setMessages: (messages) => set({ messages: messages.slice(-MAX_PERSISTED_MESSAGES) }),
+            addMessage: (message) => set((state) => ({ messages: [...state.messages, message].slice(-MAX_PERSISTED_MESSAGES) })),
             setActiveGang: (gang) => set({ activeGang: gang }),
             setIsGuest: (isGuest) => set({ isGuest }),
             setUserName: (name) => set({ userName: name }),

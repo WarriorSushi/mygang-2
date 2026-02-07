@@ -4,17 +4,14 @@ import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
-import { useChatStore } from '@/stores/chat-store'
 import { Switch } from '@/components/ui/switch'
 import { trackEvent } from '@/lib/analytics'
-import { CHAT_WALLPAPERS, type ChatWallpaper } from '@/constants/wallpapers'
 
 interface SettingsPanelProps {
     username: string | null
+    email: string | null
     initialSettings: {
-        chat_mode: 'entourage' | 'ecosystem'
         theme: 'light' | 'dark'
-        chat_wallpaper: ChatWallpaper
     }
     usage: {
         dailyCount: number
@@ -26,11 +23,9 @@ interface SettingsPanelProps {
 
 const PERF_KEY = 'perf_monitoring'
 
-export function SettingsPanel({ username, initialSettings, usage }: SettingsPanelProps) {
+export function SettingsPanel({ username, email, initialSettings, usage }: SettingsPanelProps) {
     const { setTheme } = useTheme()
-    const { setChatMode, setChatWallpaper } = useChatStore()
-    const [chatMode, setChatModeLocal] = useState(initialSettings.chat_mode)
-    const [wallpaper, setWallpaper] = useState(initialSettings.chat_wallpaper)
+    const [themeChoice, setThemeChoice] = useState<'light' | 'dark'>(initialSettings.theme)
     const [perfEnabled, setPerfEnabled] = useState(() => {
         if (typeof window === 'undefined') return false
         return window.localStorage.getItem(PERF_KEY) === 'true'
@@ -38,20 +33,9 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
     const isProd = process.env.NODE_ENV === 'production'
 
     const handleTheme = (nextTheme: 'light' | 'dark') => {
+        setThemeChoice(nextTheme)
         setTheme(nextTheme)
         updateUserSettings({ theme: nextTheme })
-    }
-
-    const handleChatMode = (mode: 'entourage' | 'ecosystem') => {
-        setChatModeLocal(mode)
-        setChatMode(mode)
-        updateUserSettings({ chat_mode: mode })
-    }
-
-    const handleWallpaper = (next: ChatWallpaper) => {
-        setWallpaper(next)
-        setChatWallpaper(next)
-        updateUserSettings({ chat_wallpaper: next })
     }
 
     const handlePerfToggle = (next: boolean) => {
@@ -69,53 +53,22 @@ export function SettingsPanel({ username, initialSettings, usage }: SettingsPane
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Account</div>
                 <div className="mt-2 text-2xl font-black">{username || 'Member'}</div>
+                <div className="mt-1 text-xs text-muted-foreground break-all">{email || 'Email unavailable'}</div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={() => handleTheme('dark')} className="rounded-full text-[10px] uppercase tracking-widest">
+                    <Button
+                        variant={themeChoice === 'dark' ? 'default' : 'outline'}
+                        onClick={() => handleTheme('dark')}
+                        className="rounded-full text-[10px] uppercase tracking-widest"
+                    >
                         Dark
                     </Button>
-                    <Button variant="outline" onClick={() => handleTheme('light')} className="rounded-full text-[10px] uppercase tracking-widest">
+                    <Button
+                        variant={themeChoice === 'light' ? 'default' : 'outline'}
+                        onClick={() => handleTheme('light')}
+                        className="rounded-full text-[10px] uppercase tracking-widest"
+                    >
                         Light
                     </Button>
-                </div>
-            </section>
-
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Chat Mode</div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                        variant={chatMode === 'entourage' ? 'default' : 'outline'}
-                        onClick={() => handleChatMode('entourage')}
-                        className="rounded-full text-[10px] uppercase tracking-widest"
-                    >
-                        Gang Focus
-                    </Button>
-                    <Button
-                        variant={chatMode === 'ecosystem' ? 'default' : 'outline'}
-                        onClick={() => handleChatMode('ecosystem')}
-                        className="rounded-full text-[10px] uppercase tracking-widest"
-                    >
-                        Ecosystem
-                    </Button>
-                </div>
-            </section>
-
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Chat Wallpaper</div>
-                <div className="mt-2 text-[11px] text-muted-foreground">Background look only. No impact on model behavior.</div>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {CHAT_WALLPAPERS.map((option) => (
-                        <Button
-                            key={option.id}
-                            variant={wallpaper === option.id ? 'default' : 'outline'}
-                            onClick={() => handleWallpaper(option.id)}
-                            className="h-auto min-h-14 rounded-2xl text-left justify-start px-3 py-2"
-                        >
-                            <div>
-                                <div className="text-[10px] uppercase tracking-widest font-black">{option.label}</div>
-                                <div className="text-[10px] opacity-70">{option.description}</div>
-                            </div>
-                        </Button>
-                    ))}
                 </div>
             </section>
 

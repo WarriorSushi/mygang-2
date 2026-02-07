@@ -58,7 +58,7 @@ function MessageItemComponent({
         last: 'rounded-2xl rounded-tr-sm',
     }[groupPosition]
     const gangShape = {
-        single: 'rounded-2xl rounded-bl-sm',
+        single: 'rounded-2xl rounded-tl-sm',
         first: 'rounded-2xl rounded-bl-sm',
         middle: 'rounded-2xl rounded-tl-sm rounded-bl-sm',
         last: 'rounded-2xl rounded-tl-sm',
