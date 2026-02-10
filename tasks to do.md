@@ -9,6 +9,42 @@
 
 ## Current Prompt (2026-02-10)
 
+### 18) Admin Panel Redesign + Power Expansion
+- Status: Done
+- Request:
+  - Redesign admin login and dashboard UI to be premium quality and responsive/mobile-friendly.
+  - Improve interaction feel (especially login button/controls).
+  - Add significantly more admin powers and controls.
+  - Plan first, then execute fully and systematically.
+- Done:
+  - Full admin visual redesign (mobile + desktop):
+    - rebuilt `/admin/login` with premium gradient shell, stronger branding, and tactile sign-in button interactions.
+    - redesigned protected admin shell header/nav with responsive controls and clearer hierarchy.
+    - files: `src/app/admin/login/page.tsx`, `src/app/admin/(protected)/layout.tsx`.
+  - Expanded admin powers (server-side + audited):
+    - per-user actions:
+      - set subscription tier (`free`/`pro`)
+      - toggle low-cost mode
+      - reset daily usage counter
+      - delete user chat history
+    - bulk actions:
+      - reset all users' daily counters
+      - enable/disable low-cost mode for all users
+    - all actions enforce trusted request + admin session and write to `admin_audit_log`.
+    - file: `src/app/admin/actions.ts`.
+  - New admin users control surface:
+    - added `/admin/users` with operational cards, bulk controls, and per-user action panel.
+    - includes 24h + total message context and key profile state.
+    - file: `src/app/admin/(protected)/users/page.tsx`.
+  - Overview upgrade:
+    - redesigned `/admin/overview` with stronger telemetry cards, provider/source mix panels, quick operations, and richer activity/audit sections.
+    - integrated new bulk actions and improved status messaging.
+    - file: `src/app/admin/(protected)/overview/page.tsx`.
+  - Validation:
+    - `npm run lint` passed (existing non-blocking warning remains in `src/components/chat/message-list.tsx`).
+    - `npm run build` passed.
+    - `npm run test:admin` passed (`2 passed`, `2 skipped` in local env).
+
 ### 17) Admin Login Hash Input Compatibility Fix
 - Status: Done
 - Request:
