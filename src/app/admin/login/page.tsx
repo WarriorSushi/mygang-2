@@ -8,7 +8,7 @@ type AdminLoginPageProps = {
     searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-function getMessageText(errorCode: string | null, messageCode: string | null) {
+function getMessageText(errorCode: string | null, messageCode: string | null, retrySeconds: number | null) {
     if (errorCode === 'config') {
         return {
             tone: 'error',
@@ -25,6 +25,12 @@ function getMessageText(errorCode: string | null, messageCode: string | null) {
         return {
             tone: 'error',
             text: 'Please log in to access admin routes.',
+        }
+    }
+    if (errorCode === 'locked') {
+        return {
+            tone: 'error',
+            text: `Too many failed attempts. Try again in about ${retrySeconds ?? 900}s.`,
         }
     }
     if (messageCode === 'signed_out') {
@@ -45,9 +51,13 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
     const params = await searchParams
     const errorCodeRaw = params.error
     const messageCodeRaw = params.message
+    const retryRaw = params.retry
     const errorCode = Array.isArray(errorCodeRaw) ? errorCodeRaw[0] : errorCodeRaw || null
     const messageCode = Array.isArray(messageCodeRaw) ? messageCodeRaw[0] : messageCodeRaw || null
-    const notice = getMessageText(errorCode, messageCode)
+    const retryValue = Array.isArray(retryRaw) ? retryRaw[0] : retryRaw
+    const retrySeconds = retryValue ? Number(retryValue) : null
+    const safeRetrySeconds = Number.isFinite(retrySeconds) && (retrySeconds ?? 0) > 0 ? retrySeconds : null
+    const notice = getMessageText(errorCode, messageCode, safeRetrySeconds)
     const configMode = getAdminConfigMode()
 
     return (

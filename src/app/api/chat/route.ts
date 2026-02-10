@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { retrieveMemoriesLite, shouldTriggerMemoryUpdate, storeMemory, touchMemories } from '@/lib/ai/memory'
 import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
@@ -31,9 +32,14 @@ const PROVIDER_DEFAULT_COOLDOWN_MS = 90_000
 const PROVIDER_RETRY_FLOOR_MS = 15_000
 const PROVIDER_RETRY_CEILING_MS = 10 * 60 * 1000
 const OPENROUTER_CREDIT_COOLDOWN_MS = 5 * 60 * 1000
+const ADMIN_SETTINGS_CACHE_MS = 20_000
 
 let geminiCooldownUntil = 0
 let openRouterCooldownUntil = 0
+let cachedGlobalLowCostOverride: { value: boolean; expiresAtMs: number } = {
+    value: false,
+    expiresAtMs: 0
+}
 
 const CHARACTER_PROMPT_BLOCKS = new Map(
     CHARACTERS.map((c) => [
@@ -82,6 +88,21 @@ type ProfileUpdatesPayload = {
     abuse_score?: number
 }
 
+type ChatRouteMetric = {
+    source: 'user' | 'autonomous' | 'autonomous_idle'
+    lowCostMode: boolean
+    globalLowCostOverride: boolean
+    status: number
+    providerUsed: 'gemini' | 'openrouter' | 'fallback'
+    providerCapacityBlocked: boolean
+    clientMessagesCount: number
+    llmHistoryCount: number
+    promptChars: number
+    eventsCount?: number
+    shouldContinue?: boolean
+    elapsedMs: number
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -107,6 +128,62 @@ async function getDbPromptBlocks(supabase: SupabaseClient) {
     })
     cachedDbPromptBlocks = map
     return map
+}
+
+async function getGlobalLowCostOverride() {
+    const nowMs = Date.now()
+    if (nowMs < cachedGlobalLowCostOverride.expiresAtMs) {
+        return cachedGlobalLowCostOverride.value
+    }
+
+    try {
+        const admin = createAdminClient()
+        const { data, error } = await admin
+            .from('admin_runtime_settings')
+            .select('global_low_cost_override')
+            .eq('id', 'global')
+            .maybeSingle()
+        if (error) {
+            if (error.code !== 'PGRST205' && error.code !== '42P01') {
+                console.error('Failed to read global low-cost override:', error)
+            }
+            cachedGlobalLowCostOverride = { value: false, expiresAtMs: nowMs + ADMIN_SETTINGS_CACHE_MS }
+            return false
+        }
+
+        const value = !!data?.global_low_cost_override
+        cachedGlobalLowCostOverride = { value, expiresAtMs: nowMs + ADMIN_SETTINGS_CACHE_MS }
+        return value
+    } catch (err) {
+        console.error('Failed to load admin runtime settings:', err)
+        cachedGlobalLowCostOverride = { value: false, expiresAtMs: nowMs + ADMIN_SETTINGS_CACHE_MS }
+        return false
+    }
+}
+
+async function logChatRouteMetric(
+    supabase: SupabaseClient,
+    userId: string | null,
+    metric: ChatRouteMetric
+) {
+    console.info('chat_route_metrics', metric)
+    const sessionId = `server-route-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const metadata = metric
+    try {
+        const { error } = await supabase
+            .from('analytics_events')
+            .insert({
+                user_id: userId,
+                session_id: sessionId,
+                event: 'chat_route_metrics',
+                metadata,
+            })
+        if (error && error.code !== 'PGRST205' && error.code !== '42P01') {
+            console.error('Failed to persist chat route metric:', error)
+        }
+    } catch (err) {
+        console.error('Failed to record chat route metric:', err)
+    }
 }
 
 const HARD_BLOCK_PATTERNS = [
@@ -420,7 +497,7 @@ export async function POST(req: Request) {
             userNickname,
             silentTurns = 0,
             chatMode = 'ecosystem',
-            lowCostMode = false,
+            lowCostMode: requestedLowCostMode = false,
             source = 'user',
             autonomousIdle = false
         } = parsed.data
@@ -473,6 +550,8 @@ export async function POST(req: Request) {
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
+        const globalLowCostOverride = await getGlobalLowCostOverride()
+        const lowCostMode = requestedLowCostMode || globalLowCostOverride
 
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
             || req.headers.get('x-real-ip')
@@ -795,9 +874,10 @@ FLOW FLAGS:
         if (!modelSuccess && capacityBlocked) {
             const nextRetryMs = Math.max(0, geminiCooldownUntil - Date.now(), openRouterCooldownUntil - Date.now())
             const retryAfterSeconds = Math.max(15, Math.ceil(nextRetryMs / 1000))
-            console.info('chat_route_metrics', {
+            await logChatRouteMetric(supabase, user?.id ?? null, {
                 source,
                 lowCostMode,
+                globalLowCostOverride,
                 status: 429,
                 providerUsed,
                 providerCapacityBlocked: true,
@@ -937,9 +1017,10 @@ FLOW FLAGS:
             object.events = maybeSplitAiMessages(object.events, splitChance)
         }
 
-        console.info('chat_route_metrics', {
+        await logChatRouteMetric(supabase, user?.id ?? null, {
             source,
             lowCostMode,
+            globalLowCostOverride,
             status: 200,
             providerUsed,
             providerCapacityBlocked: false,

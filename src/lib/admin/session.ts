@@ -13,16 +13,16 @@ type AdminSessionPayload = {
 function getSessionSecret() {
     const explicit = process.env.ADMIN_PANEL_SESSION_SECRET?.trim()
     if (explicit) return explicit
-    return (
-        process.env.ADMIN_PANEL_PASSWORD_HASH?.trim()
+    return process.env.ADMIN_PANEL_PASSWORD_HASH?.trim()
         || process.env.ADMIN_PANEL_PASSWORD?.trim()
-        || 'mygang-admin-dev-secret'
-    )
+        || null
 }
 
 function signPayload(payloadBase64: string) {
+    const secret = getSessionSecret()
+    if (!secret) return null
     return crypto
-        .createHmac('sha256', getSessionSecret())
+        .createHmac('sha256', secret)
         .update(payloadBase64)
         .digest('base64url')
 }
@@ -30,6 +30,7 @@ function signPayload(payloadBase64: string) {
 function encodeSession(payload: AdminSessionPayload) {
     const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url')
     const signature = signPayload(payloadBase64)
+    if (!signature) return null
     return `${payloadBase64}.${signature}`
 }
 
@@ -38,6 +39,7 @@ function decodeSession(token: string): AdminSessionPayload | null {
     if (!payloadBase64 || !signature) return null
 
     const expectedSignature = signPayload(payloadBase64)
+    if (!expectedSignature) return null
     const signatureBuffer = Buffer.from(signature)
     const expectedBuffer = Buffer.from(expectedSignature)
     if (signatureBuffer.length !== expectedBuffer.length) return null
@@ -56,6 +58,9 @@ function decodeSession(token: string): AdminSessionPayload | null {
 export async function setAdminSession(email: string) {
     const exp = Math.floor(Date.now() / 1000) + ADMIN_SESSION_TTL_SECONDS
     const token = encodeSession({ email, exp })
+    if (!token) {
+        throw new Error('Missing admin session signing secret.')
+    }
     const cookieStore = await cookies()
     cookieStore.set(ADMIN_SESSION_COOKIE, token, {
         httpOnly: true,

@@ -9,11 +9,11 @@
 
 ### Required Env Vars
 - `ADMIN_PANEL_EMAIL`
-- `ADMIN_PANEL_PASSWORD`
+- `ADMIN_PANEL_PASSWORD_HASH` (SHA-256 hex)
 
 ### Optional Hardening Env Vars
-- `ADMIN_PANEL_PASSWORD_HASH` (SHA-256 hex of admin password)
-- `ADMIN_PANEL_SESSION_SECRET` (signing secret for admin cookie session)
+- `ADMIN_PANEL_SESSION_SECRET` (recommended custom signing secret)
+- `ADMIN_PANEL_PASSWORD` (fallback only for local/dev; avoid in production)
 
 ### Powers You Can Exercise (Planned)
 - Read live platform stats (users, chat volume, 24h activity, memory rows).

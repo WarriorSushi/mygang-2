@@ -9,6 +9,58 @@
 
 ## Current Prompt (2026-02-10)
 
+### 13) Admin Session Secret Hardening + Final Push
+- Status: Done
+- Request:
+  - Confirm whether `ADMIN_PANEL_SESSION_SECRET` is mandatory.
+  - Apply any needed improvements.
+  - If all good, commit and push.
+- Done:
+  - Hardened admin session secret behavior in `src/lib/admin/session.ts`:
+    - removed predictable fallback secret.
+    - sessions now require env-derived secret material (`ADMIN_PANEL_SESSION_SECRET` or hash/password fallback).
+  - Updated admin sign-in path to handle session setup misconfiguration gracefully:
+    - `src/app/admin/actions.ts` redirects to config error if session secret material is unavailable.
+  - Updated `scratchpad.md` to mark `ADMIN_PANEL_SESSION_SECRET` as recommended, not mandatory.
+  - Validation:
+    - `npm run lint` passed (existing warnings only).
+    - `npm run build` passed.
+
+### 12) Admin Hardening + Runtime Controls
+- Status: Done
+- Request:
+  - Add middleware protection for admin protected routes.
+  - Add admin login hardening (failed-attempt delay + lockout window).
+  - Expand admin overview with quota/capacity widgets from existing chat metrics.
+  - Add first admin write control: global low-cost override + audit log entry.
+  - Update local `.env.local` to use provided `ADMIN_PANEL_PASSWORD_HASH`.
+- Done:
+  - Added route-edge protection for admin protected paths via `src/proxy.ts`.
+  - Added login hardening:
+    - failed-attempt delay
+    - lockout window after repeated failures
+    - locked retry messaging on `/admin/login`
+    - files: `src/lib/admin/login-security.ts`, `src/app/admin/actions.ts`, `src/app/admin/login/page.tsx`.
+  - Added global runtime controls + audit logging:
+    - migration `supabase/migrations/20260210224000_add_admin_runtime_controls.sql`
+    - new tables: `admin_runtime_settings`, `admin_audit_log`
+    - admin action `setGlobalLowCostOverride` with audit insert.
+  - Wired global low-cost override into chat runtime:
+    - `/api/chat` now reads cached global override and enforces effective low-cost mode.
+  - Added server-side `chat_route_metrics` persistence to `analytics_events` and expanded admin overview:
+    - capacity widgets (calls, 429 blocked, 500s, avg latency, source/provider mix)
+    - runtime override toggle UI
+    - audit log list
+  - Updated local env setup:
+    - removed plain admin password
+    - set `ADMIN_PANEL_PASSWORD_HASH`
+    - added `ADMIN_PANEL_SESSION_SECRET` placeholder.
+  - Validation:
+    - `npm run lint` passed (existing warnings only).
+    - `npm run build` passed.
+    - `supabase db push --yes` applied migration.
+    - `supabase migration list` confirms local/remote parity.
+
 ### 11) Admin Panel V1 Implementation + Scratchpad Fix
 - Status: Done
 - Request:
