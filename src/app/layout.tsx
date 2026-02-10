@@ -54,8 +54,13 @@ export const metadata: Metadata = {
     images: ["/icon-512.png"]
   },
   icons: {
-    icon: "/logo.webp",
-    apple: "/logo.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" }
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/icon-512.png",
   },
   manifest: "/manifest.json",
   robots: {

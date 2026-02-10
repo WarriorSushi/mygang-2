@@ -9,6 +9,23 @@
 
 ## Current Prompt (2026-02-10)
 
+### 20) Favicon / Logo Visibility Fix
+- Status: Done
+- Request:
+  - Confirm latest changes are committed/pushed.
+  - Fix website favicon so logo appears reliably in browser tab.
+- Done:
+  - Verified latest chat stabilization commit was already pushed (`292b04a`).
+  - Replaced favicon metadata setup to use robust ICO/PNG sources instead of WebP.
+  - Regenerated `src/app/favicon.ico` from project icon asset and added `public/favicon.ico` for broad browser compatibility.
+  - Updated metadata icon declarations in `src/app/layout.tsx`:
+    - `icon` includes `/favicon.ico`, `/icon.png`, `/icon-512.png`
+    - `shortcut` set to `/favicon.ico`
+    - `apple` set to `/icon-512.png`
+  - Validation:
+    - `npm run lint` passed (existing non-blocking warning in `src/components/chat/message-list.tsx`).
+    - `npm run build` passed.
+
 ### 19) Chat Dynamics Capacity Stabilization (Pre-User Autonomous Guard)
 - Status: Done
 - Request:
