@@ -28,9 +28,15 @@ function getMessageText(errorCode: string | null, messageCode: string | null, re
         }
     }
     if (errorCode === 'locked') {
+        const seconds = retrySeconds ?? 900
+        const minutes = Math.floor(seconds / 60)
+        const remSeconds = seconds % 60
+        const label = minutes > 0
+            ? `${minutes}m${remSeconds > 0 ? ` ${remSeconds}s` : ''}`
+            : `${remSeconds}s`
         return {
             tone: 'error',
-            text: `Too many failed attempts. Try again in about ${retrySeconds ?? 900}s.`,
+            text: `Too many failed attempts. Try again in about ${label}.`,
         }
     }
     if (messageCode === 'signed_out') {
@@ -59,6 +65,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
     const safeRetrySeconds = Number.isFinite(retrySeconds) && (retrySeconds ?? 0) > 0 ? retrySeconds : null
     const notice = getMessageText(errorCode, messageCode, safeRetrySeconds)
     const configMode = getAdminConfigMode()
+    const configMissing = configMode === 'missing'
 
     return (
         <main className="min-h-dvh bg-background text-foreground flex items-center justify-center px-4 py-10">
@@ -81,9 +88,9 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                     </div>
                 )}
 
-                {configMode === 'missing' && (
+                {configMissing && (
                     <div className="mb-3 rounded-lg border border-amber-400/35 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
-                        Set `ADMIN_PANEL_EMAIL` and `ADMIN_PANEL_PASSWORD` (or `ADMIN_PANEL_PASSWORD_HASH`) in environment variables.
+                        Set `ADMIN_PANEL_EMAIL` and `ADMIN_PANEL_PASSWORD_HASH` (or fallback `ADMIN_PANEL_PASSWORD`) in environment variables.
                     </div>
                 )}
 
@@ -112,7 +119,8 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                     </div>
                     <button
                         type="submit"
-                        className="h-10 w-full rounded-lg bg-primary text-primary-foreground text-xs font-black uppercase tracking-[0.16em] hover:opacity-90 transition-opacity"
+                        disabled={configMissing}
+                        className="h-10 w-full rounded-lg bg-primary text-primary-foreground text-xs font-black uppercase tracking-[0.16em] hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Sign In
                     </button>

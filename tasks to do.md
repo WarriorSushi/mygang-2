@@ -9,6 +9,26 @@
 
 ## Current Prompt (2026-02-10)
 
+### 14) Broad Audit Follow-up Fixes (Security + Flow + UX)
+- Status: Done
+- Request:
+  - Run extensive review and apply simultaneous improvements across security, bugs, edge cases, and UX flow.
+- Done:
+  - Security hardening:
+    - sanitized auth callback `next` redirect path to internal-only (`src/app/auth/callback/route.ts`).
+    - strengthened admin brute-force protection by combining account+IP lockouts (`src/app/admin/actions.ts`).
+  - Reliability:
+    - improved local user message ID generation to avoid same-millisecond collisions (`src/app/chat/page.tsx`).
+  - UX improvements:
+    - admin lockout message now uses readable `Xm Ys` format (`src/app/admin/login/page.tsx`).
+    - admin login submit disabled when env config is missing (`src/app/admin/login/page.tsx`).
+    - admin config hint text updated for hash-first setup (`src/app/admin/login/page.tsx`).
+  - Code quality:
+    - fixed timer cleanup refs pattern in chat page to reduce lint noise (`src/app/chat/page.tsx`).
+  - Validation:
+    - `npm run lint` passed (warnings only).
+    - `npm run build` passed.
+
 ### 13) Admin Session Secret Hardening + Final Push
 - Status: Done
 - Request:

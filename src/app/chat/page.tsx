@@ -125,6 +125,7 @@ export default function ChatPage() {
     const autoLowCostModeRef = useRef(false)
     const capacityErrorTimestampsRef = useRef<number[]>([])
     const successfulUserTurnsSinceCapacityRef = useRef(0)
+    const localMessageCounterRef = useRef(0)
 
     useEffect(() => {
         autoLowCostModeRef.current = autoLowCostMode
@@ -325,11 +326,13 @@ export default function ChatPage() {
     }, [isHydrated])
 
     useEffect(() => {
+        const greetingTimers = greetingTimersRef.current
+        const statusTimers = statusTimersRef.current
         return () => {
             if (typingFlushRef.current) clearTimeout(typingFlushRef.current)
             if (fastModeTimerRef.current) clearTimeout(fastModeTimerRef.current)
-            greetingTimersRef.current.forEach(clearTimeout)
-            Object.values(statusTimersRef.current).forEach((timer) => {
+            greetingTimers.forEach(clearTimeout)
+            Object.values(statusTimers).forEach((timer) => {
                 if (timer) clearTimeout(timer)
             })
             if (idleAutonomousTimerRef.current) clearTimeout(idleAutonomousTimerRef.current)
@@ -629,6 +632,9 @@ export default function ChatPage() {
         const trimmed = content.trim()
         if (!trimmed) return false
 
+        localMessageCounterRef.current += 1
+        const localId = `user-${Date.now()}-${localMessageCounterRef.current}`
+
         if (isGuest && !messages.some(m => m.speaker === 'user')) {
             pendingBlockedMessageRef.current = { content: trimmed, replyToId: options?.replyToId, reaction: options?.reaction }
             setShowAuthWall(true)
@@ -639,7 +645,7 @@ export default function ChatPage() {
         }
 
         const userMsg: Message = {
-            id: Date.now().toString(),
+            id: localId,
             speaker: 'user',
             content: trimmed,
             created_at: new Date().toISOString(),
