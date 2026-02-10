@@ -9,6 +9,32 @@
 
 ## Current Prompt (2026-02-10)
 
+### 17) Admin Login Hash Input Compatibility Fix
+- Status: Done
+- Request:
+  - Admin login rejects credentials after moving to `ADMIN_PANEL_PASSWORD_HASH`.
+  - Investigate whether code/config is wrong and fix so admin login works reliably.
+  - Commit and push.
+- Done:
+  - Root cause:
+    - `ADMIN_PANEL_PASSWORD_HASH` mode validates `sha256(entered_password)` against the configured hash.
+    - entering the hash itself in the password field failed because it was being hashed again.
+  - Fix:
+    - updated credential verifier to accept either:
+      - original plain admin password, or
+      - the exact configured SHA-256 hash string (raw or `sha256:` prefixed) as direct input.
+    - file: `src/lib/admin/auth.ts`.
+  - UX clarification:
+    - added explicit login-page hint when hash mode is active so expected input is clear.
+    - file: `src/app/admin/login/page.tsx`.
+  - Regression coverage:
+    - added Playwright test for hash-input admin login (auto-skips when env not present).
+    - file: `tests/admin-flow.spec.ts`.
+  - Validation:
+    - `npm run lint` passed (existing non-blocking warning in `src/components/chat/message-list.tsx`).
+    - `npm run build` passed.
+    - `npm run test:admin` passed (`2 passed`, `2 skipped` in this local env).
+
 ### 16) Mobile + Accessibility Sweep
 - Status: Done
 - Request:

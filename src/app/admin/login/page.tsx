@@ -130,6 +130,11 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                     >
                         Sign In
                     </button>
+                    {configMode === 'hash' && (
+                        <p className="text-[11px] text-muted-foreground">
+                            Password field accepts your original admin password. If needed, it also accepts the exact configured SHA-256 hash.
+                        </p>
+                    )}
                 </form>
 
                 <div className="mt-4 text-center">

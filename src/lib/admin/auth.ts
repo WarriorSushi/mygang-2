@@ -13,6 +13,10 @@ function normalizeHash(value: string) {
     return value.trim().toLowerCase().replace(/^sha256:/, '')
 }
 
+function isSha256Hex(value: string) {
+    return /^[a-f0-9]{64}$/i.test(value)
+}
+
 export function getAdminConfigMode(): AdminConfigMode {
     const email = process.env.ADMIN_PANEL_EMAIL?.trim()
     const hash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim()
@@ -36,8 +40,16 @@ export function verifyAdminCredentials(emailInput: string, passwordInput: string
 
     const configuredHash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim()
     if (configuredHash) {
+        const normalizedConfiguredHash = normalizeHash(configuredHash)
+        if (!isSha256Hex(normalizedConfiguredHash)) return false
+
+        const normalizedSubmittedInput = normalizeHash(passwordInput)
+        if (isSha256Hex(normalizedSubmittedInput) && safeEqual(normalizedSubmittedInput, normalizedConfiguredHash)) {
+            return true
+        }
+
         const submittedHash = crypto.createHash('sha256').update(passwordInput).digest('hex')
-        return safeEqual(submittedHash, normalizeHash(configuredHash))
+        return safeEqual(submittedHash, normalizedConfiguredHash)
     }
 
     const configuredPlain = process.env.ADMIN_PANEL_PASSWORD?.trim() || ''
