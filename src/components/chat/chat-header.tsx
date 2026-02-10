@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Sun, Moon, Brain, Settings2 } from 'lucide-react'
+import { Sun, Moon, Brain, Settings2, Info } from 'lucide-react'
 import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
@@ -14,12 +15,16 @@ interface ChatHeaderProps {
     onOpenSettings: () => void
     typingCount?: number
     memoryActive?: boolean
+    autoLowCostActive?: boolean
 }
 
-export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false }: ChatHeaderProps) {
+export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false, autoLowCostActive = false }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
-    const effectiveTheme = resolvedTheme ?? theme
+    const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
+    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark'
+    const [showAutoLowCostInfo, setShowAutoLowCostInfo] = useState(false)
+    const showCapacityInfo = autoLowCostActive && showAutoLowCostInfo
 
     return (
         <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 lg:pb-1.5 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:pt-2.5 border-b border-border/70 dark:border-white/10 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/92 dark:bg-[rgba(14,22,37,0.9)] z-20 w-full shadow-[0_12px_30px_-24px_rgba(2,6,23,0.8)]">
@@ -65,6 +70,29 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {autoLowCostActive && (
+                    <div className="relative">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowAutoLowCostInfo((value) => !value)}
+                            title="Capacity mode info"
+                            aria-label="Capacity mode info"
+                            className="rounded-full text-amber-500/90 hover:text-amber-500 hover:bg-amber-500/10 size-8 sm:size-8"
+                        >
+                            <Info size={13} />
+                        </Button>
+                        {showCapacityInfo && (
+                            <div
+                                role="dialog"
+                                aria-label="Temporary capacity mode info"
+                                className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-400/35 bg-card/95 dark:bg-[rgba(14,22,37,0.95)] p-2 text-[10px] leading-relaxed text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
+                            >
+                                Temporary low-cost mode is active due to provider capacity. Full mode restores automatically after stable turns.
+                            </div>
+                        )}
+                    </div>
+                )}
                 <Button
                     variant="ghost"
                     size="icon"
@@ -79,14 +107,14 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                     variant="ghost"
                     size="icon"
                     className="rounded-full size-11 sm:size-12 lg:size-10"
-                    aria-label={currentTheme === 'dark' ? "Switch to light theme" : "Switch to dark theme"}
+                    aria-label="Toggle theme"
                     onClick={() => {
-                        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark'
                         setTheme(nextTheme)
                         updateUserSettings({ theme: nextTheme })
                     }}
                 >
-                    {currentTheme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    <Sun size={20} className="hidden dark:block" />
+                    <Moon size={20} className="dark:hidden" />
                 </Button>
                 <Button
                     variant="ghost"

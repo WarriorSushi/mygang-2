@@ -7,6 +7,149 @@
 
 ## Current Prompt (2026-02-07)
 
+## Current Prompt (2026-02-10)
+
+### 9) Commit + Push + Admin Panel Prep Notes
+- Status: In Progress
+- Request:
+  - Commit and push current work.
+  - Add admin auth env variables locally (not hardcoded in code).
+  - Write detailed admin panel powers/uses/benefits notes in `scratchpad.md`.
+
+### 8) Tiny Auto Low-Cost Indicator Icon
+- Status: Done
+- Request:
+  - Add a very small icon in chat UI for temporary auto low-cost mode.
+  - On click, show a compact info message explaining why it is active.
+- Done:
+  - Added a tiny header info icon that appears only when temporary auto low-cost mode is active.
+  - Clicking the icon opens a compact explanatory popover.
+  - Wired from chat runtime state to header:
+    - `src/app/chat/page.tsx` passes `autoLowCostActive`.
+    - `src/components/chat/chat-header.tsx` renders icon + popover.
+  - Validation:
+    - `npm run lint` passes (existing warnings only).
+    - `npm run build` passes.
+
+### 7) Adaptive Low-Cost Auto Mode + Supabase Apply Attempt
+- Status: Done
+- Request:
+  - Continue with the next systematic step from `scratchpad-decision-review.md`.
+  - Implement adaptive capacity handling without hurting UX:
+    - temporary auto low-cost profile on repeated 429/402
+    - automatic recovery after stable successful user turns
+    - keep user send latency immediate
+  - Attempt applying Supabase migration if local environment is connected.
+  - Keep `scratchpad.md` as temporary/lightweight notes only.
+- Done:
+  - Implemented adaptive temporary low-cost runtime policy in `src/app/chat/page.tsx`:
+    - triggers temporary auto low-cost profile on repeated capacity failures (429/402).
+    - uses effective low-cost behavior (`manual OR temporary-auto`) for payload size and autonomy suppression.
+    - keeps user send path immediate (no new user-send delay).
+    - adds automatic recovery back to full mode after stable successful user turns.
+    - records low-cost state metadata in `chat_api_call` analytics.
+  - Improved capacity backoff behavior:
+    - honors `Retry-After` header when available and enforces minimum autonomous cooldown.
+  - Applied Supabase migrations to remote with CLI and verified parity:
+    - `supabase db push` applied pending migrations.
+    - `supabase migration list` confirms local/remote timestamps are aligned.
+
+### 6) Systematic Plan Execution + Scratchpad Cleanup
+- Status: Done
+- Request:
+  - Clean up `scratchpad.md` if it is no longer important (temporary discussion file).
+  - Follow `scratchpad-decision-review.md` and execute plan systematically.
+  - Implement next planned items without harming UX.
+- Done:
+  - Implemented Phase 2 low-cost controls end-to-end:
+    - added `lowCostMode` to chat store persistence.
+    - added low-cost toggles in both in-chat controls and settings page.
+    - persisted setting via `profiles.low_cost_mode` and wired auth/session sync.
+    - added migration `supabase/migrations/20260210173000_add_low_cost_mode.sql`.
+  - Implemented runtime low-cost behavior without delaying user sends:
+    - client suppresses autonomous follow-ups in low-cost mode.
+    - reduced payload size further in low-cost mode (`10` recent messages).
+    - API enforces smaller budgets (history/output/responders/event count) in low-cost mode.
+    - API prevents `should_continue` in low-cost mode.
+  - Implemented observability hooks:
+    - client emits `chat_api_call` analytics with source/status/attempt/payload size.
+    - API emits structured `chat_route_metrics` logs including source, provider, counts, prompt chars, and latency.
+  - Compacted server system prompt while preserving core behavior and safety constraints.
+  - Cleaned `scratchpad.md` to temporary-only content and kept canonical plan in `scratchpad-decision-review.md`.
+  - Validation completed:
+    - `npm run lint` passed (existing warnings only).
+    - `npm run build` passed.
+
+### 5) Rewrite Decision Review Into Final Plan
+- Status: Done
+- Request:
+  - Read `scratchpad-decision-review.md`.
+  - If agreed, delete existing content and rewrite a proper plan including those recommendations.
+- Done:
+  - Replaced entire `scratchpad-decision-review.md` with a structured final plan:
+    - decision summary (keep/modify/do next/do not do),
+    - phased implementation plan,
+    - degradation ladder,
+    - thresholds,
+    - UX guardrails,
+    - rollback and success criteria.
+
+### 4) Move Decision Section To Separate File
+- Status: Done
+- Request:
+  - Remove the decision/recommendation review section from `scratchpad.md`.
+  - Write it separately.
+- Done:
+  - Removed the decision matrix/recommendation block from `scratchpad.md`.
+  - Created `scratchpad-decision-review.md` with that full content.
+
+### 3) Review External AI Opinions + Decision Write-up
+- Status: Done
+- Request:
+  - Review updated `scratchpad.md` opinions and decide what to do/not do.
+  - Provide modifications and rationale.
+  - Write detailed conclusions back into `scratchpad.md`.
+- Done:
+  - Added a detailed decision matrix to `scratchpad.md`:
+    - do / do with modification / do not do
+    - UX impact reasoning
+    - delay policy (autonomous only, not user sends)
+    - recommended degradation ladder under quota stress.
+
+### 2) Deep Explainability Walkthrough In Scratchpad
+- Status: Done
+- Request:
+  - Explain with a long concrete chat example.
+  - Show exactly what client sends, what server trims/builds, what model returns, and what next turn sends.
+  - Include prompt composition and API response examples.
+- Done:
+  - Expanded `scratchpad.md` with a long simulated timeline (21+ messages), request/response JSON examples, model prompt assembly walkthrough, and next-turn sliding-window behavior.
+  - Added explicit 16->12 context window explanation and 429/402 backoff/cooldown behavior with ASCII flow.
+
+### 1) Quota/Rate-Limit Root Cause + UX-Safe Fixes
+- Status: Done
+- Request:
+  - Investigate whether chat is making too many API calls and why Gemini/OpenRouter limits keep failing.
+  - Keep UX quality while reducing unnecessary provider calls.
+  - Update `scratchpad.md` with findings and ASCII visualization.
+  - Update this task log properly.
+- Done:
+  - Added deep investigation notes and architecture map in `scratchpad.md`.
+  - Streamlined request size in `src/app/api/chat/route.ts`:
+    - capped LLM history, per-message content, memory/profile snapshot lengths.
+    - kept capped output tokens and zero SDK retries.
+  - Added server-side provider cooldown/circuit-breaker behavior in `src/app/api/chat/route.ts`:
+    - detects 429/402 capacity failures.
+    - sets temporary cooldowns for Gemini/OpenRouter.
+    - returns clear `429` with `Retry-After` instead of repeated hammering/fallback churn.
+  - Reduced burst behavior in `src/app/chat/page.tsx` without hurting normal sends:
+    - outbound payload reduced (`24 -> 16` messages).
+    - autonomous calls now use temporary backoff after 429/402.
+    - added slight spacing delay for autonomous-only calls.
+    - reduced idle autonomous follow-ups from 2 to 1.
+    - blocked idle-autonomous scheduling after failed API calls.
+  - Verified with local `npm run lint` and `npm run build` (pass, warnings only).
+
 ### 5) Commit And Push Request
 - Status: Done
 - Request:

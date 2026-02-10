@@ -13,7 +13,7 @@ export default async function SettingsPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('username, theme, subscription_tier, daily_msg_count, last_msg_reset')
+        .select('username, theme, low_cost_mode, subscription_tier, daily_msg_count, last_msg_reset')
         .eq('id', user.id)
         .single()
 
@@ -40,6 +40,7 @@ export default async function SettingsPage() {
                     email={user.email ?? null}
                     initialSettings={{
                         theme: (profile?.theme as 'light' | 'dark') || 'dark',
+                        lowCostMode: !!profile?.low_cost_mode,
                     }}
                     usage={{
                         dailyCount: profile?.daily_msg_count ?? 0,

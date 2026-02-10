@@ -12,6 +12,7 @@ interface SettingsPanelProps {
     email: string | null
     initialSettings: {
         theme: 'light' | 'dark'
+        lowCostMode: boolean
     }
     usage: {
         dailyCount: number
@@ -26,6 +27,7 @@ const PERF_KEY = 'perf_monitoring'
 export function SettingsPanel({ username, email, initialSettings, usage }: SettingsPanelProps) {
     const { setTheme } = useTheme()
     const [themeChoice, setThemeChoice] = useState<'light' | 'dark'>(initialSettings.theme)
+    const [lowCostMode, setLowCostMode] = useState<boolean>(initialSettings.lowCostMode)
     const [perfEnabled, setPerfEnabled] = useState(() => {
         if (typeof window === 'undefined') return false
         return window.localStorage.getItem(PERF_KEY) === 'true'
@@ -44,6 +46,14 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
             window.localStorage.setItem(PERF_KEY, next ? 'true' : 'false')
         }
         trackEvent(next ? 'perf_monitoring_enabled' : 'perf_monitoring_disabled')
+    }
+
+    const handleLowCostModeToggle = (next: boolean) => {
+        setLowCostMode(next)
+        updateUserSettings({ low_cost_mode: next })
+        trackEvent(next ? 'low_cost_mode_enabled' : 'low_cost_mode_disabled', {
+            metadata: { source: 'settings_page' }
+        })
     }
 
     const resetText = usage.lastReset ? new Date(usage.lastReset).toLocaleString() : 'Unknown'
@@ -99,6 +109,22 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 {!isProd && (
                     <div className="mt-2 text-[11px] text-muted-foreground">Enable this in production builds.</div>
                 )}
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Cost Control</div>
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <div className="text-sm font-semibold">Low-Cost Mode</div>
+                        <div className="text-[11px] text-muted-foreground">
+                            Limits autonomous turns and shrinks AI context to reduce quota usage.
+                        </div>
+                    </div>
+                    <Switch
+                        checked={lowCostMode}
+                        onCheckedChange={handleLowCostModeToggle}
+                    />
+                </div>
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6">

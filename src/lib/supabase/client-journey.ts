@@ -6,6 +6,7 @@ import type { ChatWallpaper } from '@/constants/wallpapers'
 export type JourneyProfile = {
     username: string | null
     chat_mode: 'entourage' | 'ecosystem' | null
+    low_cost_mode: boolean | null
     theme: 'light' | 'dark' | 'system' | null
     chat_wallpaper: ChatWallpaper | null
     preferred_squad: string[] | null
@@ -18,7 +19,7 @@ type GangMemberRow = { character_id: string | null }
 export async function fetchJourneyState(supabase: SupabaseClient, userId: string) {
     const { data: profile } = await supabase
         .from('profiles')
-        .select('username, chat_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed')
+        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed')
         .eq('id', userId)
         .single<JourneyProfile>()
 

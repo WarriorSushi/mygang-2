@@ -239,7 +239,7 @@ export async function getUserSettings() {
 
     const { data, error } = await supabase
         .from('profiles')
-        .select('theme, chat_mode, preferred_squad, chat_wallpaper')
+        .select('theme, chat_mode, low_cost_mode, preferred_squad, chat_wallpaper')
         .eq('id', user.id)
         .single()
 
@@ -336,7 +336,7 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     }
 }
 
-export async function updateUserSettings(settings: { theme?: string; chat_mode?: string; preferred_squad?: string[]; chat_wallpaper?: string }) {
+export async function updateUserSettings(settings: { theme?: string; chat_mode?: string; low_cost_mode?: boolean; preferred_squad?: string[]; chat_wallpaper?: string }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return

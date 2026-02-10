@@ -15,6 +15,25 @@ const MAX_EVENT_CONTENT = 700
 const MAX_TOTAL_RESPONSE_CHARS = 3000
 const MAX_EVENTS = 20
 const MAX_DELAY_MS = 7000
+const LLM_MAX_OUTPUT_TOKENS = 1200
+const LLM_MAX_RETRIES = 0
+const LLM_HISTORY_LIMIT = 12
+const LLM_IDLE_HISTORY_LIMIT = 8
+const LOW_COST_MAX_OUTPUT_TOKENS = 800
+const LOW_COST_HISTORY_LIMIT = 8
+const LOW_COST_IDLE_HISTORY_LIMIT = 6
+const MAX_LLM_MESSAGE_CHARS = 500
+const MAX_MEMORY_CONTENT_CHARS = 220
+const MAX_SESSION_SUMMARY_CHARS = 500
+const MAX_PROFILE_LINES = 12
+const MAX_PROFILE_VALUE_CHARS = 120
+const PROVIDER_DEFAULT_COOLDOWN_MS = 90_000
+const PROVIDER_RETRY_FLOOR_MS = 15_000
+const PROVIDER_RETRY_CEILING_MS = 10 * 60 * 1000
+const OPENROUTER_CREDIT_COOLDOWN_MS = 5 * 60 * 1000
+
+let geminiCooldownUntil = 0
+let openRouterCooldownUntil = 0
 
 const CHARACTER_PROMPT_BLOCKS = new Map(
     CHARACTERS.map((c) => [
@@ -271,8 +290,112 @@ const requestSchema = z.object({
     silentTurns: z.number().int().min(0).max(30).optional(),
     burstCount: z.number().int().min(0).max(3).optional(),
     chatMode: z.enum(['entourage', 'ecosystem']).optional(),
+    lowCostMode: z.boolean().optional(),
+    source: z.enum(['user', 'autonomous', 'autonomous_idle']).optional(),
     autonomousIdle: z.boolean().optional(),
 })
+
+function getStatusCodeFromError(err: unknown, depth = 0): number | null {
+    if (depth > 4 || !isObject(err)) return null
+    const directStatus = err['statusCode']
+    if (typeof directStatus === 'number') return directStatus
+
+    const data = err['data']
+    if (isObject(data) && typeof data['code'] === 'number') return data['code']
+
+    const causeStatus = getStatusCodeFromError(err['cause'], depth + 1)
+    if (causeStatus !== null) return causeStatus
+
+    const lastErrorStatus = getStatusCodeFromError(err['lastError'], depth + 1)
+    if (lastErrorStatus !== null) return lastErrorStatus
+
+    const nestedErrors = err['errors']
+    if (Array.isArray(nestedErrors)) {
+        for (const nested of nestedErrors) {
+            const nestedStatus = getStatusCodeFromError(nested, depth + 1)
+            if (nestedStatus !== null) return nestedStatus
+        }
+    }
+
+    return null
+}
+
+function getMessageFromError(err: unknown, depth = 0): string {
+    if (depth > 4 || !err) return ''
+    if (err instanceof Error && err.message) return err.message
+    if (isObject(err)) {
+        const directMessage = err['message']
+        if (typeof directMessage === 'string' && directMessage.trim().length > 0) return directMessage
+
+        const causeMessage = getMessageFromError(err['cause'], depth + 1)
+        if (causeMessage) return causeMessage
+
+        const lastErrorMessage = getMessageFromError(err['lastError'], depth + 1)
+        if (lastErrorMessage) return lastErrorMessage
+
+        const nestedErrors = err['errors']
+        if (Array.isArray(nestedErrors)) {
+            for (const nested of nestedErrors) {
+                const nestedMessage = getMessageFromError(nested, depth + 1)
+                if (nestedMessage) return nestedMessage
+            }
+        }
+    }
+    return ''
+}
+
+function isProviderCapacityError(err: unknown) {
+    const statusCode = getStatusCodeFromError(err)
+    if (statusCode === 402 || statusCode === 429) return true
+    const message = getMessageFromError(err)
+    return /quota|credit|resource_exhausted|max[_\s-]?tokens?|billing|retry in/i.test(message)
+}
+
+function clampNumber(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, value))
+}
+
+function getRetryDelayMsFromError(err: unknown): number | null {
+    const message = getMessageFromError(err)
+    if (!message) return null
+
+    const retryInMatch = message.match(/retry in\s+(\d+(?:\.\d+)?)s/i)
+    if (retryInMatch) {
+        const parsed = Number(retryInMatch[1])
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return Math.round(parsed * 1000)
+        }
+    }
+
+    const retryDelayMatch = message.match(/"retryDelay"\s*:\s*"(\d+)s"/i)
+    if (retryDelayMatch) {
+        const parsed = Number(retryDelayMatch[1])
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return Math.round(parsed * 1000)
+        }
+    }
+
+    return null
+}
+
+function getProviderCooldownMs(err: unknown, provider: 'gemini' | 'openrouter') {
+    const statusCode = getStatusCodeFromError(err)
+    const message = getMessageFromError(err)
+
+    if (provider === 'openrouter' && statusCode === 402) {
+        return OPENROUTER_CREDIT_COOLDOWN_MS
+    }
+    if (provider === 'gemini' && /limit:\s*0/i.test(message)) {
+        return PROVIDER_RETRY_CEILING_MS
+    }
+
+    const retryDelayMs = getRetryDelayMsFromError(err)
+    if (retryDelayMs !== null) {
+        return clampNumber(retryDelayMs + 1000, PROVIDER_RETRY_FLOOR_MS, PROVIDER_RETRY_CEILING_MS)
+    }
+
+    return PROVIDER_DEFAULT_COOLDOWN_MS
+}
 
 export async function POST(req: Request) {
     try {
@@ -297,8 +420,11 @@ export async function POST(req: Request) {
             userNickname,
             silentTurns = 0,
             chatMode = 'ecosystem',
+            lowCostMode = false,
+            source = 'user',
             autonomousIdle = false
         } = parsed.data
+        const requestStartedAt = Date.now()
 
         const requestedIds = activeGangIds ?? activeGang?.map((c) => c.id) ?? []
         const knownIds = new Set(CHARACTERS.map((c) => c.id))
@@ -460,7 +586,7 @@ export async function POST(req: Request) {
 
                 const userProfile = isObject(profile?.user_profile) ? profile.user_profile : {}
                 const relationshipState = isObject(profile?.relationship_state) ? (profile.relationship_state as Record<string, RelationshipState>) : {}
-                const sessionSummary = profile?.session_summary || 'No summary yet.'
+                const sessionSummary = (profile?.session_summary || 'No summary yet.').slice(0, MAX_SESSION_SUMMARY_CHARS)
 
                 const relationshipBoard = activeGangSafe.map((c) => {
                     const state = relationshipState?.[c.id] || { affinity: 50, trust: 50, banter: 50, protectiveness: 50, note: '' }
@@ -469,7 +595,10 @@ export async function POST(req: Request) {
                 }).join('\n')
 
                 const profileLines = Object.keys(userProfile).length > 0
-                    ? Object.entries(userProfile).map(([k, v]) => `- ${k}: ${String(v)}`).join('\n')
+                    ? Object.entries(userProfile)
+                        .slice(0, MAX_PROFILE_LINES)
+                        .map(([k, v]) => `- ${k}: ${String(v).slice(0, MAX_PROFILE_VALUE_CHARS)}`)
+                        .join('\n')
                     : 'No profile facts yet.'
 
                 memorySnapshot = `
@@ -478,7 +607,7 @@ USER PROFILE:
 ${profileLines}
 
 TOP MEMORIES:
-${relevantMemories.map(m => `- ${m.content}`).join('\n') || 'No memories yet.'}
+${relevantMemories.map(m => `- ${m.content.slice(0, MAX_MEMORY_CONTENT_CHARS)}`).join('\n') || 'No memories yet.'}
 
 RELATIONSHIP BOARD:
 ${relationshipBoard || 'No relationship data yet.'}
@@ -503,7 +632,7 @@ ${sessionSummary}
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
 
         const isEntourageMode = chatMode === 'entourage'
-        const baseResponders = isEntourageMode ? 1 : 3
+        const baseResponders = isEntourageMode ? 1 : (lowCostMode ? 2 : 3)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = lastUserMsg.length < 40 ? Math.min(2, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
@@ -512,122 +641,183 @@ ${sessionSummary}
         const allowedStatusList = ACTIVITY_STATUSES.map((status) => `- "${status}"`).join('\n')
 
         const systemPrompt = `
-    You are the invisible meta-level "Director" for a group chat called "MyGang".
-    
-    == CRITICAL IDENTITY RULE ==
-    - You are NOT a participant in the chat. 
-    - You MUST NEVER include "Director" as a character in any event.
-    - Only characters listed in the "SQUAD" section below are allowed to speak or react.
-    - Do not break the fourth wall.
-    
-    The user is ${userName || 'User'}${userNickname ? ` (the gang calls them "${userNickname}")` : ''}.
-    
-    == THE SQUAD IN THIS CHAT ==
-    ${characterContext}
-    
-    ${memorySnapshot}
+You are the hidden "Director" of the MyGang group chat.
 
-    == SAFETY ==
-    ${safetyDirective}
-    
-    == YOUR MISSION ==
-    Generate a "Screenplay" of chat events.
-    The response must feel like real humans in a chaotic but cohesive group chat. 
-    
-    == RULES (SQUAD BANTER 6.1: DIRECTOR EXILE) ==
-    == MODE: ${chatMode.toUpperCase()} ==
-    ${chatMode === 'entourage'
-                ? "- USER-CENTRIC STRICT: Speak directly to the user only. No character-to-character side banter. Every message should clearly address the user and move their request forward."
-                : "- AUTONOMOUS: The gang can banter with each other, but keep the user included. Deep immersion."}
-    
-    == TEMPORAL PRIORITY (CRITICAL) ==
-    - THE LATEST MESSAGE IS THE ONLY "NOW". 
-    - If the user provided new info, THROW AWAY old conversational threads. 
-    - Do not hallucinate or keep talking about 10 messages ago if the topic changed.
-    
-    == RULES (SQUAD BANTER 7.0: CONTEXT LOCK) ==
-    1. NEW INFO FIRST: Always respond to the very last message in the sequence first.
-    2. THE BURST RULE: In ${chatMode} mode, multiple personas SHOULD respond to a user message in a single sequence.
-    3. THE SILENCE RULE: High silent_turns (${silentTurns}) = Call out the user immediately.
-    4. INTERPERSONAL BANTER: Reduce side-talk between characters if the user (${userName}) is actively engaging. 
-       - If ${chatMode} === 'entourage', stop banter entirely.
-    5. QUOTED REPLIES: Use 'target_message_id' to cite the message you are actually replying to.
-    6. AUTO-CONTINUE: Set 'should_continue' to TRUE ONLY if the flow is naturally building and more sequences are needed. 
-       - If ${chatMode} === 'entourage', ALWAYS set 'should_continue' to FALSE.
-    7. REACTIONS: Include occasional reaction-only events (emoji) to mimic real group chat.
-    8. INTERRUPTIONS: Lightly allow characters to reply to each other or quote earlier messages when natural.
-    9. CALLBACKS: If relevant, include a brief callback like "Earlier you said..." to show continuity.
-    10. STATUS TEXT RULE: If you emit a status_update event, content MUST be one of exactly:
+IDENTITY:
+- Never speak as "Director" in events.
+- Only listed squad members may emit message/reaction events.
+- Stay in-world. No fourth-wall breaks.
+
+USER:
+- User: ${userName || 'User'}${userNickname ? ` (called "${userNickname}")` : ''}.
+
+SQUAD:
+${characterContext}
+
+${memorySnapshot}
+
+SAFETY:
+${safetyDirective}
+
+MODE: ${chatMode.toUpperCase()}
+${chatMode === 'entourage'
+                ? '- Entourage: user-focused only, no side banter.'
+                : '- Ecosystem: natural group banter allowed while keeping user included.'}
+LOW_COST_MODE: ${lowCostMode ? 'YES' : 'NO'}.
+
+CORE RULES:
+1) Latest message is "now". Prioritize newest user info.
+2) Use target_message_id when directly replying/quoting.
+3) Use occasional reaction events for realism.
+4) Status update content must be exactly one of:
 ${allowedStatusList}
+5) If silent_turns is high (${silentTurns}), re-engage user directly.
 
-    == MEMORY + RELATIONSHIP RULES ==
-    - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
-    - SUMMARY_UPDATE_ALLOWED: ${shouldUpdateSummary ? 'YES' : 'NO'}.
-    - If MEMORY_UPDATE_ALLOWED is NO, set memory_updates to empty or omit it.
-    - If SUMMARY_UPDATE_ALLOWED is NO, do not return session_summary_update.
-    - Relationship updates must be small deltas (-3 to +3) and only when meaningful.
+MEMORY/RELATIONSHIP:
+- MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
+- SUMMARY_UPDATE_ALLOWED: ${shouldUpdateSummary ? 'YES' : 'NO'}.
+- If memory updates are disallowed, omit memory_updates.
+- If summary updates are disallowed, omit session_summary_update.
+- Relationship deltas must stay in [-3, +3] and be meaningful.
 
-    == RESPONSE PLANNER ==
-    - MAX_RESPONDERS: ${maxResponders}
-    - Choose up to MAX_RESPONDERS for this turn and return them in 'responders'.
-    - All message and reaction events must only use those responders.
+PLANNING:
+- MAX_RESPONDERS: ${maxResponders}.
+- Return chosen responders in responders[].
+- Message/reaction events must use only responders[].
 
-    == INACTIVITY RULE ==
-    - INACTIVE_USER: ${isInactive ? 'YES' : 'NO'}.
-    - If INACTIVE_USER is YES, set should_continue to FALSE.
-
-    == OPEN FLOOR SIGNAL ==
-    - OPEN_FLOOR_REQUESTED: ${openFloorRequested ? 'YES' : 'NO'}.
-    - If OPEN_FLOOR_REQUESTED is YES and MODE is ecosystem, set should_continue to TRUE unless blocked by safety or inactivity.
-
-    == IDLE AUTONOMY ==
-    - IDLE_AUTONOMOUS: ${autonomousIdle ? 'YES' : 'NO'}.
-    - If IDLE_AUTONOMOUS is YES, the user has not replied after the last response.
-      Keep this sequence short (1-3 messages), let the squad riff briefly, and end by addressing the user directly with a question.
-      Always set should_continue to FALSE when IDLE_AUTONOMOUS is YES.
-    `
+FLOW FLAGS:
+- INACTIVE_USER: ${isInactive ? 'YES' : 'NO'} -> should_continue FALSE when YES.
+- OPEN_FLOOR_REQUESTED: ${openFloorRequested ? 'YES' : 'NO'}.
+- IDLE_AUTONOMOUS: ${autonomousIdle ? 'YES' : 'NO'}.
+- In entourage or low-cost mode, should_continue should be FALSE.
+- If idle_autonomous is YES, keep short (1-3 messages), then hand back to user, and set should_continue FALSE.
+`
 
         // Prepare conversation for LLM with IDs
-        const HISTORY_LIMIT = autonomousIdle ? 10 : 16
+        const HISTORY_LIMIT = lowCostMode
+            ? (autonomousIdle ? LOW_COST_IDLE_HISTORY_LIMIT : LOW_COST_HISTORY_LIMIT)
+            : (autonomousIdle ? LLM_IDLE_HISTORY_LIMIT : LLM_HISTORY_LIMIT)
         const historyForLLM = safeMessages.slice(-HISTORY_LIMIT).map(m => ({
             id: m.id,
             speaker: m.speaker,
-            content: m.content,
+            content: m.content.slice(0, MAX_LLM_MESSAGE_CHARS),
             type: m.reaction ? 'reaction' : 'message',
             target_message_id: m.replyToId
         }))
 
-        let object: RouteResponseObject
+        const fallbackCharacter = filteredIds[0] || 'system'
+        let object: RouteResponseObject = {
+            events: [{
+                type: 'message',
+                character: fallbackCharacter,
+                content: 'Quick signal hiccup. I am still here. Say that again and I will pick it up.',
+                delay: 220
+            }],
+            responders: [fallbackCharacter],
+            should_continue: false
+        }
+        const llmPrompt = systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM)
+        let modelSuccess = false
+        let capacityBlocked = false
+        let providerUsed: 'gemini' | 'openrouter' | 'fallback' = 'fallback'
+        const llmMaxOutputTokens = lowCostMode ? LOW_COST_MAX_OUTPUT_TOKENS : LLM_MAX_OUTPUT_TOKENS
+        const nowMs = Date.now()
+        const geminiCoolingDown = nowMs < geminiCooldownUntil
+        const openRouterCoolingDown = nowMs < openRouterCooldownUntil
+
+        if (geminiCoolingDown) {
+            capacityBlocked = true
+        }
         try {
-            const result = await generateObject({
-                model: geminiModel,
-                schema: responseSchema,
-                prompt: systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM),
-            })
-            object = result.object
+            if (!geminiCoolingDown) {
+                const result = await generateObject({
+                    model: geminiModel,
+                    schema: responseSchema,
+                    prompt: llmPrompt,
+                    maxOutputTokens: llmMaxOutputTokens,
+                    maxRetries: LLM_MAX_RETRIES,
+                })
+                object = result.object
+                modelSuccess = true
+                providerUsed = 'gemini'
+            }
         } catch (geminiErr) {
             console.error('Gemini Error, falling back to OpenRouter:', geminiErr)
+            if (isProviderCapacityError(geminiErr)) {
+                capacityBlocked = true
+                geminiCooldownUntil = Date.now() + getProviderCooldownMs(geminiErr, 'gemini')
+            }
+            try {
+                if (!openRouterCoolingDown) {
+                    const result = await generateObject({
+                        model: openRouterModel,
+                        schema: responseSchema,
+                        prompt: llmPrompt,
+                        maxOutputTokens: llmMaxOutputTokens,
+                        maxRetries: LLM_MAX_RETRIES,
+                    })
+                    object = result.object
+                    modelSuccess = true
+                    providerUsed = 'openrouter'
+                } else {
+                    capacityBlocked = true
+                }
+            } catch (openRouterErr) {
+                console.error('OpenRouter fallback failed:', openRouterErr)
+                if (isProviderCapacityError(openRouterErr)) {
+                    capacityBlocked = true
+                    openRouterCooldownUntil = Date.now() + getProviderCooldownMs(openRouterErr, 'openrouter')
+                }
+            }
+        }
+
+        if (!modelSuccess && geminiCoolingDown && !openRouterCoolingDown) {
             try {
                 const result = await generateObject({
                     model: openRouterModel,
                     schema: responseSchema,
-                    prompt: systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM),
+                    prompt: llmPrompt,
+                    maxOutputTokens: llmMaxOutputTokens,
+                    maxRetries: LLM_MAX_RETRIES,
                 })
                 object = result.object
+                modelSuccess = true
+                providerUsed = 'openrouter'
             } catch (openRouterErr) {
-                console.error('OpenRouter fallback failed:', openRouterErr)
-                const fallbackCharacter = filteredIds[0] || 'system'
-                object = {
-                    events: [{
-                        type: 'message',
-                        character: fallbackCharacter,
-                        content: 'Quick signal hiccup. I am still here. Say that again and I will pick it up.',
-                        delay: 220
-                    }],
-                    responders: [fallbackCharacter],
-                    should_continue: false
+                console.error('OpenRouter fallback failed after Gemini cooldown:', openRouterErr)
+                if (isProviderCapacityError(openRouterErr)) {
+                    capacityBlocked = true
+                    openRouterCooldownUntil = Date.now() + getProviderCooldownMs(openRouterErr, 'openrouter')
                 }
             }
+        }
+
+        if (!modelSuccess && capacityBlocked) {
+            const nextRetryMs = Math.max(0, geminiCooldownUntil - Date.now(), openRouterCooldownUntil - Date.now())
+            const retryAfterSeconds = Math.max(15, Math.ceil(nextRetryMs / 1000))
+            console.info('chat_route_metrics', {
+                source,
+                lowCostMode,
+                status: 429,
+                providerUsed,
+                providerCapacityBlocked: true,
+                clientMessagesCount: safeMessages.length,
+                llmHistoryCount: historyForLLM.length,
+                promptChars: llmPrompt.length,
+                elapsedMs: Date.now() - requestStartedAt
+            })
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: `Capacity is tight right now. Try again in about ${retryAfterSeconds}s.`,
+                    delay: 300
+                }],
+                should_continue: false
+            }, {
+                status: 429,
+                headers: { 'Retry-After': String(retryAfterSeconds) }
+            })
         }
 
         if (object?.events && Array.isArray(object.events)) {
@@ -681,6 +871,9 @@ ${allowedStatusList}
             }
             object.events = sanitized
         }
+        if (lowCostMode && object?.events?.length) {
+            object.events = object.events.slice(0, 8)
+        }
 
         // Apply responder filtering to keep events within planned speakers
         const plannedResponders = Array.isArray(object?.responders) ? object.responders.filter((id: string) => filteredIds.includes(id)) : []
@@ -728,10 +921,13 @@ ${allowedStatusList}
         if (unsafeFlag.soft) {
             object.should_continue = false
         }
+        if (lowCostMode) {
+            object.should_continue = false
+        }
         if (autonomousIdle) {
             object.should_continue = false
         }
-        if (!isEntourageMode && openFloorRequested && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0) {
+        if (!lowCostMode && !isEntourageMode && openFloorRequested && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0) {
             object.should_continue = true
         }
 
@@ -740,6 +936,20 @@ ${allowedStatusList}
             const splitChance = isEntourageMode ? 0.34 : 0.42
             object.events = maybeSplitAiMessages(object.events, splitChance)
         }
+
+        console.info('chat_route_metrics', {
+            source,
+            lowCostMode,
+            status: 200,
+            providerUsed,
+            providerCapacityBlocked: false,
+            clientMessagesCount: safeMessages.length,
+            llmHistoryCount: historyForLLM.length,
+            promptChars: llmPrompt.length,
+            eventsCount: object.events.length,
+            shouldContinue: !!object.should_continue,
+            elapsedMs: Date.now() - requestStartedAt
+        })
 
         // Persist memory + relationship state (authenticated users only)
         if (user) {
@@ -910,6 +1120,17 @@ ${allowedStatusList}
         return Response.json(object)
     } catch (routeErr) {
         console.error('Critical Route Error:', routeErr)
+        if (isProviderCapacityError(routeErr)) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: "Capacity is tight right now. Please try again in about a minute.",
+                    delay: 300
+                }],
+                should_continue: false
+            }, { status: 429 })
+        }
         return Response.json({
             events: [{
                 type: 'message',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
@@ -32,19 +32,19 @@ import { cn } from '@/lib/utils'
 
 const stats = [
   { label: 'Someone Is Always Here', value: '24/7' },
-  { label: 'Different Friend Energies', value: '8' },
+  { label: 'Is It Free To Try', value: 'Yes' },
   { label: 'Awkward Silence', value: 'Zero' },
   { label: 'Feel-Better Moments', value: 'Daily' },
 ]
 
 const steps = [
   {
-    title: 'Build your crew',
+    title: 'Build your 1gang',
     copy: 'Pick your lineup and shape the room vibe in less than a minute.',
   },
   {
     title: 'Say anything',
-    copy: 'Rant, celebrate, vent, joke. Your gang replies with personality, not generic answers.',
+    copy: 'Rant, celebrate, vent, joke. Your gang replies with personality, not boring answers.',
   },
   {
     title: 'Watch the room come alive',
@@ -60,7 +60,7 @@ const howItWorksPillars = [
   },
   {
     title: 'Live banter',
-    copy: 'Messages bounce naturally between personas, not one robotic block.',
+    copy: 'Messages bounce naturally between your AI friends, not one robotic block.',
     icon: <MessageCircle className="w-4 h-4 text-cyan-500" />,
   },
   {
@@ -78,7 +78,7 @@ const howItWorksMoments = [
   },
   {
     title: 'The room responds',
-    copy: 'Different personalities answer in sequence, so it feels social instead of robotic.',
+    copy: 'Different AI friends answer in sequence, so it feels social instead of robotic.',
     icon: <Clock3 className="w-4 h-4 text-amber-500" />,
   },
   {
@@ -189,7 +189,7 @@ const compareRows = [
 const highlights = [
   {
     title: 'Always your people',
-    copy: 'Your crew remembers your style and shows up like familiar friends.',
+    copy: 'Your gang remembers your style and shows up like familiar friends.',
     icon: <HeartHandshake className="w-6 h-6 text-emerald-500" />,
   },
   {
@@ -241,13 +241,8 @@ export function LandingPage() {
   const [showAuthWall, setShowAuthWall] = useState(false)
   const router = useRouter()
   const { theme, resolvedTheme, setTheme } = useTheme()
-  const effectiveTheme = resolvedTheme ?? theme
-  const isMounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  )
-  const isDarkTheme = isMounted ? effectiveTheme === 'dark' : true
+  const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
+  const isDarkTheme = effectiveTheme === 'dark'
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -298,9 +293,10 @@ export function LandingPage() {
             size="icon"
             className="rounded-full border border-border/80 bg-card/70 hover:bg-card"
             onClick={() => setTheme(isDarkTheme ? 'light' : 'dark')}
-            aria-label={`Switch to ${isDarkTheme ? 'light' : 'dark'} mode`}
+            aria-label="Toggle color mode"
           >
-            {isDarkTheme ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            <Sun className="hidden w-4 h-4 dark:block" />
+            <Moon className="w-4 h-4 dark:hidden" />
           </Button>
           {isAuthenticated && (
             <span className="hidden sm:block text-xs font-bold uppercase tracking-widest text-muted-foreground/60">

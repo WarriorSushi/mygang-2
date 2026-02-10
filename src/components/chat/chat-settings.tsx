@@ -49,6 +49,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     const {
         chatMode,
         setChatMode,
+        lowCostMode,
+        setLowCostMode,
         clearChat,
         chatWallpaper,
         setChatWallpaper,
@@ -91,6 +93,11 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         if (value !== 'entourage' && value !== 'ecosystem') return
         setChatMode(value)
         updateUserSettings({ chat_mode: value })
+    }
+
+    const handleLowCostModeChange = (enabled: boolean) => {
+        setLowCostMode(enabled)
+        updateUserSettings({ low_cost_mode: enabled })
     }
 
     const handleWallpaperChange = (value: ChatWallpaper) => {
@@ -282,6 +289,17 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         ? 'Focused on your message only. Minimal side chatter and no autonomous drifts.'
                                         : 'Natural group banter, autonomous turns, and richer side interactions.'}
                                 </p>
+                                <div className={cn(panelCardClass, 'flex items-center justify-between px-3 py-3')}>
+                                    <div className="pr-3">
+                                        <p className="text-[11px] font-bold uppercase tracking-wider">Low-Cost Mode</p>
+                                        <p className="text-[11px] text-muted-foreground">Reduces autonomous calls and context size.</p>
+                                    </div>
+                                    <Switch
+                                        checked={lowCostMode}
+                                        onCheckedChange={handleLowCostModeChange}
+                                        aria-label="Toggle low-cost mode"
+                                    />
+                                </div>
                             </div>
                         </div>
 

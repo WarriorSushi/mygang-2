@@ -87,8 +87,8 @@ interface TypingIndicatorProps {
 }
 
 export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {} }: TypingIndicatorProps) {
-    const { theme } = useTheme()
-    const isDark = theme === 'dark'
+    const { theme, resolvedTheme } = useTheme()
+    const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
     const activityEntries = Object.entries(activityStatuses).filter(([id, status]) => status && !typingUsers.includes(id))
     return (
         <div className="flex flex-col gap-1.5 ml-2">

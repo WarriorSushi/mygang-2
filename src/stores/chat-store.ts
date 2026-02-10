@@ -39,6 +39,7 @@ interface ChatState {
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
     chatMode: 'entourage' | 'ecosystem'
+    lowCostMode: boolean
     chatWallpaper: ChatWallpaper
     showPersonaRoles: boolean
     squadConflict: { local: Character[]; remote: Character[] } | null
@@ -52,6 +53,7 @@ interface ChatState {
     setCharacterStatus: (characterId: string, status: string) => void
     setIsHydrated: (isHydrated: boolean) => void
     setChatMode: (mode: 'entourage' | 'ecosystem') => void
+    setLowCostMode: (enabled: boolean) => void
     setChatWallpaper: (wallpaper: ChatWallpaper) => void
     setShowPersonaRoles: (showPersonaRoles: boolean) => void
     setSquadConflict: (conflict: { local: Character[]; remote: Character[] } | null) => void
@@ -70,6 +72,7 @@ export const useChatStore = create<ChatState>()(
             characterStatuses: {},
             isHydrated: false,
             chatMode: 'ecosystem',
+            lowCostMode: false,
             chatWallpaper: 'default',
             showPersonaRoles: true,
             squadConflict: null,
@@ -85,6 +88,7 @@ export const useChatStore = create<ChatState>()(
             })),
             setIsHydrated: (isHydrated) => set({ isHydrated }),
             setChatMode: (chatMode) => set({ chatMode }),
+            setLowCostMode: (lowCostMode) => set({ lowCostMode }),
             setChatWallpaper: (chatWallpaper) => set({ chatWallpaper }),
             setShowPersonaRoles: (showPersonaRoles) => set({ showPersonaRoles }),
             setSquadConflict: (squadConflict) => set({ squadConflict }),
@@ -100,6 +104,7 @@ export const useChatStore = create<ChatState>()(
                 userNickname: state.userNickname,
                 userId: state.userId,
                 chatMode: state.chatMode,
+                lowCostMode: state.lowCostMode,
                 chatWallpaper: state.chatWallpaper,
                 showPersonaRoles: state.showPersonaRoles
             })

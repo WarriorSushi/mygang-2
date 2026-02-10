@@ -140,8 +140,8 @@ function MessageItemComponent({
 }: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
-    const { theme } = useTheme()
-    const isDark = theme === 'dark'
+    const { theme, resolvedTheme } = useTheme()
+    const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
     const [showActions, setShowActions] = useState(false)
     const actionWrapRef = useRef<HTMLDivElement>(null)
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)

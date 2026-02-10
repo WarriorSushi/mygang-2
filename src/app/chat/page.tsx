@@ -34,6 +34,11 @@ type ChatApiResponse = {
     should_continue?: boolean
 }
 
+const AUTO_LOW_COST_STRESS_WINDOW_MS = 2 * 60 * 1000
+const AUTO_LOW_COST_HARD_WINDOW_MS = 5 * 60 * 1000
+const AUTO_LOW_COST_RECOVERY_TURNS = 10
+const CAPACITY_BACKOFF_MIN_MS = 90_000
+
 function messageFingerprint(message: Message) {
     const createdAt = Number.isFinite(Date.parse(message.created_at))
         ? new Date(message.created_at).toISOString()
@@ -65,6 +70,7 @@ export default function ChatPage() {
         setUserNickname,
         setCharacterStatus,
         chatMode,
+        lowCostMode,
         chatWallpaper,
         squadConflict,
         setSquadConflict
@@ -76,6 +82,7 @@ export default function ChatPage() {
     const [showResumeBanner, setShowResumeBanner] = useState(false)
     const [resumeBannerText, setResumeBannerText] = useState('Resumed your last session')
     const [toastMessage, setToastMessage] = useState<string | null>(null)
+    const [autoLowCostMode, setAutoLowCostMode] = useState(false)
     const [isFastMode, setIsFastMode] = useState(false)
     const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
     const [replyingTo, setReplyingTo] = useState<Message | null>(null)
@@ -109,10 +116,28 @@ export default function ChatPage() {
     const statusTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
     const idleAutonomousTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const idleAutoCountRef = useRef(0)
+    const autonomousBackoffUntilRef = useRef(0)
+    const lastApiCallAtRef = useRef(0)
     const resumeAutonomousTriggeredRef = useRef(false)
     const lastUserMessageIdRef = useRef<string | null>(null)
     const historySyncInFlightRef = useRef(false)
     const lastHistorySyncAtRef = useRef(0)
+    const autoLowCostModeRef = useRef(false)
+    const capacityErrorTimestampsRef = useRef<number[]>([])
+    const successfulUserTurnsSinceCapacityRef = useRef(0)
+
+    useEffect(() => {
+        autoLowCostModeRef.current = autoLowCostMode
+    }, [autoLowCostMode])
+
+    useEffect(() => {
+        if (!lowCostMode) return
+        if (!autoLowCostModeRef.current) return
+        autoLowCostModeRef.current = false
+        capacityErrorTimestampsRef.current = []
+        successfulUserTurnsSinceCapacityRef.current = 0
+        setAutoLowCostMode(false)
+    }, [lowCostMode])
 
     const flushTypingUsers = () => {
         typingFlushRef.current = null
@@ -422,6 +447,52 @@ export default function ChatPage() {
         })
     }
 
+    const recordCapacityError = (status: number) => {
+        if (status !== 429 && status !== 402) return
+
+        const now = Date.now()
+        const withinHardWindow = capacityErrorTimestampsRef.current
+            .filter((timestamp) => now - timestamp <= AUTO_LOW_COST_HARD_WINDOW_MS)
+        withinHardWindow.push(now)
+        capacityErrorTimestampsRef.current = withinHardWindow
+        successfulUserTurnsSinceCapacityRef.current = 0
+
+        const stressCount = withinHardWindow.filter((timestamp) => now - timestamp <= AUTO_LOW_COST_STRESS_WINDOW_MS).length
+        const hardCount = withinHardWindow.length
+        const shouldEnableAutoMode = stressCount >= 2 || hardCount >= 4
+        if (!lowCostMode && shouldEnableAutoMode && !autoLowCostModeRef.current) {
+            autoLowCostModeRef.current = true
+            setAutoLowCostMode(true)
+            setToastMessage('Capacity is tight. Running temporary low-cost mode.')
+            trackEvent('auto_low_cost_mode_enabled', {
+                metadata: {
+                    status,
+                    stressCount,
+                    hardCount
+                }
+            })
+        }
+    }
+
+    const recordSuccessfulUserTurn = () => {
+        if (!autoLowCostModeRef.current || lowCostMode) return
+
+        successfulUserTurnsSinceCapacityRef.current += 1
+        if (successfulUserTurnsSinceCapacityRef.current < AUTO_LOW_COST_RECOVERY_TURNS) return
+
+        autoLowCostModeRef.current = false
+        capacityErrorTimestampsRef.current = []
+        successfulUserTurnsSinceCapacityRef.current = 0
+        setAutoLowCostMode(false)
+        setToastMessage('Capacity recovered. Restored full mode.')
+        trackEvent('auto_low_cost_mode_disabled', {
+            metadata: {
+                reason: 'recovery',
+                stableUserTurns: AUTO_LOW_COST_RECOVERY_TURNS
+            }
+        })
+    }
+
     const clearIdleAutonomousTimer = () => {
         if (idleAutonomousTimerRef.current) {
             clearTimeout(idleAutonomousTimerRef.current)
@@ -430,7 +501,9 @@ export default function ChatPage() {
     }
 
     const canRunIdleAutonomous = () => {
+        if (useChatStore.getState().lowCostMode || autoLowCostModeRef.current) return false
         if (useChatStore.getState().chatMode !== 'ecosystem') return false
+        if (Date.now() < autonomousBackoffUntilRef.current) return false
         if (typeof document !== 'undefined') {
             if (document.visibilityState !== 'visible') return false
         }
@@ -441,7 +514,7 @@ export default function ChatPage() {
     const scheduleIdleAutonomous = (sourceUserMessageId: string | null) => {
         if (!sourceUserMessageId) return
         if (!canRunIdleAutonomous()) return
-        if (idleAutoCountRef.current >= 2) return
+        if (idleAutoCountRef.current >= 1) return
 
         clearIdleAutonomousTimer()
         const delay = 15000 + idleAutoCountRef.current * 8000
@@ -608,8 +681,14 @@ export default function ChatPage() {
     }
 
     const sendToApi = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId }: { isIntro: boolean; isAutonomous: boolean; autonomousIdle?: boolean; sourceUserMessageId?: string | null }) => {
+        const effectiveLowCostModeForCall = lowCostMode || autoLowCostModeRef.current
+
         // If autonomous call, check the brakes
         if (isAutonomous) {
+            if (effectiveLowCostModeForCall) {
+                isGeneratingRef.current = false
+                return
+            }
             if (silentTurnsRef.current >= 30) {
                 console.log("Autonomous flow stopped: 30 message limit reached.")
                 isGeneratingRef.current = false
@@ -617,6 +696,10 @@ export default function ChatPage() {
             }
             if (burstCountRef.current >= 3) {
                 console.log("Autonomous flow stopped: 3-burst limit reached.")
+                isGeneratingRef.current = false
+                return
+            }
+            if (Date.now() < autonomousBackoffUntilRef.current) {
                 isGeneratingRef.current = false
                 return
             }
@@ -628,6 +711,7 @@ export default function ChatPage() {
             triggerActivityPulse()
         }
 
+        let apiCallSucceeded = false
         try {
             const currentMessages = useChatStore.getState().messages
             const sourceUserMessage = sourceUserMessageId
@@ -635,7 +719,8 @@ export default function ChatPage() {
                 : null
             const openFloorIntent = !!sourceUserMessage?.content && hasOpenFloorIntent(sourceUserMessage.content)
 
-            const payloadMessages = currentMessages.slice(-24).map((m) => ({
+            const payloadLimit = effectiveLowCostModeForCall ? 10 : 16
+            const payloadMessages = currentMessages.slice(-payloadLimit).map((m) => ({
                 id: m.id,
                 speaker: m.speaker,
                 content: m.content,
@@ -653,6 +738,8 @@ export default function ChatPage() {
                 silentTurns: silentTurnsRef.current,
                 burstCount: burstCountRef.current,
                 chatMode,
+                lowCostMode: effectiveLowCostModeForCall,
+                source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
                 autonomousIdle
             }
 
@@ -660,6 +747,14 @@ export default function ChatPage() {
             let data: ChatApiResponse | null = null
             for (let attempt = 0; attempt < 2; attempt++) {
                 try {
+                    if (isAutonomous && attempt === 0) {
+                        const minGapMs = 1600
+                        const elapsed = Date.now() - lastApiCallAtRef.current
+                        if (elapsed < minGapMs) {
+                            await new Promise((resolve) => setTimeout(resolve, minGapMs - elapsed))
+                        }
+                    }
+                    lastApiCallAtRef.current = Date.now()
                     res = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
@@ -674,8 +769,30 @@ export default function ChatPage() {
                     } catch (err) {
                         console.error('Failed to parse response:', err)
                     }
+                    trackEvent('chat_api_call', {
+                        metadata: {
+                            source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
+                            status: res.status,
+                            attempt,
+                            lowCostMode: effectiveLowCostModeForCall,
+                            manualLowCostMode: lowCostMode,
+                            autoLowCostMode: autoLowCostModeRef.current,
+                            payloadMessages: payloadMessages.length
+                        }
+                    })
                     if (res.ok || res.status < 500 || attempt === 1) break
                 } catch (err) {
+                    trackEvent('chat_api_call', {
+                        metadata: {
+                            source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
+                            status: 'network_error',
+                            attempt,
+                            lowCostMode: effectiveLowCostModeForCall,
+                            manualLowCostMode: lowCostMode,
+                            autoLowCostMode: autoLowCostModeRef.current,
+                            payloadMessages: payloadMessages.length
+                        }
+                    })
                     if (attempt === 1) throw err
                 }
                 await new Promise((resolve) => setTimeout(resolve, 420 + attempt * 240))
@@ -686,7 +803,23 @@ export default function ChatPage() {
             }
 
             if (!res.ok) {
-                const fallbackErrorMessage = data?.events?.[0]?.content || 'Quick hiccup on our side. Please try again.'
+                const responseHint = data?.events?.[0]?.content || ''
+                const retryAfterValue = res.headers.get('Retry-After')
+                const retryAfterHeader = Number(retryAfterValue || '')
+                const isLikelyCapacityError = res.status === 402
+                    || (res.status === 429 && (
+                        Boolean(retryAfterValue)
+                        || /capacity|quota|credit|resource/i.test(responseHint)
+                    ))
+
+                if (isLikelyCapacityError) {
+                    const retryAfterMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+                        ? retryAfterHeader * 1000
+                        : CAPACITY_BACKOFF_MIN_MS
+                    autonomousBackoffUntilRef.current = Date.now() + Math.max(CAPACITY_BACKOFF_MIN_MS, retryAfterMs)
+                    recordCapacityError(res.status)
+                }
+                const fallbackErrorMessage = responseHint || 'Quick hiccup on our side. Please try again.'
                 setToastMessage(fallbackErrorMessage)
                 if (!data?.events) {
                     addMessage({
@@ -713,6 +846,10 @@ export default function ChatPage() {
 
             if (!data?.events) {
                 throw new Error('Invalid response shape')
+            }
+            apiCallSucceeded = true
+            if (!isAutonomous && !isIntro) {
+                recordSuccessfulUserTurn()
             }
 
             clearTypingUsers()
@@ -784,8 +921,9 @@ export default function ChatPage() {
             }
 
             // == AUTONOMOUS CONTINUATION CHECK ==
-            const burstLimit = chatMode === 'entourage' ? 1 : 2
-            if (data.should_continue && burstCountRef.current < (burstLimit - 1) && !pendingUserMessagesRef.current) {
+            const burstLimit = effectiveLowCostModeForCall ? 1 : (chatMode === 'entourage' ? 1 : 2)
+            const autonomousAllowed = Date.now() >= autonomousBackoffUntilRef.current
+            if (!effectiveLowCostModeForCall && autonomousAllowed && data.should_continue && burstCountRef.current < (burstLimit - 1) && !pendingUserMessagesRef.current) {
                 burstCountRef.current++
                 await new Promise(r => setTimeout(r, 1000))
                 isGeneratingRef.current = false // Prep for next call
@@ -794,7 +932,7 @@ export default function ChatPage() {
                 return
             }
 
-            if (!data.should_continue && !isAutonomous && chatMode === 'ecosystem' && openFloorIntent && !pendingUserMessagesRef.current && burstCountRef.current < 1) {
+            if (!effectiveLowCostModeForCall && autonomousAllowed && !data.should_continue && !isAutonomous && chatMode === 'ecosystem' && openFloorIntent && !pendingUserMessagesRef.current && burstCountRef.current < 1) {
                 burstCountRef.current += 1
                 await new Promise((r) => setTimeout(r, 900))
                 isGeneratingRef.current = false
@@ -816,7 +954,7 @@ export default function ChatPage() {
             } else {
                 isGeneratingRef.current = false
                 clearTypingUsers()
-                if (!isIntro && !pendingUserMessagesRef.current) {
+                if (!isIntro && !pendingUserMessagesRef.current && apiCallSucceeded && !effectiveLowCostModeForCall) {
                     const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
                     if (sourceId && (autonomousIdle || !isAutonomous)) {
                         scheduleIdleAutonomous(sourceId)
@@ -947,6 +1085,7 @@ export default function ChatPage() {
                     }}
                     typingCount={typingUsers.length}
                     memoryActive={!isGuest}
+                    autoLowCostActive={autoLowCostMode && !lowCostMode}
                 />
 
                 <div className="flex-1 flex flex-col min-h-0 relative">

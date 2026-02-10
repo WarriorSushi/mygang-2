@@ -18,6 +18,7 @@ export function AuthManager() {
         clearChat,
         setIsHydrated,
         setChatMode,
+        setLowCostMode,
         setChatWallpaper,
         setSquadConflict
     } = useChatStore()
@@ -34,6 +35,7 @@ export function AuthManager() {
             setUserName(null)
             setUserNickname(null)
             setSquadConflict(null)
+            setLowCostMode(false)
             hadSessionRef.current = false
         }
 
@@ -110,6 +112,9 @@ export function AuthManager() {
                 if (profile?.chat_mode) {
                     setChatMode(profile.chat_mode)
                 }
+                if (typeof profile?.low_cost_mode === 'boolean') {
+                    setLowCostMode(profile.low_cost_mode)
+                }
                 if (profile?.theme) {
                     const localTheme = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null
                     // Respect an explicit local user choice and avoid server-driven theme flip-flop.
@@ -145,7 +150,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setIsGuest, setIsHydrated, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
+    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setIsGuest, setIsHydrated, setLowCostMode, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
 
     return null
 }
