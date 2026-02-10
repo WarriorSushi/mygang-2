@@ -9,6 +9,39 @@
 
 ## Current Prompt (2026-02-10)
 
+### 11) Admin Panel V1 Implementation + Scratchpad Fix
+- Status: Done
+- Request:
+  - Start implementing admin panel.
+  - Fix `scratchpad.md` so it contains only admin panel temporary planning notes.
+  - Clarify env/hash setup steps for Vercel.
+- Done:
+  - Implemented admin panel v1:
+    - `/admin/login` (env-based admin sign-in).
+    - `/admin/overview` protected with signed admin cookie session.
+    - `/admin` root redirect to login/overview based on session.
+  - Added admin auth/session internals:
+    - `src/lib/admin/auth.ts` supports plain password env and optional hash env.
+    - `src/lib/admin/session.ts` adds signed httpOnly admin session cookie helpers.
+    - `src/app/admin/actions.ts` adds `adminSignIn` / `adminSignOut`.
+    - `src/app/admin/(protected)/layout.tsx` applies guard and signed-in header.
+    - `src/app/admin/(protected)/overview/page.tsx` shows read-only operational metrics.
+  - Rewrote `scratchpad.md` to admin-only temporary notes.
+  - Validation:
+    - `npm run lint` passes (existing warnings only).
+    - `npm run build` passes.
+
+### 10) Reset Scratchpad + Admin Env Guidance
+- Status: Done
+- Request:
+  - Clear `scratchpad.md` temporary content fully if safe.
+  - Re-add only admin panel planning notes there.
+  - Provide exact Vercel env vars and any other required setup.
+- Done:
+  - Reset `scratchpad.md` content and replaced it with admin panel planning only.
+  - Kept it lightweight and temporary-focused.
+  - Prepared exact Vercel env setup guidance for admin auth.
+
 ### 9) Commit + Push + Admin Panel Prep Notes
 - Status: Done
 - Request:
