@@ -10,11 +10,19 @@
 ## Current Prompt (2026-02-10)
 
 ### 9) Commit + Push + Admin Panel Prep Notes
-- Status: In Progress
+- Status: Done
 - Request:
   - Commit and push current work.
   - Add admin auth env variables locally (not hardcoded in code).
   - Write detailed admin panel powers/uses/benefits notes in `scratchpad.md`.
+- Done:
+  - Added admin panel planning notes in `scratchpad.md`:
+    - powers, use-cases, benefits, security notes, page map, and phased build sequence.
+  - Added local-only env entries in `.env.local` (gitignored):
+    - `ADMIN_PANEL_EMAIL`
+    - `ADMIN_PANEL_PASSWORD`
+  - Committed and pushed all pending tracked changes to `origin/master`:
+    - commit: `dbf2b72`
 
 ### 8) Tiny Auto Low-Cost Indicator Icon
 - Status: Done
