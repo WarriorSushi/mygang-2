@@ -12,6 +12,9 @@ interface IdentityStepProps {
 }
 
 export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepProps) {
+    const trimmedName = name.trim()
+    const canContinue = trimmedName.length >= 2
+
     return (
         <motion.div
             key="identity"
@@ -22,18 +25,21 @@ export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepPro
         >
             <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center">What should they call you?</h2>
             <div className="space-y-4">
+                <label htmlFor="onboarding-name-input" className="sr-only">Your nickname</label>
                 <Input
+                    id="onboarding-name-input"
                     placeholder="Your nickname..."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     data-testid="onboarding-name"
+                    aria-label="Your nickname"
                     className="text-base sm:text-lg py-5 sm:py-7 px-5 sm:px-6 bg-white/5 border-white/10 rounded-2xl focus-visible:ring-primary/50"
                     autoFocus
-                    onKeyDown={(e) => e.key === 'Enter' && name.length > 1 && onNext()}
+                    onKeyDown={(e) => e.key === 'Enter' && canContinue && onNext()}
                 />
                 <Button
                     className="w-full py-5 sm:py-7 rounded-2xl text-base sm:text-lg font-bold shadow-lg shadow-primary/10 transition-all active:scale-[0.98]"
-                    disabled={name.length < 2}
+                    disabled={!canContinue}
                     data-testid="onboarding-name-next"
                     onClick={onNext}
                 >

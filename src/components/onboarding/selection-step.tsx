@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { type KeyboardEvent, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -102,6 +102,13 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
         applySelection(Array.from(picks).slice(0, 4))
     }
 
+    const handleCharacterKeyDown = (e: KeyboardEvent, id: string) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            toggleCharacter(id)
+        }
+    }
+
     return (
         <motion.div
             key="selection"
@@ -138,6 +145,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                 variant={activeTag === tag ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => setActiveTag(tag)}
+                                aria-pressed={activeTag === tag}
                                 className="rounded-full text-[10px] uppercase tracking-widest shrink-0"
                             >
                                 {tag}
@@ -155,6 +163,11 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                             key={char.id}
                             data-testid={`character-${char.id}`}
                             onClick={() => toggleCharacter(char.id)}
+                            onKeyDown={(e) => handleCharacterKeyDown(e, char.id)}
+                            tabIndex={0}
+                            role="button"
+                            aria-pressed={isSelected}
+                            aria-label={`${char.name}, ${char.archetype}${isSelected ? ', selected' : ', not selected'}`}
                             className={cn(
                                 "p-3 sm:p-4 cursor-pointer relative group transition-all duration-500 flex items-start gap-3 sm:block",
                                 isSelected && "ring-2 ring-primary ring-offset-4 ring-offset-background bg-primary/5"

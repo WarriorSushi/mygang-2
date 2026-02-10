@@ -232,6 +232,19 @@ function MessageItemComponent({
         setShowActions(true)
     }
 
+    const handleBubbleKeyDown = (e: React.KeyboardEvent) => {
+        if (!canShowActions) return
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setShowActions((prev) => !prev)
+            return
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault()
+            setShowActions(false)
+        }
+    }
+
     useEffect(() => {
         return () => clearLongPressTimer()
     }, [])
@@ -244,8 +257,17 @@ function MessageItemComponent({
             if (node.contains(e.target as Node)) return
             setShowActions(false)
         }
+        const onDocKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowActions(false)
+            }
+        }
         document.addEventListener('pointerdown', onDocPointerDown)
-        return () => document.removeEventListener('pointerdown', onDocPointerDown)
+        document.addEventListener('keydown', onDocKeyDown)
+        return () => {
+            document.removeEventListener('pointerdown', onDocPointerDown)
+            document.removeEventListener('keydown', onDocKeyDown)
+        }
     }, [showActions])
 
     return (
@@ -326,6 +348,12 @@ function MessageItemComponent({
                     onPointerUp={handlePointerUp}
                     onPointerLeave={handlePointerUp}
                     onContextMenu={handleContextMenu}
+                    onKeyDown={handleBubbleKeyDown}
+                    tabIndex={canShowActions ? 0 : undefined}
+                    role={canShowActions ? 'button' : undefined}
+                    aria-label={canShowActions ? 'Open message actions' : undefined}
+                    aria-haspopup={canShowActions ? 'menu' : undefined}
+                    aria-expanded={canShowActions ? showActions : undefined}
                 >
                     {isReaction ? (
                         <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
@@ -373,7 +401,7 @@ function MessageItemComponent({
                     <div className={cn(
                         "absolute z-50 bottom-full mb-2 flex items-center gap-1 rounded-full border border-border/80 bg-card/96 dark:border-white/20 dark:bg-[rgba(10,18,32,0.96)] p-1 shadow-xl backdrop-blur-xl",
                         isUser ? 'right-0' : 'left-0'
-                    )}>
+                    )} role="menu" aria-label="Message actions">
                         <Button
                             type="button"
                             variant="ghost"

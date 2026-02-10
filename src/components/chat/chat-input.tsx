@@ -29,6 +29,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
     })
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const limitWarnedRef = useRef(false)
+    const [limitNotice, setLimitNotice] = useState(false)
 
     useEffect(() => {
         if (typeof window === 'undefined') return
@@ -65,13 +66,20 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             setInput(clipped)
             if (!limitWarnedRef.current) {
                 limitWarnedRef.current = true
-                window.alert('Message limit is 2000 characters.')
+                setLimitNotice(true)
             }
             return
         }
         limitWarnedRef.current = false
+        if (limitNotice) setLimitNotice(false)
         setInput(nextValue)
     }
+
+    useEffect(() => {
+        if (!limitNotice) return
+        const timer = setTimeout(() => setLimitNotice(false), 2600)
+        return () => clearTimeout(timer)
+    }, [limitNotice])
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.nativeEvent.isComposing) return
@@ -111,6 +119,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     data-testid="chat-input"
+                    aria-label="Message input"
                     placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
                     className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none px-1 py-2.5 text-[16px] md:text-[15px] leading-6 text-foreground placeholder:text-muted-foreground/80 max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
@@ -120,11 +129,17 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     size="icon"
                     disabled={!input.trim() || disabled}
                     data-testid="chat-send"
+                    aria-label="Send message"
                     className="shrink-0 self-center rounded-xl w-11 h-11 mb-0 active:scale-95 transition-transform shadow-none"
                 >
                     <ArrowRight size={18} />
                 </Button>
             </form>
+            {limitNotice && (
+                <p className="mt-1 px-1 text-[10px] text-amber-500/90" aria-live="polite">
+                    Message limit is {MAX_CHARS} characters.
+                </p>
+            )}
         </div>
     )
 }

@@ -9,6 +9,39 @@
 
 ## Current Prompt (2026-02-10)
 
+### 16) Mobile + Accessibility Sweep
+- Status: Done
+- Request:
+  - Run a targeted sweep for mobile UX polish and accessibility improvements.
+  - Cover onboarding, chat, settings, and admin flows.
+  - Improve labels/keyboard navigation/focus behavior and edge-case interactions.
+- Done:
+  - Chat input/accessibility polish:
+    - added explicit aria labels for composer and send button.
+    - replaced blocking max-length alert with inline polite live notice.
+    - file: `src/components/chat/chat-input.tsx`.
+  - Chat message interaction keyboard support:
+    - message actions can now be opened via `Enter`/`Space` and closed with `Escape`.
+    - action wrapper now has button/menu ARIA semantics for assistive tech.
+    - file: `src/components/chat/message-item.tsx`.
+  - Header capacity popover accessibility/interaction:
+    - added outside-click and `Escape` close behavior.
+    - added ARIA dialog trigger/control wiring.
+    - file: `src/components/chat/chat-header.tsx`.
+  - Onboarding accessibility improvements:
+    - character cards now support keyboard selection (`Enter`/`Space`) with `role=button`, `tabIndex`, `aria-pressed`, and labels.
+    - tag filter buttons now expose pressed state.
+    - identity name input now has explicit label/id and trimmed-length validation for continue/Enter behavior.
+    - files: `src/components/onboarding/selection-step.tsx`, `src/components/onboarding/identity-step.tsx`.
+  - Settings/admin semantics:
+    - added missing switch aria labels and theme button pressed states.
+    - added admin runtime toggle `aria-pressed` and explicit action label.
+    - files: `src/components/settings/settings-panel.tsx`, `src/app/admin/(protected)/overview/page.tsx`.
+  - Validation:
+    - `npm run lint` passed (existing non-blocking warning in `src/components/chat/message-list.tsx`).
+    - `npm run build` passed.
+    - `npm run test:admin` passed (`2 passed`, `1 skipped` due missing `ADMIN_TEST_PASSWORD`).
+
 ### 15) Full Follow-up Pass (Hooks + Admin Safeguards + Tests)
 - Status: Done
 - Request:

@@ -68,6 +68,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     <Button
                         variant={themeChoice === 'dark' ? 'default' : 'outline'}
                         onClick={() => handleTheme('dark')}
+                        aria-pressed={themeChoice === 'dark'}
                         className="rounded-full text-[10px] uppercase tracking-widest"
                     >
                         Dark
@@ -75,6 +76,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     <Button
                         variant={themeChoice === 'light' ? 'default' : 'outline'}
                         onClick={() => handleTheme('light')}
+                        aria-pressed={themeChoice === 'light'}
                         className="rounded-full text-[10px] uppercase tracking-widest"
                     >
                         Light
@@ -104,6 +106,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         checked={perfEnabled}
                         onCheckedChange={handlePerfToggle}
                         disabled={!isProd}
+                        aria-label="Toggle production monitoring"
                     />
                 </div>
                 {!isProd && (
@@ -123,6 +126,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     <Switch
                         checked={lowCostMode}
                         onCheckedChange={handleLowCostModeToggle}
+                        aria-label="Toggle low-cost mode"
                     />
                 </div>
             </section>

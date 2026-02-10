@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sun, Moon, Brain, Settings2, Info } from 'lucide-react'
@@ -25,6 +25,28 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
     const nextTheme = currentTheme === 'dark' ? 'light' : 'dark'
     const [showAutoLowCostInfo, setShowAutoLowCostInfo] = useState(false)
     const showCapacityInfo = autoLowCostActive && showAutoLowCostInfo
+    const capacityInfoRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!showCapacityInfo) return
+        const onPointerDown = (e: PointerEvent) => {
+            const node = capacityInfoRef.current
+            if (!node) return
+            if (node.contains(e.target as Node)) return
+            setShowAutoLowCostInfo(false)
+        }
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowAutoLowCostInfo(false)
+            }
+        }
+        document.addEventListener('pointerdown', onPointerDown)
+        document.addEventListener('keydown', onKeyDown)
+        return () => {
+            document.removeEventListener('pointerdown', onPointerDown)
+            document.removeEventListener('keydown', onKeyDown)
+        }
+    }, [showCapacityInfo])
 
     return (
         <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 lg:pb-1.5 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:pt-2.5 border-b border-border/70 dark:border-white/10 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/92 dark:bg-[rgba(14,22,37,0.9)] z-20 w-full shadow-[0_12px_30px_-24px_rgba(2,6,23,0.8)]">
@@ -71,19 +93,23 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
 
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 {autoLowCostActive && (
-                    <div className="relative">
+                    <div className="relative" ref={capacityInfoRef}>
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setShowAutoLowCostInfo((value) => !value)}
                             title="Capacity mode info"
                             aria-label="Capacity mode info"
+                            aria-haspopup="dialog"
+                            aria-expanded={showCapacityInfo}
+                            aria-controls="capacity-mode-info"
                             className="rounded-full text-amber-500/90 hover:text-amber-500 hover:bg-amber-500/10 size-8 sm:size-8"
                         >
                             <Info size={13} />
                         </Button>
                         {showCapacityInfo && (
                             <div
+                                id="capacity-mode-info"
                                 role="dialog"
                                 aria-label="Temporary capacity mode info"
                                 className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-400/35 bg-card/95 dark:bg-[rgba(14,22,37,0.95)] p-2 text-[10px] leading-relaxed text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
