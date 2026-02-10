@@ -17,6 +17,7 @@ interface MessageListProps {
     isFastMode?: boolean
     onReplyMessage?: (message: Message) => void
     onLikeMessage?: (message: Message) => void
+    onRetryMessage?: (message: Message) => void
     hasMoreHistory?: boolean
     loadingHistory?: boolean
     onLoadOlderHistory?: () => void
@@ -33,6 +34,7 @@ export function MessageList({
     isFastMode = false,
     onReplyMessage,
     onLikeMessage,
+    onRetryMessage,
     hasMoreHistory = false,
     loadingHistory = false,
     onLoadOlderHistory
@@ -270,6 +272,7 @@ export function MessageList({
                                     showPersonaRoles={showPersonaRoles}
                                     onReply={onReplyMessage}
                                     onLike={onLikeMessage}
+                                    onRetry={onRetryMessage}
                                 />
                             </div>
                         )

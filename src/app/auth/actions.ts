@@ -5,6 +5,32 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
+const MAX_MESSAGE_ID_CHARS = 128
+
+type ChatHistoryPageRow = {
+    id: string
+    speaker: string
+    content: string
+    created_at: string
+    reaction?: string | null
+    reply_to_client_message_id?: string | null
+    client_message_id?: string | null
+}
+
+function sanitizeMessageId(value: unknown) {
+    if (typeof value !== 'string') return ''
+    return value.trim().slice(0, MAX_MESSAGE_ID_CHARS)
+}
+
+function isMissingHistoryMetadataColumnsError(err: unknown) {
+    if (!err || typeof err !== 'object') return false
+    const maybeError = err as { code?: unknown; message?: unknown }
+    const code = typeof maybeError.code === 'string' ? maybeError.code : ''
+    const message = typeof maybeError.message === 'string' ? maybeError.message : ''
+    if (code === 'PGRST204' || code === '42703') return true
+    return /client_message_id|reply_to_client_message_id|reaction/i.test(message)
+}
+
 async function getOrigin() {
     const headerBag = await headers()
     return (headerBag.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://mygang.ai').replace(/\/$/, '')
@@ -293,28 +319,41 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     if (!user) return { items: [], hasMore: false, nextBefore: null as string | null }
 
     const limit = Math.min(Math.max(params?.limit ?? 40, 10), 120)
-    let query = supabase
-        .from('chat_history')
-        .select('id, speaker, content, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .order('id', { ascending: false })
-        .limit(limit + 1)
-
-    if (params?.before) {
-        const beforeCreatedAt = params.before.includes('|')
-            ? params.before.split('|')[0]
-            : params.before
-        query = query.lt('created_at', beforeCreatedAt)
+    const beforeCreatedAt = params?.before
+        ? (params.before.includes('|') ? params.before.split('|')[0] : params.before)
+        : null
+    const buildBaseQuery = (selectClause: string) => {
+        let query = supabase
+            .from('chat_history')
+            .select(selectClause)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(limit + 1)
+        if (beforeCreatedAt) {
+            query = query.lt('created_at', beforeCreatedAt)
+        }
+        return query
     }
 
-    const { data, error } = await query
-    if (error) {
-        console.error('Error fetching chat history page:', error)
+    const withMetadataResult = await buildBaseQuery('id, speaker, content, created_at, reaction, reply_to_client_message_id, client_message_id')
+        .returns<ChatHistoryPageRow[]>()
+
+    let rows: ChatHistoryPageRow[] = []
+    if (withMetadataResult.error && isMissingHistoryMetadataColumnsError(withMetadataResult.error)) {
+        const legacyResult = await buildBaseQuery('id, speaker, content, created_at')
+            .returns<ChatHistoryPageRow[]>()
+        if (legacyResult.error) {
+            console.error('Error fetching chat history page:', legacyResult.error)
+            return { items: [], hasMore: false, nextBefore: null as string | null }
+        }
+        rows = legacyResult.data ?? []
+    } else if (withMetadataResult.error) {
+        console.error('Error fetching chat history page:', withMetadataResult.error)
         return { items: [], hasMore: false, nextBefore: null as string | null }
+    } else {
+        rows = withMetadataResult.data ?? []
     }
-
-    const rows = data ?? []
     const hasMore = rows.length > limit
     const pageRows = (hasMore ? rows.slice(0, limit) : rows)
     const lastRow = pageRows[pageRows.length - 1]
@@ -323,10 +362,12 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     const items = pageRows
         .reverse()
         .map((row) => ({
-            id: `history-${row.id}`,
+            id: sanitizeMessageId(row.client_message_id) || `history-${row.id}`,
             speaker: row.speaker,
             content: row.content,
             created_at: row.created_at,
+            reaction: typeof row.reaction === 'string' && row.reaction.trim().length > 0 ? row.reaction : undefined,
+            replyToId: sanitizeMessageId(row.reply_to_client_message_id) || undefined,
         }))
 
     return {

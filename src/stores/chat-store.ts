@@ -12,6 +12,8 @@ export interface Message {
     is_guest?: boolean
     reaction?: string // For "Reaction-Only Turns"
     replyToId?: string // For "Quote-Reply UI"
+    deliveryStatus?: 'sending' | 'sent' | 'failed'
+    deliveryError?: string
 }
 
 export interface Character {

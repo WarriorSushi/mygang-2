@@ -23,8 +23,8 @@ import { InlineToast } from '@/components/chat/inline-toast'
 const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
 
 type ChatEvent =
-    | { type: 'message'; character: string; content?: string; delay: number; target_message_id?: string }
-    | { type: 'reaction'; character: string; content?: string; delay: number; target_message_id?: string }
+    | { type: 'message'; character: string; content?: string; delay: number; message_id?: string; target_message_id?: string }
+    | { type: 'reaction'; character: string; content?: string; delay: number; message_id?: string; target_message_id?: string }
     | { type: 'status_update'; character: string; content?: string; delay: number }
     | { type: 'nickname_update'; character: string; content?: string; delay: number }
     | { type: 'typing_ghost'; character: string; content?: string; delay: number }
@@ -48,6 +48,7 @@ const AUTO_LOW_COST_STRESS_WINDOW_MS = 2 * 60 * 1000
 const AUTO_LOW_COST_HARD_WINDOW_MS = 5 * 60 * 1000
 const AUTO_LOW_COST_RECOVERY_TURNS = 10
 const CAPACITY_BACKOFF_MIN_MS = 90_000
+const MAX_DELIVERY_ERROR_CHARS = 140
 
 function normalizeMessageContent(content: string) {
     return content.replace(/\s+/g, ' ').trim()
@@ -57,18 +58,34 @@ function messageSignature(message: Message) {
     return `${message.speaker}::${message.reaction || ''}::${normalizeMessageContent(message.content)}`
 }
 
+function messageStrictSignature(message: Message) {
+    return `${messageSignature(message)}::${message.replyToId || ''}`
+}
+
+function parseMessageCreatedAt(message: Message) {
+    const timestamp = new Date(message.created_at).getTime()
+    return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+function isHistoryFallbackId(messageId: string) {
+    return messageId.startsWith('history-')
+}
+
 function isSameMessageTail(localMessages: Message[], remoteMessages: Message[]) {
     if (remoteMessages.length === 0) return localMessages.length === 0
     if (localMessages.length < remoteMessages.length) return false
     const localTail = localMessages.slice(-remoteMessages.length)
     return remoteMessages.every((remoteMessage, index) => (
-        messageSignature(localTail[index]) === messageSignature(remoteMessage)
+        localTail[index].id === remoteMessage.id
+        || messageStrictSignature(localTail[index]) === messageStrictSignature(remoteMessage)
+        || messageSignature(localTail[index]) === messageSignature(remoteMessage)
     ))
 }
 
 function mergeRemoteMessagesWithLocalMetadata(remoteMessages: Message[], localMessages: Message[]) {
     if (localMessages.length === 0) return remoteMessages
 
+    const localById = new Map(localMessages.map((message) => [message.id, message]))
     const localBySignature = new Map<string, Message[]>()
     for (const localMessage of localMessages) {
         const signature = messageSignature(localMessage)
@@ -81,6 +98,17 @@ function mergeRemoteMessagesWithLocalMetadata(remoteMessages: Message[], localMe
     }
 
     return remoteMessages.map((remoteMessage) => {
+        const directMatch = localById.get(remoteMessage.id)
+        if (directMatch) {
+            return {
+                ...remoteMessage,
+                reaction: remoteMessage.reaction || directMatch.reaction,
+                replyToId: remoteMessage.replyToId || directMatch.replyToId,
+                deliveryStatus: directMatch.deliveryStatus,
+                deliveryError: directMatch.deliveryError,
+            }
+        }
+
         const signature = messageSignature(remoteMessage)
         const bucket = localBySignature.get(signature)
         if (!bucket || bucket.length === 0) return remoteMessage
@@ -90,11 +118,123 @@ function mergeRemoteMessagesWithLocalMetadata(remoteMessages: Message[], localMe
 
         return {
             ...remoteMessage,
-            id: localMatch.id || remoteMessage.id,
+            id: isHistoryFallbackId(remoteMessage.id) ? (localMatch.id || remoteMessage.id) : remoteMessage.id,
             reaction: localMatch.reaction || remoteMessage.reaction,
             replyToId: localMatch.replyToId || remoteMessage.replyToId,
+            deliveryStatus: localMatch.deliveryStatus,
+            deliveryError: localMatch.deliveryError,
         }
     })
+}
+
+function shouldPreserveLocalMessage(localMessage: Message, latestRemoteTimestamp: number) {
+    if (localMessage.speaker !== 'user' && localMessage.speaker !== 'system') return false
+    const localTimestamp = parseMessageCreatedAt(localMessage)
+    if (!localTimestamp) return true
+    if (Date.now() - localTimestamp > 15 * 60 * 1000) return false
+    if (!latestRemoteTimestamp) return true
+    return localTimestamp >= latestRemoteTimestamp - 5000
+}
+
+function collapseLikelyDuplicateMessages(messages: Message[]) {
+    if (messages.length <= 1) return messages
+
+    const uniqueById: Message[] = []
+    const seenIds = new Set<string>()
+    for (const message of messages) {
+        if (seenIds.has(message.id)) continue
+        seenIds.add(message.id)
+        uniqueById.push(message)
+    }
+
+    const collapsed: Message[] = []
+    for (const message of uniqueById) {
+        const previous = collapsed[collapsed.length - 1]
+        if (!previous) {
+            collapsed.push(message)
+            continue
+        }
+
+        const sameSpeaker = previous.speaker === message.speaker
+        const sameSignature = messageSignature(previous) === messageSignature(message)
+        const previousTimestamp = parseMessageCreatedAt(previous)
+        const messageTimestamp = parseMessageCreatedAt(message)
+        const closeInTime = !previousTimestamp || !messageTimestamp
+            ? true
+            : Math.abs(messageTimestamp - previousTimestamp) <= 15_000
+
+        if (!sameSpeaker || !sameSignature || !closeInTime || message.speaker === 'user') {
+            collapsed.push(message)
+            continue
+        }
+
+        const previousHasQuote = Boolean(previous.replyToId)
+        const messageHasQuote = Boolean(message.replyToId)
+        if (!previousHasQuote && messageHasQuote) {
+            collapsed[collapsed.length - 1] = message
+        }
+    }
+
+    return collapsed
+}
+
+function reconcileMessagesFromHistory(remoteMessages: Message[], localMessages: Message[]) {
+    const mergedRemote = mergeRemoteMessagesWithLocalMetadata(remoteMessages, localMessages)
+    if (localMessages.length === 0) {
+        return collapseLikelyDuplicateMessages(mergedRemote)
+    }
+
+    const remoteIds = new Set(mergedRemote.map((message) => message.id))
+    const remoteSignatureBuckets = new Map<string, number[]>()
+    for (const message of mergedRemote) {
+        const signature = messageSignature(message)
+        const timestamp = parseMessageCreatedAt(message)
+        const bucket = remoteSignatureBuckets.get(signature)
+        if (bucket) {
+            bucket.push(timestamp)
+        } else {
+            remoteSignatureBuckets.set(signature, [timestamp])
+        }
+    }
+
+    const latestRemoteTimestamp = mergedRemote.length > 0
+        ? parseMessageCreatedAt(mergedRemote[mergedRemote.length - 1])
+        : 0
+    const preservedLocalTail: Message[] = []
+
+    for (const localMessage of localMessages) {
+        if (remoteIds.has(localMessage.id)) continue
+
+        const signature = messageSignature(localMessage)
+        const remoteTimestampBucket = remoteSignatureBuckets.get(signature)
+        if (remoteTimestampBucket && remoteTimestampBucket.length > 0) {
+            const localTimestamp = parseMessageCreatedAt(localMessage)
+            const matchingIndex = remoteTimestampBucket.findIndex((remoteTimestamp) => {
+                if (!remoteTimestamp || !localTimestamp) return true
+                return Math.abs(remoteTimestamp - localTimestamp) <= 15_000
+            })
+            if (matchingIndex >= 0) {
+                remoteTimestampBucket.splice(matchingIndex, 1)
+                if (remoteTimestampBucket.length === 0) {
+                    remoteSignatureBuckets.delete(signature)
+                }
+                continue
+            }
+        }
+
+        if (shouldPreserveLocalMessage(localMessage, latestRemoteTimestamp)) {
+            preservedLocalTail.push(localMessage)
+        }
+    }
+
+    const merged = [...mergedRemote, ...preservedLocalTail]
+    return collapseLikelyDuplicateMessages(merged)
+}
+
+function withDeliveryError(errorMessage: string) {
+    const trimmed = errorMessage.trim()
+    if (!trimmed) return 'Failed to send'
+    return trimmed.slice(0, MAX_DELIVERY_ERROR_CHARS)
 }
 
 export default function ChatPage() {
@@ -171,6 +311,39 @@ export default function ChatPage() {
     const sendToApiRef = useRef<SendToApiHandler>(async () => { })
     const triggerLocalGreetingRef = useRef<() => void>(() => { })
     const handleSendRef = useRef<HandleSendHandler>(async () => { })
+    const updateUserDeliveryStatus = useCallback((
+        messageIds: string[],
+        status: 'sending' | 'sent' | 'failed',
+        errorMessage?: string
+    ) => {
+        if (messageIds.length === 0) return
+        const targetIds = new Set(messageIds)
+        const currentMessages = useChatStore.getState().messages
+        const updated: Message[] = currentMessages.map((message): Message => {
+            if (message.speaker !== 'user') return message
+            if (!targetIds.has(message.id)) return message
+            if (status === 'failed') {
+                return {
+                    ...message,
+                    deliveryStatus: 'failed',
+                    deliveryError: withDeliveryError(errorMessage || 'Failed to send')
+                }
+            }
+            if (status === 'sending') {
+                return {
+                    ...message,
+                    deliveryStatus: 'sending',
+                    deliveryError: undefined
+                }
+            }
+            return {
+                ...message,
+                deliveryStatus: 'sent',
+                deliveryError: undefined
+            }
+        })
+        setMessages(updated)
+    }, [setMessages])
 
     useEffect(() => {
         autoLowCostModeRef.current = autoLowCostMode
@@ -268,7 +441,7 @@ export default function ChatPage() {
                 const page = await getChatHistoryPage({ limit: 40 })
                 if (cancelled) return
                 if (page.items.length > 0) {
-                    setMessages(page.items)
+                    setMessages(collapseLikelyDuplicateMessages(page.items))
                     setHistoryStatus('has_history')
                 } else {
                     setHistoryStatus('empty')
@@ -312,20 +485,21 @@ export default function ChatPage() {
             const localMessages = useChatStore.getState().messages
             if (page.items.length === 0) {
                 setHistoryStatus('empty')
-                if (localMessages.length > 0 && !isGeneratingRef.current && !pendingUserMessagesRef.current && !debounceTimerRef.current) {
-                    setMessages([])
-                }
                 return
             }
 
             setHistoryStatus('has_history')
             if (localMessages.length === 0) {
-                setMessages(page.items)
+                setMessages(collapseLikelyDuplicateMessages(page.items))
                 return
             }
 
-            if (!isSameMessageTail(localMessages, page.items)) {
-                setMessages(mergeRemoteMessagesWithLocalMetadata(page.items, localMessages))
+            const reconciledMessages = reconcileMessagesFromHistory(page.items, localMessages)
+            if (
+                localMessages.length !== reconciledMessages.length
+                || !isSameMessageTail(localMessages, reconciledMessages)
+            ) {
+                setMessages(reconciledMessages)
             }
         } catch (err) {
             console.error('Failed to sync cloud chat history:', err)
@@ -702,7 +876,9 @@ export default function ChatPage() {
             content: trimmed,
             created_at: new Date().toISOString(),
             replyToId: options?.replyToId,
-            reaction: options?.reaction
+            reaction: options?.reaction,
+            deliveryStatus: 'sending',
+            deliveryError: undefined
         }
         addMessage(userMsg)
         lastUserMessageIdRef.current = userMsg.id
@@ -770,6 +946,7 @@ export default function ChatPage() {
         }
 
         let apiCallSucceeded = false
+        let pendingDeliveryIdsForCall: string[] = []
         try {
             const currentMessages = useChatStore.getState().messages
             const sourceUserMessage = sourceUserMessageId
@@ -778,7 +955,14 @@ export default function ChatPage() {
             const openFloorIntent = !!sourceUserMessage?.content && hasOpenFloorIntent(sourceUserMessage.content)
 
             const payloadLimit = effectiveLowCostModeForCall ? 10 : 16
-            const payloadMessages = currentMessages.slice(-payloadLimit).map((m) => ({
+            const sendableMessages = currentMessages.filter((m) => (
+                !(m.speaker === 'user' && m.deliveryStatus === 'failed')
+            ))
+            const payloadSourceMessages = sendableMessages.slice(-payloadLimit)
+            pendingDeliveryIdsForCall = payloadSourceMessages
+                .filter((m) => m.speaker === 'user' && m.deliveryStatus === 'sending')
+                .map((m) => m.id)
+            const payloadMessages = payloadSourceMessages.map((m) => ({
                 id: m.id,
                 speaker: m.speaker,
                 content: m.content,
@@ -879,6 +1063,7 @@ export default function ChatPage() {
                 }
                 const fallbackErrorMessage = responseHint || 'Quick hiccup on our side. Please try again.'
                 setToastMessage(fallbackErrorMessage)
+                updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', fallbackErrorMessage)
                 if (!data?.events) {
                     addMessage({
                         id: `ai-error-${Date.now()}`,
@@ -890,7 +1075,7 @@ export default function ChatPage() {
                     data.events.forEach((event) => {
                         if (event.type === 'message') {
                             addMessage({
-                                id: `ai-error-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                                id: event.message_id || `ai-error-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                                 speaker: event.character,
                                 content: event.content || fallbackErrorMessage,
                                 created_at: new Date().toISOString(),
@@ -906,6 +1091,7 @@ export default function ChatPage() {
                 throw new Error('Invalid response shape')
             }
             apiCallSucceeded = true
+            updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'sent')
             if (!isAutonomous && !isIntro) {
                 recordSuccessfulUserTurn()
             }
@@ -938,7 +1124,7 @@ export default function ChatPage() {
                         if (pendingUserMessagesRef.current) break
 
                         addMessage({
-                            id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            id: event.message_id || `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                             speaker: event.character,
                             content: eventContent,
                             created_at: new Date().toISOString(),
@@ -951,7 +1137,7 @@ export default function ChatPage() {
 
                     case 'reaction':
                         addMessage({
-                            id: `ai-react-${Date.now()}`,
+                            id: event.message_id || `ai-react-${Date.now()}`,
                             speaker: event.character,
                             content: event.content || '\u{1F44D}',
                             created_at: new Date().toISOString(),
@@ -1002,6 +1188,7 @@ export default function ChatPage() {
 
         } catch (err) {
             console.error('Chat API Error:', err)
+            updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', 'Network hiccup. Try again in a moment.')
             setToastMessage('Network hiccup. Try again in a moment.')
         } finally {
             if (pendingUserMessagesRef.current) {
@@ -1107,6 +1294,28 @@ export default function ChatPage() {
         if (sent) setReplyingTo(null)
     }
 
+    const handleRetryMessage = (target: Message) => {
+        if (target.speaker !== 'user') return
+        if (target.deliveryStatus !== 'failed') return
+        if (!isOnline) {
+            setToastMessage('You are offline. Reconnect and try again.')
+            return
+        }
+
+        updateUserDeliveryStatus([target.id], 'sending')
+        pendingUserMessageIdRef.current = target.id
+        lastUserMessageIdRef.current = target.id
+        clearIdleAutonomousTimer()
+        triggerReadingStatuses()
+        trackEvent('message_retry', { metadata: { messageId: target.id } })
+
+        if (isGeneratingRef.current) {
+            pendingUserMessagesRef.current = true
+            return
+        }
+        scheduleDebouncedSend()
+    }
+
     const loadOlderHistory = async () => {
         if (!userId || !historyCursor || isLoadingOlderHistory || !hasMoreHistory || isBootstrappingHistory) return
         setIsLoadingOlderHistory(true)
@@ -1118,7 +1327,7 @@ export default function ChatPage() {
             let appendedCount = 0
             if (older.length > 0) {
                 appendedCount = older.length
-                setMessages([...older, ...currentMessages])
+                setMessages(collapseLikelyDuplicateMessages([...older, ...currentMessages]))
             }
             setHistoryCursor(page.nextBefore)
             setHasMoreHistory(page.hasMore && appendedCount > 0)
@@ -1169,6 +1378,7 @@ export default function ChatPage() {
                                 onLoadOlderHistory={loadOlderHistory}
                                 onReplyMessage={(message) => setReplyingTo(message)}
                                 onLikeMessage={handleQuickLike}
+                                onRetryMessage={handleRetryMessage}
                             />
                         </ErrorBoundary>
                     </div>

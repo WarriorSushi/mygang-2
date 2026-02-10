@@ -28,6 +28,7 @@ const MAX_MEMORY_CONTENT_CHARS = 220
 const MAX_SESSION_SUMMARY_CHARS = 500
 const MAX_PROFILE_LINES = 12
 const MAX_PROFILE_VALUE_CHARS = 120
+const MAX_MESSAGE_ID_CHARS = 128
 const PROVIDER_DEFAULT_COOLDOWN_MS = 90_000
 const PROVIDER_RETRY_FLOOR_MS = 15_000
 const PROVIDER_RETRY_CEILING_MS = 10 * 60 * 1000
@@ -103,8 +104,71 @@ type ChatRouteMetric = {
     elapsedMs: number
 }
 
+type ChatMessageInput = {
+    id: string
+    speaker: string
+    content: string
+    created_at: string
+    reaction?: string
+    replyToId?: string
+}
+
+type ChatHistoryInsertRow = {
+    user_id: string
+    gang_id: string
+    speaker: string
+    content: string
+    is_guest: boolean
+    created_at: string
+    client_message_id?: string | null
+    reply_to_client_message_id?: string | null
+    reaction?: string | null
+}
+
+type ChatHistoryUserRecentRow = {
+    content: string | null
+    created_at: string | null
+    client_message_id?: string | null
+}
+
+type ChatHistoryExistingIdRow = {
+    client_message_id: string | null
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function sanitizeMessageId(value: unknown) {
+    if (typeof value !== 'string') return ''
+    return value.trim().slice(0, MAX_MESSAGE_ID_CHARS)
+}
+
+function createServerTurnId() {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function createServerEventMessageId(turnId: string, index: number) {
+    return `srv-${turnId}-${index.toString(36)}`
+}
+
+function isMissingHistoryMetadataColumnsError(err: unknown) {
+    if (!isObject(err)) return false
+    const code = typeof err.code === 'string' ? err.code : ''
+    const message = typeof err.message === 'string' ? err.message : ''
+    if (code === 'PGRST204' || code === '42703') return true
+    return /client_message_id|reply_to_client_message_id|reaction/i.test(message)
+}
+
+function toLegacyHistoryRows(rows: ChatHistoryInsertRow[]) {
+    return rows.map((row) => ({
+        user_id: row.user_id,
+        gang_id: row.gang_id,
+        speaker: row.speaker,
+        content: row.content,
+        is_guest: row.is_guest,
+        created_at: row.created_at
+    }))
 }
 
 async function getDbPromptBlocks(supabase: SupabaseClient) {
@@ -294,6 +358,7 @@ const responseSchema = z.object({
             z.object({
                 type: z.literal('message'),
                 character: z.string().describe('Character ID'),
+                message_id: z.string().max(MAX_MESSAGE_ID_CHARS).optional().describe('Stable message ID'),
                 content: z.string().min(1).describe('Message text'),
                 target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
                 delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
@@ -301,6 +366,7 @@ const responseSchema = z.object({
             z.object({
                 type: z.literal('reaction'),
                 character: z.string().describe('Character ID'),
+                message_id: z.string().max(MAX_MESSAGE_ID_CHARS).optional().describe('Stable message ID'),
                 content: z.string().optional().describe('Emoji for reaction'),
                 target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
                 delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
@@ -474,6 +540,27 @@ function getProviderCooldownMs(err: unknown, provider: 'gemini' | 'openrouter') 
     return PROVIDER_DEFAULT_COOLDOWN_MS
 }
 
+function ensureEventMessageIds(
+    events: RouteResponseObject['events'],
+    turnId: string
+): RouteResponseObject['events'] {
+    let autoIdIndex = 0
+    return events.map((event) => {
+        if (event.type !== 'message' && event.type !== 'reaction') {
+            return event
+        }
+
+        const explicitMessageId = sanitizeMessageId(event.message_id)
+        const message_id = explicitMessageId || createServerEventMessageId(turnId, autoIdIndex++)
+        const target_message_id = sanitizeMessageId(event.target_message_id) || undefined
+        return {
+            ...event,
+            message_id,
+            target_message_id,
+        }
+    })
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json()
@@ -502,6 +589,7 @@ export async function POST(req: Request) {
             autonomousIdle = false
         } = parsed.data
         const requestStartedAt = Date.now()
+        const serverTurnId = createServerTurnId()
 
         const requestedIds = activeGangIds ?? activeGang?.map((c) => c.id) ?? []
         const knownIds = new Set(CHARACTERS.map((c) => c.id))
@@ -519,12 +607,17 @@ export async function POST(req: Request) {
 
         const activeGangSafe = CHARACTERS.filter((c) => filteredIds.includes(c.id))
         const allowedSpeakers = new Set<string>(['user', ...filteredIds])
-        const safeMessages = messages
+        const safeMessages: ChatMessageInput[] = messages
             .filter((m) => allowedSpeakers.has(m.speaker))
             .map((m) => ({
-                ...m,
-                content: m.content.trim().slice(0, 2000)
+                id: sanitizeMessageId(m.id) || `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+                speaker: m.speaker,
+                content: m.content.trim().slice(0, 2000),
+                created_at: m.created_at,
+                reaction: typeof m.reaction === 'string' ? m.reaction.trim().slice(0, MAX_EVENT_CONTENT) : undefined,
+                replyToId: sanitizeMessageId(m.replyToId) || undefined
             }))
+            .filter((m) => m.content.length > 0)
 
         const mockHeader = req.headers.get('x-mock-ai')
         if (mockHeader === '1' || mockHeader === 'true') {
@@ -533,12 +626,14 @@ export async function POST(req: Request) {
                     {
                         type: 'message',
                         character: filteredIds[0],
+                        message_id: createServerEventMessageId(serverTurnId, 0),
                         content: 'Mock response: gang online and ready.',
                         delay: 200
                     },
                     {
                         type: 'reaction',
                         character: filteredIds[1],
+                        message_id: createServerEventMessageId(serverTurnId, 1),
                         content: '\u{1F44D}',
                         delay: 200
                     }
@@ -1016,6 +1111,7 @@ FLOW FLAGS:
             const splitChance = isEntourageMode ? 0.34 : 0.42
             object.events = maybeSplitAiMessages(object.events, splitChance)
         }
+        object.events = ensureEventMessageIds(object.events, serverTurnId)
 
         await logChatRouteMetric(supabase, user?.id ?? null, {
             source,
@@ -1120,30 +1216,55 @@ FLOW FLAGS:
                     .single()
 
                 if (!gangError && gang?.id) {
-                    const rows: Array<{
-                        user_id: string
-                        gang_id: string
-                        speaker: string
-                        content: string
-                        is_guest: boolean
-                        created_at: string
-                    }> = []
+                    const rows: ChatHistoryInsertRow[] = []
 
                     const recentUserCandidates = safeMessages
                         .filter((message) => message.speaker === 'user' && message.content?.trim())
                         .slice(-4)
-                    const { data: recentRows } = await supabase
+
+                    let recentUserRows: ChatHistoryUserRecentRow[] = []
+                    const recentQueryWithMetadata = await supabase
                         .from('chat_history')
-                        .select('content, created_at')
+                        .select('content, created_at, client_message_id')
                         .eq('user_id', user.id)
                         .eq('gang_id', gang.id)
                         .eq('speaker', 'user')
                         .order('created_at', { ascending: false })
                         .limit(8)
-                    const recentUserRows = recentRows ?? []
+                        .returns<ChatHistoryUserRecentRow[]>()
+                    if (recentQueryWithMetadata.error && isMissingHistoryMetadataColumnsError(recentQueryWithMetadata.error)) {
+                        const recentLegacyQuery = await supabase
+                            .from('chat_history')
+                            .select('content, created_at')
+                            .eq('user_id', user.id)
+                            .eq('gang_id', gang.id)
+                            .eq('speaker', 'user')
+                            .order('created_at', { ascending: false })
+                            .limit(8)
+                        if (recentLegacyQuery.error) {
+                            console.error('Error reading recent user history:', recentLegacyQuery.error)
+                        } else {
+                            recentUserRows = (recentLegacyQuery.data ?? []) as ChatHistoryUserRecentRow[]
+                        }
+                    } else if (recentQueryWithMetadata.error) {
+                        console.error('Error reading recent user history:', recentQueryWithMetadata.error)
+                    } else {
+                        recentUserRows = recentQueryWithMetadata.data ?? []
+                    }
+
+                    const recentClientMessageIds = new Set(
+                        recentUserRows
+                            .map((row) => sanitizeMessageId(row.client_message_id))
+                            .filter(Boolean)
+                    )
 
                     for (const candidate of recentUserCandidates) {
                         const userContent = candidate.content.trim()
+                        const candidateClientMessageId = sanitizeMessageId(candidate.id) || null
+                        if (candidateClientMessageId && recentClientMessageIds.has(candidateClientMessageId)) {
+                            continue
+                        }
+
                         let shouldInsertUserMessage = true
                         const candidateMs = candidate.created_at ? new Date(candidate.created_at).getTime() : Date.now()
                         for (const recent of recentUserRows) {
@@ -1160,7 +1281,10 @@ FLOW FLAGS:
                                 speaker: 'user',
                                 content: userContent,
                                 is_guest: false,
-                                created_at: candidate.created_at || new Date().toISOString()
+                                created_at: candidate.created_at || new Date().toISOString(),
+                                client_message_id: candidateClientMessageId,
+                                reply_to_client_message_id: sanitizeMessageId(candidate.replyToId) || null,
+                                reaction: candidate.reaction || null,
                             })
                         }
                     }
@@ -1170,13 +1294,17 @@ FLOW FLAGS:
                         object.events.forEach((event) => {
                             if (event.type === 'message' || event.type === 'reaction') {
                                 eventTimeMs += Math.max(1, Math.min(50, Math.round((event.delay || 0) / 35)))
+                                const eventContent = event.content || '\u{1F44D}'
                                 rows.push({
                                     user_id: user.id,
                                     gang_id: gang.id,
                                     speaker: event.character,
-                                    content: event.content || '\u{1F44D}',
+                                    content: eventContent,
                                     is_guest: false,
-                                    created_at: new Date(eventTimeMs).toISOString()
+                                    created_at: new Date(eventTimeMs).toISOString(),
+                                    client_message_id: sanitizeMessageId(event.message_id) || null,
+                                    reply_to_client_message_id: sanitizeMessageId(event.target_message_id) || null,
+                                    reaction: event.type === 'reaction' ? eventContent : null,
                                 })
                             }
                         })
@@ -1184,11 +1312,68 @@ FLOW FLAGS:
 
                     rows.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
-                    if (rows.length > 0) {
-                        const { error: historyError } = await supabase
+                    const dedupedRows: ChatHistoryInsertRow[] = []
+                    const seenClientMessageIds = new Set<string>()
+                    for (const row of rows) {
+                        const rowClientMessageId = sanitizeMessageId(row.client_message_id)
+                        if (rowClientMessageId) {
+                            if (seenClientMessageIds.has(rowClientMessageId)) continue
+                            seenClientMessageIds.add(rowClientMessageId)
+                            row.client_message_id = rowClientMessageId
+                        } else {
+                            row.client_message_id = null
+                        }
+                        row.reply_to_client_message_id = sanitizeMessageId(row.reply_to_client_message_id) || null
+                        row.reaction = typeof row.reaction === 'string' && row.reaction.trim().length > 0
+                            ? row.reaction.trim().slice(0, MAX_EVENT_CONTENT)
+                            : null
+                        dedupedRows.push(row)
+                    }
+
+                    const candidateClientMessageIds = dedupedRows
+                        .map((row) => sanitizeMessageId(row.client_message_id))
+                        .filter(Boolean)
+
+                    let alreadyPersistedIds = new Set<string>()
+                    if (candidateClientMessageIds.length > 0) {
+                        const existingIdsQuery = await supabase
                             .from('chat_history')
-                            .insert(rows)
-                        if (historyError) console.error('Error writing chat history:', historyError)
+                            .select('client_message_id')
+                            .eq('user_id', user.id)
+                            .eq('gang_id', gang.id)
+                            .in('client_message_id', candidateClientMessageIds)
+                            .returns<ChatHistoryExistingIdRow[]>()
+                        if (existingIdsQuery.error && !isMissingHistoryMetadataColumnsError(existingIdsQuery.error)) {
+                            console.error('Error checking persisted history IDs:', existingIdsQuery.error)
+                        } else if (!existingIdsQuery.error) {
+                            alreadyPersistedIds = new Set(
+                                (existingIdsQuery.data ?? [])
+                                    .map((row) => sanitizeMessageId(row.client_message_id))
+                                    .filter(Boolean)
+                            )
+                        }
+                    }
+
+                    const rowsToInsert = dedupedRows.filter((row) => {
+                        const rowClientMessageId = sanitizeMessageId(row.client_message_id)
+                        if (!rowClientMessageId) return true
+                        return !alreadyPersistedIds.has(rowClientMessageId)
+                    })
+
+                    if (rowsToInsert.length > 0) {
+                        const insertWithMetadata = await supabase
+                            .from('chat_history')
+                            .insert(rowsToInsert)
+                        if (insertWithMetadata.error && isMissingHistoryMetadataColumnsError(insertWithMetadata.error)) {
+                            const insertLegacy = await supabase
+                                .from('chat_history')
+                                .insert(toLegacyHistoryRows(rowsToInsert))
+                            if (insertLegacy.error) {
+                                console.error('Error writing legacy chat history:', insertLegacy.error)
+                            }
+                        } else if (insertWithMetadata.error) {
+                            console.error('Error writing chat history:', insertWithMetadata.error)
+                        }
                     }
                 } else if (gangError) {
                     console.error('Error ensuring gang exists:', gangError)

@@ -121,6 +121,7 @@ interface MessageItemProps {
     showPersonaRoles?: boolean
     onReply?: (message: Message) => void
     onLike?: (message: Message) => void
+    onRetry?: (message: Message) => void
 }
 
 function MessageItemComponent({
@@ -136,7 +137,8 @@ function MessageItemComponent({
     isGuest = true,
     showPersonaRoles = true,
     onReply,
-    onLike
+    onLike,
+    onRetry
 }: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
@@ -437,6 +439,33 @@ function MessageItemComponent({
                     isUser ? "self-end" : "self-start"
                 )}>
                     {timeLabel}
+                </div>
+            )}
+            {isUser && !isReaction && message.deliveryStatus && (
+                <div className={cn(
+                    "mt-1 text-[9px] uppercase tracking-widest",
+                    message.deliveryStatus === 'failed'
+                        ? "text-destructive"
+                        : message.deliveryStatus === 'sending'
+                            ? "text-foreground/60 dark:text-white/70"
+                            : "text-emerald-500/85"
+                )}>
+                    {message.deliveryStatus === 'sending' && 'Sending...'}
+                    {message.deliveryStatus === 'sent' && 'Sent'}
+                    {message.deliveryStatus === 'failed' && (message.deliveryError || 'Failed to send')}
+                </div>
+            )}
+            {isUser && !isReaction && message.deliveryStatus === 'failed' && onRetry && (
+                <div className="mt-1">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => onRetry(message)}
+                        className="rounded-full text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive hover:bg-destructive hover:text-white"
+                    >
+                        Retry
+                    </Button>
                 </div>
             )}
             {isUser && seenBy.length > 0 && (
