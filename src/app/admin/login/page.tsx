@@ -27,6 +27,12 @@ function getMessageText(errorCode: string | null, messageCode: string | null, re
             text: 'Please log in to access admin routes.',
         }
     }
+    if (errorCode === 'origin') {
+        return {
+            tone: 'error',
+            text: 'Request origin check failed. Retry from the admin page directly.',
+        }
+    }
     if (errorCode === 'locked') {
         const seconds = retrySeconds ?? 900
         const minutes = Math.floor(seconds / 60)

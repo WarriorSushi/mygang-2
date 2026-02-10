@@ -1,10 +1,10 @@
 'use server'
 
-import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getAdminConfigMode, getConfiguredAdminEmail, verifyAdminCredentials } from '@/lib/admin/auth'
 import { clearAdminSession, requireAdminSession, setAdminSession } from '@/lib/admin/session'
+import { assertTrustedAdminRequest, getAdminRequestMeta } from '@/lib/admin/request-guard'
 import {
     applyFailedLoginDelay,
     clearAdminLoginAttempts,
@@ -12,12 +12,6 @@ import {
     recordFailedAdminLoginAttempt,
 } from '@/lib/admin/login-security'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-function getRequestIp(headerBag: Headers) {
-    return headerBag.get('x-forwarded-for')?.split(',')[0]?.trim()
-        || headerBag.get('x-real-ip')
-        || 'unknown'
-}
 
 function buildLoginAttemptKey(email: string, ip: string) {
     return `admin-login:${email.trim().toLowerCase()}:${ip}`
@@ -28,6 +22,11 @@ function buildIpAttemptKey(ip: string) {
 }
 
 export async function adminSignIn(formData: FormData) {
+    const trustedRequest = await assertTrustedAdminRequest()
+    if (!trustedRequest) {
+        redirect('/admin/login?error=origin')
+    }
+
     const configMode = getAdminConfigMode()
     if (configMode === 'missing') {
         redirect('/admin/login?error=config')
@@ -35,8 +34,8 @@ export async function adminSignIn(formData: FormData) {
 
     const email = String(formData.get('email') || '').trim()
     const password = String(formData.get('password') || '')
-    const headerBag = await headers()
-    const ip = getRequestIp(headerBag)
+    const requestMeta = await getAdminRequestMeta()
+    const ip = requestMeta.ip
     const attemptKey = buildLoginAttemptKey(email, ip)
     const ipAttemptKey = buildIpAttemptKey(ip)
     const userLockoutSeconds = getLockoutRemainingSeconds(attemptKey)
@@ -77,12 +76,22 @@ export async function adminSignIn(formData: FormData) {
 }
 
 export async function adminSignOut() {
+    const trustedRequest = await assertTrustedAdminRequest()
+    if (!trustedRequest) {
+        redirect('/admin/login?error=origin')
+    }
     await clearAdminSession()
     redirect('/admin/login?message=signed_out')
 }
 
 export async function setGlobalLowCostOverride(formData: FormData) {
+    const trustedRequest = await assertTrustedAdminRequest()
+    if (!trustedRequest) {
+        redirect('/admin/overview?error=invalid_request')
+    }
+
     const session = await requireAdminSession()
+    const requestMeta = await getAdminRequestMeta()
     const enabled = String(formData.get('enabled') || 'false') === 'true'
     const admin = createAdminClient()
 
@@ -115,6 +124,11 @@ export async function setGlobalLowCostOverride(formData: FormData) {
             details: {
                 previous: previousValue,
                 next: enabled,
+                source: 'admin_overview',
+                ip: requestMeta.ip,
+                origin: requestMeta.origin,
+                referer: requestMeta.referer,
+                user_agent: requestMeta.userAgent?.slice(0, 220) || null,
             },
         })
     if (auditError) {

@@ -36,6 +36,12 @@ function getNotice(errorCode: string | null, messageCode: string | null) {
             text: 'Could not update admin runtime settings. Check logs and retry.',
         }
     }
+    if (errorCode === 'invalid_request') {
+        return {
+            tone: 'error',
+            text: 'Request origin check failed. Retry from the admin dashboard.',
+        }
+    }
     if (messageCode === 'override_saved') {
         return {
             tone: 'info',

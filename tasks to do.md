@@ -9,6 +9,37 @@
 
 ## Current Prompt (2026-02-10)
 
+### 15) Full Follow-up Pass (Hooks + Admin Safeguards + Tests)
+- Status: Done
+- Request:
+  - Continue comprehensive codebase improvements end-to-end.
+  - Finish remaining reliability/security/testing improvements:
+    - clear chat-page hook warning hotspots safely
+    - add server-side admin action request safeguards
+    - add automated admin flow tests
+  - Validate and push.
+- Done:
+  - Chat runtime reliability cleanup:
+    - removed remaining chat hook-dependency warnings by introducing stable function refs for effect callers.
+    - files: `src/app/chat/page.tsx`.
+  - Admin request security safeguards:
+    - added trusted origin/referer checks for admin server actions.
+    - added shared admin request metadata helper.
+    - expanded audit log details with source/ip/origin/referer/user-agent.
+    - files: `src/lib/admin/request-guard.ts`, `src/app/admin/actions.ts`, `src/app/admin/login/page.tsx`, `src/app/admin/(protected)/overview/page.tsx`.
+  - Auth flow hardening:
+    - restricted OAuth callback `next` redirect to internal relative paths only.
+    - file: `src/app/auth/callback/route.ts`.
+  - Added automated admin flow tests:
+    - Playwright config and admin flow suite (protected redirect, valid login, lockout behavior).
+    - files: `playwright.config.ts`, `tests/admin-flow.spec.ts`, `package.json` script `test:admin`.
+  - DX/test polish:
+    - added `allowedDevOrigins` to `next.config.ts` for local cross-origin dev tooling.
+  - Validation:
+    - `npm run lint` passed (single existing non-blocking warning in virtualizer library).
+    - `npm run build` passed.
+    - `npm run test:admin` passed (3/3).
+
 ### 14) Broad Audit Follow-up Fixes (Security + Flow + UX)
 - Status: Done
 - Request:

@@ -34,6 +34,16 @@ type ChatApiResponse = {
     should_continue?: boolean
 }
 
+type SendToApiArgs = {
+    isIntro: boolean
+    isAutonomous: boolean
+    autonomousIdle?: boolean
+    sourceUserMessageId?: string | null
+}
+
+type SendToApiHandler = (args: SendToApiArgs) => Promise<void>
+type HandleSendHandler = (content: string, options?: { replyToId?: string; reaction?: string }) => Promise<void>
+
 const AUTO_LOW_COST_STRESS_WINDOW_MS = 2 * 60 * 1000
 const AUTO_LOW_COST_HARD_WINDOW_MS = 5 * 60 * 1000
 const AUTO_LOW_COST_RECOVERY_TURNS = 10
@@ -126,6 +136,9 @@ export default function ChatPage() {
     const capacityErrorTimestampsRef = useRef<number[]>([])
     const successfulUserTurnsSinceCapacityRef = useRef(0)
     const localMessageCounterRef = useRef(0)
+    const sendToApiRef = useRef<SendToApiHandler>(async () => { })
+    const triggerLocalGreetingRef = useRef<() => void>(() => { })
+    const handleSendRef = useRef<HandleSendHandler>(async () => { })
 
     useEffect(() => {
         autoLowCostModeRef.current = autoLowCostMode
@@ -431,6 +444,7 @@ export default function ChatPage() {
             delay += 900 + Math.random() * 700
         })
     }
+    triggerLocalGreetingRef.current = triggerLocalGreeting
 
     const triggerActivityPulse = () => {
         const available = activeGang.filter(c => c.id !== 'user')
@@ -561,7 +575,7 @@ export default function ChatPage() {
         resumeAutonomousTriggeredRef.current = true
         const timer = setTimeout(() => {
             if (isGeneratingRef.current || pendingUserMessagesRef.current) return
-            sendToApi({
+            sendToApiRef.current({
                 isIntro: false,
                 isAutonomous: true,
                 sourceUserMessageId: lastUserMessage?.id ?? null,
@@ -574,7 +588,7 @@ export default function ChatPage() {
     useEffect(() => {
         const allowGreeting = !userId || historyStatus === 'empty'
         if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && allowGreeting) {
-            triggerLocalGreeting()
+            triggerLocalGreetingRef.current()
         }
     }, [activeGang.length, historyStatus, messages.length, userId])
 
@@ -623,7 +637,7 @@ export default function ChatPage() {
             const pending = pendingBlockedMessageRef.current
             pendingBlockedMessageRef.current = null
             if (pending) {
-                handleSend(pending.content, { replyToId: pending.replyToId, reaction: pending.reaction })
+                void handleSendRef.current(pending.content, { replyToId: pending.replyToId, reaction: pending.reaction })
             }
         }
     }, [isGuest, showAuthWall])
@@ -686,7 +700,7 @@ export default function ChatPage() {
         return true
     }
 
-    const sendToApi = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId }: { isIntro: boolean; isAutonomous: boolean; autonomousIdle?: boolean; sourceUserMessageId?: string | null }) => {
+    const sendToApi: SendToApiHandler = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId }) => {
         const effectiveLowCostModeForCall = lowCostMode || autoLowCostModeRef.current
 
         // If autonomous call, check the brakes
@@ -969,6 +983,7 @@ export default function ChatPage() {
             }
         }
     }
+    sendToApiRef.current = sendToApi
 
     const scheduleDebouncedSend = () => {
         if (debounceTimerRef.current) {
@@ -986,7 +1001,7 @@ export default function ChatPage() {
         }, 600)
     }
 
-    const handleSend = async (content: string, options?: { replyToId?: string; reaction?: string }) => {
+    const handleSend: HandleSendHandler = async (content: string, options?: { replyToId?: string; reaction?: string }) => {
         if (!isOnline) {
             setToastMessage('You are offline. Reconnect and try again.')
             return
@@ -1005,6 +1020,7 @@ export default function ChatPage() {
 
         await sendToApi({ isIntro, isAutonomous })
     }
+    handleSendRef.current = handleSend
 
     const takeScreenshot = async () => {
         if (captureRootRef.current === null) return
