@@ -49,11 +49,12 @@ const AUTO_LOW_COST_HARD_WINDOW_MS = 5 * 60 * 1000
 const AUTO_LOW_COST_RECOVERY_TURNS = 10
 const CAPACITY_BACKOFF_MIN_MS = 90_000
 
-function messageFingerprint(message: Message) {
-    const createdAt = Number.isFinite(Date.parse(message.created_at))
-        ? new Date(message.created_at).toISOString()
-        : message.created_at
-    return `${message.speaker}::${message.content}::${createdAt}`
+function normalizeMessageContent(content: string) {
+    return content.replace(/\s+/g, ' ').trim()
+}
+
+function messageSignature(message: Message) {
+    return `${message.speaker}::${message.reaction || ''}::${normalizeMessageContent(message.content)}`
 }
 
 function isSameMessageTail(localMessages: Message[], remoteMessages: Message[]) {
@@ -61,8 +62,39 @@ function isSameMessageTail(localMessages: Message[], remoteMessages: Message[]) 
     if (localMessages.length < remoteMessages.length) return false
     const localTail = localMessages.slice(-remoteMessages.length)
     return remoteMessages.every((remoteMessage, index) => (
-        messageFingerprint(localTail[index]) === messageFingerprint(remoteMessage)
+        messageSignature(localTail[index]) === messageSignature(remoteMessage)
     ))
+}
+
+function mergeRemoteMessagesWithLocalMetadata(remoteMessages: Message[], localMessages: Message[]) {
+    if (localMessages.length === 0) return remoteMessages
+
+    const localBySignature = new Map<string, Message[]>()
+    for (const localMessage of localMessages) {
+        const signature = messageSignature(localMessage)
+        const bucket = localBySignature.get(signature)
+        if (bucket) {
+            bucket.push(localMessage)
+        } else {
+            localBySignature.set(signature, [localMessage])
+        }
+    }
+
+    return remoteMessages.map((remoteMessage) => {
+        const signature = messageSignature(remoteMessage)
+        const bucket = localBySignature.get(signature)
+        if (!bucket || bucket.length === 0) return remoteMessage
+
+        const localMatch = bucket.shift()
+        if (!localMatch) return remoteMessage
+
+        return {
+            ...remoteMessage,
+            id: localMatch.id || remoteMessage.id,
+            reaction: localMatch.reaction || remoteMessage.reaction,
+            replyToId: localMatch.replyToId || remoteMessage.replyToId,
+        }
+    })
 }
 
 export default function ChatPage() {
@@ -293,7 +325,7 @@ export default function ChatPage() {
             }
 
             if (!isSameMessageTail(localMessages, page.items)) {
-                setMessages(page.items)
+                setMessages(mergeRemoteMessagesWithLocalMetadata(page.items, localMessages))
             }
         } catch (err) {
             console.error('Failed to sync cloud chat history:', err)

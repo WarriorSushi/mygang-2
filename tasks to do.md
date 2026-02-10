@@ -9,6 +9,23 @@
 
 ## Current Prompt (2026-02-10)
 
+### 21) Quote Bubble Persistence Fix (Reply Preview Vanishing)
+- Status: Done
+- Request:
+  - Fix issue where quoted user text shown in AI bubble disappears after a few seconds.
+  - Validate behavior on desktop and ensure sync logic does not drop quote linkage.
+- Done:
+  - Root cause:
+    - quote rendering depended on `replyToId` resolving against in-memory message IDs.
+    - periodic cloud sync could replace local message objects and IDs, causing quote resolution to fail and preview to disappear.
+  - Fixes in `src/app/chat/page.tsx`:
+    - changed tail-equality comparison to stable message signature (`speaker + reaction + normalized content`) instead of timestamp-sensitive fingerprinting.
+    - added `mergeRemoteMessagesWithLocalMetadata(...)` to preserve local `id`, `reaction`, and `replyToId` when remote sync updates message list.
+    - applied metadata-preserving merge in `syncLatestHistory` before replacing local state.
+  - Validation:
+    - `npm run lint` passed (existing non-blocking warning in `src/components/chat/message-list.tsx`).
+    - `npm run build` passed.
+
 ### 20) Favicon / Logo Visibility Fix
 - Status: Done
 - Request:
