@@ -9,6 +9,28 @@
 
 ## Current Prompt (2026-02-10)
 
+### 19) Chat Dynamics Capacity Stabilization (Pre-User Autonomous Guard)
+- Status: Done
+- Request:
+  - Investigate whether ecosystem mode sends too many API calls before user input.
+  - Verify low-power auto-switch and provider fallback/restore behavior.
+  - Fix unnecessary pre-user capacity-trigger behavior without harming UX.
+- Done:
+  - Investigated runtime behavior across:
+    - `src/app/chat/page.tsx` (client orchestration/autonomous flow)
+    - `src/app/api/chat/route.ts` (provider selection, cooldown, fallback, low-cost enforcement)
+    - `src/stores/chat-store.ts` + `src/components/orchestrator/auth-manager.tsx` (default/persisted low-cost state)
+  - Verified data state in Supabase:
+    - `admin_runtime_settings.global_low_cost_override = false`
+    - all profiles currently have `low_cost_mode = false`
+  - Implemented stabilizing fixes in `src/app/chat/page.tsx`:
+    - capacity errors now trigger temporary auto low-cost mode only for user-initiated sends (not autonomous pre-user calls).
+    - returning-session autonomous re-entry now requires previous user turn to include open-floor intent.
+    - autonomous chains are limited so autonomous calls do not recursively trigger additional autonomous API requests.
+  - Validation:
+    - `npm run lint` passed (existing non-blocking warning in `src/components/chat/message-list.tsx`).
+    - `npm run build` passed.
+
 ### 18) Admin Panel Redesign + Power Expansion
 - Status: Done
 - Request:

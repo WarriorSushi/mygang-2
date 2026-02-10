@@ -464,8 +464,9 @@ export default function ChatPage() {
         })
     }
 
-    const recordCapacityError = (status: number) => {
+    const recordCapacityError = (status: number, isUserInitiated: boolean) => {
         if (status !== 429 && status !== 402) return
+        if (!isUserInitiated) return
 
         const now = Date.now()
         const withinHardWindow = capacityErrorTimestampsRef.current
@@ -572,6 +573,11 @@ export default function ChatPage() {
         }
 
         const lastUserMessage = [...messages].reverse().find((m) => m.speaker === 'user')
+        const openFloorRequested = !!lastUserMessage?.content && hasOpenFloorIntent(lastUserMessage.content)
+        if (!openFloorRequested) {
+            resumeAutonomousTriggeredRef.current = true
+            return
+        }
         resumeAutonomousTriggeredRef.current = true
         const timer = setTimeout(() => {
             if (isGeneratingRef.current || pendingUserMessagesRef.current) return
@@ -837,7 +843,7 @@ export default function ChatPage() {
                         ? retryAfterHeader * 1000
                         : CAPACITY_BACKOFF_MIN_MS
                     autonomousBackoffUntilRef.current = Date.now() + Math.max(CAPACITY_BACKOFF_MIN_MS, retryAfterMs)
-                    recordCapacityError(res.status)
+                    recordCapacityError(res.status, !isAutonomous && !isIntro)
                 }
                 const fallbackErrorMessage = responseHint || 'Quick hiccup on our side. Please try again.'
                 setToastMessage(fallbackErrorMessage)
@@ -943,7 +949,8 @@ export default function ChatPage() {
             // == AUTONOMOUS CONTINUATION CHECK ==
             const burstLimit = effectiveLowCostModeForCall ? 1 : (chatMode === 'entourage' ? 1 : 2)
             const autonomousAllowed = Date.now() >= autonomousBackoffUntilRef.current
-            if (!effectiveLowCostModeForCall && autonomousAllowed && data.should_continue && burstCountRef.current < (burstLimit - 1) && !pendingUserMessagesRef.current) {
+            const allowAutonomousChain = !isAutonomous
+            if (!effectiveLowCostModeForCall && autonomousAllowed && allowAutonomousChain && data.should_continue && burstCountRef.current < (burstLimit - 1) && !pendingUserMessagesRef.current) {
                 burstCountRef.current++
                 await new Promise(r => setTimeout(r, 1000))
                 isGeneratingRef.current = false // Prep for next call
