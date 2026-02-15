@@ -4,8 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-
-const MAX_MESSAGE_ID_CHARS = 128
+import { z } from 'zod'
+import { CHARACTERS } from '@/constants/characters'
+import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
 
 type ChatHistoryPageRow = {
     id: string
@@ -17,19 +18,21 @@ type ChatHistoryPageRow = {
     client_message_id?: string | null
 }
 
-function sanitizeMessageId(value: unknown) {
-    if (typeof value !== 'string') return ''
-    return value.trim().slice(0, MAX_MESSAGE_ID_CHARS)
-}
+const validCharacterIds = CHARACTERS.map(c => c.id)
 
-function isMissingHistoryMetadataColumnsError(err: unknown) {
-    if (!err || typeof err !== 'object') return false
-    const maybeError = err as { code?: unknown; message?: unknown }
-    const code = typeof maybeError.code === 'string' ? maybeError.code : ''
-    const message = typeof maybeError.message === 'string' ? maybeError.message : ''
-    if (code === 'PGRST204' || code === '42703') return true
-    return /client_message_id|reply_to_client_message_id|reaction/i.test(message)
-}
+const usernameSchema = z.string().trim().min(1).max(50)
+const memoryContentSchema = z.string().trim().min(1).max(2000)
+const characterIdsSchema = z.array(z.string()).min(1).max(8).refine(
+    ids => ids.every(id => validCharacterIds.includes(id)),
+    'Invalid character ID'
+)
+const userSettingsSchema = z.object({
+    theme: z.enum(['light', 'dark', 'system']).optional(),
+    chat_mode: z.enum(['ecosystem', 'entourage']).optional(),
+    low_cost_mode: z.boolean().optional(),
+    preferred_squad: z.array(z.string()).max(8).optional(),
+    chat_wallpaper: z.string().max(50).optional(),
+}).strict()
 
 async function getOrigin() {
     const headerBag = await headers()
@@ -120,7 +123,7 @@ export async function deleteAccount() {
     const { error } = await admin.auth.admin.deleteUser(user.id)
     if (error) {
         console.error('Delete account error:', error)
-        throw error
+        return
     }
 
     await supabase.auth.signOut()
@@ -132,6 +135,9 @@ export async function saveGang(characterIds: string[]) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return
+
+    const parsed = characterIdsSchema.safeParse(characterIds)
+    if (!parsed.success) return
 
     // 1. Ensure a gang exists for the user
     const { data: gang, error: gangError } = await supabase
@@ -148,7 +154,7 @@ export async function saveGang(characterIds: string[]) {
     // 2. Clear old members and insert new ones
     await supabase.from('gang_members').delete().eq('gang_id', gang.id)
 
-    const members = characterIds.map(id => ({
+    const members = parsed.data.map(id => ({
         gang_id: gang.id,
         character_id: id
     }))
@@ -158,7 +164,7 @@ export async function saveGang(characterIds: string[]) {
 
     const { error: settingsError } = await supabase
         .from('profiles')
-        .update({ preferred_squad: characterIds, onboarding_completed: true })
+        .update({ preferred_squad: parsed.data, onboarding_completed: true })
         .eq('id', user.id)
     if (settingsError) console.error('Error updating preferred gang:', settingsError)
 }
@@ -193,9 +199,12 @@ export async function saveUsername(username: string) {
 
     if (!user) return
 
+    const parsed = usernameSchema.safeParse(username)
+    if (!parsed.success) return
+
     const { error } = await supabase
         .from('profiles')
-        .update({ username })
+        .update({ username: parsed.data })
         .eq('id', user.id)
 
     if (error) console.error('Error saving username:', error)
@@ -251,7 +260,7 @@ export async function updateMemory(id: string, content: string) {
 
     const { error } = await supabase
         .from('memories')
-        .update({ content, embedding })
+        .update({ content, embedding: embedding as unknown as string })
         .eq('id', id)
         .eq('user_id', user.id)
 
@@ -382,9 +391,12 @@ export async function updateUserSettings(settings: { theme?: string; chat_mode?:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    const parsed = userSettingsSchema.safeParse(settings)
+    if (!parsed.success) return
+
     const { error } = await supabase
         .from('profiles')
-        .update(settings)
+        .update(parsed.data)
         .eq('id', user.id)
 
     if (error) console.error('Error updating user settings:', error)
@@ -414,7 +426,10 @@ export async function saveMemoryManual(content: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    await storeMemory(user.id, content, {
+    const parsed = memoryContentSchema.safeParse(content)
+    if (!parsed.success) return
+
+    await storeMemory(user.id, parsed.data, {
         kind: 'episodic',
         tags: [],
         importance: 2,

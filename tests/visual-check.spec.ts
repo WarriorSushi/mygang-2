@@ -11,7 +11,7 @@ test('Capture All Screens', async ({ page }) => {
 
     // 1. Landing Page
     console.log('Capturing Landing Page...');
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
     await page.screenshot({ path: 'screenshots/1_landing.png', animations: 'disabled' });
 
     // 2. Onboarding - Identity

@@ -84,7 +84,7 @@ export async function storeMemory(
         const { error } = await supabase.from('memories').insert({
             user_id: userId,
             content: normalizedContent,
-            embedding,
+            embedding: embedding as unknown as string,
             kind,
             tags,
             importance,
@@ -107,7 +107,7 @@ export async function retrieveMemories(userId: string, query: string, limit = 5)
     }
 
     const { data: memories, error } = await supabase.rpc('match_memories', {
-        query_embedding: embedding,
+        query_embedding: embedding as unknown as string,
         match_threshold: 0.5,
         match_count: limit,
         p_user_id: userId,

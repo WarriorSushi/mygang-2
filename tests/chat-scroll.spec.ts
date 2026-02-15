@@ -35,7 +35,7 @@ test('Chat scroll container is scrollable and input stays visible', async ({ pag
     window.localStorage.setItem('mygang-chat-storage', JSON.stringify(payload));
   });
 
-  await page.goto('http://localhost:3000/chat');
+  await page.goto('/chat');
 
   const scrollEl = page.locator('[data-testid="chat-scroll"]');
   await expect(scrollEl).toBeVisible();

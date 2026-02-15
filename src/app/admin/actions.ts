@@ -39,7 +39,7 @@ function sanitizeTier(value: string): 'free' | 'pro' | null {
 async function insertAdminAudit(
     action: string,
     actorEmail: string,
-    details: Record<string, unknown>,
+    details: Record<string, string | number | boolean | null>,
     admin = createAdminClient()
 ) {
     const { error } = await admin

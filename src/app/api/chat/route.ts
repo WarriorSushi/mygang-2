@@ -8,6 +8,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
+import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
+import type { Json } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const maxDuration = 30
@@ -28,7 +30,6 @@ const MAX_MEMORY_CONTENT_CHARS = 220
 const MAX_SESSION_SUMMARY_CHARS = 500
 const MAX_PROFILE_LINES = 12
 const MAX_PROFILE_VALUE_CHARS = 120
-const MAX_MESSAGE_ID_CHARS = 128
 const PROVIDER_DEFAULT_COOLDOWN_MS = 90_000
 const PROVIDER_RETRY_FLOOR_MS = 15_000
 const PROVIDER_RETRY_CEILING_MS = 10 * 60 * 1000
@@ -81,12 +82,10 @@ type ProfileStateRow = {
 
 type ProfileUpdatesPayload = {
     last_active_at: string
-    user_profile?: Record<string, unknown>
-    relationship_state?: Record<string, RelationshipState>
+    user_profile?: Json
+    relationship_state?: Json
     session_summary?: string
     summary_turns?: number
-    daily_msg_count?: number
-    abuse_score?: number
 }
 
 type ChatRouteMetric = {
@@ -139,25 +138,12 @@ function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function sanitizeMessageId(value: unknown) {
-    if (typeof value !== 'string') return ''
-    return value.trim().slice(0, MAX_MESSAGE_ID_CHARS)
-}
-
 function createServerTurnId() {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 function createServerEventMessageId(turnId: string, index: number) {
     return `srv-${turnId}-${index.toString(36)}`
-}
-
-function isMissingHistoryMetadataColumnsError(err: unknown) {
-    if (!isObject(err)) return false
-    const code = typeof err.code === 'string' ? err.code : ''
-    const message = typeof err.message === 'string' ? err.message : ''
-    if (code === 'PGRST204' || code === '42703') return true
-    return /client_message_id|reply_to_client_message_id|reaction/i.test(message)
 }
 
 function toLegacyHistoryRows(rows: ChatHistoryInsertRow[]) {
@@ -620,7 +606,7 @@ export async function POST(req: Request) {
             .filter((m) => m.content.length > 0)
 
         const mockHeader = req.headers.get('x-mock-ai')
-        if (mockHeader === '1' || mockHeader === 'true') {
+        if (process.env.NODE_ENV !== 'production' && (mockHeader === '1' || mockHeader === 'true')) {
             return Response.json({
                 events: [
                     {
@@ -874,7 +860,9 @@ FLOW FLAGS:
         const historyForLLM = safeMessages.slice(-HISTORY_LIMIT).map(m => ({
             id: m.id,
             speaker: m.speaker,
-            content: m.content.slice(0, MAX_LLM_MESSAGE_CHARS),
+            content: m.speaker === 'user'
+                ? `[USER_MSG]${m.content.slice(0, MAX_LLM_MESSAGE_CHARS)}[/USER_MSG]`
+                : m.content.slice(0, MAX_LLM_MESSAGE_CHARS),
             type: m.reaction ? 'reaction' : 'message',
             target_message_id: m.replyToId
         }))
@@ -1143,7 +1131,7 @@ FLOW FLAGS:
                 object.memory_updates.profile.forEach((item) => {
                     userProfile[item.key] = item.value
                 })
-                profileUpdates.user_profile = userProfile
+                profileUpdates.user_profile = userProfile as Json
             }
 
             if (object?.relationship_updates?.length) {
@@ -1169,7 +1157,7 @@ FLOW FLAGS:
                         note: update.note || current.note || ''
                     }
                 })
-                profileUpdates.relationship_state = relationshipState
+                profileUpdates.relationship_state = relationshipState as unknown as Json
             }
 
             if (shouldUpdateSummary && object?.session_summary_update) {
@@ -1178,15 +1166,24 @@ FLOW FLAGS:
             } else if (hasFreshUserTurn && lastUserMsg) {
                 profileUpdates.summary_turns = summaryTurns + 1
             }
-            if (hasFreshUserTurn && lastUserMsg) {
-                profileUpdates.daily_msg_count = (profileRow?.daily_msg_count ?? 0) + 1
-            }
-            if (nextAbuseScore !== null) {
-                profileUpdates.abuse_score = nextAbuseScore
-            }
+            // Calculate increments for atomic update (avoids race conditions)
+            const dailyMsgIncrement = hasFreshUserTurn && lastUserMsg ? 1 : 0
+            const abuseScoreIncrement = nextAbuseScore !== null ? (nextAbuseScore - (profileRow?.abuse_score ?? 0)) : 0
 
             try {
-                await supabase.from('profiles').update(profileUpdates).eq('id', user.id)
+                // Use RPC for atomic counter increments + profile field updates
+                await Promise.all([
+                    supabase.from('profiles').update({ last_active_at: nowIso }).eq('id', user.id),
+                    supabase.rpc('increment_profile_counters', {
+                        p_user_id: user.id,
+                        p_daily_msg_increment: dailyMsgIncrement,
+                        p_abuse_score_increment: abuseScoreIncrement,
+                        p_session_summary: profileUpdates.session_summary || undefined,
+                        p_summary_turns: profileUpdates.summary_turns ?? undefined,
+                        p_user_profile: profileUpdates.user_profile || undefined,
+                        p_relationship_state: profileUpdates.relationship_state || undefined,
+                    }),
+                ])
             } catch (err) {
                 console.error('Error updating profile state:', err)
             }

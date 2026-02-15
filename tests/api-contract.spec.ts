@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:3000';
-
 test('Chat API returns valid response schema for a basic request', async ({ request }) => {
-  const response = await request.post(`${BASE_URL}/api/chat`, {
+  const response = await request.post('/api/chat', {
     data: {
       messages: [
         {
@@ -39,7 +37,7 @@ test('Chat API returns valid response schema for a basic request', async ({ requ
 });
 
 test('Chat API handles short messages with limited responders', async ({ request }) => {
-  const response = await request.post(`${BASE_URL}/api/chat`, {
+  const response = await request.post('/api/chat', {
     data: {
       messages: [
         {

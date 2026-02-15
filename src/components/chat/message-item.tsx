@@ -101,6 +101,22 @@ function ensureReadablePersonaNameOnLight(color: Rgb) {
     return mixRgb(color, darkTarget, 0.9)
 }
 
+function formatRelativeTime(dateStr: string) {
+    const now = Date.now()
+    const then = new Date(dateStr).getTime()
+    if (!Number.isFinite(then)) return null
+    const diffMs = now - then
+    if (diffMs < 0) return null
+    const diffSec = Math.floor(diffMs / 1000)
+    if (diffSec < 60) return 'just now'
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return `${diffMin}m ago`
+    const diffHr = Math.floor(diffMin / 60)
+    if (diffHr < 24) return `${diffHr}h ago`
+    const diffDay = Math.floor(diffHr / 24)
+    return `${diffDay}d ago`
+}
+
 function truncateText(value: string, maxChars: number) {
     const normalized = value.replace(/\s+/g, ' ').trim()
     if (normalized.length <= maxChars) return normalized
@@ -150,6 +166,7 @@ function MessageItemComponent({
     const canShowActions = !isReaction && message.speaker !== 'system'
 
     const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const relativeTime = message.created_at ? formatRelativeTime(message.created_at) : null
     const userShape = {
         single: 'rounded-2xl rounded-br-sm',
         first: 'rounded-2xl rounded-br-sm',
@@ -435,10 +452,17 @@ function MessageItemComponent({
             </div>
             {!isReaction && (
                 <div className={cn(
-                    "mt-1 text-[9px] uppercase tracking-widest text-foreground/55 dark:text-white/65 opacity-0 group-hover:opacity-100 transition-opacity",
+                    "mt-1 flex items-center gap-1.5",
                     isUser ? "self-end" : "self-start"
                 )}>
-                    {timeLabel}
+                    <span className="text-[9px] uppercase tracking-widest text-foreground/55 dark:text-white/65 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {timeLabel}
+                    </span>
+                    {relativeTime && (
+                        <span className="text-[10px] text-muted-foreground/60">
+                            {relativeTime}
+                        </span>
+                    )}
                 </div>
             )}
             {isUser && !isReaction && message.deliveryStatus && (

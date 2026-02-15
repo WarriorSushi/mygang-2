@@ -10,6 +10,41 @@ import { Button } from '@/components/ui/button'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { CHARACTERS } from '@/constants/characters'
 
+function ChatSkeleton() {
+    return (
+        <div className="flex flex-col gap-4 px-4 md:px-10 lg:px-14 py-6" aria-label="Loading messages">
+            {/* Incoming message skeleton */}
+            <div className="flex items-start gap-3 max-w-[75%]">
+                <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex flex-col gap-1.5">
+                    <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+                    <div className="h-12 w-48 sm:w-64 rounded-2xl bg-muted animate-pulse" />
+                </div>
+            </div>
+            {/* Incoming message skeleton */}
+            <div className="flex items-start gap-3 max-w-[75%]">
+                <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex flex-col gap-1.5">
+                    <div className="h-3 w-20 rounded bg-muted animate-pulse" />
+                    <div className="h-16 w-56 sm:w-72 rounded-2xl bg-muted animate-pulse" />
+                </div>
+            </div>
+            {/* Outgoing message skeleton (user) */}
+            <div className="flex justify-end">
+                <div className="h-10 w-40 sm:w-52 rounded-2xl bg-primary/20 animate-pulse" />
+            </div>
+            {/* Incoming message skeleton */}
+            <div className="flex items-start gap-3 max-w-[75%]">
+                <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex flex-col gap-1.5">
+                    <div className="h-3 w-14 rounded bg-muted animate-pulse" />
+                    <div className="h-20 w-52 sm:w-80 rounded-2xl bg-muted animate-pulse" />
+                </div>
+            </div>
+        </div>
+    )
+}
+
 interface MessageListProps {
     messages: Message[]
     activeGang: Character[]
@@ -21,6 +56,7 @@ interface MessageListProps {
     hasMoreHistory?: boolean
     loadingHistory?: boolean
     onLoadOlderHistory?: () => void
+    isBootstrappingHistory?: boolean
 }
 
 function normalizeSpeaker(value: string) {
@@ -37,7 +73,8 @@ export function MessageList({
     onRetryMessage,
     hasMoreHistory = false,
     loadingHistory = false,
-    onLoadOlderHistory
+    onLoadOlderHistory,
+    isBootstrappingHistory = false
 }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollRafRef = useRef<number | null>(null)
@@ -174,6 +211,14 @@ export function MessageList({
             scrollToBottom()
         })
     }, [hasStatusRow, isAtBottom, scrollToBottom])
+
+    if (isBootstrappingHistory && messages.length === 0) {
+        return (
+            <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
+                <ChatSkeleton />
+            </div>
+        )
+    }
 
     return (
         <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">

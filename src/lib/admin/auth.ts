@@ -43,11 +43,6 @@ export function verifyAdminCredentials(emailInput: string, passwordInput: string
         const normalizedConfiguredHash = normalizeHash(configuredHash)
         if (!isSha256Hex(normalizedConfiguredHash)) return false
 
-        const normalizedSubmittedInput = normalizeHash(passwordInput)
-        if (isSha256Hex(normalizedSubmittedInput) && safeEqual(normalizedSubmittedInput, normalizedConfiguredHash)) {
-            return true
-        }
-
         const submittedHash = crypto.createHash('sha256').update(passwordInput).digest('hex')
         return safeEqual(submittedHash, normalizedConfiguredHash)
     }

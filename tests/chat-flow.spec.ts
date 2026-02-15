@@ -8,7 +8,7 @@ test('MyGang.ai End-to-End Journey', async ({ page }) => {
     });
     // 1. Landing Page
     console.log('--- STARTING TEST ---');
-    await page.goto('http://localhost:3000');
+    await page.goto('/');
     await expect(page).toHaveTitle(/MyGang.ai/);
 
     // 2. Click Start

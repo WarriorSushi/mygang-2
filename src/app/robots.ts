@@ -15,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
           '/onboarding',
           '/settings',
           '/status',
+          '/admin/',
           '/tests/',
           '/test-results/',
           '/_next/',

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
+import type { Json } from '@/lib/database.types'
 
 const requestSchema = z.object({
     event: z.string().min(1).max(64),
@@ -10,13 +12,21 @@ const requestSchema = z.object({
 
 export async function POST(req: Request) {
     try {
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+            || req.headers.get('x-real-ip')
+            || 'unknown'
+        const rate = await rateLimit(`analytics:ip:${ip}`, 60, 60_000)
+        if (!rate.success) {
+            return Response.json({ ok: false }, { status: 429 })
+        }
+
         const body = await req.json()
         const parsed = requestSchema.safeParse(body)
         if (!parsed.success) {
             return Response.json({ ok: false }, { status: 400 })
         }
 
-        const metadata = parsed.data.metadata || null
+        const metadata = (parsed.data.metadata || null) as Json
         if (metadata) {
             const size = JSON.stringify(metadata).length
             if (size > 2000) {

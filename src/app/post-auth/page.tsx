@@ -25,13 +25,13 @@ export default function PostAuthPage() {
             router.prefetch('/chat')
             router.prefetch('/onboarding')
 
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session?.user) {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
                 if (!isCancelled) router.replace('/')
                 return
             }
 
-            const userId = session.user.id
+            const userId = user.id
             setUserId(userId)
             setIsGuest(false)
 

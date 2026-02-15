@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowRight,
   Users,
@@ -251,6 +251,7 @@ export function LandingPage() {
   const heroY = useTransform(scrollYProgress, [0, 1], [0, -120])
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92])
 
+  const prefersReducedMotion = useReducedMotion()
   const { userId, isHydrated } = useChatStore()
   const isAuthenticated = isHydrated && !!userId
   const ctaText = !isHydrated ? 'Syncing...' : isAuthenticated ? 'Continue' : 'Assemble Your Gang'
@@ -380,8 +381,8 @@ export function LandingPage() {
 
               <div className="order-1 lg:order-2 flex-shrink-0">
                 <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+                  animate={prefersReducedMotion ? undefined : { rotate: 360 }}
+                  transition={prefersReducedMotion ? undefined : { duration: 60, repeat: Infinity, ease: 'linear' }}
                   className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-[29rem] lg:h-[29rem]"
                 >
                   <div className="absolute inset-0 rounded-full bg-primary/15 blur-3xl" />

@@ -118,12 +118,18 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     value={input}
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    maxLength={MAX_CHARS}
                     data-testid="chat-input"
                     aria-label="Message input"
                     placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
                     className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none px-1 py-2.5 text-[16px] md:text-[15px] leading-6 text-foreground placeholder:text-muted-foreground/80 max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}
                 />
+                {input.length > 1500 && (
+                    <span className="absolute bottom-1 right-14 text-xs text-muted-foreground">
+                        {input.length}/{MAX_CHARS}
+                    </span>
+                )}
                 <Button
                     type="submit"
                     size="icon"

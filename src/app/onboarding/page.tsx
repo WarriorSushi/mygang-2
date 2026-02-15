@@ -20,6 +20,31 @@ import { LoadingStep } from '@/components/onboarding/loading-step'
 
 type Step = 'WELCOME' | 'IDENTITY' | 'SELECTION' | 'LOADING'
 
+const PROGRESS_STEPS: Step[] = ['WELCOME', 'IDENTITY', 'SELECTION', 'LOADING']
+
+function StepProgress({ current }: { current: Step }) {
+    if (current === 'LOADING') return null
+    const currentIndex = PROGRESS_STEPS.indexOf(current)
+    return (
+        <div className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+            {PROGRESS_STEPS.slice(0, -1).map((step, i) => (
+                <div
+                    key={step}
+                    className={cn(
+                        "w-2 h-2 rounded-full transition-all duration-300",
+                        i < currentIndex
+                            ? "bg-primary"
+                            : i === currentIndex
+                                ? "bg-primary scale-125"
+                                : "bg-muted-foreground/30"
+                    )}
+                    aria-label={`Step ${i + 1}${i === currentIndex ? ' (current)' : i < currentIndex ? ' (completed)' : ''}`}
+                />
+            ))}
+        </div>
+    )
+}
+
 export default function OnboardingPage() {
     const [step, setStep] = useState<Step>('WELCOME')
     const [name, setName] = useState(() => useChatStore.getState().userName ?? '')
@@ -97,6 +122,8 @@ export default function OnboardingPage() {
             )}
         >
             <BackgroundBlobs />
+
+            <StepProgress current={step} />
 
             <AnimatePresence mode="wait" initial={false}>
                 {step === 'WELCOME' && (

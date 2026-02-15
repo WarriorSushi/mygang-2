@@ -11,11 +11,7 @@ type AdminSessionPayload = {
 }
 
 function getSessionSecret() {
-    const explicit = process.env.ADMIN_PANEL_SESSION_SECRET?.trim()
-    if (explicit) return explicit
-    return process.env.ADMIN_PANEL_PASSWORD_HASH?.trim()
-        || process.env.ADMIN_PANEL_PASSWORD?.trim()
-        || null
+    return process.env.ADMIN_PANEL_SESSION_SECRET?.trim() || null
 }
 
 function signPayload(payloadBase64: string) {

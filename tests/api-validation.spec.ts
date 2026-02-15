@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('Chat API rejects invalid payloads', async ({ request }) => {
-  const response = await request.post('http://localhost:3000/api/chat', {
+  const response = await request.post('/api/chat', {
     data: { invalid: true },
   });
 
