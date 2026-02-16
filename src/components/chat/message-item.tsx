@@ -3,13 +3,14 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Character, Message } from '@/stores/chat-store'
-import { GlassCard } from '@/components/holographic/glass-card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { saveMemoryManual } from '@/app/auth/actions'
 import { Bookmark, Heart, Reply } from 'lucide-react'
 import Image from 'next/image'
+
+// ── Color utilities ──
 
 type Rgb = { r: number; g: number; b: number }
 
@@ -101,6 +102,8 @@ function ensureReadablePersonaNameOnLight(color: Rgb) {
     return mixRgb(color, darkTarget, 0.9)
 }
 
+// ── Helpers ──
+
 function formatRelativeTime(dateStr: string) {
     const now = Date.now()
     const then = new Date(dateStr).getTime()
@@ -120,8 +123,10 @@ function formatRelativeTime(dateStr: string) {
 function truncateText(value: string, maxChars: number) {
     const normalized = value.replace(/\s+/g, ' ').trim()
     if (normalized.length <= maxChars) return normalized
-    return `${normalized.slice(0, Math.max(0, maxChars - 1)).trimEnd()}...`
+    return `${normalized.slice(0, Math.max(0, maxChars - 1)).trimEnd()}\u2026`
 }
+
+// ── Component ──
 
 interface MessageItemProps {
     message: Message
@@ -167,66 +172,58 @@ function MessageItemComponent({
 
     const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     const relativeTime = message.created_at ? formatRelativeTime(message.created_at) : null
+
+    // ── Bubble shapes (WhatsApp-style grouped corners) ──
     const userShape = {
-        single: 'rounded-2xl rounded-br-sm',
-        first: 'rounded-2xl rounded-br-sm',
-        middle: 'rounded-2xl rounded-tr-sm rounded-br-sm',
-        last: 'rounded-2xl rounded-tr-sm',
+        single: 'rounded-[20px] rounded-br-[5px]',
+        first: 'rounded-[20px] rounded-br-[5px]',
+        middle: 'rounded-[20px] rounded-tr-[5px] rounded-br-[5px]',
+        last: 'rounded-[20px] rounded-tr-[5px]',
     }[groupPosition]
+
     const gangShape = {
-        single: 'rounded-2xl rounded-tl-sm',
-        first: 'rounded-2xl rounded-bl-sm',
-        middle: 'rounded-2xl rounded-tl-sm rounded-bl-sm',
-        last: 'rounded-2xl rounded-tl-sm',
+        single: 'rounded-[20px] rounded-tl-[5px]',
+        first: 'rounded-[20px] rounded-bl-[5px]',
+        middle: 'rounded-[20px] rounded-tl-[5px] rounded-bl-[5px]',
+        last: 'rounded-[20px] rounded-tl-[5px]',
     }[groupPosition]
 
+    // ── Colors ──
     const baseRgb = parseColorToRgb(character?.color)
-    const aiBubbleRgb = isDark
-        ? mixRgb(baseRgb, { r: 10, g: 18, b: 32 }, 0.58)
-        : mixRgb(baseRgb, { r: 246, g: 249, b: 252 }, 0.77)
-    const aiBorderRgb = isDark
-        ? mixRgb(aiBubbleRgb, { r: 148, g: 163, b: 184 }, 0.14)
-        : mixRgb(baseRgb, { r: 31, g: 41, b: 55 }, 0.24)
-    const aiBorderDisplayRgb = mixRgb(
-        aiBorderRgb,
-        isDark ? { r: 235, g: 242, b: 252 } : { r: 255, g: 255, b: 255 },
-        0.5
-    )
-    const aiTextRgb = pickReadableTextColor(aiBubbleRgb)
-    const personaNameRgb = isDark ? baseRgb : ensureReadablePersonaNameOnLight(baseRgb)
-    const userBorderBase = isDark ? { r: 141, g: 230, b: 199 } : { r: 18, g: 99, b: 74 }
-    const userBorderDisplayRgb = mixRgb(
-        userBorderBase,
-        isDark ? { r: 238, g: 245, b: 252 } : { r: 255, g: 255, b: 255 },
-        0.5
-    )
 
+    // AI bubble: subtle persona tint blended into a neutral base (no garish borders)
+    const aiBubbleRgb = isDark
+        ? mixRgb(baseRgb, { r: 22, g: 30, b: 46 }, 0.85)
+        : mixRgb(baseRgb, { r: 248, g: 250, b: 252 }, 0.92)
+    const aiTextRgb = pickReadableTextColor(aiBubbleRgb)
+
+    // Persona name: slightly bright in dark, readable in light
+    const personaNameRgb = isDark
+        ? mixRgb(baseRgb, { r: 255, g: 255, b: 255 }, 0.2)
+        : ensureReadablePersonaNameOnLight(baseRgb)
+
+    // Quote block colors (left-border accent style)
     const quoteFromAi = !!quotedMessage && quotedMessage.speaker !== 'user'
     const quoteBubbleBase = parseColorToRgb(quotedSpeaker?.color)
-    const quoteBgRgb = quoteFromAi
-        ? (isDark
-            ? mixRgb(quoteBubbleBase, { r: 10, g: 18, b: 32 }, 0.62)
-            : mixRgb(quoteBubbleBase, { r: 246, g: 249, b: 252 }, 0.82))
-        : (isDark ? { r: 42, g: 54, b: 72 } : { r: 233, g: 239, b: 246 })
-    const quoteBorderRgb = quoteFromAi
-        ? (isDark
-            ? mixRgb(quoteBgRgb, { r: 148, g: 163, b: 184 }, 0.2)
-            : mixRgb(quoteBubbleBase, { r: 31, g: 41, b: 55 }, 0.22))
-        : (isDark ? { r: 126, g: 144, b: 166 } : { r: 148, g: 163, b: 184 })
-    const quoteTextRgb = pickReadableTextColor(quoteBgRgb)
-    const quoteBg = toRgbString(quoteBgRgb)
-    const quoteBorder = toRgbString(quoteBorderRgb)
-    const quoteText = toRgbString(quoteTextRgb)
-    const quoteLabelBase = parseColorToRgb(quotedSpeaker?.color)
+    const quoteAccentRgb = quoteFromAi
+        ? quoteBubbleBase
+        : (isDark ? { r: 100, g: 190, b: 160 } : { r: 16, g: 120, b: 90 })
+    const quoteBgRgb = isDark
+        ? { r: 14, g: 20, b: 34 }
+        : { r: 241, g: 245, b: 249 }
+    const quoteTextRgb = isDark
+        ? { r: 170, g: 182, b: 200 }
+        : { r: 70, g: 80, b: 95 }
     const quoteLabelRgb = isDark
-        ? mixRgb(quoteLabelBase, { r: 241, g: 245, b: 249 }, 0.2)
-        : ensureReadablePersonaNameOnLight(quoteLabelBase)
+        ? mixRgb(quoteBubbleBase, { r: 230, g: 238, b: 248 }, 0.25)
+        : ensureReadablePersonaNameOnLight(quoteBubbleBase)
     const quotePreviewRaw = quotedMessage
         ? (quotedMessage.reaction ? `[Reaction: ${quotedMessage.content}]` : quotedMessage.content)
         : ''
     const quotePreviewShort = truncateText(quotePreviewRaw, 38)
     const quotePreviewLong = truncateText(quotePreviewRaw, 72)
 
+    // ── Interaction handlers ──
     const clearLongPressTimer = () => {
         if (!longPressTimerRef.current) return
         clearTimeout(longPressTimerRef.current)
@@ -291,77 +288,70 @@ function MessageItemComponent({
 
     return (
         <motion.div
-            initial={animateOnMount ? { opacity: 0, y: 10, scale: 0.95 } : false}
+            initial={animateOnMount ? { opacity: 0, y: 8, scale: 0.97 } : false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: animateOnMount ? (isFastMode ? 0.12 : 0.22) : 0.01, ease: 'easeOut' }}
+            transition={{ duration: animateOnMount ? (isFastMode ? 0.1 : 0.18) : 0.01, ease: 'easeOut' }}
             className={cn(
-                "group relative flex flex-col w-auto max-w-[80vw] sm:max-w-[66vw] lg:max-w-[34rem]",
+                "group relative flex flex-col w-auto max-w-[82vw] sm:max-w-[66vw] lg:max-w-[34rem]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80 scale-90 origin-left",
-                isContinued ? "mt-0.5" : "mt-6", // Tighter chain spacing for consecutive bubbles
+                isContinued ? "mt-[3px]" : "mt-4",
                 showActions ? "z-40" : "z-0"
             )}
         >
-            {/* Context Header (Avatar + Name) - Only show if NOT continued and NOT user */}
+            {/* Avatar + Name row */}
             {!isUser && !isContinued && (
-                <div className="flex items-center gap-2 mb-1 ml-1 overflow-hidden max-w-full">
+                <div className="flex items-center gap-2 mb-1 ml-0.5">
                     <div
-                        className="w-5 h-5 rounded-full overflow-hidden border border-white/10 shrink-0 flex items-center justify-center text-[10px] font-bold"
-                        style={{ backgroundColor: character?.color || '#333' }}
+                        className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center ring-[1.5px] ring-background"
+                        style={{ backgroundColor: character?.color || '#555' }}
                     >
                         {character?.avatar ? (
                             <Image
                                 src={character.avatar}
                                 alt={character.name || 'Avatar'}
-                                width={20}
-                                height={20}
+                                width={28}
+                                height={28}
                                 className="w-full h-full object-cover"
-                                sizes="20px"
+                                sizes="28px"
                                 priority={false}
                             />
                         ) : (
-                            <span className="text-white uppercase">{(character?.name || message.speaker)[0]}</span>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                        <span
-                            className="text-[10px] font-black uppercase tracking-widest opacity-70 shrink-0"
-                            style={{ color: toRgbString(personaNameRgb) }}
-                        >
-                            {character?.name || message.speaker}
-                        </span>
-                        {showPersonaRoles && (character?.roleLabel || character?.archetype) && (
-                            <span className="rounded-full border border-white/20 bg-white/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-foreground/90 truncate">
-                                {character?.roleLabel || character?.archetype}
+                            <span className="text-white text-[11px] font-semibold uppercase">
+                                {(character?.name || message.speaker)[0]}
                             </span>
                         )}
                     </div>
+                    <span
+                        className="text-[12px] font-semibold tracking-wide"
+                        style={{ color: toRgbString(personaNameRgb) }}
+                    >
+                        {character?.name || message.speaker}
+                    </span>
+                    {showPersonaRoles && (character?.roleLabel || character?.archetype) && (
+                        <span className="text-[10px] text-muted-foreground/50 italic">
+                            {character?.roleLabel || character?.archetype}
+                        </span>
+                    )}
                 </div>
             )}
 
+            {/* Message bubble */}
             <div ref={actionWrapRef} className={cn('relative min-w-0 max-w-full', isUser ? 'self-end' : 'self-start')}>
-                <GlassCard
-                    variant={isUser ? 'user' : isReaction ? 'default' : 'ai'}
+                <div
                     className={cn(
-                        "max-w-full p-2.5 px-3 sm:p-3 sm:px-3.5 transition-all duration-200 z-10 border border-[1px] shadow-sm backdrop-blur-none",
+                        "relative max-w-full px-3.5 py-2.5 sm:px-4 sm:py-3 transition-colors select-none",
                         isUser
-                            ? cn("text-primary-foreground", userShape)
+                            ? cn("bg-primary text-primary-foreground shadow-sm", userShape)
                             : isReaction
-                                ? "bg-transparent border-none p-1 rounded-full shadow-none"
+                                ? "bg-transparent p-1 rounded-full"
                                 : gangShape
                     )}
                     style={isReaction
-                        ? {}
+                        ? undefined
                         : isUser
-                            ? {
-                                borderColor: toRgbString(userBorderDisplayRgb),
-                                borderWidth: '1px',
-                            }
-                            : {
-                                backgroundColor: toRgbString(aiBubbleRgb),
-                                borderColor: toRgbString(aiBorderDisplayRgb),
-                                borderWidth: '1px',
-                            }
+                            ? undefined
+                            : { backgroundColor: toRgbString(aiBubbleRgb) }
                     }
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
@@ -378,36 +368,35 @@ function MessageItemComponent({
                         <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
                     ) : (
                         <div className="space-y-1.5 min-w-0">
+                            {/* Quoted reply (left-border accent style) */}
                             {quotedMessage && (
                                 <div
-                                    className={cn(
-                                        "w-full max-w-full overflow-hidden rounded-lg border px-1.5 py-1 text-[10px] min-w-0",
-                                        isUser ? "text-right" : "text-left"
-                                    )}
+                                    className="w-full max-w-full overflow-hidden rounded-lg pl-2.5 pr-2 py-1.5 text-[11px] min-w-0 border-l-[3px]"
                                     style={{
-                                        backgroundColor: quoteBg,
-                                        borderColor: quoteBorder,
+                                        backgroundColor: toRgbString(quoteBgRgb),
+                                        borderLeftColor: toRgbString(quoteAccentRgb),
                                     }}
                                 >
                                     <div
-                                        className="mb-0.5 text-[8px] font-black uppercase tracking-tight"
+                                        className="mb-0.5 text-[10px] font-semibold"
                                         style={{ color: toRgbString(quoteLabelRgb) }}
                                     >
                                         {quotedSpeaker?.name || (quotedMessage.speaker === 'user' ? 'You' : quotedMessage.speaker)}
                                     </div>
                                     <div
-                                        className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap italic font-medium"
-                                        style={{ color: quoteText }}
+                                        className="w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
+                                        style={{ color: toRgbString(quoteTextRgb) }}
                                     >
                                         <span className="sm:hidden">{quotePreviewShort}</span>
                                         <span className="hidden sm:inline">{quotePreviewLong}</span>
                                     </div>
                                 </div>
                             )}
+                            {/* Message content */}
                             <p
                                 className={cn(
-                                    "select-text break-words leading-[1.38] tracking-normal text-[13px] sm:text-[14px]",
-                                    isUser ? "font-semibold text-primary-foreground" : "font-medium"
+                                    "select-text break-words leading-relaxed text-[14px] sm:text-[14.5px]",
+                                    isUser ? "font-medium" : "font-normal"
                                 )}
                                 style={!isUser ? { color: toRgbString(aiTextRgb) } : undefined}
                             >
@@ -415,17 +404,19 @@ function MessageItemComponent({
                             </p>
                         </div>
                     )}
-                </GlassCard>
+                </div>
+
+                {/* Action buttons popup */}
                 {showActions && canShowActions && (
                     <div className={cn(
-                        "absolute z-50 bottom-full mb-2 flex items-center gap-1 rounded-full border border-border/80 bg-card/96 dark:border-white/20 dark:bg-[rgba(10,18,32,0.96)] p-1 shadow-xl backdrop-blur-xl",
+                        "absolute z-50 bottom-full mb-1.5 flex items-center gap-0.5 rounded-full border border-border/50 bg-card/95 dark:border-white/12 dark:bg-[rgba(18,26,42,0.95)] p-1 shadow-lg backdrop-blur-xl",
                         isUser ? 'right-0' : 'left-0'
                     )} role="menu" aria-label="Message actions">
                         <Button
                             type="button"
                             variant="ghost"
                             size="xs"
-                            className="rounded-full border border-transparent text-[10px] uppercase tracking-widest text-foreground/90 dark:text-white/90 hover:bg-primary/10 dark:hover:bg-white/12 hover:border-primary/30 dark:hover:border-white/20"
+                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-white/8 hover:text-foreground dark:hover:text-white"
                             onClick={() => {
                                 onLike?.(message)
                                 setShowActions(false)
@@ -438,7 +429,7 @@ function MessageItemComponent({
                             type="button"
                             variant="ghost"
                             size="xs"
-                            className="rounded-full border border-transparent text-[10px] uppercase tracking-widest text-foreground/90 dark:text-white/90 hover:bg-primary/10 dark:hover:bg-white/12 hover:border-primary/30 dark:hover:border-white/20"
+                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-white/8 hover:text-foreground dark:hover:text-white"
                             onClick={() => {
                                 onReply?.(message)
                                 setShowActions(false)
@@ -450,60 +441,70 @@ function MessageItemComponent({
                     </div>
                 )}
             </div>
+
+            {/* Time + metadata */}
             {!isReaction && (
                 <div className={cn(
-                    "mt-1 flex items-center gap-1.5",
+                    "mt-0.5 flex items-center gap-1.5 px-1",
                     isUser ? "self-end" : "self-start"
                 )}>
-                    <span className="text-[9px] uppercase tracking-widest text-foreground/55 dark:text-white/65 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
                         {timeLabel}
                     </span>
                     {relativeTime && (
-                        <span className="text-[10px] text-muted-foreground/60">
+                        <span className="text-[10px] text-muted-foreground/45">
                             {relativeTime}
                         </span>
                     )}
                 </div>
             )}
+
+            {/* Delivery status */}
             {isUser && !isReaction && message.deliveryStatus && (
                 <div className={cn(
-                    "mt-1 text-[9px] uppercase tracking-widest",
+                    "mt-0.5 px-1 text-[10px]",
                     message.deliveryStatus === 'failed'
                         ? "text-destructive"
                         : message.deliveryStatus === 'sending'
-                            ? "text-foreground/60 dark:text-white/70"
-                            : "text-emerald-500/85"
+                            ? "text-muted-foreground/50"
+                            : "text-emerald-500/60"
                 )}>
-                    {message.deliveryStatus === 'sending' && 'Sending...'}
+                    {message.deliveryStatus === 'sending' && 'Sending\u2026'}
                     {message.deliveryStatus === 'sent' && 'Sent'}
                     {message.deliveryStatus === 'failed' && (message.deliveryError || 'Failed to send')}
                 </div>
             )}
+
+            {/* Retry */}
             {isUser && !isReaction && message.deliveryStatus === 'failed' && onRetry && (
-                <div className="mt-1">
+                <div className="mt-1 px-1">
                     <Button
                         type="button"
                         variant="ghost"
                         size="xs"
                         onClick={() => onRetry(message)}
-                        className="rounded-full text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive hover:bg-destructive hover:text-white"
+                        className="rounded-full text-[10px] border border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
                     >
                         Retry
                     </Button>
                 </div>
             )}
+
+            {/* Seen by */}
             {isUser && seenBy.length > 0 && (
-                <div className="mt-1 text-[9px] uppercase tracking-widest text-foreground/60 dark:text-white/70">
+                <div className="mt-0.5 px-1 text-[10px] text-muted-foreground/40">
                     Seen by {seenBy.join(', ')}
                 </div>
             )}
+
+            {/* Save to memory */}
             {isUser && !isReaction && !isGuest && (
-                <div className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                         variant="ghost"
                         size="xs"
                         onClick={() => saveMemoryManual(message.content)}
-                        className="rounded-full text-[10px] uppercase tracking-widest"
+                        className="rounded-full text-[10px] text-muted-foreground/60 hover:text-foreground"
                     >
                         <Bookmark className="w-3 h-3" />
                         Save to Memory

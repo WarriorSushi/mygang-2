@@ -49,7 +49,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
     }, [showCapacityInfo])
 
     return (
-        <header data-testid="chat-header" className="px-4 sm:px-6 pb-3 sm:pb-4 lg:pb-1.5 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:pt-2.5 border-b border-border/70 dark:border-white/10 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/92 dark:bg-[rgba(14,22,37,0.9)] z-20 w-full shadow-[0_12px_30px_-24px_rgba(2,6,23,0.8)]">
+        <header data-testid="chat-header" className="px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/50 dark:border-white/8 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/95 dark:bg-[rgba(14,22,37,0.92)] z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
             <div className="flex items-center gap-3 min-w-0">
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                             {activeGang.map((char) => (
                                 <Avatar
                                     key={char.id}
-                                    className="border border-background ring-1 ring-primary/10 w-9 h-9 sm:w-10 sm:h-10 lg:w-9 lg:h-9"
+                                    className="border-[1.5px] border-background w-8 h-8 sm:w-9 sm:h-9 lg:w-8 lg:h-8"
                                     title={char.name}
                                 >
                                     {char.avatar && (
@@ -75,18 +75,13 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                                 </Avatar>
                             ))}
                         </div>
-                        <h1 className="font-bold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
-                        <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-muted-foreground whitespace-nowrap">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            {activeGang.length} Online
-                            {memoryActive && <span>- Memory Active</span>}
-                        </span>
+                        <h1 className="font-semibold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
                     </div>
-                    <span className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1 mt-1 lg:hidden">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        {activeGang.length} Online
-                        {typingCount > 0 && <span> - {typingCount} typing</span>}
-                        {memoryActive && <span> - Memory Active</span>}
+                    <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1.5 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        {activeGang.length} online
+                        {typingCount > 0 && <span className="lg:hidden"> &middot; {typingCount} typing</span>}
+                        {memoryActive && <span> &middot; Memory active</span>}
                     </span>
                 </div>
             </div>
@@ -125,22 +120,22 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                     onClick={onOpenVault}
                     title="Memory Vault"
                     aria-label="Manage AI memories"
-                    className="rounded-full text-muted-foreground hover:text-primary transition-colors size-11 sm:size-12 lg:size-10"
+                    className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
                 >
-                    <Brain size={20} />
+                    <Brain size={18} />
                 </Button>
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full size-11 sm:size-12 lg:size-10"
+                    className="rounded-full text-muted-foreground/70 hover:text-foreground transition-colors size-9 sm:size-10 lg:size-9"
                     aria-label="Toggle theme"
                     onClick={() => {
                         setTheme(nextTheme)
                         updateUserSettings({ theme: nextTheme })
                     }}
                 >
-                    <Sun size={20} className="hidden dark:block" />
-                    <Moon size={20} className="dark:hidden" />
+                    <Sun size={18} className="hidden dark:block" />
+                    <Moon size={18} className="dark:hidden" />
                 </Button>
                 <Button
                     variant="ghost"
@@ -148,9 +143,9 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                     onClick={onOpenSettings}
                     title="Gang Settings"
                     aria-label="Open settings"
-                    className="rounded-full text-muted-foreground hover:text-primary transition-colors size-11 sm:size-12 lg:size-10"
+                    className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
                 >
-                    <Settings2 size={20} />
+                    <Settings2 size={18} />
                 </Button>
             </div>
         </header>

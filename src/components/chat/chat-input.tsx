@@ -111,7 +111,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             )}
             <form
                 onSubmit={handleSubmit}
-                className="relative flex items-end gap-2 border border-border/85 bg-background/96 dark:border-white/20 dark:bg-[rgba(34,51,74,0.98)] p-2 px-3 rounded-2xl shadow-none sm:shadow-sm transition-colors focus-within:border-primary/70 dark:focus-within:border-white/35 lg:w-1/2 lg:mx-auto"
+                className="relative flex items-end gap-2 border border-border/50 bg-background/98 dark:border-white/10 dark:bg-[rgba(28,40,60,0.95)] p-2 px-3 rounded-[22px] shadow-none sm:shadow-sm transition-colors focus-within:border-primary/50 dark:focus-within:border-white/25 lg:w-1/2 lg:mx-auto"
             >
                 <textarea
                     ref={inputRef}
@@ -136,7 +136,7 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
                     disabled={!input.trim() || disabled}
                     data-testid="chat-send"
                     aria-label="Send message"
-                    className="shrink-0 self-center rounded-xl w-11 h-11 mb-0 active:scale-95 transition-transform shadow-none"
+                    className="shrink-0 self-center rounded-full w-10 h-10 mb-0 active:scale-95 transition-transform shadow-none"
                 >
                     <ArrowRight size={18} />
                 </Button>

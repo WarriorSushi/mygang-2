@@ -230,20 +230,57 @@ export default function ChatPage() {
             setIsVaultOpen(false)
             await waitForFrame()
             await waitForFrame()
-            await new Promise((resolve) => setTimeout(resolve, 120))
+            await new Promise((resolve) => setTimeout(resolve, 150))
             if (typeof document !== 'undefined' && 'fonts' in document) {
                 await document.fonts.ready
             }
 
-            const dataUrl = await toPng(captureRootRef.current, {
-                cacheBust: true,
-                pixelRatio: 2,
-                backgroundColor: theme === 'dark' ? '#0b0f17' : '#eff3f8',
-                filter: (node) => {
-                    if (!(node instanceof HTMLElement)) return true
-                    return node.dataset.screenshotExclude !== 'true'
-                },
+            const el = captureRootRef.current
+            const rect = el.getBoundingClientRect()
+
+            // Pin all flex/min-h-0 descendants to their current sizes so
+            // the html-to-image clone doesn't collapse them.
+            const pinned: { node: HTMLElement; prev: string }[] = []
+            el.querySelectorAll<HTMLElement>('*').forEach((child) => {
+                const style = getComputedStyle(child)
+                if (style.minHeight === '0px' || style.flex !== '0 1 auto') {
+                    const childRect = child.getBoundingClientRect()
+                    pinned.push({ node: child, prev: child.style.cssText })
+                    child.style.width = `${childRect.width}px`
+                    child.style.height = `${childRect.height}px`
+                    child.style.flex = 'none'
+                    child.style.minHeight = 'unset'
+                    child.style.overflow = 'hidden'
+                }
             })
+
+            let dataUrl: string
+            try {
+                dataUrl = await toPng(el, {
+                    cacheBust: true,
+                    pixelRatio: 2,
+                    width: rect.width,
+                    height: rect.height,
+                    backgroundColor: theme === 'dark' ? '#0b0f17' : '#eff3f8',
+                    style: {
+                        width: `${rect.width}px`,
+                        height: `${rect.height}px`,
+                        flex: 'none',
+                        minHeight: 'unset',
+                        overflow: 'hidden',
+                    },
+                    filter: (node) => {
+                        if (!(node instanceof HTMLElement)) return true
+                        return node.dataset.screenshotExclude !== 'true'
+                    },
+                })
+            } finally {
+                // Restore original styles regardless of success/failure
+                for (const { node, prev } of pinned) {
+                    node.style.cssText = prev
+                }
+            }
+
             const link = document.createElement('a')
             link.download = `mygang-moment-${Date.now()}.png`
             link.href = dataUrl
@@ -296,7 +333,7 @@ export default function ChatPage() {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-border/70 bg-card/95 dark:bg-[rgba(14,22,37,0.9)] backdrop-blur-xl px-0 pb-0 sm:border-t sm:bg-card/90 sm:dark:bg-[rgba(14,22,37,0.86)] sm:backdrop-blur-xl sm:px-10 lg:px-14 sm:pb-3">
+                <div className="shrink-0 border-t border-border/40 dark:border-white/8 bg-card/95 dark:bg-[rgba(14,22,37,0.92)] backdrop-blur-xl px-0 pb-0 sm:border-t sm:bg-card/95 sm:dark:bg-[rgba(14,22,37,0.92)] sm:backdrop-blur-xl sm:px-10 lg:px-14 sm:pb-3">
                     {!isOnline && (
                         <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
                             Offline mode - reconnect to send messages
