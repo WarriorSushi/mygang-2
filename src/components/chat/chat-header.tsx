@@ -27,22 +27,42 @@ interface ChatHeaderProps {
 }
 
 function formatChars(n: number): string {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
     return String(n)
 }
 
 function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
+    const [expanded, setExpanded] = useState(false)
+
     return (
-        <div
-            className="hidden sm:flex items-center gap-1.5 rounded-md border border-cyan-500/25 bg-cyan-500/8 px-2 py-0.5 text-[9px] font-mono text-cyan-400/80 select-none"
-            title={`Prompt: ${usage.promptChars} chars | Response: ${usage.responseChars} chars | History: ${usage.historyCount} msgs | Provider: ${usage.provider}`}
+        <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="hidden sm:flex items-center gap-1 rounded-lg border border-cyan-500/25 bg-cyan-950/40 dark:bg-cyan-500/8 px-2 py-1 text-[10px] font-mono text-cyan-600 dark:text-cyan-400/90 select-none cursor-pointer hover:bg-cyan-500/15 transition-colors"
+            title="Click to expand API usage details"
         >
-            <span>{formatChars(usage.promptChars)}p</span>
-            <span className="text-cyan-500/30">/</span>
-            <span>{formatChars(usage.responseChars)}r</span>
-            <span className="text-cyan-500/30">|</span>
-            <span>{usage.provider}</span>
-        </div>
+            {expanded ? (
+                <span className="flex items-center gap-1.5 flex-wrap">
+                    <span>Prompt: <b>{formatChars(usage.promptChars)}</b> chars</span>
+                    <span className="text-cyan-500/30">|</span>
+                    <span>Response: <b>{formatChars(usage.responseChars)}</b> chars</span>
+                    <span className="text-cyan-500/30">|</span>
+                    <span>History: <b>{usage.historyCount}</b> msgs</span>
+                    <span className="text-cyan-500/30">|</span>
+                    <span className="uppercase">{usage.provider}</span>
+                </span>
+            ) : (
+                <span className="flex items-center gap-1">
+                    <span className="text-cyan-500/50">API</span>
+                    <span>{formatChars(usage.promptChars)} in</span>
+                    <span className="text-cyan-500/30">/</span>
+                    <span>{formatChars(usage.responseChars)} out</span>
+                    <span className="text-cyan-500/30">|</span>
+                    <span className="uppercase">{usage.provider}</span>
+                </span>
+            )}
+        </button>
     )
 }
 

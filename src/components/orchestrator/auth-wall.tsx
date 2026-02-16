@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { signInOrSignUpWithPassword } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
+import { cn } from '@/lib/utils'
 
 interface AuthWallProps {
     isOpen: boolean
@@ -95,7 +96,12 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                 required
                             />
                             {errorMessage && (
-                                <div className="text-xs text-red-400">{errorMessage}</div>
+                                <div className={cn(
+                                    "text-xs",
+                                    errorMessage.toLowerCase().includes('check your email')
+                                        ? "text-emerald-500 dark:text-emerald-400"
+                                        : "text-red-400"
+                                )}>{errorMessage}</div>
                             )}
                             <Button
                                 type="submit"
