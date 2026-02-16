@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import dynamic from 'next/dynamic'
-import { toPng } from 'html-to-image'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
@@ -256,6 +255,7 @@ export default function ChatPage() {
 
             let dataUrl: string
             try {
+                const { toPng } = await import('html-to-image')
                 dataUrl = await toPng(el, {
                     cacheBust: true,
                     pixelRatio: 2,
@@ -305,6 +305,7 @@ export default function ChatPage() {
                     typingCount={typing.typingUsers.length}
                     memoryActive={!isGuest}
                     autoLowCostActive={capacity.autoLowCostMode && !lowCostMode}
+                    tokenUsage={api.lastTokenUsageRef.current}
                 />
 
                 <div className="flex-1 flex flex-col min-h-0 relative">

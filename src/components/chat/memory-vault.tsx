@@ -127,7 +127,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest">AI Long-term Awareness</p>
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+                            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label="Close memory vault">
                                 <X size={20} />
                             </Button>
                         </div>
@@ -139,6 +139,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                 <input
                                     type="text"
                                     placeholder="Search memories..."
+                                    aria-label="Search memories"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
@@ -195,6 +196,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                                                 size="icon"
                                                                 onClick={() => handleEdit(memory)}
                                                                 className="h-7 w-7 rounded-full hover:bg-white/10"
+                                                                aria-label="Edit memory"
                                                             >
                                                                 <Edit3 size={14} />
                                                             </Button>
@@ -203,6 +205,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                                                 size="icon"
                                                                 onClick={() => handleDelete(memory.id)}
                                                                 className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                                                                aria-label="Delete memory"
                                                             >
                                                                 <Trash2 size={14} />
                                                             </Button>

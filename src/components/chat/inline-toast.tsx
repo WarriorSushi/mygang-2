@@ -12,7 +12,7 @@ export function InlineToast({ message, onClose }: InlineToastProps) {
     if (!message) return null
 
     return (
-        <div className="fixed bottom-24 left-1/2 z-50 w-[90%] max-w-md -translate-x-1/2">
+        <div className="fixed bottom-24 left-1/2 z-50 w-[90%] max-w-md -translate-x-1/2" role="alert" aria-live="assertive">
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/70 px-4 py-3 text-[11px] text-white shadow-2xl backdrop-blur-xl">
                 <span>{message}</span>
                 <Button

@@ -803,7 +803,7 @@ ${sessionSummary}
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
 
         const isEntourageMode = chatMode === 'entourage'
-        const baseResponders = isEntourageMode ? 1 : (lowCostMode ? 2 : 3)
+        const baseResponders = isEntourageMode ? 3 : (lowCostMode ? 2 : 3)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = lastUserMsg.length < 40 ? Math.min(2, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
@@ -1399,7 +1399,15 @@ FLOW FLAGS:
             }
         }
 
-        return Response.json(object)
+        return Response.json({
+            ...object,
+            usage: {
+                promptChars: llmPrompt.length,
+                responseChars: JSON.stringify(object.events).length,
+                historyCount: historyForLLM.length,
+                provider: providerUsed,
+            },
+        })
     } catch (routeErr) {
         console.error('Critical Route Error:', routeErr)
         if (isProviderCapacityError(routeErr)) {

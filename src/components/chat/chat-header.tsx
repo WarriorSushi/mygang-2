@@ -9,6 +9,13 @@ import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
 import Image from 'next/image'
 
+export interface TokenUsage {
+    promptChars: number
+    responseChars: number
+    historyCount: number
+    provider: string
+}
+
 interface ChatHeaderProps {
     activeGang: Character[]
     onOpenVault: () => void
@@ -16,9 +23,30 @@ interface ChatHeaderProps {
     typingCount?: number
     memoryActive?: boolean
     autoLowCostActive?: boolean
+    tokenUsage?: TokenUsage | null
 }
 
-export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false, autoLowCostActive = false }: ChatHeaderProps) {
+function formatChars(n: number): string {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+    return String(n)
+}
+
+function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
+    return (
+        <div
+            className="hidden sm:flex items-center gap-1.5 rounded-md border border-cyan-500/25 bg-cyan-500/8 px-2 py-0.5 text-[9px] font-mono text-cyan-400/80 select-none"
+            title={`Prompt: ${usage.promptChars} chars | Response: ${usage.responseChars} chars | History: ${usage.historyCount} msgs | Provider: ${usage.provider}`}
+        >
+            <span>{formatChars(usage.promptChars)}p</span>
+            <span className="text-cyan-500/30">/</span>
+            <span>{formatChars(usage.responseChars)}r</span>
+            <span className="text-cyan-500/30">|</span>
+            <span>{usage.provider}</span>
+        </div>
+    )
+}
+
+export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
     const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
@@ -26,6 +54,16 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
     const [showAutoLowCostInfo, setShowAutoLowCostInfo] = useState(false)
     const showCapacityInfo = autoLowCostActive && showAutoLowCostInfo
     const capacityInfoRef = useRef<HTMLDivElement>(null)
+
+    const [devToolsEnabled, setDevToolsEnabled] = useState(false)
+    useEffect(() => {
+        try {
+            setDevToolsEnabled(
+                typeof window !== 'undefined' &&
+                (window.localStorage.getItem('dev_tools') === 'true' || process.env.NODE_ENV === 'development')
+            )
+        } catch { /* localStorage blocked */ }
+    }, [])
 
     useEffect(() => {
         if (!showCapacityInfo) return
@@ -71,7 +109,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
                                             priority={false}
                                         />
                                     )}
-                                    <AvatarFallback className="text-[11px] bg-muted">{char.name[0]}</AvatarFallback>
+                                    <AvatarFallback className="text-[11px] bg-muted">{char.name?.[0] || '?'}</AvatarFallback>
                                 </Avatar>
                             ))}
                         </div>
@@ -87,6 +125,7 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {devToolsEnabled && tokenUsage && <DevTokenIndicator usage={tokenUsage} />}
                 {autoLowCostActive && (
                     <div className="relative" ref={capacityInfoRef}>
                         <Button
@@ -151,5 +190,3 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
         </header>
     )
 }
-
-

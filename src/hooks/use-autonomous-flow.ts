@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { CHARACTER_GREETINGS } from '@/constants/character-greetings'
 
-function pickRandom<T>(items: T[]): T {
+function pickRandom<T>(items: T[]): T | undefined {
+    if (items.length === 0) return undefined
     return items[Math.floor(Math.random() * items.length)]
 }
 
@@ -112,7 +113,7 @@ export function useAutonomousFlow({
                 isAutonomous: true,
                 autonomousIdle: true,
                 sourceUserMessageId,
-            })
+            }).catch((err) => console.error('Idle autonomous error:', err))
         }, delay)
     }, [canRunIdleAutonomous, clearIdleAutonomousTimer, idleAutoCountRef, isGeneratingRef, lastUserMessageIdRef, pendingUserMessagesRef, sendToApiRef])
 
@@ -132,7 +133,7 @@ export function useAutonomousFlow({
                 if (hasUserMessage) return
                 queueTypingUser(char.id)
                 pulseStatus(char.id, pickStatusFor(char.id), 1600)
-                const line = pickRandom(CHARACTER_GREETINGS[char.id] || [`Hey ${nameLabel}, what should we talk about?`])
+                const line = (pickRandom(CHARACTER_GREETINGS[char.id] || [`Hey ${nameLabel}, what should we talk about?`]) || `Hey ${nameLabel}, what should we talk about?`)
                     .replace('{name}', nameLabel)
 
                 scheduleGreeting(() => {

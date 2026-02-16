@@ -4,7 +4,8 @@ import { useRef, useState } from 'react'
 import { useChatStore, type Character } from '@/stores/chat-store'
 import { ACTIVITY_STATUSES } from '@/constants/character-greetings'
 
-function pickRandom<T>(items: T[]): T {
+function pickRandom<T>(items: T[]): T | undefined {
+    if (items.length === 0) return undefined
     return items[Math.floor(Math.random() * items.length)]
 }
 
@@ -69,9 +70,9 @@ export function useTypingSimulation() {
         }, 3000)
     }
 
-    const pickStatusFor = (characterId: string) => {
+    const pickStatusFor = (characterId: string): string => {
         if (!characterId) return ACTIVITY_STATUSES[0]
-        return pickRandom([...ACTIVITY_STATUSES])
+        return pickRandom([...ACTIVITY_STATUSES]) || ACTIVITY_STATUSES[0]
     }
 
     const pulseStatus = (characterId: string, status: string, duration = 2400) => {

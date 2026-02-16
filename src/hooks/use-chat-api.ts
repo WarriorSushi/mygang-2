@@ -13,9 +13,17 @@ type ChatEvent =
     | { type: 'nickname_update'; character: string; content?: string; delay: number }
     | { type: 'typing_ghost'; character: string; content?: string; delay: number }
 
+type TokenUsage = {
+    promptChars: number
+    responseChars: number
+    historyCount: number
+    provider: string
+}
+
 type ChatApiResponse = {
     events: ChatEvent[]
     should_continue?: boolean
+    usage?: TokenUsage
 }
 
 export type SendToApiArgs = {
@@ -104,6 +112,7 @@ export function useChatApi({
     const sessionRef = useRef<{ id: string; startedAt: number } | null>(null)
     const firstMessageLoggedRef = useRef(false)
     const idleAutoCountRef = useRef(0)
+    const lastTokenUsageRef = useRef<TokenUsage | null>(null)
 
     // Refs for autonomous functions (patched externally after useAutonomousFlow initializes)
     const autonomousBackoffUntilRef = useRef(0)
@@ -155,12 +164,12 @@ export function useChatApi({
                 return
             }
             if (silentTurnsRef.current >= 10) {
-                console.log("Autonomous flow stopped: 10 message limit reached.")
+                if (process.env.NODE_ENV !== 'production') console.log("Autonomous flow stopped: 10 message limit reached.")
                 isGeneratingRef.current = false
                 return
             }
             if (burstCountRef.current >= 3) {
-                console.log("Autonomous flow stopped: 3-burst limit reached.")
+                if (process.env.NODE_ENV !== 'production') console.log("Autonomous flow stopped: 3-burst limit reached.")
                 isGeneratingRef.current = false
                 return
             }
@@ -322,6 +331,9 @@ export function useChatApi({
                 throw new Error('Invalid response shape')
             }
             apiCallSucceeded = true
+            if (data.usage) {
+                lastTokenUsageRef.current = data.usage
+            }
             updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'sent')
             if (!isAutonomous && !isIntro) {
                 recordSuccessfulUserTurn()
@@ -332,7 +344,7 @@ export function useChatApi({
             // == THE SEQUENCER ==
             for (const event of data.events) {
                 if (pendingUserMessagesRef.current) {
-                    console.log("AI Sequencing interrupted by new user message.")
+                    if (process.env.NODE_ENV !== 'production') console.log("AI Sequencing interrupted by new user message.")
                     break
                 }
 
@@ -352,7 +364,7 @@ export function useChatApi({
                         if (pendingUserMessagesRef.current) break
 
                         addMessage({
-                            id: event.message_id || `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            id: event.message_id || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
                             speaker: event.character,
                             content: eventContent,
                             created_at: new Date().toISOString(),
@@ -401,7 +413,7 @@ export function useChatApi({
                 await new Promise(r => setTimeout(r, 1000))
                 isGeneratingRef.current = false
                 const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
-                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId })
+                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId }).catch((err) => console.error('Autonomous continuation error:', err))
                 return
             }
 
@@ -410,7 +422,7 @@ export function useChatApi({
                 await new Promise((r) => setTimeout(r, 900))
                 isGeneratingRef.current = false
                 const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
-                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId })
+                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId }).catch((err) => console.error('Autonomous continuation error:', err))
                 return
             }
 
@@ -424,7 +436,7 @@ export function useChatApi({
                 isGeneratingRef.current = false
                 const sourceId = pendingUserMessageIdRef.current
                 pendingUserMessageIdRef.current = null
-                sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId })
+                sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId }).catch((err) => console.error('Pending message retry error:', err))
             } else {
                 isGeneratingRef.current = false
                 clearTypingUsers()
@@ -462,10 +474,11 @@ export function useChatApi({
         localMessageCounterRef.current += 1
         const localId = `user-${Date.now()}-${localMessageCounterRef.current}`
 
-        if (isGuest && !messages.some(m => m.speaker === 'user')) {
+        const currentMessages = useChatStore.getState().messages
+        if (isGuest && !currentMessages.some(m => m.speaker === 'user')) {
             pendingBlockedMessageRef.current = { content: trimmed, replyToId: options?.replyToId, reaction: options?.reaction }
             setShowAuthWall(true)
-            if (messages.length === 0 && !initialGreetingRef.current) {
+            if (currentMessages.length === 0 && !initialGreetingRef.current) {
                 triggerLocalGreetingRef.current()
             }
             return false
@@ -582,6 +595,7 @@ export function useChatApi({
         idleAutoCountRef,
         sessionRef,
         firstMessageLoggedRef,
+        lastTokenUsageRef,
         // Autonomous bridge refs (to be patched by page after useAutonomousFlow)
         autonomousBackoffUntilRef,
         clearIdleAutonomousTimerRef,

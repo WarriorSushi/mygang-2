@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
 import { Switch } from '@/components/ui/switch'
 import { trackEvent } from '@/lib/analytics'
+import { useChatStore } from '@/stores/chat-store'
 
 interface SettingsPanelProps {
     username: string | null
@@ -50,6 +51,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
     const handleLowCostModeToggle = (next: boolean) => {
         setLowCostMode(next)
+        useChatStore.getState().setLowCostMode(next)
         updateUserSettings({ low_cost_mode: next })
         trackEvent(next ? 'low_cost_mode_enabled' : 'low_cost_mode_disabled', {
             metadata: { source: 'settings_page' }

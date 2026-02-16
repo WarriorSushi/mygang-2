@@ -78,8 +78,20 @@ export const useChatStore = create<ChatState>()(
             chatWallpaper: 'default',
             showPersonaRoles: true,
             squadConflict: null,
-            setMessages: (messages) => set({ messages: messages.slice(-MAX_PERSISTED_MESSAGES) }),
-            addMessage: (message) => set((state) => ({ messages: [...state.messages, message].slice(-MAX_PERSISTED_MESSAGES) })),
+            setMessages: (messages) => {
+                const seen = new Set<string>()
+                const deduped: Message[] = []
+                for (const m of messages) {
+                    if (seen.has(m.id)) continue
+                    seen.add(m.id)
+                    deduped.push(m)
+                }
+                return set({ messages: deduped.slice(-MAX_PERSISTED_MESSAGES) })
+            },
+            addMessage: (message) => set((state) => {
+                if (state.messages.some((m) => m.id === message.id)) return state
+                return { messages: [...state.messages, message].slice(-MAX_PERSISTED_MESSAGES) }
+            }),
             setActiveGang: (gang) => set({ activeGang: gang }),
             setIsGuest: (isGuest) => set({ isGuest }),
             setUserName: (name) => set({ userName: name }),

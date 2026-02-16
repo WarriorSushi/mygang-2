@@ -47,17 +47,10 @@ export const ACTIVITY_STATUSES = [
     "opened your message",
 ] as const
 
-const ACTIVITY_STATUS_SET = new Set<string>(ACTIVITY_STATUSES)
-
 export function normalizeActivityStatus(status: string | null | undefined): string {
     const value = (status || '').trim().toLowerCase()
     for (const allowed of ACTIVITY_STATUSES) {
         if (value === allowed) return allowed
     }
     return ''
-}
-
-export function isAllowedActivityStatus(status: string | null | undefined): boolean {
-    if (!status) return false
-    return ACTIVITY_STATUS_SET.has(status.trim().toLowerCase())
 }
