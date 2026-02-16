@@ -141,7 +141,7 @@ export const TypingIndicator = memo(function TypingIndicator({ typingUsers, acti
                             </div>
                             <span className="min-w-0 truncate text-muted-foreground/60">
                                 <span className="font-medium" style={{ color: toRgbString(nameColor) }}>{character.name}</span>
-                                {' '}is typing\u2026
+                                {' '}is typing{'\u2026'}
                             </span>
                         </motion.div>
                     )
