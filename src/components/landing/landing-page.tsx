@@ -596,7 +596,7 @@ export function LandingPage() {
 /* ── LiveDemoCard: truly fixed-size, no layout shift ── */
 function LiveDemoCard({ thread }: { thread: DemoThread }) {
   const [visibleCount, setVisibleCount] = useState(0)
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -628,8 +628,10 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
     }
   }, [thread])
 
+  // Scroll only the chat container, not the page
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    const el = scrollContainerRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [visibleCount])
 
   const visibleBubbles = thread.bubbles.slice(0, visibleCount)
@@ -645,7 +647,7 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
 
         {/* Fixed-size chat area - overflow scroll, never changes page height */}
         <div className="rounded-xl border border-border/60 bg-background/60 p-3 h-[19rem] flex flex-col">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
             <div className="space-y-2.5 flex flex-col justify-end min-h-full">
               <div className="flex-1" />
               <AnimatePresence initial={false}>
@@ -679,7 +681,6 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
                   </motion.div>
                 ))}
               </AnimatePresence>
-              <div ref={chatEndRef} />
             </div>
           </div>
 
