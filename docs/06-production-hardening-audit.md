@@ -131,6 +131,8 @@
 | 12 | L6 | Guarded `console.log` behind NODE_ENV check |
 | 13 | L12 | Added fallback for empty `char.name` |
 | 14 | M14 | Added `.catch()` to autonomous flow setTimeout |
+| 15 | SEC-H | Admin proxy now verifies HMAC signature + expiry (was cookie-exists only) |
+| 16 | SEC-M | `updateMemory` now validates content with memoryContentSchema |
 
 ---
 

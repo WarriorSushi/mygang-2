@@ -245,6 +245,9 @@ export async function deleteMemory(id: string) {
 }
 
 export async function updateMemory(id: string, content: string) {
+    const parsed = memoryContentSchema.safeParse(content)
+    if (!parsed.success) return
+
     const { generateEmbedding } = await import('@/lib/ai/memory')
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -252,7 +255,7 @@ export async function updateMemory(id: string, content: string) {
 
     let embedding: number[] = []
     try {
-        embedding = await generateEmbedding(content)
+        embedding = await generateEmbedding(parsed.data)
     } catch (err) {
         console.error('Error generating embedding:', err)
         return
@@ -260,7 +263,7 @@ export async function updateMemory(id: string, content: string) {
 
     const { error } = await supabase
         .from('memories')
-        .update({ content, embedding: embedding as unknown as string })
+        .update({ content: parsed.data, embedding: embedding as unknown as string })
         .eq('id', id)
         .eq('user_id', user.id)
 
