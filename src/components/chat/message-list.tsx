@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
 import { cn } from '@/lib/utils'
-import { TypingIndicator } from '@/components/chat/typing-indicator'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -50,7 +49,7 @@ function ChatSkeleton() {
 interface MessageListProps {
     messages: Message[]
     activeGang: Character[]
-    typingUsers: string[]
+    typingUsers?: string[]
     isFastMode?: boolean
     onReplyMessage?: (message: Message) => void
     onLikeMessage?: (message: Message) => void
@@ -68,7 +67,6 @@ function normalizeSpeaker(value: string) {
 export const MessageList = memo(function MessageList({
     messages,
     activeGang,
-    typingUsers,
     isFastMode = false,
     onReplyMessage,
     onLikeMessage,
@@ -85,13 +83,9 @@ export const MessageList = memo(function MessageList({
     const didInitialScrollRef = useRef(false)
     const [isAtBottom, setIsAtBottom] = useState(true)
     const prevMessagesLength = useRef(messages.length)
-    const characterStatuses = useChatStore((state) => state.characterStatuses)
     const isGuest = useChatStore((state) => state.isGuest)
     const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
-    const hasTyping = typingUsers.length > 0
-    const hasActivity = Object.values(characterStatuses).some(Boolean)
-    const hasStatusRow = hasTyping || hasActivity
-    const itemCount = messages.length + (hasStatusRow ? 1 : 0)
+    const itemCount = messages.length
     const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
     const characterCatalogById = useMemo(
         () => new Map(CHARACTERS.map((character) => [normalizeSpeaker(character.id), character])),
@@ -222,15 +216,6 @@ export const MessageList = memo(function MessageList({
         prevMessagesLength.current = messages.length
     }, [messages, isAtBottom, scrollToBottom])
 
-    // If status/typing rows appear while user is already at bottom, keep the viewport pinned.
-    useEffect(() => {
-        if (!didInitialScrollRef.current) return
-        if (!isAtBottom) return
-        requestAnimationFrame(() => {
-            scrollToBottom()
-        })
-    }, [hasStatusRow, isAtBottom, scrollToBottom])
-
     if (isBootstrappingHistory && messages.length === 0) {
         return (
             <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -267,32 +252,6 @@ export const MessageList = memo(function MessageList({
                 <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                         const index = virtualRow.index
-                        const isTypingRow = hasStatusRow && index === messages.length
-                        if (isTypingRow) {
-                            return (
-                                <div
-                                    key="typing-row"
-                                    ref={rowVirtualizer.measureElement}
-                                    data-index={index}
-                                    className="px-4 md:px-10 lg:px-14"
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        transform: `translateY(${virtualRow.start}px)`,
-                                        willChange: 'transform',
-                                    }}
-                                >
-                                    <TypingIndicator
-                                        typingUsers={typingUsers}
-                                        activeGang={activeGang}
-                                        activityStatuses={characterStatuses}
-                                    />
-                                </div>
-                            )
-                        }
-
                         const message = messages[index]
                         if (!message) return null
                         const character = characterBySpeaker.get(normalizeSpeaker(message.speaker))

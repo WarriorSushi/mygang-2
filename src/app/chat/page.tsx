@@ -335,7 +335,7 @@ export default function ChatPage() {
                     activeGang={activeGang}
                     onOpenVault={() => setIsVaultOpen(true)}
                     onOpenSettings={() => setIsSettingsOpen(true)}
-                    typingCount={typing.typingUsers.length}
+                    typingUsers={typing.typingUsers}
                     memoryActive={!isGuest}
                     autoLowCostActive={capacity.autoLowCostMode && !lowCostMode}
                     tokenUsage={api.lastTokenUsageRef.current}
@@ -354,7 +354,6 @@ export default function ChatPage() {
                             <MessageList
                                 messages={messages}
                                 activeGang={activeGang}
-                                typingUsers={typing.typingUsers}
                                 isFastMode={typing.isFastMode}
                                 hasMoreHistory={history.hasMoreHistory}
                                 loadingHistory={history.isLoadingOlderHistory}

@@ -20,7 +20,7 @@ interface ChatHeaderProps {
     activeGang: Character[]
     onOpenVault: () => void
     onOpenSettings: () => void
-    typingCount?: number
+    typingUsers?: string[]
     memoryActive?: boolean
     autoLowCostActive?: boolean
     tokenUsage?: TokenUsage | null
@@ -66,7 +66,7 @@ function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
     )
 }
 
-export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
+export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingUsers = [], memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
     const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
@@ -135,11 +135,23 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                         </div>
                         <h1 className="font-semibold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
                     </div>
-                    <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1.5 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        {activeGang.length} online
-                        {typingCount > 0 && <span className="lg:hidden"> &middot; {typingCount} typing</span>}
-                        {memoryActive && <span> &middot; Memory active</span>}
+                    <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1.5 mt-0.5 min-h-[14px]">
+                        <span className={`w-1.5 h-1.5 rounded-full ${typingUsers.length > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
+                        {typingUsers.length > 0 ? (
+                            <span className="text-muted-foreground/80 truncate">
+                                {(() => {
+                                    const names = typingUsers.map(id => activeGang.find(c => c.id === id)?.name || id)
+                                    if (names.length === 1) return `${names[0]} is typing\u2026`
+                                    if (names.length === 2) return `${names[0]} and ${names[1]} are typing\u2026`
+                                    return `${names[0]} and ${names.length - 1} others are typing\u2026`
+                                })()}
+                            </span>
+                        ) : (
+                            <>
+                                {activeGang.length} online
+                                {memoryActive && <span> &middot; Memory active</span>}
+                            </>
+                        )}
                     </span>
                 </div>
             </div>
