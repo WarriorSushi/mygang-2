@@ -115,9 +115,9 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="relative w-full max-w-md h-full bg-background/80 backdrop-blur-2xl border-l border-white/10 shadow-2xl pointer-events-auto flex flex-col pt-safe"
+                        className="relative w-full max-w-md h-full bg-background/80 backdrop-blur-2xl border-l border-border/50 shadow-2xl pointer-events-auto flex flex-col pt-safe"
                     >
-                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                        <div className="p-6 border-b border-border/50 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 rounded-lg bg-primary/20 text-primary">
                                     <Brain size={20} />
@@ -142,7 +142,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                     aria-label="Search memories"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                                    className="w-full bg-muted/40 border border-border/50 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                 />
                             </div>
                         </div>
@@ -167,13 +167,13 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                             ) : (
                                 <>
                                     {filteredMemories.map((memory) => (
-                                        <GlassCard key={memory.id} className="p-4 border-white/10 group relative transition-all hover:border-primary/30">
+                                        <GlassCard key={memory.id} className="p-4 border-border/50 group relative transition-all hover:border-primary/30">
                                             {editingId === memory.id ? (
                                                 <div className="space-y-3">
                                                     <textarea
                                                         value={editContent}
                                                         onChange={(e) => setEditContent(e.target.value)}
-                                                        className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-24 resize-none"
+                                                        className="w-full bg-black/20 border border-border/50 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-24 resize-none"
                                                         autoFocus
                                                     />
                                                     <div className="flex justify-end gap-2">
@@ -195,7 +195,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 onClick={() => handleEdit(memory)}
-                                                                className="h-7 w-7 rounded-full hover:bg-white/10"
+                                                                className="h-7 w-7 rounded-full hover:bg-muted/60"
                                                                 aria-label="Edit memory"
                                                             >
                                                                 <Edit3 size={14} />
@@ -239,7 +239,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                             )}
                         </div>
 
-                        <div className="p-6 border-t border-white/10 bg-black/20">
+                        <div className="p-6 border-t border-border/50 bg-black/20">
                             <p className="text-[10px] text-center text-muted-foreground uppercase leading-relaxed font-medium">
                                 Memories shape how the gang interacts with you.<br />
                                 Changes take effect immediately.

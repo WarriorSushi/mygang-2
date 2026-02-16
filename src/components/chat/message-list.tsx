@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
@@ -63,7 +64,7 @@ function normalizeSpeaker(value: string) {
     return value.toLowerCase().trim()
 }
 
-export function MessageList({
+export const MessageList = memo(function MessageList({
     messages,
     activeGang,
     typingUsers,
@@ -348,4 +349,4 @@ export function MessageList({
             </AnimatePresence>
         </div>
     )
-}
+})

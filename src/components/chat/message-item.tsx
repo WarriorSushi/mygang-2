@@ -421,7 +421,7 @@ function MessageItemComponent({
                             type="button"
                             variant="ghost"
                             size="xs"
-                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-white/8 hover:text-foreground dark:hover:text-white"
+                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
                             onClick={() => {
                                 onLike?.(message)
                                 setShowActions(false)
@@ -434,7 +434,7 @@ function MessageItemComponent({
                             type="button"
                             variant="ghost"
                             size="xs"
-                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-white/8 hover:text-foreground dark:hover:text-white"
+                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
                             onClick={() => {
                                 onReply?.(message)
                                 setShowActions(false)

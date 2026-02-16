@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import dynamic from 'next/dynamic'
@@ -120,6 +120,17 @@ export default function ChatPage() {
         pendingUserMessagesRef: api.pendingUserMessagesRef,
         debounceTimerRef: api.debounceTimerRef,
     })
+
+    const replyingToDisplay = useMemo(() => {
+        if (!replyingTo) return null
+        return {
+            id: replyingTo.id,
+            speaker: replyingTo.speaker === 'user'
+                ? 'user'
+                : (activeGang.find((c) => c.id === replyingTo.speaker)?.name || replyingTo.speaker),
+            content: replyingTo.content
+        }
+    }, [replyingTo, activeGang])
 
     // ── Guard: Redirect if no squad ──
     useEffect(() => {
@@ -311,7 +322,7 @@ export default function ChatPage() {
                 <div className="flex-1 flex flex-col min-h-0 relative">
                     <div className="px-4 md:px-10 lg:px-14">
                         {showResumeBanner && (
-                            <div className="mb-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                            <div className="mb-2 rounded-full border border-border/50 bg-muted/40 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                                 {resumeBannerText}
                             </div>
                         )}
@@ -344,13 +355,7 @@ export default function ChatPage() {
                         onSend={api.handleSend}
                         disabled={!isOnline}
                         online={isOnline}
-                        replyingTo={replyingTo ? {
-                            id: replyingTo.id,
-                            speaker: replyingTo.speaker === 'user'
-                                ? 'user'
-                                : (activeGang.find((c) => c.id === replyingTo.speaker)?.name || replyingTo.speaker),
-                            content: replyingTo.content
-                        } : null}
+                        replyingTo={replyingToDisplay}
                         onCancelReply={() => setReplyingTo(null)}
                     />
                 </div>

@@ -62,7 +62,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
     return (
         <div className="space-y-8">
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Account</div>
                 <div className="mt-2 text-2xl font-black">{username || 'Member'}</div>
                 <div className="mt-1 text-xs text-muted-foreground break-all">{email || 'Email unavailable'}</div>
@@ -86,7 +86,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 </div>
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Usage</div>
                 <div className="mt-2 text-lg font-semibold">
                     {usage.dailyCount} / {usage.dailyLimit} messages today
@@ -95,7 +95,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 <div className="text-[11px] text-muted-foreground mt-1">Tier: {usage.subscriptionTier || 'free'}</div>
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance</div>
                 <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
@@ -116,7 +116,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 )}
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Cost Control</div>
                 <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
@@ -133,7 +133,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 </div>
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Account Actions</div>
                 <div className="mt-4 flex flex-wrap gap-3">
                     <form action={signOut}>

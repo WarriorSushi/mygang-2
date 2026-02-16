@@ -33,7 +33,7 @@ export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepPro
                     onChange={(e) => setName(e.target.value)}
                     data-testid="onboarding-name"
                     aria-label="Your nickname"
-                    className="text-base sm:text-lg py-5 sm:py-7 px-5 sm:px-6 bg-white/5 border-white/10 rounded-2xl focus-visible:ring-primary/50"
+                    className="text-base sm:text-lg py-5 sm:py-7 px-5 sm:px-6 bg-muted/40 border-border/50 rounded-2xl focus-visible:ring-primary/50"
                     autoFocus
                     onKeyDown={(e) => e.key === 'Enter' && canContinue && onNext()}
                 />

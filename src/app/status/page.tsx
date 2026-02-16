@@ -17,19 +17,19 @@ export default function StatusPage() {
                 </div>
 
                 <div className="grid gap-4">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-2xl border border-border/50 bg-muted/40 p-4">
                         <div className="text-xs uppercase tracking-widest text-muted-foreground">Health</div>
                         <div className="mt-2 text-lg font-semibold text-emerald-400">OK</div>
                         <div className="text-xs text-muted-foreground mt-1 break-all">Server time: {now.toISOString()}</div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-2xl border border-border/50 bg-muted/40 p-4">
                         <div className="text-xs uppercase tracking-widest text-muted-foreground">Version</div>
                         <div className="mt-2 text-lg font-semibold">{packageJson.version}</div>
                         <div className="text-xs text-muted-foreground mt-1 break-all">Commit: {commit || 'local'}</div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-2xl border border-border/50 bg-muted/40 p-4">
                         <div className="text-xs uppercase tracking-widest text-muted-foreground">Environment</div>
                         <div className="mt-2 text-lg font-semibold">{environment || 'unknown'}</div>
                         <div className="text-xs text-muted-foreground mt-1">Region: {region || 'local'}</div>

@@ -62,6 +62,13 @@ interface ChatState {
     clearChat: () => void
 }
 
+// Set for O(1) duplicate checks on hot path
+let _messageIdSet = new Set<string>()
+
+function rebuildIdSet(messages: Message[]) {
+    _messageIdSet = new Set(messages.map((m) => m.id))
+}
+
 export const useChatStore = create<ChatState>()(
     persist(
         (set) => ({
@@ -86,11 +93,19 @@ export const useChatStore = create<ChatState>()(
                     seen.add(m.id)
                     deduped.push(m)
                 }
-                return set({ messages: deduped.slice(-MAX_PERSISTED_MESSAGES) })
+                const sliced = deduped.slice(-MAX_PERSISTED_MESSAGES)
+                rebuildIdSet(sliced)
+                return set({ messages: sliced })
             },
             addMessage: (message) => set((state) => {
-                if (state.messages.some((m) => m.id === message.id)) return state
-                return { messages: [...state.messages, message].slice(-MAX_PERSISTED_MESSAGES) }
+                if (_messageIdSet.has(message.id)) return state
+                _messageIdSet.add(message.id)
+                const next = [...state.messages, message].slice(-MAX_PERSISTED_MESSAGES)
+                if (next.length < state.messages.length + 1) {
+                    // Slicing trimmed old messages, rebuild set
+                    rebuildIdSet(next)
+                }
+                return { messages: next }
             }),
             setActiveGang: (gang) => set({ activeGang: gang }),
             setIsGuest: (isGuest) => set({ isGuest }),
@@ -106,7 +121,10 @@ export const useChatStore = create<ChatState>()(
             setChatWallpaper: (chatWallpaper) => set({ chatWallpaper }),
             setShowPersonaRoles: (showPersonaRoles) => set({ showPersonaRoles }),
             setSquadConflict: (squadConflict) => set({ squadConflict }),
-            clearChat: () => set({ messages: [] }),
+            clearChat: () => {
+                _messageIdSet.clear()
+                return set({ messages: [] })
+            },
         }),
         {
             name: 'mygang-chat-storage',
@@ -121,7 +139,10 @@ export const useChatStore = create<ChatState>()(
                 lowCostMode: state.lowCostMode,
                 chatWallpaper: state.chatWallpaper,
                 showPersonaRoles: state.showPersonaRoles
-            })
+            }),
+            onRehydrateStorage: () => (state) => {
+                if (state?.messages) rebuildIdSet(state.messages)
+            },
         }
     )
 )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, X } from 'lucide-react'
 
@@ -21,7 +21,7 @@ interface ChatInputProps {
 const DRAFT_STORAGE_KEY = 'mygang-chat-draft'
 const MAX_CHARS = 2000
 
-export function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply }: ChatInputProps) {
+export const ChatInput = memo(function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply }: ChatInputProps) {
     const [input, setInput] = useState(() => {
         if (typeof window === 'undefined') return ''
         const savedDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY)
@@ -148,4 +148,4 @@ export function ChatInput({ onSend, disabled, online = true, replyingTo = null, 
             )}
         </div>
     )
-}
+})

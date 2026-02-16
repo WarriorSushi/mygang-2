@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
     public render() {
         if (this.state.hasError) {
             return (
-                <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center space-y-4 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 m-4">
+                <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center space-y-4 bg-muted/40 backdrop-blur-xl rounded-3xl border border-border/50 m-4">
                     <AlertCircle size={48} className="text-destructive mb-2" />
                     <h2 className="text-xl font-bold italic uppercase tracking-tighter">Vibe Check Failed</h2>
                     <p className="text-sm text-muted-foreground max-w-xs mx-auto">

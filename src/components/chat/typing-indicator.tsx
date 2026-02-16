@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
@@ -86,7 +87,7 @@ interface TypingIndicatorProps {
     activityStatuses?: Record<string, string>
 }
 
-export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {} }: TypingIndicatorProps) {
+export const TypingIndicator = memo(function TypingIndicator({ typingUsers, activeGang, activityStatuses = {} }: TypingIndicatorProps) {
     const { theme, resolvedTheme } = useTheme()
     const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
     const activityEntries = Object.entries(activityStatuses).filter(([id, status]) => status && !typingUsers.includes(id))
@@ -148,4 +149,4 @@ export function TypingIndicator({ typingUsers, activeGang, activityStatuses = {}
             </AnimatePresence>
         </div>
     )
-}
+})

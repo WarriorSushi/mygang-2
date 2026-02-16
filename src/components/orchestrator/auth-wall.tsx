@@ -57,7 +57,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent data-testid="auth-wall" className="sm:max-w-md bg-background/60 backdrop-blur-3xl border-white/10 shadow-2xl p-0 overflow-hidden rounded-[2rem]">
+            <DialogContent data-testid="auth-wall" className="sm:max-w-md bg-background/60 backdrop-blur-3xl border-border/50 shadow-2xl p-0 overflow-hidden rounded-[2rem]">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-accent to-primary animate-gradient" />
 
                 <div className="p-8">
@@ -83,7 +83,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                 placeholder="your@email.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="h-12 sm:h-14 rounded-xl bg-white/5 border-white/10 text-base sm:text-lg focus-visible:ring-primary/50"
+                                className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
                                 required
                             />
                             <Input
@@ -91,7 +91,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                 placeholder="Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="h-12 sm:h-14 rounded-xl bg-white/5 border-white/10 text-base sm:text-lg focus-visible:ring-primary/50"
+                                className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
                                 required
                             />
                             {errorMessage && (
@@ -101,7 +101,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                 type="submit"
                                 variant="outline"
                                 disabled={isLoading}
-                                className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-white/10 bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]"
+                                className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-border/50 bg-muted/40 hover:bg-muted/60 transition-all active:scale-[0.98]"
                             >
                                 {isLoading ? (
                                     <Loader2 className="animate-spin h-5 w-5" />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sun, Moon, Brain, Settings2, Info } from 'lucide-react'
@@ -46,7 +46,7 @@ function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
     )
 }
 
-export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
+export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCount = 0, memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
     const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
@@ -189,4 +189,4 @@ export function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingCoun
             </div>
         </header>
     )
-}
+})

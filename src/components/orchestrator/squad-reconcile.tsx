@@ -45,7 +45,7 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
 
     return (
         <Dialog open={!!conflict} onOpenChange={(open) => !open && onResolve()}>
-            <DialogContent className="sm:max-w-lg bg-background/80 backdrop-blur-3xl border-white/10 rounded-3xl">
+            <DialogContent className="sm:max-w-lg bg-background/80 backdrop-blur-3xl border-border/50 rounded-3xl">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-black">Gang Sync Detected</DialogTitle>
                     <DialogDescription className="text-muted-foreground">
@@ -54,22 +54,22 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
                 </DialogHeader>
 
                 <div className="grid gap-4">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-2xl border border-border/50 bg-muted/40 p-4">
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">This device</div>
                         <div className="flex flex-wrap gap-2">
                             {local.map((member) => (
-                                <span key={member.id} className="px-3 py-1 rounded-full border border-white/10 text-[11px] uppercase tracking-widest">
+                                <span key={member.id} className="px-3 py-1 rounded-full border border-border/50 text-[11px] uppercase tracking-widest">
                                     {member.name}
                                 </span>
                             ))}
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-2xl border border-border/50 bg-muted/40 p-4">
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Cloud gang</div>
                         <div className="flex flex-wrap gap-2">
                             {remote.map((member) => (
-                                <span key={member.id} className="px-3 py-1 rounded-full border border-white/10 text-[11px] uppercase tracking-widest">
+                                <span key={member.id} className="px-3 py-1 rounded-full border border-border/50 text-[11px] uppercase tracking-widest">
                                     {member.name}
                                 </span>
                             ))}

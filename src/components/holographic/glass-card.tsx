@@ -18,7 +18,7 @@ export function GlassCard({ children, className, onClick, style, variant = 'defa
             {...props}
             className={cn(
                 "relative overflow-hidden rounded-2xl transition-all duration-300",
-                variant === 'default' && "border border-white/8 bg-white/5 backdrop-blur-xl hover:bg-white/8",
+                variant === 'default' && "border border-border/40 bg-muted/40 backdrop-blur-xl hover:bg-muted/50",
                 variant === 'user' && "bg-primary shadow-sm",
                 variant === 'ai' && "backdrop-blur-xl dark:bg-white/5 bg-white/90 dark:border-white/8",
                 className

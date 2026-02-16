@@ -138,7 +138,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
             <SheetContent
                 side="right"
                 showCloseButton={false}
-                className="w-[88vw] max-w-[380px] p-0 border-l border-white/10 bg-background/95 backdrop-blur-2xl text-foreground shadow-[0_0_45px_-10px_rgba(0,0,0,0.5)]"
+                className="w-[88vw] max-w-[380px] p-0 border-l border-border/50 bg-background/95 backdrop-blur-2xl text-foreground shadow-[0_0_45px_-10px_rgba(0,0,0,0.5)]"
             >
                 <SheetTitle className="sr-only">Gang Controls</SheetTitle>
                 <SheetDescription className="sr-only">Adjust mode, wallpaper, labels, account settings, and media controls.</SheetDescription>
@@ -328,7 +328,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                                         : 'border-border/70 bg-card/45 dark:bg-white/[0.08] dark:border-white/20 hover:bg-card/70 dark:hover:bg-white/[0.14]'
                                                 )}
                                             >
-                                                <div className={cn('h-12 w-16 shrink-0 rounded-xl border border-white/15', wallpaperPreviewClass(option.id))} />
+                                                <div className={cn('h-12 w-16 shrink-0 rounded-xl border border-border/60', wallpaperPreviewClass(option.id))} />
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-[11px] font-black uppercase tracking-wider">{option.label}</p>
                                                     <p className="truncate text-[11px] text-muted-foreground">{option.description}</p>

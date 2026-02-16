@@ -118,7 +118,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             className="w-full max-w-6xl mx-auto flex flex-col gap-6 pb-28 sm:pb-20"
         >
             <div className="sticky top-0 z-30">
-                <div className="rounded-b-3xl border border-white/10 bg-background/80 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
+                <div className="rounded-b-3xl border border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)]">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                         <div className="flex flex-col gap-0.5">
                             <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Pick your Gang</h2>
@@ -193,7 +193,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                     "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-50 blur-sm",
                                     char.gradient
                                 )} />
-                                <div className="relative w-full h-full rounded-2xl overflow-hidden border border-white/20 shadow-lg">
+                                <div className="relative w-full h-full rounded-2xl overflow-hidden border border-border/70 shadow-lg">
                                     <Image
                                         src={char.avatar}
                                         alt={char.name}
@@ -226,7 +226,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             </div>
 
             <div className="sticky bottom-0 z-30">
-                <div className="rounded-t-3xl border border-white/10 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 shadow-[0_-20px_80px_-40px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="rounded-t-3xl border border-border/50 bg-background/85 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 shadow-[0_-20px_80px_-40px_rgba(0,0,0,0.8)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">
                             Selected
@@ -280,7 +280,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Traits</div>
                                     <div className="flex flex-wrap gap-2 mt-2">
                                         {previewChar.tags.map((tag) => (
-                                            <span key={tag} className="text-[11px] uppercase tracking-widest rounded-full border border-white/10 px-3 py-1">
+                                            <span key={tag} className="text-[11px] uppercase tracking-widest rounded-full border border-border/50 px-3 py-1">
                                                 {tagDescriptions[tag] || tag}
                                             </span>
                                         ))}

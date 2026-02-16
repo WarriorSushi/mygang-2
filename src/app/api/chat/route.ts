@@ -641,8 +641,10 @@ export async function POST(req: Request) {
         }
 
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        const globalLowCostOverride = await getGlobalLowCostOverride()
+        const [{ data: { user } }, globalLowCostOverride] = await Promise.all([
+            supabase.auth.getUser(),
+            getGlobalLowCostOverride(),
+        ])
         const lowCostMode = requestedLowCostMode || globalLowCostOverride
 
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -1135,8 +1137,20 @@ FLOW FLAGS:
             elapsedMs: Date.now() - requestStartedAt
         })
 
-        // Persist memory + relationship state (authenticated users only)
+        // Build response before persistence (non-blocking)
+        const response = Response.json({
+            ...object,
+            usage: {
+                promptChars: llmPrompt.length,
+                responseChars: JSON.stringify(object.events).length,
+                historyCount: historyForLLM.length,
+                provider: providerUsed,
+            },
+        })
+
+        // Fire-and-forget: persist memory, profile, and chat history without blocking the response
         if (user) {
+            const persistAsync = async () => {
             const nowIso = new Date().toISOString()
             const profileUpdates: ProfileUpdatesPayload = { last_active_at: nowIso }
             const relationshipState: Record<string, RelationshipState> = isObject(profileRow?.relationship_state)
@@ -1220,10 +1234,8 @@ FLOW FLAGS:
                     )
                 )
             }
-        }
 
-        // 3. Persist chat history (authenticated users only)
-        if (user) {
+            // 3. Persist chat history
             try {
                 const { data: gang, error: gangError } = await supabase
                     .from('gangs')
@@ -1397,17 +1409,11 @@ FLOW FLAGS:
             } catch (err) {
                 console.error('Chat history persistence error:', err)
             }
+            }
+            persistAsync().catch((err) => console.error('Background persistence error:', err))
         }
 
-        return Response.json({
-            ...object,
-            usage: {
-                promptChars: llmPrompt.length,
-                responseChars: JSON.stringify(object.events).length,
-                historyCount: historyForLLM.length,
-                provider: providerUsed,
-            },
-        })
+        return response
     } catch (routeErr) {
         console.error('Critical Route Error:', routeErr)
         if (isProviderCapacityError(routeErr)) {

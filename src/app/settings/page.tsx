@@ -29,7 +29,7 @@ export default async function SettingsPage() {
                     </div>
                     <Link
                         href="/chat"
-                        className="text-[10px] uppercase tracking-widest border border-white/10 rounded-full px-4 py-2 hover:bg-white/10 w-fit"
+                        className="text-[10px] uppercase tracking-widest border border-border/50 rounded-full px-4 py-2 hover:bg-muted/60 w-fit"
                     >
                         Back to Chat
                     </Link>
