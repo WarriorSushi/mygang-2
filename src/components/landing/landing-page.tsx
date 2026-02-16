@@ -1,25 +1,24 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { motion, useReducedMotion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight,
   Users,
   HeartHandshake,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   Sun,
   Moon,
   Bot,
   MessageCircle,
   Reply,
-  ThumbsUp,
   Layers3,
   UserRound,
   Clock3,
-  ShieldCheck,
-  Smile,
+  Zap,
 } from 'lucide-react'
 import Image from 'next/image'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
@@ -31,62 +30,33 @@ import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 
 const stats = [
-  { label: 'Someone Is Always Here', value: '24/7' },
-  { label: 'Is It Free To Try', value: 'Yes' },
-  { label: 'Awkward Silence', value: 'Zero' },
-  { label: 'Feel-Better Moments', value: 'Daily' },
+  { label: 'Someone Is Always Here', value: '24/7', icon: <Clock3 className="w-4 h-4 text-cyan-500" /> },
+  { label: 'Is It Free To Try', value: 'Yes', icon: <Zap className="w-4 h-4 text-amber-500" /> },
+  { label: 'Awkward Silence', value: 'Zero', icon: <MessageCircle className="w-4 h-4 text-rose-500" /> },
+  { label: 'Feel-Better Moments', value: 'Daily', icon: <HeartHandshake className="w-4 h-4 text-emerald-500" /> },
 ]
 
 const steps = [
   {
-    title: 'Build your 1gang',
+    num: '01',
+    title: 'Build your gang',
     copy: 'Pick your lineup and shape the room vibe in less than a minute.',
+    icon: <Users className="w-5 h-5" />,
   },
   {
+    num: '02',
     title: 'Say anything',
     copy: 'Rant, celebrate, vent, joke. Your gang replies with personality, not boring answers.',
+    icon: <MessageCircle className="w-5 h-5" />,
   },
   {
+    num: '03',
     title: 'Watch the room come alive',
     copy: 'They react, reply, and riff off each other so it feels like a real chat thread.',
+    icon: <Sparkles className="w-5 h-5" />,
   },
 ]
 
-const howItWorksPillars = [
-  {
-    title: 'Warm welcome',
-    copy: 'Your gang opens with energy and quickly pulls you into the flow.',
-    icon: <HeartHandshake className="w-4 h-4 text-rose-500" />,
-  },
-  {
-    title: 'Live banter',
-    copy: 'Messages bounce naturally between your AI friends, not one robotic block.',
-    icon: <MessageCircle className="w-4 h-4 text-cyan-500" />,
-  },
-  {
-    title: 'Social signals',
-    copy: 'Reads, reactions, replies, and momentum make the room feel active.',
-    icon: <ThumbsUp className="w-4 h-4 text-emerald-500" />,
-  },
-]
-
-const howItWorksMoments = [
-  {
-    title: 'You send one line',
-    copy: 'No perfect prompt needed. Even short messages get useful, human-feeling replies.',
-    icon: <MessageCircle className="w-4 h-4 text-cyan-500" />,
-  },
-  {
-    title: 'The room responds',
-    copy: 'Different AI friends answer in sequence, so it feels social instead of robotic.',
-    icon: <Clock3 className="w-4 h-4 text-amber-500" />,
-  },
-  {
-    title: 'Momentum stays alive',
-    copy: 'You get reactions, reply chains, and a clear handoff back to you.',
-    icon: <Sparkles className="w-4 h-4 text-fuchsia-500" />,
-  },
-]
 
 type DemoBubble = {
   speaker: string
@@ -110,79 +80,52 @@ const demoThreads: DemoThread[] = [
     title: 'Late-night check-in',
     subtitle: 'Warm + playful energy',
     bubbles: [
-      { speaker: 'You', text: 'Long day. Need a tiny win right now.', side: 'right', tone: 'user', delay: 900 },
-      { speaker: 'Luna', role: 'The Empath', text: 'First, breathe. I am proud of you for showing up.', side: 'left', tone: 'crew', delay: 900 },
-      { speaker: 'Kael', role: 'Hype Man', text: 'Mini mission: water + one song + one stretch. Go.', side: 'left', tone: 'crew', delay: 900, reaction: 'fire' },
-      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'I vote dance break. 45 seconds. No excuses.', side: 'left', tone: 'crew', delay: 950, replyTo: 'Mini mission: water + one song + one stretch. Go.' },
-      { speaker: 'You', text: 'Fine, dance break accepted.', side: 'right', tone: 'user', delay: 1000 },
+      { speaker: 'You', text: 'Long day. Need a tiny win right now.', side: 'right', tone: 'user', delay: 1800 },
+      { speaker: 'Luna', role: 'The Empath', text: 'First, breathe. I am proud of you for showing up.', side: 'left', tone: 'crew', delay: 2000 },
+      { speaker: 'Kael', role: 'Hype Man', text: 'Mini mission: water + one song + one stretch. Go.', side: 'left', tone: 'crew', delay: 1900, reaction: '🔥' },
+      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'I vote dance break. 45 seconds. No excuses.', side: 'left', tone: 'crew', delay: 2100, replyTo: 'Mini mission: water + one song...' },
+      { speaker: 'You', text: 'Fine, dance break accepted.', side: 'right', tone: 'user', delay: 2200 },
     ],
   },
   {
     title: 'Decision mode',
     subtitle: 'Fast replies + quick plan',
     bubbles: [
-      { speaker: 'You', text: 'I keep procrastinating this application.', side: 'right', tone: 'user', delay: 900 },
-      { speaker: 'Nyx', role: 'The Hacker', text: 'Open it now. We split it into 3 tiny chunks.', side: 'left', tone: 'crew', delay: 850 },
-      { speaker: 'Atlas', role: 'The Ops', text: 'Chunk 1 in 7 mins: headline + first bullet only.', side: 'left', tone: 'crew', delay: 950 },
-      { speaker: 'Luna', role: 'The Empath', text: 'Reply here with just the headline. We cheer after.', side: 'left', tone: 'crew', delay: 900, reaction: 'cheer' },
-      { speaker: 'You', text: 'Okay. Starting now.', side: 'right', tone: 'user', delay: 1000 },
+      { speaker: 'You', text: 'I keep procrastinating this application.', side: 'right', tone: 'user', delay: 1800 },
+      { speaker: 'Nyx', role: 'The Hacker', text: 'Open it now. We split it into 3 tiny chunks.', side: 'left', tone: 'crew', delay: 1900 },
+      { speaker: 'Atlas', role: 'The Ops', text: 'Chunk 1 in 7 mins: headline + first bullet only.', side: 'left', tone: 'crew', delay: 2100 },
+      { speaker: 'Luna', role: 'The Empath', text: 'Reply here with just the headline. We cheer after.', side: 'left', tone: 'crew', delay: 2000, reaction: '🎉' },
+      { speaker: 'You', text: 'Okay. Starting now.', side: 'right', tone: 'user', delay: 2200 },
     ],
   },
   {
     title: 'Pure fun thread',
     subtitle: 'Witty banter + reactions',
     bubbles: [
-      { speaker: 'You', text: 'I need a ridiculous weekend idea.', side: 'right', tone: 'user', delay: 900 },
-      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'Theme dinner where everyone speaks in movie quotes.', side: 'left', tone: 'crew', delay: 900 },
-      { speaker: 'Kael', role: 'Hype Man', text: 'Yes. Dress code: dramatic entrance only.', side: 'left', tone: 'crew', delay: 850, reaction: 'spark' },
-      { speaker: 'Nyx', role: 'The Hacker', text: 'I will allow this if snacks are elite.', side: 'left', tone: 'crew', delay: 900, replyTo: 'Theme dinner where everyone speaks in movie quotes.' },
-      { speaker: 'You', text: 'This is objectively perfect.', side: 'right', tone: 'user', delay: 950 },
+      { speaker: 'You', text: 'I need a ridiculous weekend idea.', side: 'right', tone: 'user', delay: 1800 },
+      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'Theme dinner where everyone speaks in movie quotes.', side: 'left', tone: 'crew', delay: 2000 },
+      { speaker: 'Kael', role: 'Hype Man', text: 'Yes. Dress code: dramatic entrance only.', side: 'left', tone: 'crew', delay: 1900, reaction: '✨' },
+      { speaker: 'Nyx', role: 'The Hacker', text: 'I will allow this if snacks are elite.', side: 'left', tone: 'crew', delay: 2100, replyTo: 'Theme dinner where everyone...' },
+      { speaker: 'You', text: 'This is objectively perfect.', side: 'right', tone: 'user', delay: 2200 },
     ],
   },
 ]
 
-const realSignals = [
+const whyRealFeatures = [
   {
     title: 'Distinct voices',
-    copy: 'Every persona has a clear point of view, so replies sound like people, not templates.',
-    meterLabel: 'Personality clarity',
-    meter: 94,
-    icon: <UserRound className="w-5 h-5 text-cyan-500" />,
-    chips: ['Different tones', 'Recognizable style', 'No copy-paste vibe'],
+    copy: 'Every persona has a clear personality. Replies feel like people, not templates.',
+    icon: <UserRound className="w-6 h-6 text-cyan-500" />,
   },
   {
     title: 'Group chemistry',
-    copy: 'They respond to each other naturally, creating the rhythm of a real room.',
-    meterLabel: 'Conversation flow',
-    meter: 91,
-    icon: <Layers3 className="w-5 h-5 text-fuchsia-500" />,
-    chips: ['Reply chains', 'Reactions', 'Shared callbacks'],
+    copy: 'They riff off each other naturally, building the rhythm of a real conversation.',
+    icon: <Layers3 className="w-6 h-6 text-fuchsia-500" />,
   },
   {
-    title: 'Feels socially alive',
-    copy: 'Micro-signals like reads, typing, and layered replies make chats feel active and warm.',
-    meterLabel: 'Social presence',
-    meter: 96,
-    icon: <Bot className="w-5 h-5 text-emerald-500" />,
-    chips: ['Live energy', 'Fast momentum', 'Warm tone'],
-  },
-]
-
-const compareRows = [
-  {
-    label: 'Reply quality',
-    ordinary: 'Generic one-shot answer',
-    gang: 'Layered replies with different points of view',
-  },
-  {
-    label: 'Social feel',
-    ordinary: 'Single bot speaking at you',
-    gang: 'Group chat rhythm with reads, reactions, and callbacks',
-  },
-  {
-    label: 'Emotional tone',
-    ordinary: 'Flat and predictable',
-    gang: 'Warm, playful, and context-aware',
+    title: 'Socially alive',
+    copy: 'Typing indicators, reactions, and reply chains make every chat feel warm and active.',
+    icon: <Bot className="w-6 h-6 text-emerald-500" />,
   },
 ]
 
@@ -260,7 +203,12 @@ export function LandingPage() {
   const safeCtaLink = ctaDisabled ? '#' : ctaLink
 
   const marqueeItems = useMemo(
-    () => ['Late-night talks', 'No awkward silence', 'Main-character energy', 'Warm support', 'Fun chaos', 'Inside jokes', 'Daily check-ins', 'Crew love'],
+    () => [
+      'Late-night talks', 'No awkward silence', 'Main-character energy', 'Warm support',
+      'Fun chaos', 'Inside jokes', 'Daily check-ins', 'Crew love',
+      'Zero judgment', 'Instant hype', 'Real banter', 'Your people 24/7',
+      'Emotional backup', 'Good vibes only',
+    ],
     []
   )
 
@@ -275,6 +223,7 @@ export function LandingPage() {
     <div className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
 
+      {/* ── Nav ── */}
       <nav className="px-4 sm:px-6 pb-4 sm:pb-6 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] flex flex-wrap justify-between items-center gap-3 max-w-7xl mx-auto w-full z-10">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -322,7 +271,10 @@ export function LandingPage() {
         </motion.div>
       </nav>
 
+      {/* ── Main ── */}
       <main ref={heroRef} className="flex flex-col items-center text-center z-10 relative">
+
+        {/* ── Hero ── */}
         <section className="relative w-full px-6 sm:px-10 lg:px-14 pt-16 sm:pt-24 pb-20">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[600px] sm:h-[800px] bg-primary/5 blur-[140px] rounded-full -z-10 animate-pulse" />
           <motion.div style={{ y: heroY, scale: heroScale }} className="max-w-6xl mx-auto">
@@ -400,17 +352,29 @@ export function LandingPage() {
           </motion.div>
         </section>
 
+        {/* ── Stats ── */}
         <section className="w-full px-6 sm:px-10 lg:px-14 pb-20">
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-border/70 bg-card/70 p-4 sm:p-6 text-left shadow-[0_18px_35px_-28px_rgba(15,23,42,0.8)]">
-                <div className="text-2xl sm:text-3xl font-black">{stat.value}</div>
-                <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-[0.18em] mt-2">{stat.label}</div>
-              </div>
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {stats.map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.4 }}
+                className="rounded-2xl border border-border/70 bg-card/70 p-4 sm:p-6 text-left shadow-[0_18px_35px_-28px_rgba(15,23,42,0.8)] hover:border-primary/30 transition-colors duration-300"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  {stat.icon}
+                  <div className="text-2xl sm:text-3xl font-black">{stat.value}</div>
+                </div>
+                <div className="text-[11px] sm:text-xs text-muted-foreground leading-snug">{stat.label}</div>
+              </motion.div>
             ))}
           </div>
         </section>
 
+        {/* ── Marquee ── */}
         <section className="w-full overflow-hidden border-y border-border/60 bg-card/65">
           <div className="hidden sm:flex items-center gap-8 whitespace-nowrap py-6 text-xs sm:text-sm uppercase tracking-[0.3em] text-muted-foreground/80">
             <div className="flex w-max gap-8 animate-marquee">
@@ -446,153 +410,173 @@ export function LandingPage() {
           </div>
         </section>
 
-        <Section id="how-it-works" title="How it works" subtitle="Simple setup, rich social flow">
-          <div className="mb-8 rounded-[1.7rem] border border-border/70 bg-card/75 p-4 sm:p-5 shadow-[0_20px_36px_-30px_rgba(15,23,42,0.9)]">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="text-left">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Live Walkthrough</div>
-                <h3 className="mt-1 text-lg sm:text-xl font-black tracking-tight">From first message to real chat momentum</h3>
-              </div>
-              <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/75">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-              {howItWorksMoments.map((moment) => (
-                <div key={moment.title} className="rounded-xl border border-border/70 bg-background/70 px-3 py-3 text-left">
-                  <div className="flex items-center gap-2 text-xs font-semibold">
-                    {moment.icon}
-                    <span>{moment.title}</span>
+        {/* ── How It Works ── */}
+        <Section id="how-it-works" title="How it works" subtitle="Three steps to your crew">
+          {/* Steps - spacious numbered layout */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-16">
+            {steps.map((step, i) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15, duration: 0.5 }}
+                className="group relative text-left"
+              >
+                <div className="mb-5 flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 group-hover:scale-110 transition-transform duration-300">
+                    {step.icon}
                   </div>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{moment.copy}</p>
+                  <span className="text-5xl font-black text-primary/15 leading-none select-none">{step.num}</span>
                 </div>
-              ))}
-            </div>
+                <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">{step.title}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-sm">{step.copy}</p>
+                {i < steps.length - 1 && (
+                  <div className="hidden md:block absolute top-7 -right-4 lg:-right-5">
+                    <ChevronRight className="w-5 h-5 text-muted-foreground/30" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.35fr] gap-8 lg:gap-10">
-            <div className="space-y-4">
-              {steps.map((step, index) => (
-                <GlowCard key={step.title} index={index + 1} title={step.title} copy={step.copy} />
-              ))}
-              <div className="rounded-[1.5rem] border border-border/70 bg-card/75 p-4 sm:p-5 shadow-[0_20px_35px_-30px_rgba(15,23,42,0.9)]">
-                <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground mb-3">What happens inside each chat</div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {howItWorksPillars.map((pillar) => (
-                    <div key={pillar.title} className="rounded-xl border border-border/70 bg-background/70 px-3 py-3">
-                      <div className="flex items-center gap-2 text-xs font-semibold">
-                        {pillar.icon}
-                        <span>{pillar.title}</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{pillar.copy}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {/* Live demo threads */}
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <MessageCircle className="w-4 h-4 text-cyan-500" />
+              <span className="text-sm font-semibold text-muted-foreground tracking-wide">See it in action</span>
             </div>
 
-            <div className="hidden md:grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {demoThreads.map((thread) => (
-                <LiveDemoCard key={thread.title} thread={thread} />
+            {/* Desktop: 3 columns */}
+            <div className="hidden md:grid md:grid-cols-3 gap-6">
+              {demoThreads.map((thread, i) => (
+                <motion.div
+                  key={thread.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.12, duration: 0.4 }}
+                >
+                  <LiveDemoCard thread={thread} />
+                </motion.div>
               ))}
             </div>
 
-            <div className="md:hidden -mx-1 overflow-x-auto pb-2">
-              <div className="flex gap-4 snap-x snap-mandatory px-1">
-                {demoThreads.map((thread) => (
-                  <div key={`mobile-${thread.title}`} className="snap-start w-[88vw] shrink-0">
-                    <LiveDemoCard thread={thread} />
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/80 text-center">
-                Swipe to see more live chat moments
-              </p>
-            </div>
+            {/* Mobile: single card carousel with arrows */}
+            <DemoCarousel threads={demoThreads} />
           </div>
         </Section>
 
-        <Section id="why-it-feels-real" title="Why it feels real" subtitle="Built for people who want company, not just answers">
-          <div className="mb-6 rounded-[1.7rem] border border-border/70 bg-card/75 p-4 sm:p-6 shadow-[0_20px_36px_-30px_rgba(15,23,42,0.9)]">
-            <div className="flex items-center gap-2">
-              <Smile className="w-4 h-4 text-emerald-500" />
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Why this feels different</div>
-            </div>
-            <div className="mt-3 grid grid-cols-1 gap-2.5">
-              {compareRows.map((row) => (
-                <div key={row.label} className="grid grid-cols-1 md:grid-cols-[150px_1fr_1fr] gap-2 rounded-xl border border-border/70 bg-background/70 px-3 py-3 text-left">
-                  <div className="text-[11px] font-black uppercase tracking-[0.14em] text-foreground/85">{row.label}</div>
-                  <div className="rounded-lg border border-border/70 bg-card/75 px-2.5 py-2 text-[11px] text-muted-foreground">
-                    <span className="block text-[9px] uppercase tracking-[0.14em] text-muted-foreground/80">Typical chat</span>
-                    <span>{row.ordinary}</span>
-                  </div>
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.08] px-2.5 py-2 text-[11px] text-foreground">
-                    <span className="block text-[9px] uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-400">MyGang</span>
-                    <span>{row.gang}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {realSignals.map((item) => (
-              <RealityCard
+        {/* ── Why It Feels Real ── */}
+        <Section id="why-it-feels-real" title="Why it feels real" subtitle="Company, not just answers">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {whyRealFeatures.map((item, i) => (
+              <motion.div
                 key={item.title}
-                icon={item.icon}
-                title={item.title}
-                desc={item.copy}
-                meterLabel={item.meterLabel}
-                meter={item.meter}
-                chips={item.chips}
-              />
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.12, duration: 0.45 }}
+                className="group text-left"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-card/80 border border-border/70 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                  {item.icon}
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">{item.title}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-sm">{item.copy}</p>
+              </motion.div>
             ))}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-            {highlights.map((item) => (
-              <FeatureCard key={item.title} icon={item.icon} title={item.title} desc={item.copy} />
-            ))}
+
+          {/* Highlight strip */}
+          <div className="mt-12 rounded-2xl border border-border/70 bg-card/60 p-6 sm:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+              {highlights.map((item, i) => (
+                <motion.div
+                  key={item.title}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.4 }}
+                  className="flex items-start gap-4"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-background/60 border border-border/60 flex items-center justify-center shrink-0">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold mb-1">{item.title}</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.copy}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </Section>
 
+        {/* ── Testimonials ── */}
         <Section id="testimonials" title="Loved by night owls" subtitle="People who wanted a chat that finally feels alive">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((item) => (
-              <Testimonial key={item.name} {...item} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {testimonials.map((item, i) => (
+              <motion.div
+                key={item.name}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.4 }}
+              >
+                <Testimonial {...item} />
+              </motion.div>
             ))}
           </div>
         </Section>
 
+        {/* ── FAQ ── */}
         <Section id="faq" title="Questions, answered" subtitle="Quick clarity, no jargon">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {faq.map((item) => (
-              <div key={item.q} className="rounded-2xl border border-border/70 bg-card/70 p-6 shadow-[0_16px_32px_-24px_rgba(15,23,42,0.8)]">
-                <div className="text-base font-semibold">{item.q}</div>
-                <p className="text-sm text-muted-foreground mt-2">{item.a}</p>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {faq.map((item, i) => (
+              <motion.div
+                key={item.q}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.4 }}
+                className="rounded-2xl border border-border/70 bg-card/70 p-6 text-left hover:border-primary/30 transition-colors duration-300"
+              >
+                <div className="text-base font-semibold mb-2">{item.q}</div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
+              </motion.div>
             ))}
           </div>
         </Section>
 
+        {/* ── Final CTA ── */}
         <section className="w-full px-6 sm:px-10 lg:px-14 pb-24">
-          <div className="max-w-6xl mx-auto rounded-[2.5rem] border border-border/70 bg-gradient-to-br from-primary/20 via-card/90 to-accent/20 p-8 sm:p-12 flex flex-col lg:flex-row gap-8 items-center justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Ready to vibe?</div>
-              <h3 className="text-3xl sm:text-4xl font-black mt-3">Meet your crew in under a minute.</h3>
-              <p className="text-muted-foreground mt-2 max-w-xl">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="max-w-6xl mx-auto rounded-[2.5rem] border border-border/70 bg-gradient-to-br from-primary/15 via-card/90 to-accent/15 p-8 sm:p-12 flex flex-col lg:flex-row gap-8 items-center justify-between overflow-hidden relative"
+          >
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-primary/10 blur-[80px] rounded-full" />
+            <div className="relative text-left">
+              <span className="text-xs font-semibold text-primary tracking-wide">Ready to vibe?</span>
+              <h3 className="text-3xl sm:text-4xl font-black mt-2 tracking-tight">Meet your crew in under a minute.</h3>
+              <p className="text-muted-foreground mt-2 max-w-xl text-sm sm:text-base">
                 Start with one message and watch the room come alive around you.
               </p>
             </div>
             <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-              <Button size="xl" className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group">
+              <Button size="xl" className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group shrink-0">
                 {ctaText}
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </div>
+          </motion.div>
         </section>
       </main>
 
+      {/* ── Footer ── */}
       <footer className="p-8 sm:p-12 text-center text-muted-foreground/40 text-xs sm:text-sm border-t border-border/60">
         &copy; 2026 MyGang.ai - Your always-on social circle.
       </footer>
@@ -609,8 +593,10 @@ export function LandingPage() {
   )
 }
 
+/* ── LiveDemoCard: truly fixed-size, no layout shift ── */
 function LiveDemoCard({ thread }: { thread: DemoThread }) {
-  const [visibleCount, setVisibleCount] = useState(1)
+  const [visibleCount, setVisibleCount] = useState(0)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -621,12 +607,12 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
       if (index >= thread.bubbles.length) {
         timer = setTimeout(() => {
           if (cancelled) return
-          setVisibleCount(1)
-          run(1)
-        }, 2200)
+          setVisibleCount(0)
+          run(0)
+        }, 3500)
         return
       }
-      const delay = thread.bubbles[index - 1]?.delay ?? 900
+      const delay = index === 0 ? 1200 : (thread.bubbles[index - 1]?.delay ?? 1800)
       timer = setTimeout(() => {
         if (cancelled) return
         setVisibleCount(index + 1)
@@ -634,7 +620,7 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
       }, delay)
     }
 
-    run(1)
+    run(0)
 
     return () => {
       cancelled = true
@@ -642,55 +628,144 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
     }
   }, [thread])
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [visibleCount])
+
   const visibleBubbles = thread.bubbles.slice(0, visibleCount)
   const nextBubble = thread.bubbles[visibleCount]
 
   return (
-    <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/80 p-4 shadow-[0_20px_36px_-30px_rgba(15,23,42,0.9)]">
-      <div className="absolute -top-5 right-4 h-20 w-20 rounded-full bg-primary/20 blur-3xl" />
-      <div className="relative z-10">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/85">{thread.subtitle}</div>
-        <h3 className="mt-1 text-sm font-black tracking-tight">{thread.title}</h3>
-
-        <div className="mt-3 rounded-xl border border-border/70 bg-background/72 p-2.5 min-h-[16.5rem]">
-          <div className="space-y-2.5">
-            {visibleBubbles.map((bubble, idx) => (
-              <motion.div
-                key={`${thread.title}-${bubble.speaker}-${idx}`}
-                initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className={cn(bubble.side === 'right' ? 'ml-auto' : 'mr-auto', 'max-w-[88%]')}
-              >
-                <div
-                  className={cn(
-                    'rounded-2xl px-2.5 py-2 border text-[12px] leading-relaxed',
-                    bubble.tone === 'user'
-                      ? 'bg-primary text-primary-foreground border-primary/30 rounded-br-md'
-                      : 'bg-card/95 text-foreground border-border/80 rounded-tl-md'
-                  )}
-                >
-                  {bubble.replyTo && (
-                    <div className="mb-1.5 rounded-lg border border-border/70 bg-background/60 px-1.5 py-1 text-[10px] italic text-muted-foreground truncate">
-                      Replying to: {bubble.replyTo}
-                    </div>
-                  )}
-                  <p>{bubble.text}</p>
-                  <div className="mt-1 flex items-center gap-1.5 text-[9px] uppercase tracking-[0.16em] opacity-70">
-                    {bubble.role && <span>{bubble.role}</span>}
-                    {bubble.reaction && <span>{bubble.reaction}</span>}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          {nextBubble && (
-            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-              <Reply className="w-3 h-3" />
-              {nextBubble.speaker} is typing...
-            </div>
-          )}
+    <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card/80 p-4 sm:p-5 h-full">
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="mb-3">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{thread.subtitle}</div>
+          <h3 className="mt-0.5 text-base font-bold tracking-tight">{thread.title}</h3>
         </div>
+
+        {/* Fixed-size chat area - overflow scroll, never changes page height */}
+        <div className="rounded-xl border border-border/60 bg-background/60 p-3 h-[19rem] flex flex-col">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
+            <div className="space-y-2.5 flex flex-col justify-end min-h-full">
+              <div className="flex-1" />
+              <AnimatePresence initial={false}>
+                {visibleBubbles.map((bubble, idx) => (
+                  <motion.div
+                    key={`${thread.title}-${bubble.speaker}-${idx}`}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className={cn(bubble.side === 'right' ? 'ml-auto' : 'mr-auto', 'max-w-[88%]')}
+                  >
+                    <div
+                      className={cn(
+                        'rounded-2xl px-3.5 py-2.5 border text-[12.5px] leading-relaxed',
+                        bubble.tone === 'user'
+                          ? 'bg-primary text-primary-foreground border-primary/30 rounded-br-md'
+                          : 'bg-card/95 text-foreground border-border/70 rounded-tl-md'
+                      )}
+                    >
+                      {bubble.replyTo && (
+                        <div className="mb-1.5 rounded-lg border border-border/50 bg-background/50 px-2 py-1 text-[10px] italic text-muted-foreground truncate">
+                          {bubble.replyTo}
+                        </div>
+                      )}
+                      <p>{bubble.text}</p>
+                      <div className="mt-1 flex items-center gap-1.5 text-[9px] opacity-60">
+                        {bubble.tone === 'crew' && <span className="font-medium">{bubble.speaker}</span>}
+                        {bubble.reaction && <span>{bubble.reaction}</span>}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <div ref={chatEndRef} />
+            </div>
+          </div>
+
+          {/* Typing indicator anchored at bottom */}
+          <div className="h-7 flex items-center mt-2 shrink-0">
+            <AnimatePresence mode="wait">
+              {nextBubble && (
+                <motion.div
+                  key={`typing-${visibleCount}`}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-2.5 py-1 text-[10px] text-muted-foreground"
+                >
+                  <Reply className="w-3 h-3" />
+                  {nextBubble.speaker} is typing...
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Mobile demo carousel with arrow navigation ── */
+function DemoCarousel({ threads }: { threads: DemoThread[] }) {
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const goNext = useCallback(() => {
+    setActiveIndex((prev) => (prev + 1) % threads.length)
+  }, [threads.length])
+
+  const goPrev = useCallback(() => {
+    setActiveIndex((prev) => (prev - 1 + threads.length) % threads.length)
+  }, [threads.length])
+
+  return (
+    <div className="md:hidden">
+      <div className="relative overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeIndex}
+            initial={{ opacity: 0, x: 60 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -60 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+          >
+            <LiveDemoCard thread={threads[activeIndex]} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Arrow controls + dots */}
+      <div className="flex items-center justify-center gap-4 mt-4">
+        <button
+          onClick={goPrev}
+          className="w-10 h-10 rounded-full border border-border/70 bg-card/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          aria-label="Previous chat"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          {threads.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveIndex(i)}
+              className={cn(
+                'w-2 h-2 rounded-full transition-all duration-300',
+                i === activeIndex ? 'bg-primary w-5' : 'bg-muted-foreground/30'
+              )}
+              aria-label={`Go to chat ${i + 1}`}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={goNext}
+          className="w-10 h-10 rounded-full border border-border/70 bg-card/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          aria-label="Next chat"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
     </div>
   )
@@ -698,114 +773,38 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
 
 function Section({ id, title, subtitle, children }: { id?: string; title: string; subtitle: string; children: ReactNode }) {
   return (
-    <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-20 sm:py-28">
+    <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-10">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">{subtitle}</div>
-          <h2 className="text-3xl sm:text-4xl font-black mt-2">{title}</h2>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4 }}
+          className="mb-10 text-left"
+        >
+          <span className="text-xs font-semibold text-primary tracking-wide">{subtitle}</span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mt-2 tracking-tight">{title}</h2>
+        </motion.div>
         {children}
       </div>
     </section>
   )
 }
 
-function RealityCard({
-  icon,
-  title,
-  desc,
-  meterLabel,
-  meter,
-  chips,
-}: {
-  icon: ReactNode
-  title: string
-  desc: string
-  meterLabel: string
-  meter: number
-  chips: string[]
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-      className="rounded-[2rem] border border-border/70 bg-card/75 p-6 sm:p-7 shadow-[0_18px_35px_-28px_rgba(15,23,42,0.8)]"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl border border-border/70 bg-background/70 flex items-center justify-center">
-            {icon}
-          </div>
-          <h3 className="text-xl font-black tracking-tight">{title}</h3>
-        </div>
-        <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{meter}%</div>
-      </div>
-      <p className="mt-3 text-sm text-muted-foreground/85 leading-relaxed">{desc}</p>
-      <div className="mt-4">
-        <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{meterLabel}</div>
-        <div className="mt-1.5 h-2 rounded-full bg-background/80 border border-border/70 overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            whileInView={{ width: `${meter}%` }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="h-full rounded-full bg-gradient-to-r from-primary via-cyan-500 to-emerald-500"
-          />
-        </div>
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {chips.map((chip) => (
-          <span key={chip} className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[10px] uppercase tracking-[0.13em] text-foreground/80">
-            {chip}
-          </span>
-        ))}
-      </div>
-    </motion.div>
-  )
-}
-
-function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
-  return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-      className="p-6 sm:p-8 rounded-[2rem] bg-card/75 border border-border/70 text-left hover:bg-card transition-all duration-500 group backdrop-blur-sm shadow-[0_18px_35px_-28px_rgba(15,23,42,0.8)]"
-    >
-      <div className="w-12 h-12 rounded-2xl bg-background/70 flex items-center justify-center mb-6 border border-border/70 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 shadow-inner">
-        {icon}
-      </div>
-      <h3 className="text-2xl font-bold mb-4 tracking-tight">{title}</h3>
-      <p className="text-muted-foreground/85 leading-relaxed text-base">{desc}</p>
-    </motion.div>
-  )
-}
-
-function GlowCard({ index, title, copy }: { index: number; title: string; copy: string }) {
-  return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-      className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card/75 p-6 sm:p-8 shadow-[0_18px_35px_-28px_rgba(15,23,42,0.8)]"
-    >
-      <div className="absolute top-0 right-0 h-24 w-24 bg-primary/20 blur-[60px]" />
-      <div className="text-xs uppercase tracking-widest text-muted-foreground">Step {index}</div>
-      <h3 className="text-2xl font-bold mt-3">{title}</h3>
-      <p className="text-sm text-muted-foreground mt-3">{copy}</p>
-    </motion.div>
-  )
-}
 
 function Testimonial({ quote, name, role }: { quote: string; name: string; role: string }) {
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-      className="rounded-[2rem] border border-border/70 bg-card/75 p-6 sm:p-8 shadow-[0_18px_35px_-28px_rgba(15,23,42,0.8)]"
-    >
-      <div className="text-base font-medium leading-relaxed">&quot;{quote}&quot;</div>
-      <div className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
-        {name} - {role}
+    <div className="rounded-2xl border border-border/70 bg-card/75 p-6 sm:p-7 hover:border-primary/30 transition-colors duration-300 h-full flex flex-col">
+      <div className="text-base font-medium leading-relaxed flex-1">&quot;{quote}&quot;</div>
+      <div className="mt-4 flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+          {name[0]}
+        </div>
+        <div>
+          <div className="text-sm font-semibold">{name}</div>
+          <div className="text-[11px] text-muted-foreground">{role}</div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
