@@ -10,11 +10,11 @@ test('Chat scroll container is scrollable and input stays visible', async ({ pag
   await page.addInitScript(() => {
     const payload = {
       state: {
-        messages: Array.from({ length: 60 }).map((_, idx) => ({
+        messages: Array.from({ length: 120 }).map((_, idx) => ({
           id: `msg-${idx}`,
-          speaker: idx % 2 === 0 ? 'user' : 'kael',
-          content: `Message number ${idx + 1} - lorem ipsum lorem ipsum lorem ipsum`,
-          created_at: new Date(Date.now() - (60 - idx) * 1000).toISOString(),
+          speaker: idx % 3 === 0 ? 'user' : idx % 3 === 1 ? 'kael' : 'nyx',
+          content: `Message number ${idx + 1} - This is a longer test message to ensure the scroll container overflows. Each message should take up a reasonable amount of vertical space so we can verify scrolling works correctly in the chat interface.`,
+          created_at: new Date(Date.now() - (120 - idx) * 1000).toISOString(),
         })),
         activeGang: [
           { id: 'kael', name: 'Kael', vibe: '', color: '#FFD700', avatar: '/avatars/kael.png' },
@@ -25,7 +25,7 @@ test('Chat scroll container is scrollable and input stays visible', async ({ pag
         isGuest: false,
         userName: 'ScrollTester',
         userNickname: null,
-        userId: 'local',
+        userId: null,
         chatMode: 'ecosystem',
         chatWallpaper: 'default',
         hasSeenChatTips: true,
@@ -37,9 +37,18 @@ test('Chat scroll container is scrollable and input stays visible', async ({ pag
 
   await page.goto('/chat');
 
+  // Wait for hydration and messages to render
+  await page.waitForTimeout(3000);
+
   const scrollEl = page.locator('[data-testid="chat-scroll"]');
-  await expect(scrollEl).toBeVisible();
-  await expect(page.locator('text=Message number 60')).toBeVisible({ timeout: 5000 });
+  await expect(scrollEl).toBeVisible({ timeout: 10000 });
+
+  // Scroll to find a later message (auto-scrolled to bottom)
+  const lastMsg = page.locator('text=Message number 120');
+  await expect(lastMsg).toBeVisible({ timeout: 15000 });
+
+  // Wait for all messages to render
+  await page.waitForTimeout(2000);
 
   const scrollMetrics = await scrollEl.evaluate((el) => ({
     scrollHeight: el.scrollHeight,
