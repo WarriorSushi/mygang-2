@@ -17,8 +17,6 @@ import {
   Reply,
   Layers3,
   UserRound,
-  Clock3,
-  Zap,
 } from 'lucide-react'
 import Image from 'next/image'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
@@ -28,13 +26,6 @@ import { AuthWall } from '@/components/orchestrator/auth-wall'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
-
-const stats = [
-  { label: 'Someone Is Always Here', value: '24/7', icon: <Clock3 className="w-4 h-4 text-cyan-500" /> },
-  { label: 'Is It Free To Try', value: 'Yes', icon: <Zap className="w-4 h-4 text-amber-500" /> },
-  { label: 'Awkward Silence', value: 'Zero', icon: <MessageCircle className="w-4 h-4 text-rose-500" /> },
-  { label: 'Feel-Better Moments', value: 'Daily', icon: <HeartHandshake className="w-4 h-4 text-emerald-500" /> },
-]
 
 const steps = [
   {
@@ -127,23 +118,20 @@ const whyRealFeatures = [
     copy: 'Typing indicators, reactions, and reply chains make every chat feel warm and active.',
     icon: <Bot className="w-6 h-6 text-emerald-500" />,
   },
-]
-
-const highlights = [
   {
     title: 'Always your people',
     copy: 'Your gang remembers your style and shows up like familiar friends.',
-    icon: <HeartHandshake className="w-6 h-6 text-emerald-500" />,
+    icon: <HeartHandshake className="w-6 h-6 text-rose-400" />,
   },
   {
     title: 'Your pace, your mood',
     copy: 'Go deep when you need support, or keep it playful when you want energy.',
-    icon: <Users className="w-6 h-6 text-cyan-500" />,
+    icon: <Users className="w-6 h-6 text-amber-500" />,
   },
   {
     title: 'Alive group vibes',
     copy: 'They bounce off each other naturally, so every chat feels lively and real.',
-    icon: <Sparkles className="w-6 h-6 text-fuchsia-500" />,
+    icon: <Sparkles className="w-6 h-6 text-violet-500" />,
   },
 ]
 
@@ -352,27 +340,6 @@ export function LandingPage() {
           </motion.div>
         </section>
 
-        {/* ── Stats ── */}
-        <section className="w-full px-6 sm:px-10 lg:px-14 pb-20">
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-            {stats.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.4 }}
-                className="rounded-2xl border border-border/70 bg-card/70 p-4 sm:p-6 text-left shadow-[0_18px_35px_-28px_rgba(15,23,42,0.8)] hover:border-primary/30 transition-colors duration-300"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  {stat.icon}
-                  <div className="text-2xl sm:text-3xl font-black">{stat.value}</div>
-                </div>
-                <div className="text-[11px] sm:text-xs text-muted-foreground leading-snug">{stat.label}</div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
 
         {/* ── Marquee ── */}
         <section className="w-full overflow-hidden border-y border-border/60 bg-card/65">
@@ -440,76 +407,36 @@ export function LandingPage() {
             ))}
           </div>
 
-          {/* Live demo threads */}
+          {/* Live demo threads - single carousel on all sizes */}
           <div>
             <div className="flex items-center gap-2 mb-6">
               <MessageCircle className="w-4 h-4 text-cyan-500" />
               <span className="text-sm font-semibold text-muted-foreground tracking-wide">See it in action</span>
             </div>
 
-            {/* Desktop: 3 columns */}
-            <div className="hidden md:grid md:grid-cols-3 gap-6">
-              {demoThreads.map((thread, i) => (
-                <motion.div
-                  key={thread.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.12, duration: 0.4 }}
-                >
-                  <LiveDemoCard thread={thread} />
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Mobile: single card carousel with arrows */}
             <DemoCarousel threads={demoThreads} />
           </div>
         </Section>
 
         {/* ── Why It Feels Real ── */}
         <Section id="why-it-feels-real" title="Why it feels real" subtitle="Company, not just answers">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {whyRealFeatures.map((item, i) => (
               <motion.div
                 key={item.title}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.12, duration: 0.45 }}
-                className="group text-left"
+                transition={{ delay: i * 0.08, duration: 0.45 }}
+                className="group rounded-2xl border border-border/70 bg-card p-6 sm:p-7 text-left hover:border-primary/30 transition-all duration-300"
               >
-                <div className="w-14 h-14 rounded-2xl bg-card/80 border border-border/70 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                <div className="w-12 h-12 rounded-xl bg-background/80 border border-border/60 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
                   {item.icon}
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">{item.title}</h3>
-                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-sm">{item.copy}</p>
+                <h3 className="text-lg sm:text-xl font-bold tracking-tight mb-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.copy}</p>
               </motion.div>
             ))}
-          </div>
-
-          {/* Highlight strip */}
-          <div className="mt-12 rounded-2xl border border-border/70 bg-card/60 p-6 sm:p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-              {highlights.map((item, i) => (
-                <motion.div
-                  key={item.title}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1, duration: 0.4 }}
-                  className="flex items-start gap-4"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-background/60 border border-border/60 flex items-center justify-center shrink-0">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold mb-1">{item.title}</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{item.copy}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
           </div>
         </Section>
 
@@ -540,7 +467,7 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
-                className="rounded-2xl border border-border/70 bg-card/70 p-6 text-left hover:border-primary/30 transition-colors duration-300"
+                className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300"
               >
                 <div className="text-base font-semibold mb-2">{item.q}</div>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
@@ -638,7 +565,7 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
   const nextBubble = thread.bubbles[visibleCount]
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card/80 p-4 sm:p-5 h-full">
+    <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 sm:p-5 h-full shadow-lg shadow-black/10 dark:shadow-black/30">
       <div className="relative z-10 flex flex-col h-full">
         <div className="mb-3">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{thread.subtitle}</div>
@@ -646,7 +573,7 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
         </div>
 
         {/* Fixed-size chat area - overflow scroll, never changes page height */}
-        <div className="rounded-xl border border-border/60 bg-background/60 p-3 h-[19rem] flex flex-col">
+        <div className="rounded-xl border border-border/60 bg-background/60 p-3 h-[19rem] sm:h-[22rem] flex flex-col">
           <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
             <div className="space-y-2.5 flex flex-col justify-end min-h-full">
               <div className="flex-1" />
@@ -708,7 +635,7 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
   )
 }
 
-/* ── Mobile demo carousel with arrow navigation ── */
+/* ── Demo carousel with arrow navigation (all screen sizes) ── */
 function DemoCarousel({ threads }: { threads: DemoThread[] }) {
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -721,7 +648,7 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
   }, [threads.length])
 
   return (
-    <div className="md:hidden">
+    <div className="max-w-2xl mx-auto">
       <div className="relative overflow-hidden">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -737,23 +664,23 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
       </div>
 
       {/* Arrow controls + dots */}
-      <div className="flex items-center justify-center gap-4 mt-4">
+      <div className="flex items-center justify-center gap-5 mt-5">
         <button
           onClick={goPrev}
-          className="w-10 h-10 rounded-full border border-border/70 bg-card/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
           aria-label="Previous chat"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {threads.map((_, i) => (
             <button
               key={i}
               onClick={() => setActiveIndex(i)}
               className={cn(
-                'w-2 h-2 rounded-full transition-all duration-300',
-                i === activeIndex ? 'bg-primary w-5' : 'bg-muted-foreground/30'
+                'h-2 rounded-full transition-all duration-300',
+                i === activeIndex ? 'bg-primary w-6' : 'bg-muted-foreground/30 w-2'
               )}
               aria-label={`Go to chat ${i + 1}`}
             />
@@ -762,7 +689,7 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
 
         <button
           onClick={goNext}
-          className="w-10 h-10 rounded-full border border-border/70 bg-card/80 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
           aria-label="Next chat"
         >
           <ChevronRight className="w-5 h-5" />
@@ -795,7 +722,7 @@ function Section({ id, title, subtitle, children }: { id?: string; title: string
 
 function Testimonial({ quote, name, role }: { quote: string; name: string; role: string }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-card/75 p-6 sm:p-7 hover:border-primary/30 transition-colors duration-300 h-full flex flex-col">
+    <div className="rounded-2xl border border-border/70 bg-card p-6 sm:p-7 shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 h-full flex flex-col">
       <div className="text-base font-medium leading-relaxed flex-1">&quot;{quote}&quot;</div>
       <div className="mt-4 flex items-center gap-2">
         <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
