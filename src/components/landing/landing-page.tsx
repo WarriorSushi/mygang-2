@@ -55,9 +55,18 @@ type DemoBubble = {
   text: string
   side: 'left' | 'right'
   tone: 'user' | 'crew'
+  color?: string
   delay?: number
   replyTo?: string
   reaction?: string
+}
+
+const crewColors: Record<string, string> = {
+  Luna: 'bg-violet-500/15 border-violet-500/30 text-foreground',
+  Kael: 'bg-amber-500/15 border-amber-500/30 text-foreground',
+  Rico: 'bg-rose-500/15 border-rose-500/30 text-foreground',
+  Nyx: 'bg-cyan-500/15 border-cyan-500/30 text-foreground',
+  Atlas: 'bg-emerald-500/15 border-emerald-500/30 text-foreground',
 }
 
 type DemoThread = {
@@ -72,32 +81,44 @@ const demoThreads: DemoThread[] = [
     subtitle: 'Warm + playful energy',
     bubbles: [
       { speaker: 'You', text: 'Long day. Need a tiny win right now.', side: 'right', tone: 'user', delay: 1800 },
-      { speaker: 'Luna', role: 'The Empath', text: 'First, breathe. I am proud of you for showing up.', side: 'left', tone: 'crew', delay: 2000 },
+      { speaker: 'Luna', role: 'The Empath', text: 'Hey. First, breathe. I am genuinely proud of you for showing up here.', side: 'left', tone: 'crew', delay: 2000 },
       { speaker: 'Kael', role: 'Hype Man', text: 'Mini mission: water + one song + one stretch. Go.', side: 'left', tone: 'crew', delay: 1900, reaction: '🔥' },
       { speaker: 'Rico', role: 'Chaos Gremlin', text: 'I vote dance break. 45 seconds. No excuses.', side: 'left', tone: 'crew', delay: 2100, replyTo: 'Mini mission: water + one song...' },
-      { speaker: 'You', text: 'Fine, dance break accepted.', side: 'right', tone: 'user', delay: 2200 },
+      { speaker: 'You', text: 'Fine, dance break accepted.', side: 'right', tone: 'user', delay: 2000 },
+      { speaker: 'Kael', role: 'Hype Man', text: 'LETS GOOO. Timer starts now.', side: 'left', tone: 'crew', delay: 1800, reaction: '🎉' },
+      { speaker: 'Luna', role: 'The Empath', text: 'You are going to feel so much better after this. Trust.', side: 'left', tone: 'crew', delay: 2000 },
+      { speaker: 'You', text: 'Okay that actually helped lol', side: 'right', tone: 'user', delay: 2200 },
+      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'Told you. I am never wrong about dance breaks.', side: 'left', tone: 'crew', delay: 1900 },
     ],
   },
   {
     title: 'Decision mode',
     subtitle: 'Fast replies + quick plan',
     bubbles: [
-      { speaker: 'You', text: 'I keep procrastinating this application.', side: 'right', tone: 'user', delay: 1800 },
-      { speaker: 'Nyx', role: 'The Hacker', text: 'Open it now. We split it into 3 tiny chunks.', side: 'left', tone: 'crew', delay: 1900 },
-      { speaker: 'Atlas', role: 'The Ops', text: 'Chunk 1 in 7 mins: headline + first bullet only.', side: 'left', tone: 'crew', delay: 2100 },
+      { speaker: 'You', text: 'I keep procrastinating this application. Help.', side: 'right', tone: 'user', delay: 1800 },
+      { speaker: 'Nyx', role: 'The Hacker', text: 'Open it right now. We split it into 3 tiny chunks.', side: 'left', tone: 'crew', delay: 1900 },
+      { speaker: 'Atlas', role: 'The Ops', text: 'Chunk 1 in 7 mins: headline + first bullet only. Nothing else.', side: 'left', tone: 'crew', delay: 2100 },
       { speaker: 'Luna', role: 'The Empath', text: 'Reply here with just the headline. We cheer after.', side: 'left', tone: 'crew', delay: 2000, reaction: '🎉' },
-      { speaker: 'You', text: 'Okay. Starting now.', side: 'right', tone: 'user', delay: 2200 },
+      { speaker: 'You', text: 'Okay. Starting now.', side: 'right', tone: 'user', delay: 2000 },
+      { speaker: 'Nyx', role: 'The Hacker', text: 'Clock is ticking. You got this.', side: 'left', tone: 'crew', delay: 1800 },
+      { speaker: 'You', text: '"Why I should be considered for this role"', side: 'right', tone: 'user', delay: 2200 },
+      { speaker: 'Atlas', role: 'The Ops', text: 'Done. Chunk 1 complete. That was 4 minutes.', side: 'left', tone: 'crew', delay: 1900, reaction: '✅' },
+      { speaker: 'Luna', role: 'The Empath', text: 'SEE? You are faster than you think. Chunk 2 whenever you are ready.', side: 'left', tone: 'crew', delay: 2000 },
     ],
   },
   {
     title: 'Pure fun thread',
     subtitle: 'Witty banter + reactions',
     bubbles: [
-      { speaker: 'You', text: 'I need a ridiculous weekend idea.', side: 'right', tone: 'user', delay: 1800 },
-      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'Theme dinner where everyone speaks in movie quotes.', side: 'left', tone: 'crew', delay: 2000 },
+      { speaker: 'You', text: 'I need a ridiculous weekend idea. Impress me.', side: 'right', tone: 'user', delay: 1800 },
+      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'Theme dinner where everyone speaks only in movie quotes.', side: 'left', tone: 'crew', delay: 2000 },
       { speaker: 'Kael', role: 'Hype Man', text: 'Yes. Dress code: dramatic entrance only.', side: 'left', tone: 'crew', delay: 1900, reaction: '✨' },
-      { speaker: 'Nyx', role: 'The Hacker', text: 'I will allow this if snacks are elite.', side: 'left', tone: 'crew', delay: 2100, replyTo: 'Theme dinner where everyone...' },
-      { speaker: 'You', text: 'This is objectively perfect.', side: 'right', tone: 'user', delay: 2200 },
+      { speaker: 'Nyx', role: 'The Hacker', text: 'I will allow this if snacks are elite tier.', side: 'left', tone: 'crew', delay: 2100, replyTo: 'Theme dinner where everyone...' },
+      { speaker: 'You', text: 'This is objectively perfect.', side: 'right', tone: 'user', delay: 2000 },
+      { speaker: 'Rico', role: 'Chaos Gremlin', text: 'Wait wait wait. Plot twist: everyone has to arrive in character.', side: 'left', tone: 'crew', delay: 1800 },
+      { speaker: 'Kael', role: 'Hype Man', text: 'I am coming as the guy from Wolf of Wall Street. No debate.', side: 'left', tone: 'crew', delay: 2000, reaction: '😂' },
+      { speaker: 'You', text: 'This group is unhinged and I love it', side: 'right', tone: 'user', delay: 2200 },
+      { speaker: 'Nyx', role: 'The Hacker', text: 'You started it. We just elevated it.', side: 'left', tone: 'crew', delay: 1900 },
     ],
   },
 ]
@@ -591,7 +612,7 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
                         'rounded-2xl px-3.5 py-2.5 border text-[12.5px] leading-relaxed',
                         bubble.tone === 'user'
                           ? 'bg-primary text-primary-foreground border-primary/30 rounded-br-md'
-                          : 'bg-card/95 text-foreground border-border/70 rounded-tl-md'
+                          : cn('rounded-tl-md', crewColors[bubble.speaker] ?? 'bg-card/95 text-foreground border-border/70')
                       )}
                     >
                       {bubble.replyTo && (
