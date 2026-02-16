@@ -43,10 +43,21 @@ let cachedGlobalLowCostOverride: { value: boolean; expiresAtMs: number } = {
     expiresAtMs: 0
 }
 
+const CHARACTER_EXTENDED_VOICES: Record<string, string> = {
+    kael: 'Hypes everything up. Uses "we" a lot. Speaks in declarations. Loves emojis but not excessively. Competitive with Cleo. Thinks he is the main character.',
+    nyx: 'Deadpan one-liners. Uses lowercase. Rarely uses emojis. Roasts everyone equally. Clashes with Rico (logic vs chaos). Secretly cares but would never admit it.',
+    atlas: 'Short, direct sentences. Protective dad-friend energy. Gives actual advice. Gets annoyed by Rico. Respects Vee. Uses military-adjacent language casually.',
+    luna: 'Dreamy and warm. Uses "..." and trailing thoughts. Reads the room emotionally. Mediates conflicts. Sometimes too real. Vibes with Ezra on deep topics.',
+    rico: 'ALL CAPS when excited. Chaotic energy. Derails conversations. Uses excessive emojis and slang. Clashes with Nyx and Atlas. Hypes up bad ideas enthusiastically.',
+    vee: 'Starts corrections with "actually" or "technically". Uses precise language. Dry humor. Respects Atlas. Gets exasperated by Rico. Drops random facts.',
+    ezra: 'References obscure art/philosophy. Uses italics mentally. Pretentious but self-aware about it. Vibes with Luna. Judges Kael\'s taste. Speaks in metaphors.',
+    cleo: 'Judgmental but entertaining. Uses "honey", "darling", "sweetie". Gossips. Competes with Kael for social dominance. Has strong opinions on everything. Dramatic pauses.',
+}
+
 const CHARACTER_PROMPT_BLOCKS = new Map(
     CHARACTERS.map((c) => [
         c.id,
-        `- ID: "${c.id}", Name: "${c.name}", Archetype: "${c.archetype}", Voice: "${c.voice}", Style: "${c.sample}"`
+        `- ID: "${c.id}", Name: "${c.name}", Archetype: "${c.archetype}", Voice: "${c.voice}", Style: "${c.sample}"${CHARACTER_EXTENDED_VOICES[c.id] ? `\n  Personality: ${CHARACTER_EXTENDED_VOICES[c.id]}` : ''}`
     ])
 )
 
@@ -810,9 +821,16 @@ IDENTITY:
 
 USER:
 - User: ${userName || 'User'}${userNickname ? ` (called "${userNickname}")` : ''}.
+- Messages from user have speaker: "user" in the conversation history.
 
 SQUAD:
 ${characterContext}
+
+SQUAD DYNAMICS (use these to create natural group banter):
+- Characters should sometimes respond to EACH OTHER, not just the user.
+- Different characters have different opinions -- let them disagree, joke, or riff off each other.
+- Not every character needs to address the user directly every time.
+- Conversations should feel like overhearing a friend group, not a panel Q&A.
 
 ${memorySnapshot}
 
@@ -821,17 +839,23 @@ ${safetyDirective}
 
 MODE: ${chatMode.toUpperCase()}
 ${chatMode === 'entourage'
-                ? '- Entourage: user-focused only, no side banter.'
-                : '- Ecosystem: natural group banter allowed while keeping user included.'}
+                ? '- Entourage: user-focused only. Respond directly to the user. Keep it tight and personal.'
+                : '- Ecosystem: natural group banter allowed. Characters can talk to each other, react to each other, and riff. Keep user included but the chat should feel alive.'}
 LOW_COST_MODE: ${lowCostMode ? 'YES' : 'NO'}.
 
 CORE RULES:
 1) Latest message is "now". Prioritize newest user info.
-2) Use target_message_id when directly replying/quoting.
-3) Use occasional reaction events for realism.
+2) QUOTING/REPLYING: Most messages should NOT use target_message_id. Only use it when:
+   - A character is specifically disagreeing with or calling out a particular earlier message
+   - A character is quoting someone else for comedic or dramatic effect
+   - A character wants to directly reply to another character's specific point
+   Approximately 80% of messages should have NO target_message_id. In a real group chat, people just talk -- they rarely quote.
+3) Use occasional reaction events (emoji reactions) for realism. Keep them short and punchy.
 4) Status update content must be exactly one of:
 ${allowedStatusList}
 5) If silent_turns is high (${silentTurns}), re-engage user directly.
+6) VOICE: Each character must sound distinctly different. Use their vocabulary, tone, and personality consistently. Vary message lengths -- some characters are verbose, others are terse.
+7) NATURALNESS: Write like real people text. Use lowercase, abbreviations, slang where it fits the character. Avoid perfect grammar unless that IS the character's style.
 
 MEMORY/RELATIONSHIP:
 - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
@@ -860,9 +884,7 @@ FLOW FLAGS:
         const historyForLLM = safeMessages.slice(-HISTORY_LIMIT).map(m => ({
             id: m.id,
             speaker: m.speaker,
-            content: m.speaker === 'user'
-                ? `[USER_MSG]${m.content.slice(0, MAX_LLM_MESSAGE_CHARS)}[/USER_MSG]`
-                : m.content.slice(0, MAX_LLM_MESSAGE_CHARS),
+            content: m.content.slice(0, MAX_LLM_MESSAGE_CHARS),
             type: m.reaction ? 'reaction' : 'message',
             target_message_id: m.replyToId
         }))
@@ -1069,9 +1091,6 @@ FLOW FLAGS:
                 if (event.type === 'message' || event.type === 'reaction') {
                     if (focusedCount >= 4) return false
                     focusedCount += 1
-                    if (latestUserMessageId) {
-                        event.target_message_id = latestUserMessageId
-                    }
                     return true
                 }
                 return true

@@ -194,7 +194,9 @@ function MessageItemComponent({
     // AI bubble: subtle persona tint blended into a neutral base (no garish borders)
     const aiBubbleRgb = isDark
         ? mixRgb(baseRgb, { r: 22, g: 30, b: 46 }, 0.85)
-        : mixRgb(baseRgb, { r: 248, g: 250, b: 252 }, 0.92)
+        : mixRgb(baseRgb, { r: 235, g: 240, b: 246 }, 0.82)
+    // Light mode gets a subtle neutral border so bubbles don't vanish on the light bg
+    const aiBorderLight: Rgb = { r: 210, g: 218, b: 228 }
     const aiTextRgb = pickReadableTextColor(aiBubbleRgb)
 
     // Persona name: slightly bright in dark, readable in light
@@ -210,10 +212,10 @@ function MessageItemComponent({
         : (isDark ? { r: 100, g: 190, b: 160 } : { r: 16, g: 120, b: 90 })
     const quoteBgRgb = isDark
         ? { r: 14, g: 20, b: 34 }
-        : { r: 241, g: 245, b: 249 }
+        : { r: 230, g: 236, b: 244 }
     const quoteTextRgb = isDark
         ? { r: 170, g: 182, b: 200 }
-        : { r: 70, g: 80, b: 95 }
+        : { r: 60, g: 70, b: 85 }
     const quoteLabelRgb = isDark
         ? mixRgb(quoteBubbleBase, { r: 230, g: 238, b: 248 }, 0.25)
         : ensureReadablePersonaNameOnLight(quoteBubbleBase)
@@ -351,7 +353,10 @@ function MessageItemComponent({
                         ? undefined
                         : isUser
                             ? undefined
-                            : { backgroundColor: toRgbString(aiBubbleRgb) }
+                            : {
+                                backgroundColor: toRgbString(aiBubbleRgb),
+                                ...(isDark ? {} : { border: `1px solid ${toRgbString(aiBorderLight)}` }),
+                            }
                     }
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
