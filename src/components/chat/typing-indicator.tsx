@@ -93,8 +93,8 @@ export const TypingIndicator = memo(function TypingIndicator({ typingUsers, acti
     const activityEntries = Object.entries(activityStatuses).filter(([id, status]) => status && !typingUsers.includes(id))
 
     return (
-        <div className="flex flex-col gap-1 ml-1">
-            <AnimatePresence>
+        <div className="flex flex-col gap-1 ml-1 min-h-[28px]">
+            <AnimatePresence initial={false}>
                 {activityEntries.map(([userId, status]) => {
                     const character = activeGang.find(c => c.id === userId)
                     if (!character) return null

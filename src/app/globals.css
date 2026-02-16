@@ -126,6 +126,21 @@
   }
 }
 
+@keyframes msg-appear {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-msg-appear {
+  animation: msg-appear 0.18s ease-out both;
+}
+
 @keyframes bounce-short {
 
   0%,

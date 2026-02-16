@@ -1,7 +1,6 @@
 'use client'
 
 import { memo, useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
 import { Character, Message } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -134,7 +133,6 @@ interface MessageItemProps {
     isContinued?: boolean
     groupPosition?: 'single' | 'first' | 'middle' | 'last'
     isFastMode?: boolean
-    animateOnMount?: boolean
     quotedMessage?: Message | null
     quotedSpeaker?: Character | null
     seenBy?: string[]
@@ -151,7 +149,6 @@ function MessageItemComponent({
     isContinued,
     groupPosition = 'single',
     isFastMode = false,
-    animateOnMount = false,
     quotedMessage = null,
     quotedSpeaker = null,
     seenBy = [],
@@ -289,10 +286,7 @@ function MessageItemComponent({
     }, [showActions])
 
     return (
-        <motion.div
-            initial={animateOnMount ? { opacity: 0, y: 8, scale: 0.97 } : false}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: animateOnMount ? (isFastMode ? 0.1 : 0.18) : 0.01, ease: 'easeOut' }}
+        <div
             className={cn(
                 "group relative flex flex-col w-auto max-w-[82vw] sm:max-w-[66vw] lg:max-w-[34rem]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
@@ -464,47 +458,45 @@ function MessageItemComponent({
                 </div>
             )}
 
-            {/* Delivery status */}
-            {isUser && !isReaction && message.deliveryStatus && (
-                <div className={cn(
-                    "mt-0.5 px-1 text-[10px]",
-                    message.deliveryStatus === 'failed'
-                        ? "text-destructive"
-                        : message.deliveryStatus === 'sending'
-                            ? "text-muted-foreground/50"
-                            : "text-emerald-500/60"
-                )}>
-                    {message.deliveryStatus === 'sending' && 'Sending\u2026'}
-                    {message.deliveryStatus === 'sent' && 'Sent'}
-                    {message.deliveryStatus === 'failed' && (message.deliveryError || 'Failed to send')}
-                </div>
-            )}
-
-            {/* Retry */}
-            {isUser && !isReaction && message.deliveryStatus === 'failed' && onRetry && (
-                <div className="mt-1 px-1">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => onRetry(message)}
-                        className="rounded-full text-[10px] border border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
-                    >
-                        Retry
-                    </Button>
-                </div>
-            )}
-
-            {/* Seen by */}
-            {isUser && seenBy.length > 0 && (
-                <div className="mt-0.5 px-1 text-[10px] text-muted-foreground/40">
-                    Seen by {seenBy.join(', ')}
+            {/* Delivery status + Seen by (stable-height container) */}
+            {isUser && !isReaction && (
+                <div className="mt-0.5 px-1 min-h-[16px]">
+                    {message.deliveryStatus && (
+                        <span className={cn(
+                            "text-[10px]",
+                            message.deliveryStatus === 'failed'
+                                ? "text-destructive"
+                                : message.deliveryStatus === 'sending'
+                                    ? "text-muted-foreground/50"
+                                    : "text-emerald-500/60"
+                        )}>
+                            {message.deliveryStatus === 'sending' && 'Sending\u2026'}
+                            {message.deliveryStatus === 'sent' && 'Sent'}
+                            {message.deliveryStatus === 'failed' && (message.deliveryError || 'Failed to send')}
+                        </span>
+                    )}
+                    {message.deliveryStatus === 'failed' && onRetry && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => onRetry(message)}
+                            className="ml-1.5 rounded-full text-[10px] border border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
+                        >
+                            Retry
+                        </Button>
+                    )}
+                    {seenBy.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground/40 ml-1.5">
+                            Seen by {seenBy.join(', ')}
+                        </span>
+                    )}
                 </div>
             )}
 
             {/* Save to memory */}
             {isUser && !isReaction && !isGuest && (
-                <div className="mt-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-0.5 px-1 h-0 group-hover:h-auto overflow-hidden transition-none">
                     <Button
                         variant="ghost"
                         size="xs"
@@ -516,7 +508,7 @@ function MessageItemComponent({
                     </Button>
                 </div>
             )}
-        </motion.div>
+        </div>
     )
 }
 

@@ -4,6 +4,7 @@ import { memo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
+import { cn } from '@/lib/utils'
 import { TypingIndicator } from '@/components/chat/typing-indicator'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
@@ -130,18 +131,35 @@ export const MessageList = memo(function MessageList({
         return seenMap
     }, [messages, characterBySpeaker])
 
+    const measuredSizes = useRef<Map<number, number>>(new Map())
+
     const rowVirtualizer = useVirtualizer({
         count: itemCount,
         getScrollElement: () => scrollRef.current,
-        estimateSize: () => 120,
-        overscan: 12,
-        measureElement: (el) => el.getBoundingClientRect().height,
+        estimateSize: (index) => measuredSizes.current.get(index) ?? 85,
+        overscan: 8,
+        measureElement: (el) => {
+            const h = el.getBoundingClientRect().height
+            const idx = Number((el as HTMLElement).dataset.index)
+            if (!Number.isNaN(idx)) measuredSizes.current.set(idx, h)
+            return h
+        },
     })
 
     const scrollToBottom = useCallback(() => {
         if (!scrollRef.current) return
         rowVirtualizer.scrollToIndex(Math.max(0, itemCount - 1), { align: 'end' })
-        setIsAtBottom(true)
+        // Double-RAF ensures the virtualizer has committed layout before we affirm position
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (!scrollRef.current) return
+                const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+                if (scrollHeight - scrollTop - clientHeight > 4) {
+                    scrollRef.current.scrollTop = scrollHeight - clientHeight
+                }
+                setIsAtBottom(true)
+            })
+        })
     }, [itemCount, rowVirtualizer])
 
     // Handle scroll events
@@ -263,6 +281,7 @@ export const MessageList = memo(function MessageList({
                                         left: 0,
                                         width: '100%',
                                         transform: `translateY(${virtualRow.start}px)`,
+                                        willChange: 'transform',
                                     }}
                                 >
                                     <TypingIndicator
@@ -290,18 +309,24 @@ export const MessageList = memo(function MessageList({
                             : null
                         const seenBy = seenByMessageId.get(message.id) ?? []
 
+                        const shouldAnimate = animatedMessageIdsRef.current.has(message.id)
+
                         return (
                             <div
                                 key={message.id}
                                 ref={rowVirtualizer.measureElement}
                                 data-index={index}
-                                className="px-4 md:px-10 lg:px-14"
+                                className={cn(
+                                    "px-4 md:px-10 lg:px-14",
+                                    shouldAnimate && "animate-msg-appear"
+                                )}
                                 style={{
                                     position: 'absolute',
                                     top: 0,
                                     left: 0,
                                     width: '100%',
                                     transform: `translateY(${virtualRow.start}px)`,
+                                    willChange: 'transform',
                                 }}
                             >
                                 <MessageItem
@@ -310,7 +335,6 @@ export const MessageList = memo(function MessageList({
                                     isContinued={samePrevious}
                                     groupPosition={groupPosition}
                                     isFastMode={isFastMode}
-                                    animateOnMount={animatedMessageIdsRef.current.has(message.id)}
                                     quotedMessage={quotedMessage}
                                     quotedSpeaker={quotedSpeaker}
                                     seenBy={seenBy}
