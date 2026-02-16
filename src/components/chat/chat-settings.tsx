@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useChatStore } from '@/stores/chat-store'
+import { useShallow } from 'zustand/react/shallow'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Label } from '@/components/ui/label'
 import {
@@ -58,7 +59,19 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setShowPersonaRoles,
         userName,
         isGuest,
-    } = useChatStore()
+    } = useChatStore(useShallow((s) => ({
+        chatMode: s.chatMode,
+        setChatMode: s.setChatMode,
+        lowCostMode: s.lowCostMode,
+        setLowCostMode: s.setLowCostMode,
+        clearChat: s.clearChat,
+        chatWallpaper: s.chatWallpaper,
+        setChatWallpaper: s.setChatWallpaper,
+        showPersonaRoles: s.showPersonaRoles,
+        setShowPersonaRoles: s.setShowPersonaRoles,
+        userName: s.userName,
+        isGuest: s.isGuest,
+    })))
 
     const [panel, setPanel] = useState<SettingsPanel>('root')
     const [accountEmail, setAccountEmail] = useState<string | null>(null)
@@ -125,6 +138,14 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setIsDeleting(true)
         try {
             await deleteAccount()
+            // deleteAccount redirects on success; if we reach here, redirect manually
+            window.location.href = '/'
+        } catch (err) {
+            // Next.js redirect throws NEXT_REDIRECT — only show error for real failures
+            const message = err instanceof Error ? err.message : ''
+            if (!message.includes('NEXT_REDIRECT')) {
+                setDeleteEmailError('Could not delete account. Please try again.')
+            }
         } finally {
             setIsDeleting(false)
         }
@@ -465,8 +486,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                             disabled={isDeleting || !accountEmail}
                                             className="h-auto w-full justify-between rounded-xl border border-destructive/40 px-3 py-3 text-destructive hover:bg-destructive hover:text-white disabled:opacity-60"
                                         >
-                                            <span className="text-[11px] font-black uppercase tracking-wider">Delete Account</span>
-                                            <ShieldAlert size={14} />
+                                            <span className="text-[11px] font-black uppercase tracking-wider">{isDeleting ? 'Deleting...' : 'Delete Account'}</span>
+                                            {!isDeleting && <ShieldAlert size={14} />}
                                         </Button>
                                     </div>
                                 </div>

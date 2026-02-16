@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
+import { useShallow } from 'zustand/react/shallow'
 import { CHARACTER_GREETINGS } from '@/constants/character-greetings'
 
 function pickRandom<T>(items: T[]): T | undefined {
@@ -61,7 +62,13 @@ export function useAutonomousFlow({
         userId,
         isHydrated,
         chatMode,
-    } = useChatStore()
+    } = useChatStore(useShallow((s) => ({
+        activeGang: s.activeGang,
+        messages: s.messages,
+        userId: s.userId,
+        isHydrated: s.isHydrated,
+        chatMode: s.chatMode,
+    })))
 
     const resumeAutonomousTriggeredRef = useRef(false)
     const idleAutonomousTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)

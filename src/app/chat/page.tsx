@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
+import { useShallow } from 'zustand/react/shallow'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
@@ -41,7 +42,21 @@ export default function ChatPage() {
         chatWallpaper,
         squadConflict,
         setSquadConflict,
-    } = useChatStore()
+    } = useChatStore(useShallow((s) => ({
+        messages: s.messages,
+        activeGang: s.activeGang,
+        userId: s.userId,
+        userName: s.userName,
+        userNickname: s.userNickname,
+        isGuest: s.isGuest,
+        isHydrated: s.isHydrated,
+        setIsGuest: s.setIsGuest,
+        chatMode: s.chatMode,
+        lowCostMode: s.lowCostMode,
+        chatWallpaper: s.chatWallpaper,
+        squadConflict: s.squadConflict,
+        setSquadConflict: s.setSquadConflict,
+    })))
 
     const [showAuthWall, setShowAuthWall] = useState(false)
     const [isVaultOpen, setIsVaultOpen] = useState(false)
@@ -120,6 +135,13 @@ export default function ChatPage() {
         pendingUserMessagesRef: api.pendingUserMessagesRef,
         debounceTimerRef: api.debounceTimerRef,
     })
+
+    // Show toast on history sync failure
+    useEffect(() => {
+        if (history.historyStatus === 'error') {
+            setToastMessage('Could not load chat history. Try refreshing.')
+        }
+    }, [history.historyStatus])
 
     const replyingToDisplay = useMemo(() => {
         if (!replyingTo) return null
