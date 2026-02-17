@@ -227,58 +227,36 @@ export function useChatApi({
 
             let res: Response | null = null
             let data: ChatApiResponse | null = null
-            for (let attempt = 0; attempt < 2; attempt++) {
-                try {
-                    if (isAutonomous && attempt === 0) {
-                        const minGapMs = 1600
-                        const elapsed = Date.now() - lastApiCallAtRef.current
-                        if (elapsed < minGapMs) {
-                            await new Promise((resolve) => setTimeout(resolve, minGapMs - elapsed))
-                        }
-                    }
-                    lastApiCallAtRef.current = Date.now()
-                    res = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(mockAi ? { 'x-mock-ai': 'true' } : {})
-                        },
-                        body: JSON.stringify(requestBody)
-                    })
-                    data = null
-                    try {
-                        data = await res.json()
-                    } catch (err) {
-                        console.error('Failed to parse response:', err)
-                    }
-                    trackEvent('chat_api_call', {
-                        metadata: {
-                            source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
-                            status: res.status,
-                            attempt,
-                            lowCostMode: effectiveLowCostModeForCall,
-                            manualLowCostMode: lowCostMode,
-                            autoLowCostMode: autoLowCostModeRef.current,
-                            payloadMessages: payloadMessages.length
-                        }
-                    })
-                    if (res.ok || res.status < 500 || attempt === 1) break
-                } catch (err) {
-                    trackEvent('chat_api_call', {
-                        metadata: {
-                            source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
-                            status: 'network_error',
-                            attempt,
-                            lowCostMode: effectiveLowCostModeForCall,
-                            manualLowCostMode: lowCostMode,
-                            autoLowCostMode: autoLowCostModeRef.current,
-                            payloadMessages: payloadMessages.length
-                        }
-                    })
-                    if (attempt === 1) throw err
+
+            if (isAutonomous) {
+                const minGapMs = 1600
+                const elapsed = Date.now() - lastApiCallAtRef.current
+                if (elapsed < minGapMs) {
+                    await new Promise((resolve) => setTimeout(resolve, minGapMs - elapsed))
                 }
-                await new Promise((resolve) => setTimeout(resolve, 420 + attempt * 240))
             }
+            lastApiCallAtRef.current = Date.now()
+            res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(mockAi ? { 'x-mock-ai': 'true' } : {})
+                },
+                body: JSON.stringify(requestBody)
+            })
+            try {
+                data = await res.json()
+            } catch (err) {
+                console.error('Failed to parse response:', err)
+            }
+            trackEvent('chat_api_call', {
+                metadata: {
+                    source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
+                    status: res.status,
+                    lowCostMode: effectiveLowCostModeForCall,
+                    payloadMessages: payloadMessages.length
+                }
+            })
 
             if (!res) {
                 throw new Error('No response from chat API')
@@ -405,21 +383,11 @@ export function useChatApi({
             }
 
             // == AUTONOMOUS CONTINUATION CHECK ==
-            const burstLimit = effectiveLowCostModeForCall ? 1 : (chatMode === 'entourage' ? 1 : 2)
+            // Only allow ONE continuation, and only for explicit open-floor requests
             const autonomousAllowed = Date.now() >= autonomousBackoffUntilRef.current
-            const allowAutonomousChain = !isAutonomous
-            if (!effectiveLowCostModeForCall && autonomousAllowed && allowAutonomousChain && data.should_continue && burstCountRef.current < (burstLimit - 1) && !pendingUserMessagesRef.current) {
-                burstCountRef.current++
-                await new Promise(r => setTimeout(r, 1000))
-                isGeneratingRef.current = false
-                const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
-                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId }).catch((err) => console.error('Autonomous continuation error:', err))
-                return
-            }
-
-            if (!effectiveLowCostModeForCall && autonomousAllowed && !data.should_continue && !isAutonomous && chatMode === 'ecosystem' && openFloorIntent && !pendingUserMessagesRef.current && burstCountRef.current < 1) {
+            if (!effectiveLowCostModeForCall && autonomousAllowed && !isAutonomous && chatMode === 'ecosystem' && openFloorIntent && !pendingUserMessagesRef.current && burstCountRef.current < 1) {
                 burstCountRef.current += 1
-                await new Promise((r) => setTimeout(r, 900))
+                await new Promise((r) => setTimeout(r, 1200))
                 isGeneratingRef.current = false
                 const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
                 sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId }).catch((err) => console.error('Autonomous continuation error:', err))
@@ -440,12 +408,8 @@ export function useChatApi({
             } else {
                 isGeneratingRef.current = false
                 clearTypingUsers()
-                if (!isIntro && !pendingUserMessagesRef.current && apiCallSucceeded && !effectiveLowCostModeForCall) {
-                    const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
-                    if (sourceId && (autonomousIdle || !isAutonomous)) {
-                        scheduleIdleAutonomousRef.current(sourceId)
-                    }
-                }
+                // Only schedule idle autonomous after open-floor intents, not every message
+
             }
         }
     }

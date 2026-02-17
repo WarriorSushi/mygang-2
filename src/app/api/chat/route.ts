@@ -1,4 +1,3 @@
-import { geminiModel } from '@/lib/ai/gemini'
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { retrieveMemoriesLite, shouldTriggerMemoryUpdate, storeMemory, touchMemories } from '@/lib/ai/memory'
@@ -19,7 +18,7 @@ const MAX_TOTAL_RESPONSE_CHARS = 3000
 const MAX_EVENTS = 20
 const MAX_DELAY_MS = 7000
 const LLM_MAX_OUTPUT_TOKENS = 1200
-const LLM_MAX_RETRIES = 1
+const LLM_MAX_RETRIES = 0
 const LLM_HISTORY_LIMIT = 12
 const LLM_IDLE_HISTORY_LIMIT = 8
 const LOW_COST_MAX_OUTPUT_TOKENS = 800
@@ -30,14 +29,8 @@ const MAX_MEMORY_CONTENT_CHARS = 220
 const MAX_SESSION_SUMMARY_CHARS = 500
 const MAX_PROFILE_LINES = 12
 const MAX_PROFILE_VALUE_CHARS = 120
-const PROVIDER_DEFAULT_COOLDOWN_MS = 30_000
-const PROVIDER_RETRY_FLOOR_MS = 10_000
-const PROVIDER_RETRY_CEILING_MS = 3 * 60 * 1000
-const OPENROUTER_CREDIT_COOLDOWN_MS = 2 * 60 * 1000
 const ADMIN_SETTINGS_CACHE_MS = 20_000
 
-let geminiCooldownUntil = 0
-let openRouterCooldownUntil = 0
 let cachedGlobalLowCostOverride: { value: boolean; expiresAtMs: number } = {
     value: false,
     expiresAtMs: 0
@@ -104,7 +97,7 @@ type ChatRouteMetric = {
     lowCostMode: boolean
     globalLowCostOverride: boolean
     status: number
-    providerUsed: 'gemini' | 'openrouter' | 'fallback'
+    providerUsed: 'openrouter' | 'fallback'
     providerCapacityBlocked: boolean
     clientMessagesCount: number
     llmHistoryCount: number
@@ -472,51 +465,6 @@ function isProviderCapacityError(err: unknown) {
         || /retry\s+in\s+\d/i.test(message)
 }
 
-function clampNumber(value: number, min: number, max: number) {
-    return Math.max(min, Math.min(max, value))
-}
-
-function getRetryDelayMsFromError(err: unknown): number | null {
-    const message = getMessageFromError(err)
-    if (!message) return null
-
-    const retryInMatch = message.match(/retry in\s+(\d+(?:\.\d+)?)s/i)
-    if (retryInMatch) {
-        const parsed = Number(retryInMatch[1])
-        if (Number.isFinite(parsed) && parsed > 0) {
-            return Math.round(parsed * 1000)
-        }
-    }
-
-    const retryDelayMatch = message.match(/"retryDelay"\s*:\s*"(\d+)s"/i)
-    if (retryDelayMatch) {
-        const parsed = Number(retryDelayMatch[1])
-        if (Number.isFinite(parsed) && parsed > 0) {
-            return Math.round(parsed * 1000)
-        }
-    }
-
-    return null
-}
-
-function getProviderCooldownMs(err: unknown, provider: 'gemini' | 'openrouter') {
-    const statusCode = getStatusCodeFromError(err)
-    const message = getMessageFromError(err)
-
-    if (provider === 'openrouter' && statusCode === 402) {
-        return OPENROUTER_CREDIT_COOLDOWN_MS
-    }
-    if (provider === 'gemini' && /limit:\s*0/i.test(message)) {
-        return PROVIDER_RETRY_CEILING_MS
-    }
-
-    const retryDelayMs = getRetryDelayMsFromError(err)
-    if (retryDelayMs !== null) {
-        return clampNumber(retryDelayMs + 1000, PROVIDER_RETRY_FLOOR_MS, PROVIDER_RETRY_CEILING_MS)
-    }
-
-    return PROVIDER_DEFAULT_COOLDOWN_MS
-}
 
 function ensureEventMessageIds(
     events: RouteResponseObject['events'],
@@ -883,103 +831,48 @@ FLOW FLAGS:
         }
         const llmPrompt = systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM)
         let modelSuccess = false
-        let capacityBlocked = false
-        let providerUsed: 'gemini' | 'openrouter' | 'fallback' = 'fallback'
+        let providerUsed: 'openrouter' | 'fallback' = 'fallback'
         const llmMaxOutputTokens = lowCostMode ? LOW_COST_MAX_OUTPUT_TOKENS : LLM_MAX_OUTPUT_TOKENS
-        const nowMs = Date.now()
-        const openRouterCoolingDown = nowMs < openRouterCooldownUntil
-        const geminiCoolingDown = nowMs < geminiCooldownUntil
 
-        // Build ordered provider list: try non-cooled-down providers first
-        const providers: Array<{ name: 'openrouter' | 'gemini'; model: typeof openRouterModel | typeof geminiModel; coolingDown: boolean }> = [
-            { name: 'openrouter', model: openRouterModel, coolingDown: openRouterCoolingDown },
-            { name: 'gemini', model: geminiModel, coolingDown: geminiCoolingDown },
-        ]
-
-        for (const provider of providers) {
-            if (modelSuccess) break
-            if (provider.coolingDown) {
-                capacityBlocked = true
-                continue
-            }
-            try {
-                const result = await generateObject({
-                    model: provider.model,
-                    schema: responseSchema,
-                    prompt: llmPrompt,
-                    maxOutputTokens: llmMaxOutputTokens,
-                    maxRetries: LLM_MAX_RETRIES,
-                    ...(provider.name === 'gemini' ? {
-                        providerOptions: { google: { structuredOutputs: false } }
-                    } : {}),
-                })
-                object = result.object
-                modelSuccess = true
-                providerUsed = provider.name
-                // Clear cooldown on success in case it was stale
-                if (provider.name === 'openrouter') openRouterCooldownUntil = 0
-                else geminiCooldownUntil = 0
-            } catch (err) {
-                console.error(`${provider.name} error:`, err)
-                if (isProviderCapacityError(err)) {
-                    capacityBlocked = true
-                    const cooldownMs = getProviderCooldownMs(err, provider.name)
-                    if (provider.name === 'openrouter') openRouterCooldownUntil = Date.now() + cooldownMs
-                    else geminiCooldownUntil = Date.now() + cooldownMs
-                }
-            }
-        }
-
-        // Last resort: if both were cooling down, force-try Gemini direct (free tier resets quickly)
-        if (!modelSuccess && openRouterCoolingDown && geminiCoolingDown) {
-            try {
-                const result = await generateObject({
-                    model: geminiModel,
-                    schema: responseSchema,
-                    prompt: llmPrompt,
-                    maxOutputTokens: llmMaxOutputTokens,
-                    maxRetries: LLM_MAX_RETRIES,
-                    providerOptions: { google: { structuredOutputs: false } },
-                })
-                object = result.object
-                modelSuccess = true
-                providerUsed = 'gemini'
-                geminiCooldownUntil = 0
-            } catch (geminiErr) {
-                console.error('Last-resort Gemini attempt failed:', geminiErr)
-                if (isProviderCapacityError(geminiErr)) {
-                    geminiCooldownUntil = Date.now() + getProviderCooldownMs(geminiErr, 'gemini')
-                }
-            }
-        }
-
-        if (!modelSuccess && capacityBlocked) {
-            const nextRetryMs = Math.max(0, geminiCooldownUntil - Date.now(), openRouterCooldownUntil - Date.now())
-            const retryAfterSeconds = Math.max(15, Math.ceil(nextRetryMs / 1000))
-            await logChatRouteMetric(supabase, user?.id ?? null, {
-                source,
-                lowCostMode,
-                globalLowCostOverride,
-                status: 429,
-                providerUsed,
-                providerCapacityBlocked: true,
-                clientMessagesCount: safeMessages.length,
-                llmHistoryCount: historyForLLM.length,
-                promptChars: llmPrompt.length,
-                elapsedMs: Date.now() - requestStartedAt
+        try {
+            const result = await generateObject({
+                model: openRouterModel,
+                schema: responseSchema,
+                prompt: llmPrompt,
+                maxOutputTokens: llmMaxOutputTokens,
+                maxRetries: LLM_MAX_RETRIES,
             })
-            return Response.json({
-                events: [{
-                    type: 'message',
-                    character: 'system',
-                    content: `Capacity is tight right now. Try again in about ${retryAfterSeconds}s.`,
-                    delay: 300
-                }],
-                should_continue: false
-            }, {
-                status: 429,
-                headers: { 'Retry-After': String(retryAfterSeconds) }
-            })
+            object = result.object
+            modelSuccess = true
+            providerUsed = 'openrouter'
+        } catch (err) {
+            console.error('OpenRouter error:', err)
+            if (isProviderCapacityError(err)) {
+                await logChatRouteMetric(supabase, user?.id ?? null, {
+                    source,
+                    lowCostMode,
+                    globalLowCostOverride,
+                    status: 429,
+                    providerUsed,
+                    providerCapacityBlocked: true,
+                    clientMessagesCount: safeMessages.length,
+                    llmHistoryCount: historyForLLM.length,
+                    promptChars: llmPrompt.length,
+                    elapsedMs: Date.now() - requestStartedAt
+                })
+                return Response.json({
+                    events: [{
+                        type: 'message',
+                        character: 'system',
+                        content: 'Capacity is tight right now. Try again in a moment.',
+                        delay: 300
+                    }],
+                    should_continue: false
+                }, {
+                    status: 429,
+                    headers: { 'Retry-After': '15' }
+                })
+            }
         }
 
         if (object?.events && Array.isArray(object.events)) {
@@ -1086,8 +979,11 @@ FLOW FLAGS:
         if (autonomousIdle) {
             object.should_continue = false
         }
+        // Only set should_continue for explicit open-floor requests
         if (!lowCostMode && !isEntourageMode && openFloorRequested && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0) {
             object.should_continue = true
+        } else {
+            object.should_continue = false
         }
 
         // Sometimes break one long message into two short back-to-back bubbles for realism.

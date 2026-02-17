@@ -10,7 +10,7 @@ type OverviewPageProps = {
 type ChatRouteMetricMetadata = {
     source?: 'user' | 'autonomous' | 'autonomous_idle'
     status?: number
-    providerUsed?: 'gemini' | 'openrouter' | 'fallback'
+    providerUsed?: 'openrouter' | 'fallback'
     providerCapacityBlocked?: boolean
     elapsedMs?: number
 }
@@ -124,7 +124,6 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
         autonomousIdle: metrics.filter((m) => m.source === 'autonomous_idle').length,
     }
     const providerMix = {
-        gemini: metrics.filter((m) => m.providerUsed === 'gemini').length,
         openrouter: metrics.filter((m) => m.providerUsed === 'openrouter').length,
         fallback: metrics.filter((m) => m.providerUsed === 'fallback').length,
     }
@@ -325,10 +324,6 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
                         <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/75">Provider Mix (24h)</p>
                     </div>
                     <div className="space-y-2 text-xs text-slate-300/90">
-                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span>Gemini</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(providerMix.gemini)}</span>
-                        </div>
                         <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
                             <span>OpenRouter</span>
                             <span className="font-semibold text-slate-100">{formatNumber(providerMix.openrouter)}</span>
