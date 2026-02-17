@@ -274,6 +274,12 @@ function scoreAbuse(text: string, previousUserMessage?: string) {
     return score
 }
 
+function isSimpleGreeting(text: string) {
+    const value = text.toLowerCase().trim()
+    if (value.length > 40) return false
+    return /^(hey|hi|hello|yo|sup|what'?s up|whats up|hii+|heyy+|wassup|howdy|gm|good morning|good evening)\b/.test(value)
+}
+
 function hasOpenFloorIntent(text: string) {
     const value = text.toLowerCase()
     return (
@@ -677,6 +683,7 @@ export async function POST(req: Request) {
         const isInactive = inactiveMinutes > 5
         const unsafeFlag = detectUnsafeContent(lastUserMsg)
         const abuseDelta = scoreAbuse(lastUserMsg, previousUserMessage?.content)
+        const greetingOnly = isSimpleGreeting(lastUserMsg)
 
         if (unsafeFlag.hard) {
             return Response.json({
@@ -749,9 +756,9 @@ export async function POST(req: Request) {
 
                 summaryTurns = profile?.summary_turns ?? 0
                 shouldUpdateSummary = summaryTurns >= 8
-                allowMemoryUpdates = hasFreshUserTurn && shouldTriggerMemoryUpdate(lastUserMsg)
+                allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && shouldTriggerMemoryUpdate(lastUserMsg)
 
-                if (lastUserMsg.trim()) {
+                if (lastUserMsg.trim() && !greetingOnly) {
                     const memories = await retrieveMemoriesLite(user.id, lastUserMsg, 5)
                     relevantMemories = memories.map((m) => ({ id: m.id, content: m.content }))
                     await touchMemories(memories.map((m) => m.id))
@@ -834,8 +841,7 @@ SQUAD DYNAMICS (use these to create natural group banter):
 - Not every character needs to address the user directly every time.
 - Conversations should feel like overhearing a friend group, not a panel Q&A.
 
-${memorySnapshot}
-
+${greetingOnly ? '' : memorySnapshot}
 SAFETY:
 ${safetyDirective}
 
@@ -859,12 +865,10 @@ ${allowedStatusList}
 6) VOICE: Each character must sound distinctly different. Use their vocabulary, tone, and personality consistently. Vary message lengths -- some characters are verbose, others are terse.
 7) NATURALNESS: Write like real people text. Use lowercase, abbreviations, slang where it fits the character. Avoid perfect grammar unless that IS the character's style.
 
-MEMORY/RELATIONSHIP:
+${allowMemoryUpdates || shouldUpdateSummary ? `MEMORY/RELATIONSHIP:
 - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
 - SUMMARY_UPDATE_ALLOWED: ${shouldUpdateSummary ? 'YES' : 'NO'}.
-- If memory updates are disallowed, omit memory_updates.
-- If summary updates are disallowed, omit session_summary_update.
-- Relationship deltas must stay in [-3, +3] and be meaningful.
+- Relationship deltas must stay in [-3, +3] and be meaningful.` : 'MEMORY/RELATIONSHIP: Updates disabled this turn. Omit memory_updates and session_summary_update.'}
 
 PLANNING:
 - MAX_RESPONDERS: ${maxResponders}.

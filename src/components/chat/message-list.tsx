@@ -49,7 +49,6 @@ function ChatSkeleton() {
 interface MessageListProps {
     messages: Message[]
     activeGang: Character[]
-    typingUsers?: string[]
     isFastMode?: boolean
     onReplyMessage?: (message: Message) => void
     onLikeMessage?: (message: Message) => void

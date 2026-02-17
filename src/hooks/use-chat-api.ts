@@ -194,7 +194,7 @@ export function useChatApi({
                 : null
             const openFloorIntent = !!sourceUserMessage?.content && hasOpenFloorIntent(sourceUserMessage.content)
 
-            const payloadLimit = effectiveLowCostModeForCall ? 10 : 16
+            const payloadLimit = effectiveLowCostModeForCall ? 10 : 12
             const sendableMessages = currentMessages.filter((m) => (
                 !(m.speaker === 'user' && m.deliveryStatus === 'failed')
             ))
