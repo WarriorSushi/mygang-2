@@ -21,6 +21,7 @@ const LLM_MAX_OUTPUT_TOKENS = 1200
 const LLM_MAX_RETRIES = 0
 const LLM_HISTORY_LIMIT = 12
 const LLM_IDLE_HISTORY_LIMIT = 8
+const IDLE_MAX_OUTPUT_TOKENS = 600
 const LOW_COST_MAX_OUTPUT_TOKENS = 800
 const LOW_COST_HISTORY_LIMIT = 8
 const LOW_COST_IDLE_HISTORY_LIMIT = 6
@@ -681,7 +682,7 @@ export async function POST(req: Request) {
                 shouldUpdateSummary = summaryTurns >= 8
                 allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && shouldTriggerMemoryUpdate(lastUserMsg)
 
-                if (lastUserMsg.trim() && !greetingOnly) {
+                if (lastUserMsg.trim() && !greetingOnly && !autonomousIdle) {
                     const memories = await retrieveMemoriesLite(user.id, lastUserMsg, 5)
                     relevantMemories = memories.map((m) => ({ id: m.id, content: m.content }))
                     await touchMemories(memories.map((m) => m.id))
@@ -735,9 +736,9 @@ ${sessionSummary}
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
 
         const isEntourageMode = chatMode === 'entourage'
-        const baseResponders = isEntourageMode ? 3 : (lowCostMode ? 2 : 3)
+        const baseResponders = isEntourageMode ? 3 : (lowCostMode ? 2 : 4)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
-        const maxResponders = lastUserMsg.length < 40 ? Math.min(2, idleMaxResponders) : idleMaxResponders
+        const maxResponders = lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
             ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support.'
             : 'SAFETY FLAG: NO.'
@@ -764,7 +765,7 @@ SQUAD DYNAMICS (use these to create natural group banter):
 - Not every character needs to address the user directly every time.
 - Conversations should feel like overhearing a friend group, not a panel Q&A.
 
-${greetingOnly ? '' : memorySnapshot}
+${(greetingOnly || autonomousIdle) ? '' : memorySnapshot}
 SAFETY:
 ${safetyDirective}
 
@@ -832,7 +833,7 @@ FLOW FLAGS:
         const llmPrompt = systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM)
         let modelSuccess = false
         let providerUsed: 'openrouter' | 'fallback' = 'fallback'
-        const llmMaxOutputTokens = lowCostMode ? LOW_COST_MAX_OUTPUT_TOKENS : LLM_MAX_OUTPUT_TOKENS
+        const llmMaxOutputTokens = autonomousIdle ? IDLE_MAX_OUTPUT_TOKENS : (lowCostMode ? LOW_COST_MAX_OUTPUT_TOKENS : LLM_MAX_OUTPUT_TOKENS)
 
         try {
             const result = await generateObject({

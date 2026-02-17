@@ -408,8 +408,13 @@ export function useChatApi({
             } else {
                 isGeneratingRef.current = false
                 clearTypingUsers()
-                // Only schedule idle autonomous after open-floor intents, not every message
-
+                // Schedule one follow-up banter round 10s after last bubble, only for user-initiated messages
+                if (!isIntro && !isAutonomous && apiCallSucceeded && !effectiveLowCostModeForCall && chatMode === 'ecosystem') {
+                    const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
+                    if (sourceId) {
+                        scheduleIdleAutonomousRef.current(sourceId)
+                    }
+                }
             }
         }
     }

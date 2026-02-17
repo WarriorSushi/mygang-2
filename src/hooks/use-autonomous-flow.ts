@@ -104,7 +104,7 @@ export function useAutonomousFlow({
         if (idleAutoCountRef.current >= 1) return
 
         clearIdleAutonomousTimer()
-        const delay = 15000 + idleAutoCountRef.current * 8000
+        const delay = 10_000
         idleAutonomousTimerRef.current = setTimeout(() => {
             const currentMessages = useChatStore.getState().messages
             const lastMessage = currentMessages[currentMessages.length - 1]
