@@ -201,6 +201,10 @@
   animation: floaty 6s ease-in-out infinite;
 }
 
+.animate-spin-slow {
+  animation: spin 30s linear infinite;
+}
+
 .chat-wallpaper-layer {
   position: absolute;
   inset: 0;

@@ -49,6 +49,15 @@ export default async function SettingsPage() {
                         subscriptionTier: profile?.subscription_tier ?? 'free'
                     }}
                 />
+
+                <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Legal & Info</div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <Link href="/about" className="rounded-full border border-border/50 px-4 py-2 text-[10px] uppercase tracking-widest hover:bg-muted/60 transition-colors">About</Link>
+                        <Link href="/privacy" className="rounded-full border border-border/50 px-4 py-2 text-[10px] uppercase tracking-widest hover:bg-muted/60 transition-colors">Privacy Policy</Link>
+                        <Link href="/terms" className="rounded-full border border-border/50 px-4 py-2 text-[10px] uppercase tracking-widest hover:bg-muted/60 transition-colors">Terms of Service</Link>
+                    </div>
+                </section>
             </div>
         </main>
     )

@@ -498,7 +498,8 @@ export function LandingPage() {
         </Section>
 
         {/* ── Final CTA ── */}
-        <section className="w-full px-6 sm:px-10 lg:px-14 pb-24">
+        <section className="w-full px-6 sm:px-10 lg:px-14 pb-24 relative overflow-hidden">
+          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-accent/[0.06] dark:bg-accent/[0.08] blur-[140px] rounded-full" />
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -507,6 +508,7 @@ export function LandingPage() {
             className="max-w-6xl mx-auto rounded-[2.5rem] border border-border/70 bg-gradient-to-br from-primary/15 via-card/90 to-accent/15 p-8 sm:p-12 flex flex-col lg:flex-row gap-8 items-center justify-between overflow-hidden relative"
           >
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-primary/10 blur-[80px] rounded-full" />
+            <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-accent/10 blur-[60px] rounded-full" />
             <div className="relative text-left">
               <span className="text-xs font-semibold text-primary tracking-wide">Ready to vibe?</span>
               <h3 className="text-3xl sm:text-4xl font-black mt-2 tracking-tight">Meet your crew in under a minute.</h3>
@@ -526,7 +528,17 @@ export function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="p-8 sm:p-12 text-center text-muted-foreground/40 text-xs sm:text-sm border-t border-border/60">
-        &copy; 2026 MyGang.ai - Your always-on social circle.
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+          <span>&copy; 2026 MyGang.ai - Your always-on social circle.</span>
+          <span className="hidden sm:inline">·</span>
+          <div className="flex items-center gap-3">
+            <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
+            <span>·</span>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <span>·</span>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+          </div>
+        </div>
       </footer>
 
       <AuthWall
@@ -722,8 +734,10 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
 
 function Section({ id, title, subtitle, children }: { id?: string; title: string; subtitle: string; children: ReactNode }) {
   return (
-    <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24">
-      <div className="max-w-6xl mx-auto">
+    <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24 relative overflow-hidden">
+      {/* Subtle spotlight glow */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/[0.04] dark:bg-primary/[0.06] blur-[120px] rounded-full" />
+      <div className="max-w-6xl mx-auto relative">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
