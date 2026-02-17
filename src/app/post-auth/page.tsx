@@ -21,17 +21,10 @@ export default function PostAuthPage() {
         let isCancelled = false
         const supabase = createClient()
 
-        const resolveJourney = async () => {
-            router.prefetch('/chat')
-            router.prefetch('/onboarding')
+        router.prefetch('/chat')
+        router.prefetch('/onboarding')
 
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) {
-                if (!isCancelled) router.replace('/')
-                return
-            }
-
-            const userId = user.id
+        const resolveJourney = async (userId: string) => {
             setUserId(userId)
             setIsGuest(false)
 
@@ -69,9 +62,39 @@ export default function PostAuthPage() {
             if (!isCancelled) router.replace('/onboarding')
         }
 
-        resolveJourney()
+        // Try getUser first, and also listen for auth state changes (OAuth sessions
+        // may not be available immediately on the client after the callback redirect)
+        let resolved = false
+
+        const tryResolve = async (userId: string) => {
+            if (resolved || isCancelled) return
+            resolved = true
+            await resolveJourney(userId)
+        }
+
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) {
+                tryResolve(user.id)
+            }
+        })
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                tryResolve(session.user.id)
+            }
+        })
+
+        // Fallback: if no session after 5 seconds, redirect to landing
+        const timeout = setTimeout(() => {
+            if (!resolved && !isCancelled) {
+                router.replace('/')
+            }
+        }, 5000)
+
         return () => {
             isCancelled = true
+            subscription.unsubscribe()
+            clearTimeout(timeout)
         }
     }, [router, setActiveGang, setIsGuest, setUserId, setUserName])
 
