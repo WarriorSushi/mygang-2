@@ -5,7 +5,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy Policy for MyGang.ai — learn how we collect, use, and protect your data.",
+    "Privacy Policy for MyGang.ai, learn how we collect, use, and protect your data.",
   alternates: {
     canonical: "/privacy",
   },
@@ -422,10 +422,10 @@ export default function PrivacyPolicyPage() {
               using the account deletion feature within the Service or by
               contacting us at{" "}
               <a
-                href="mailto:support@mygang.ai"
+                href="mailto:pashaseenainc@gmail.com"
                 className="text-primary underline underline-offset-2 hover:text-primary/80"
               >
-                support@mygang.ai
+                pashaseenainc@gmail.com
               </a>
               . We will process deletion requests within thirty (30) days,
               subject to any legal obligations requiring us to retain certain
@@ -510,10 +510,10 @@ export default function PrivacyPolicyPage() {
               as quickly as possible. If you believe that a child has provided
               us with personal information, please contact us at{" "}
               <a
-                href="mailto:support@mygang.ai"
+                href="mailto:pashaseenainc@gmail.com"
                 className="text-primary underline underline-offset-2 hover:text-primary/80"
               >
-                support@mygang.ai
+                pashaseenainc@gmail.com
               </a>
               .
             </p>
@@ -728,10 +728,10 @@ export default function PrivacyPolicyPage() {
             <p>
               To exercise any of these rights, please contact us at{" "}
               <a
-                href="mailto:contact@mygang.ai"
+                href="mailto:pashaseenainc@gmail.com"
                 className="text-primary underline underline-offset-2 hover:text-primary/80"
               >
-                contact@mygang.ai
+                pashaseenainc@gmail.com
               </a>
               . We will respond to your request within thirty (30) days, or as
               required by applicable law.
@@ -786,17 +786,17 @@ export default function PrivacyPolicyPage() {
             <p>
               To exercise your CCPA rights, please contact us at{" "}
               <a
-                href="mailto:contact@mygang.ai"
+                href="mailto:pashaseenainc@gmail.com"
                 className="text-primary underline underline-offset-2 hover:text-primary/80"
               >
-                contact@mygang.ai
+                pashaseenainc@gmail.com
               </a>{" "}
               or{" "}
               <a
-                href="mailto:support@mygang.ai"
+                href="mailto:pashaseenainc@gmail.com"
                 className="text-primary underline underline-offset-2 hover:text-primary/80"
               >
-                support@mygang.ai
+                pashaseenainc@gmail.com
               </a>
               . We will verify your identity before processing your request and
               respond within forty-five (45) days as required by law.
@@ -905,19 +905,19 @@ export default function PrivacyPolicyPage() {
               <p>
                 <strong>General Inquiries:</strong>{" "}
                 <a
-                  href="mailto:contact@mygang.ai"
+                  href="mailto:pashaseenainc@gmail.com"
                   className="text-primary underline underline-offset-2 hover:text-primary/80"
                 >
-                  contact@mygang.ai
+                  pashaseenainc@gmail.com
                 </a>
               </p>
               <p>
                 <strong>Support &amp; Data Requests:</strong>{" "}
                 <a
-                  href="mailto:support@mygang.ai"
+                  href="mailto:pashaseenainc@gmail.com"
                   className="text-primary underline underline-offset-2 hover:text-primary/80"
                 >
-                  support@mygang.ai
+                  pashaseenainc@gmail.com
                 </a>
               </p>
               <p className="text-sm text-muted-foreground">

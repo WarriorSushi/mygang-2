@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'About',
   description:
-    'Learn about MyGang.ai — the AI group chat where every personality is unique, every conversation is real, and your crew is always online.',
+    'Learn about MyGang.ai, the AI group chat where every personality is unique, every conversation is real, and your crew is always online.',
   alternates: {
     canonical: '/about',
   },
@@ -78,7 +78,6 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <SectionDivider />
 
         {/* ── What is MyGang? ── */}
         <section className="py-8 sm:py-12">
@@ -99,7 +98,7 @@ export default function AboutPage() {
             </p>
             <p>
               You build your own gang. Pick your personas, name them, shape their
-              personalities. They don&apos;t just respond to you &mdash; they
+              personalities. They don&apos;t just respond to you, they
               talk to <em>each other</em>. They riff, they joke, they argue
               (sometimes), and they genuinely make the chat feel alive.
             </p>
@@ -134,7 +133,7 @@ export default function AboutPage() {
               are already mid-conversation and you just jump in.
             </p>
             <p>
-              MyGang started as a passion project &mdash; built by someone who
+              MyGang started as a passion project, built by someone who
               genuinely loves the idea of AI that feels{' '}
               <span className="text-foreground font-medium">warm</span>, not
               clinical. AI that has character, not just capabilities. A crew that
@@ -143,7 +142,7 @@ export default function AboutPage() {
             <p>
               And honestly, it&apos;s been a blast to build. Every weird
               personality quirk, every moment where the AI personas surprise us
-              with something unexpectedly funny or heartfelt &mdash; that&apos;s
+              with something unexpectedly funny or heartfelt, that&apos;s
               why we keep going.
             </p>
           </div>
@@ -162,7 +161,7 @@ export default function AboutPage() {
             {[
               {
                 title: 'Always-On Companionship',
-                body: "Your gang doesn't sleep, doesn't ghost, doesn't have \"bad signal.\" They're there when you need them \u2014 3 AM existential crisis included.",
+                body: "Your gang doesn't sleep, doesn't ghost, doesn't have \"bad signal.\" They're there when you need them, 3 AM existential crisis included.",
               },
               {
                 title: 'Distinct Personalities',
@@ -234,24 +233,24 @@ export default function AboutPage() {
             </span>
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto text-base sm:text-lg">
-            We&apos;d genuinely love to hear from you &mdash; feedback, ideas,
+            We&apos;d genuinely love to hear from you, feedback, ideas,
             bug reports, or even just to say hey.
           </p>
           <div className="grid sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
             {[
               {
                 label: 'Feedback',
-                email: 'feedback@mygang.ai',
+                email: 'pashaseenainc@gmail.com',
                 description: 'Ideas & suggestions',
               },
               {
                 label: 'General',
-                email: 'contact@mygang.ai',
+                email: 'pashaseenainc@gmail.com',
                 description: 'Say hello',
               },
               {
                 label: 'Support',
-                email: 'support@mygang.ai',
+                email: 'pashaseenainc@gmail.com',
                 description: 'Need help?',
               },
             ].map((item) => (

@@ -5,7 +5,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for MyGang.ai — the AI-powered group chat application operated by Altcorp.",
+    "Terms of Service for MyGang.ai, the AI-powered group chat application operated by Altcorp.",
   alternates: { canonical: "/terms" },
 };
 
@@ -66,7 +66,7 @@ export default function TermsOfServicePage() {
                 Terms of Service
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                MyGang.ai &mdash; operated by Altcorp
+                MyGang.ai, operated by Altcorp
               </p>
             </div>
           </div>
@@ -160,10 +160,10 @@ export default function TermsOfServicePage() {
               your account, whether or not authorized by you. You agree to
               notify us immediately at{" "}
               <a
-                href="mailto:support@mygang.ai"
+                href="mailto:pashaseenainc@gmail.com"
                 className="underline text-foreground hover:text-foreground/80"
               >
-                support@mygang.ai
+                pashaseenainc@gmail.com
               </a>{" "}
               of any unauthorized use of your account or any other breach of
               security.
@@ -691,10 +691,10 @@ export default function TermsOfServicePage() {
               Before initiating any formal proceedings, you agree to first
               contact us at{" "}
               <a
-                href="mailto:contact@mygang.ai"
+                href="mailto:pashaseenainc@gmail.com"
                 className="underline text-foreground hover:text-foreground/80"
               >
-                contact@mygang.ai
+                pashaseenainc@gmail.com
               </a>{" "}
               and attempt to resolve the dispute informally for at least thirty
               (30) days.
@@ -875,28 +875,28 @@ export default function TermsOfServicePage() {
               <p>
                 General Inquiries:{" "}
                 <a
-                  href="mailto:contact@mygang.ai"
+                  href="mailto:pashaseenainc@gmail.com"
                   className="underline text-foreground hover:text-foreground/80"
                 >
-                  contact@mygang.ai
+                  pashaseenainc@gmail.com
                 </a>
               </p>
               <p>
                 Support:{" "}
                 <a
-                  href="mailto:support@mygang.ai"
+                  href="mailto:pashaseenainc@gmail.com"
                   className="underline text-foreground hover:text-foreground/80"
                 >
-                  support@mygang.ai
+                  pashaseenainc@gmail.com
                 </a>
               </p>
               <p>
                 Administration:{" "}
                 <a
-                  href="mailto:admin@mygang.ai"
+                  href="mailto:pashaseenainc@gmail.com"
                   className="underline text-foreground hover:text-foreground/80"
                 >
-                  admin@mygang.ai
+                  pashaseenainc@gmail.com
                 </a>
               </p>
             </div>
