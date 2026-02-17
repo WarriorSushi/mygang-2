@@ -26,3 +26,5 @@ export default function robots(): MetadataRoute.Robots {
     host: siteUrl,
   }
 }
+
+// Note: llms.txt is served statically from /public/llms.txt

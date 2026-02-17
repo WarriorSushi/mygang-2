@@ -1,0 +1,33 @@
+# MyGang.ai
+
+> MyGang.ai is an AI-powered group chat application where users interact with unique AI personas in a simulated group chat environment. Built by Altcorp.
+
+## What is MyGang.ai?
+
+MyGang.ai lets you build your own crew of AI personas and chat with them in a group chat that feels alive. Each persona has a distinct personality, voice, and energy. They don't just respond to you, they talk to each other, riff, joke, argue, and make the conversation feel real.
+
+## Key Features
+
+- **Always-on companionship**: Your gang is available 24/7, no ghosting, no bad signal.
+- **Distinct AI personalities**: 8 unique personas with their own voice, opinions, and humor.
+- **Group chemistry**: Personas interact with each other naturally, creating realistic group dynamics.
+- **Customizable crew**: Pick 2-4 personas, name them, shape the room vibe.
+- **Memory**: Your gang remembers your style and shows up like familiar friends.
+- **Typing indicators and reactions**: Social cues that make every chat feel warm and active.
+
+## How It Works
+
+1. Build your gang by picking your lineup of AI personas.
+2. Send a message, rant, celebrate, vent, or joke.
+3. Watch the room come alive as your crew replies with personality and riffs off each other.
+
+## Pages
+
+- [Home](https://mygang.ai/)
+- [About](https://mygang.ai/about)
+- [Privacy Policy](https://mygang.ai/privacy)
+- [Terms of Service](https://mygang.ai/terms)
+
+## Contact
+
+Email: pashaseenainc@gmail.com
