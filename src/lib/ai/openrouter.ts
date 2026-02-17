@@ -1,8 +1,9 @@
-import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
-const openrouter = createOpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
+const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
 })
 
-export const openRouterModel = openrouter('google/gemini-2.5-flash-lite')
+export const openRouterModel = openrouter('google/gemini-2.5-flash-lite', {
+    plugins: [{ id: 'response-healing' }],
+})

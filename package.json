@@ -13,10 +13,12 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.20",
     "@ai-sdk/openai": "^3.0.25",
-    "@upstash/ratelimit": "^2.0.1",
-    "@upstash/redis": "^1.35.2",
+    "@openrouter/ai-sdk-provider": "^2.2.3",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.94.0",
+    "@tanstack/react-virtual": "^3.13.10",
+    "@upstash/ratelimit": "^2.0.1",
+    "@upstash/redis": "^1.35.2",
     "ai": "^6.0.69",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -29,7 +31,6 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.4.0",
-    "@tanstack/react-virtual": "^3.13.10",
     "zod": "^3.23.8",
     "zustand": "^5.0.11"
   },

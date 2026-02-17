@@ -12,7 +12,7 @@ import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID
 import type { Json } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const maxDuration = 30
+export const maxDuration = 45
 
 const MAX_EVENT_CONTENT = 700
 const MAX_TOTAL_RESPONSE_CHARS = 3000
@@ -337,7 +337,7 @@ function maybeSplitAiMessages(
             continue
         }
 
-        const parts = splitMessageForSecondBubble(event.content)
+        const parts = splitMessageForSecondBubble(event.content || '')
         if (!parts) {
             expanded.push(event)
             continue
@@ -356,63 +356,33 @@ function maybeSplitAiMessages(
 }
 
 const responseSchema = z.object({
-    events: z.array(
-        z.discriminatedUnion('type', [
-            z.object({
-                type: z.literal('message'),
-                character: z.string().describe('Character ID'),
-                message_id: z.string().max(MAX_MESSAGE_ID_CHARS).optional().describe('Stable message ID'),
-                content: z.string().min(1).describe('Message text'),
-                target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
-                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
-            }),
-            z.object({
-                type: z.literal('reaction'),
-                character: z.string().describe('Character ID'),
-                message_id: z.string().max(MAX_MESSAGE_ID_CHARS).optional().describe('Stable message ID'),
-                content: z.string().optional().describe('Emoji for reaction'),
-                target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
-                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
-            }),
-            z.object({
-                type: z.literal('status_update'),
-                character: z.string().describe('Character ID'),
-                content: z.string().optional().describe('Status text'),
-                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
-            }),
-            z.object({
-                type: z.literal('nickname_update'),
-                character: z.string().describe('Character ID'),
-                content: z.string().min(1).describe('New nickname'),
-                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
-            }),
-            z.object({
-                type: z.literal('typing_ghost'),
-                character: z.string().describe('Character ID'),
-                content: z.string().optional(),
-                delay: z.number().describe('Delay in ms after the *previous* event to create a natural rhythm'),
-            }),
-        ])
-    ).max(20),
+    events: z.array(z.object({
+        type: z.enum(['message', 'reaction', 'status_update', 'nickname_update', 'typing_ghost']),
+        character: z.string().describe('Character ID'),
+        message_id: z.string().optional().describe('Stable message ID'),
+        content: z.string().optional().describe('Message text, emoji, status, or nickname'),
+        target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
+        delay: z.number().describe('Delay in ms after the previous event'),
+    })).max(20),
     responders: z.array(z.string()).optional().describe('Characters chosen to respond this turn'),
-    should_continue: z.boolean().optional().describe('True if the conversation flow suggests the characters should keep talking (autonomous continuation).'),
+    should_continue: z.boolean().optional().describe('True if characters should keep talking'),
     memory_updates: z.object({
         profile: z.array(z.object({
-            key: z.string().min(1),
-            value: z.string().min(1)
+            key: z.string(),
+            value: z.string()
         })).optional(),
         episodic: z.array(z.object({
-            content: z.string().min(1),
+            content: z.string(),
             tags: z.array(z.string()).optional(),
-            importance: z.number().int().min(1).max(5).optional()
+            importance: z.number().optional()
         })).optional()
     }).optional(),
     relationship_updates: z.array(z.object({
-        character: z.string().min(1),
-        affinity_delta: z.number().int().min(-3).max(3).optional(),
-        trust_delta: z.number().int().min(-3).max(3).optional(),
-        banter_delta: z.number().int().min(-3).max(3).optional(),
-        protectiveness_delta: z.number().int().min(-3).max(3).optional(),
+        character: z.string(),
+        affinity_delta: z.number().optional(),
+        trust_delta: z.number().optional(),
+        banter_delta: z.number().optional(),
+        protectiveness_delta: z.number().optional(),
         note: z.string().optional()
     })).optional(),
     session_summary_update: z.string().optional()
@@ -493,8 +463,13 @@ function getMessageFromError(err: unknown, depth = 0): string {
 function isProviderCapacityError(err: unknown) {
     const statusCode = getStatusCodeFromError(err)
     if (statusCode === 402 || statusCode === 429) return true
+    // Non-capacity HTTP errors (400, 422 = bad request/validation) should NOT trigger cooldown
+    if (statusCode !== null && statusCode >= 400 && statusCode < 500) return false
     const message = getMessageFromError(err)
-    return /quota|credit|resource_exhausted|billing|rate[_\s-]?limit|retry in/i.test(message)
+    // Only match genuine capacity signals, not schema validation or parse errors
+    if (/No object generated|could not parse|did not match schema/i.test(message)) return false
+    return /quota|credit|resource_exhausted|billing|rate[_\s-]?limit/i.test(message)
+        || /retry\s+in\s+\d/i.test(message)
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -934,6 +909,9 @@ FLOW FLAGS:
                     prompt: llmPrompt,
                     maxOutputTokens: llmMaxOutputTokens,
                     maxRetries: LLM_MAX_RETRIES,
+                    ...(provider.name === 'gemini' ? {
+                        providerOptions: { google: { structuredOutputs: false } }
+                    } : {}),
                 })
                 object = result.object
                 modelSuccess = true
@@ -961,6 +939,7 @@ FLOW FLAGS:
                     prompt: llmPrompt,
                     maxOutputTokens: llmMaxOutputTokens,
                     maxRetries: LLM_MAX_RETRIES,
+                    providerOptions: { google: { structuredOutputs: false } },
                 })
                 object = result.object
                 modelSuccess = true
@@ -1011,7 +990,7 @@ FLOW FLAGS:
                     ? Math.min(MAX_DELAY_MS, Math.max(0, rawEvent.delay))
                     : 0
                 if (rawEvent.type === 'message') {
-                    const messageContent = rawEvent.content.trim().slice(0, MAX_EVENT_CONTENT)
+                    const messageContent = (rawEvent.content || '').trim().slice(0, MAX_EVENT_CONTENT)
                     if (!messageContent) continue
                     const nextTotal = totalChars + messageContent.length
                     if (nextTotal > MAX_TOTAL_RESPONSE_CHARS) break
