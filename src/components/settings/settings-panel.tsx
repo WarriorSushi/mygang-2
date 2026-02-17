@@ -136,11 +136,23 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Account Actions</div>
                 <div className="mt-4 flex flex-wrap gap-3">
-                    <form action={signOut}>
-                        <Button variant="outline" className="rounded-full text-[10px] uppercase tracking-widest">
-                            Sign Out
-                        </Button>
-                    </form>
+                    <Button
+                        variant="outline"
+                        className="rounded-full text-[10px] uppercase tracking-widest"
+                        onClick={async () => {
+                            const store = useChatStore.getState()
+                            store.setUserId(null)
+                            store.setIsGuest(true)
+                            store.setActiveGang([])
+                            store.clearChat()
+                            store.setUserName(null)
+                            store.setUserNickname(null)
+                            store.setCustomCharacterNames({})
+                            await signOut()
+                        }}
+                    >
+                        Sign Out
+                    </Button>
                     <Button
                         variant="destructive"
                         className="rounded-full text-[10px] uppercase tracking-widest"

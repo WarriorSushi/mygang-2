@@ -52,7 +52,7 @@ interface UseChatApiArgs {
     userNickname: string | null
     isGuest: boolean
     messages: Message[]
-    chatMode: 'entourage' | 'ecosystem'
+    chatMode: 'gang_focus' | 'ecosystem'
     lowCostMode: boolean
     isOnline: boolean
     autoLowCostModeRef: React.RefObject<boolean>

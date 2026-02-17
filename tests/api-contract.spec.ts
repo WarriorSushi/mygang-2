@@ -51,7 +51,7 @@ test('Chat API handles short messages with limited responders', async ({ request
       userName: 'TestUser',
       silentTurns: 0,
       burstCount: 0,
-      chatMode: 'entourage',
+      chatMode: 'gang_focus',
     },
     headers: {
       'x-mock-ai': 'true',

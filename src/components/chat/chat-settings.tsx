@@ -19,6 +19,7 @@ import {
     LogOut,
     ShieldAlert,
     Gauge,
+    PenLine,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { deleteAccount, deleteAllMessages, signOut, updateUserSettings } from '@/app/auth/actions'
@@ -28,7 +29,7 @@ import { cn } from '@/lib/utils'
 import { CHAT_WALLPAPERS, type ChatWallpaper } from '@/constants/wallpapers'
 import { createClient } from '@/lib/supabase/client'
 
-type SettingsPanel = 'root' | 'mode' | 'wallpaper' | 'labels' | 'account'
+type SettingsPanel = 'root' | 'mode' | 'wallpaper' | 'labels' | 'account' | 'rename'
 
 interface ChatSettingsProps {
     isOpen: boolean
@@ -59,6 +60,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setShowPersonaRoles,
         userName,
         isGuest,
+        activeGang,
+        customCharacterNames,
+        setCustomCharacterNames,
     } = useChatStore(useShallow((s) => ({
         chatMode: s.chatMode,
         setChatMode: s.setChatMode,
@@ -71,6 +75,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setShowPersonaRoles: s.setShowPersonaRoles,
         userName: s.userName,
         isGuest: s.isGuest,
+        activeGang: s.activeGang,
+        customCharacterNames: s.customCharacterNames,
+        setCustomCharacterNames: s.setCustomCharacterNames,
     })))
 
     const [panel, setPanel] = useState<SettingsPanel>('root')
@@ -78,6 +85,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     const [deleteEmailInput, setDeleteEmailInput] = useState('')
     const [deleteEmailError, setDeleteEmailError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [renameInputs, setRenameInputs] = useState<Record<string, string>>({})
 
     const supabase = useMemo(() => createClient(), [])
 
@@ -103,7 +111,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     }, [isOpen, supabase])
 
     const handleChatModeChange = (value: string) => {
-        if (value !== 'entourage' && value !== 'ecosystem') return
+        if (value !== 'gang_focus' && value !== 'ecosystem') return
         setChatMode(value)
         updateUserSettings({ chat_mode: value })
     }
@@ -151,6 +159,18 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         }
     }
 
+    const handleRenameCharacter = (charId: string, newName: string) => {
+        const trimmed = newName.trim().slice(0, 30)
+        const next = { ...customCharacterNames }
+        if (trimmed && trimmed !== activeGang.find((c) => c.id === charId)?.name) {
+            next[charId] = trimmed
+        } else {
+            delete next[charId]
+        }
+        setCustomCharacterNames(next)
+        updateUserSettings({ custom_character_names: next } as Parameters<typeof updateUserSettings>[0])
+    }
+
     const menuCardClass = 'h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/60 dark:bg-white/[0.09] dark:border-white/20 dark:hover:bg-white/[0.14] px-4 py-4'
     const panelCardClass = 'rounded-2xl border border-border/70 bg-card/55 dark:bg-white/[0.09] dark:border-white/20'
 
@@ -189,6 +209,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         {panel === 'wallpaper' && 'Chat Wallpaper'}
                                         {panel === 'labels' && 'Persona Labels'}
                                         {panel === 'account' && 'Account'}
+                                        {panel === 'rename' && 'Rename Characters'}
                                     </p>
                                 </div>
                             </div>
@@ -239,6 +260,21 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             <Button
                                 variant="ghost"
                                 className={menuCardClass}
+                                onClick={() => {
+                                    setRenameInputs({ ...customCharacterNames })
+                                    setPanel('rename')
+                                }}
+                            >
+                                <div className="text-left">
+                                    <p className="text-[11px] font-black uppercase tracking-wider">Rename Characters</p>
+                                    <p className="text-[11px] text-muted-foreground">Give your gang custom names</p>
+                                </div>
+                                <PenLine size={16} />
+                            </Button>
+
+                            <Button
+                                variant="ghost"
+                                className={menuCardClass}
                                 onClick={async () => {
                                     await onTakeScreenshot()
                                 }}
@@ -283,12 +319,12 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => handleChatModeChange('entourage')}
+                                            onClick={() => handleChatModeChange('gang_focus')}
                                             className={cn(
                                                 'relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors',
-                                                chatMode === 'entourage' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                                chatMode === 'gang_focus' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                                             )}
-                                            aria-pressed={chatMode === 'entourage'}
+                                            aria-pressed={chatMode === 'gang_focus'}
                                         >
                                             Gang Focus
                                         </button>
@@ -306,7 +342,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     </div>
                                 </div>
                                 <p className="text-[11px] text-muted-foreground">
-                                    {chatMode === 'entourage'
+                                    {chatMode === 'gang_focus'
                                         ? 'Focused on your message only. Minimal side chatter and no autonomous drifts.'
                                         : 'Natural group banter, autonomous turns, and richer side interactions.'}
                                 </p>
@@ -407,12 +443,25 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                 </div>
 
                                 <div className={cn(panelCardClass, 'p-2 space-y-2')}>
-                                    <form action={signOut}>
-                                        <Button type="submit" variant="ghost" className="h-auto w-full justify-between rounded-xl px-3 py-3">
-                                            <span className="text-[11px] font-black uppercase tracking-wider">Sign Out</span>
-                                            <LogOut size={14} />
-                                        </Button>
-                                    </form>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="h-auto w-full justify-between rounded-xl px-3 py-3"
+                                        onClick={async () => {
+                                            // Clear persisted store before server sign-out to prevent stale UI on landing page
+                                            useChatStore.getState().setUserId(null)
+                                            useChatStore.getState().setIsGuest(true)
+                                            useChatStore.getState().setActiveGang([])
+                                            useChatStore.getState().clearChat()
+                                            useChatStore.getState().setUserName(null)
+                                            useChatStore.getState().setUserNickname(null)
+                                            useChatStore.getState().setCustomCharacterNames({})
+                                            await signOut()
+                                        }}
+                                    >
+                                        <span className="text-[11px] font-black uppercase tracking-wider">Sign Out</span>
+                                        <LogOut size={14} />
+                                    </Button>
                                 </div>
 
                                 <Button
@@ -491,6 +540,36 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         </Button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className={cn(
+                            'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
+                            panel === 'rename' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                        )}>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 px-1">
+                                    <PenLine size={12} className="text-violet-400" />
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Rename Characters</Label>
+                                </div>
+                                <p className="px-1 text-[11px] text-muted-foreground">Give your gang members custom names. Leave blank to use their default name.</p>
+                                {activeGang.map((char) => (
+                                    <div key={char.id} className={cn(panelCardClass, 'px-3 py-3 space-y-1.5')}>
+                                        <label htmlFor={`rename-${char.id}`} className="block text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
+                                            {char.name}
+                                        </label>
+                                        <input
+                                            id={`rename-${char.id}`}
+                                            type="text"
+                                            value={renameInputs[char.id] || ''}
+                                            onChange={(e) => setRenameInputs((prev) => ({ ...prev, [char.id]: e.target.value }))}
+                                            onBlur={() => handleRenameCharacter(char.id, renameInputs[char.id] || '')}
+                                            placeholder={char.name}
+                                            maxLength={30}
+                                            className="h-9 w-full rounded-lg border border-border/60 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary"
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>

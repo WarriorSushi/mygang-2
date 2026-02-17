@@ -28,10 +28,11 @@ const characterIdsSchema = z.array(z.string()).min(1).max(8).refine(
 )
 const userSettingsSchema = z.object({
     theme: z.enum(['light', 'dark', 'system']).optional(),
-    chat_mode: z.enum(['ecosystem', 'entourage']).optional(),
+    chat_mode: z.enum(['ecosystem', 'gang_focus']).optional(),
     low_cost_mode: z.boolean().optional(),
     preferred_squad: z.array(z.string()).max(8).optional(),
     chat_wallpaper: z.string().max(50).optional(),
+    custom_character_names: z.record(z.string().max(30)).optional(),
 }).strict()
 
 async function getOrigin() {
@@ -277,7 +278,7 @@ export async function getUserSettings() {
 
     const { data, error } = await supabase
         .from('profiles')
-        .select('theme, chat_mode, low_cost_mode, preferred_squad, chat_wallpaper')
+        .select('theme, chat_mode, low_cost_mode, preferred_squad, chat_wallpaper, custom_character_names')
         .eq('id', user.id)
         .single()
 

@@ -20,7 +20,8 @@ export function AuthManager() {
         setChatMode,
         setLowCostMode,
         setChatWallpaper,
-        setSquadConflict
+        setSquadConflict,
+        setCustomCharacterNames
     } = useChatStore()
     const supabase = useMemo(() => createClient(), [])
     const hadSessionRef = useRef(false)
@@ -62,9 +63,9 @@ export function AuthManager() {
                 const localIds = localGang.map((c) => c.id)
                 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
                 const profile = remote.profile
-                const remoteIds = savedIds.length === 4 ? savedIds : null
+                const remoteIds = savedIds.length >= 2 && savedIds.length <= 4 ? savedIds : null
 
-                if (remoteIds && remoteIds.length === 4) {
+                if (remoteIds && remoteIds.length >= 2) {
                     const squad = CHARACTERS.filter(c => remoteIds.includes(c.id))
                     if (!sameSet(localIds, remoteIds)) {
                         setActiveGang(squad)
@@ -72,7 +73,7 @@ export function AuthManager() {
                         setActiveGang(squad)
                     }
                     setSquadConflict(null)
-                } else if (localIds.length === 4) {
+                } else if (localIds.length >= 2 && localIds.length <= 4) {
                     try {
                         await persistUserJourney(supabase, session.user.id, {
                             gangIds: localIds,
@@ -125,6 +126,9 @@ export function AuthManager() {
                 if (profile?.chat_wallpaper) {
                     setChatWallpaper(profile.chat_wallpaper)
                 }
+                if (profile?.custom_character_names && typeof profile.custom_character_names === 'object') {
+                    setCustomCharacterNames(profile.custom_character_names)
+                }
             } catch (err) {
                 console.error('Auth sync error:', err)
             } finally {
@@ -150,7 +154,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setIsGuest, setIsHydrated, setLowCostMode, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
+    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsGuest, setIsHydrated, setLowCostMode, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
 
     return null
 }

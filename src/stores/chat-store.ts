@@ -40,10 +40,11 @@ interface ChatState {
     userNickname: string | null // For "Nickname Evolution"
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
-    chatMode: 'entourage' | 'ecosystem'
+    chatMode: 'gang_focus' | 'ecosystem'
     lowCostMode: boolean
     chatWallpaper: ChatWallpaper
     showPersonaRoles: boolean
+    customCharacterNames: Record<string, string>
     squadConflict: { local: Character[]; remote: Character[] } | null
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
@@ -54,10 +55,11 @@ interface ChatState {
     setUserNickname: (nickname: string | null) => void
     setCharacterStatus: (characterId: string, status: string) => void
     setIsHydrated: (isHydrated: boolean) => void
-    setChatMode: (mode: 'entourage' | 'ecosystem') => void
+    setChatMode: (mode: 'gang_focus' | 'ecosystem') => void
     setLowCostMode: (enabled: boolean) => void
     setChatWallpaper: (wallpaper: ChatWallpaper) => void
     setShowPersonaRoles: (showPersonaRoles: boolean) => void
+    setCustomCharacterNames: (names: Record<string, string>) => void
     setSquadConflict: (conflict: { local: Character[]; remote: Character[] } | null) => void
     clearChat: () => void
 }
@@ -84,6 +86,7 @@ export const useChatStore = create<ChatState>()(
             lowCostMode: false,
             chatWallpaper: 'default',
             showPersonaRoles: true,
+            customCharacterNames: {},
             squadConflict: null,
             setMessages: (messages) => {
                 const seen = new Set<string>()
@@ -120,6 +123,7 @@ export const useChatStore = create<ChatState>()(
             setLowCostMode: (lowCostMode) => set({ lowCostMode }),
             setChatWallpaper: (chatWallpaper) => set({ chatWallpaper }),
             setShowPersonaRoles: (showPersonaRoles) => set({ showPersonaRoles }),
+            setCustomCharacterNames: (customCharacterNames) => set({ customCharacterNames }),
             setSquadConflict: (squadConflict) => set({ squadConflict }),
             clearChat: () => {
                 _messageIdSet.clear()
@@ -138,7 +142,8 @@ export const useChatStore = create<ChatState>()(
                 chatMode: state.chatMode,
                 lowCostMode: state.lowCostMode,
                 chatWallpaper: state.chatWallpaper,
-                showPersonaRoles: state.showPersonaRoles
+                showPersonaRoles: state.showPersonaRoles,
+                customCharacterNames: state.customCharacterNames
             }),
             onRehydrateStorage: () => (state) => {
                 if (state?.messages) rebuildIdSet(state.messages)

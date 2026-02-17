@@ -5,12 +5,13 @@ import type { ChatWallpaper } from '@/constants/wallpapers'
 
 export type JourneyProfile = {
     username: string | null
-    chat_mode: 'entourage' | 'ecosystem' | null
+    chat_mode: 'gang_focus' | 'ecosystem' | null
     low_cost_mode: boolean | null
     theme: 'light' | 'dark' | 'system' | null
     chat_wallpaper: ChatWallpaper | null
     preferred_squad: string[] | null
     onboarding_completed: boolean | null
+    custom_character_names: Record<string, string> | null
 }
 
 type GangRow = { id: string }
@@ -19,7 +20,7 @@ type GangMemberRow = { character_id: string | null }
 export async function fetchJourneyState(supabase: SupabaseClient, userId: string) {
     const { data: profile } = await supabase
         .from('profiles')
-        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed')
+        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names')
         .eq('id', userId)
         .single<JourneyProfile>()
 
@@ -41,7 +42,7 @@ export async function fetchJourneyState(supabase: SupabaseClient, userId: string
             .filter((id): id is string => typeof id === 'string')
     }
 
-    if (gangIds.length !== 4 && Array.isArray(profile?.preferred_squad) && profile.preferred_squad.length === 4) {
+    if (gangIds.length < 2 && Array.isArray(profile?.preferred_squad) && profile.preferred_squad.length >= 2 && profile.preferred_squad.length <= 4) {
         gangIds = profile.preferred_squad
     }
 
@@ -72,7 +73,7 @@ export async function persistUserJourney(
     if (typeof payload.onboardingCompleted === 'boolean') {
         profileUpdate.onboarding_completed = payload.onboardingCompleted
     }
-    if (payload.gangIds && payload.gangIds.length === 4) {
+    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 4) {
         profileUpdate.preferred_squad = payload.gangIds
     }
 
@@ -83,7 +84,7 @@ export async function persistUserJourney(
             .eq('id', userId)
     }
 
-    if (payload.gangIds && payload.gangIds.length === 4) {
+    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 4) {
         const { data: gang } = await supabase
             .from('gangs')
             .upsert({ user_id: userId }, { onConflict: 'user_id' })

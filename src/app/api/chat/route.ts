@@ -1,6 +1,6 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
-import { retrieveMemoriesLite, shouldTriggerMemoryUpdate, storeMemory, touchMemories } from '@/lib/ai/memory'
+import { retrieveMemoriesLite, storeMemory, touchMemories, compactMemoriesIfNeeded } from '@/lib/ai/memory'
 import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -51,7 +51,7 @@ const CHARACTER_EXTENDED_VOICES: Record<string, string> = {
 const CHARACTER_PROMPT_BLOCKS = new Map(
     CHARACTERS.map((c) => [
         c.id,
-        `- ID: "${c.id}", Name: "${c.name}", Archetype: "${c.archetype}", Voice: "${c.voice}", Style: "${c.sample}"${CHARACTER_EXTENDED_VOICES[c.id] ? `\n  Personality: ${CHARACTER_EXTENDED_VOICES[c.id]}` : ''}`
+        `${c.id}|${c.name}|${c.archetype}|${c.voice}${CHARACTER_EXTENDED_VOICES[c.id] ? ` ${CHARACTER_EXTENDED_VOICES[c.id]}` : ''}`
     ])
 )
 
@@ -83,6 +83,7 @@ type ProfileStateRow = {
     last_msg_reset: string | null
     subscription_tier: string | null
     abuse_score: number | null
+    custom_character_names: Record<string, string> | null
 }
 
 type ProfileUpdatesPayload = {
@@ -399,7 +400,7 @@ const requestSchema = z.object({
     isFirstMessage: z.boolean().optional(),
     silentTurns: z.number().int().min(0).max(30).optional(),
     burstCount: z.number().int().min(0).max(3).optional(),
-    chatMode: z.enum(['entourage', 'ecosystem']).optional(),
+    chatMode: z.enum(['gang_focus', 'ecosystem']).optional(),
     lowCostMode: z.boolean().optional(),
     source: z.enum(['user', 'autonomous', 'autonomous_idle']).optional(),
     autonomousIdle: z.boolean().optional(),
@@ -521,12 +522,12 @@ export async function POST(req: Request) {
         const requestedIds = activeGangIds ?? activeGang?.map((c) => c.id) ?? []
         const knownIds = new Set(CHARACTERS.map((c) => c.id))
         const filteredIds = requestedIds.filter((id) => knownIds.has(id)).slice(0, 4)
-        if (filteredIds.length !== 4) {
+        if (filteredIds.length < 2 || filteredIds.length > 4) {
             return Response.json({
                 events: [{
                     type: 'message',
                     character: 'system',
-                    content: "Invalid gang selection. Please pick exactly 4 characters and try again.",
+                    content: "Invalid gang selection. Please pick 2–4 characters and try again.",
                     delay: 200
                 }]
             }, { status: 400 })
@@ -634,7 +635,7 @@ export async function POST(req: Request) {
             try {
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score')
+                    .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score, custom_character_names')
                     .eq('id', user.id)
                     .single<ProfileStateRow>()
 
@@ -680,7 +681,7 @@ export async function POST(req: Request) {
 
                 summaryTurns = profile?.summary_turns ?? 0
                 shouldUpdateSummary = summaryTurns >= 8
-                allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && shouldTriggerMemoryUpdate(lastUserMsg)
+                allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && !autonomousIdle
 
                 if (lastUserMsg.trim() && !greetingOnly && !autonomousIdle) {
                     const memories = await retrieveMemoriesLite(user.id, lastUserMsg, 5)
@@ -726,17 +727,26 @@ ${sessionSummary}
 
         // 2. Contextual Logic
         // Build the characters context
+        const customNames: Record<string, string> = isObject(profileRow?.custom_character_names) ? (profileRow.custom_character_names as Record<string, string>) : {}
         let characterContextBlocks: string[] = []
         if (process.env.USE_DB_CHARACTERS === 'true') {
             const dbBlocks = await getDbPromptBlocks(supabase)
-            characterContextBlocks = activeGangSafe.map((c) => dbBlocks?.[c.id] || CHARACTER_PROMPT_BLOCKS.get(c.id) || '')
+            characterContextBlocks = activeGangSafe.map((c) => {
+                const block = dbBlocks?.[c.id] || CHARACTER_PROMPT_BLOCKS.get(c.id) || ''
+                const custom = customNames[c.id]
+                return custom ? block.replace(c.name, `${custom} (original: ${c.name})`) : block
+            })
         } else {
-            characterContextBlocks = activeGangSafe.map((c) => CHARACTER_PROMPT_BLOCKS.get(c.id) || '')
+            characterContextBlocks = activeGangSafe.map((c) => {
+                const block = CHARACTER_PROMPT_BLOCKS.get(c.id) || ''
+                const custom = customNames[c.id]
+                return custom ? block.replace(c.name, `${custom} (original: ${c.name})`) : block
+            })
         }
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
 
-        const isEntourageMode = chatMode === 'entourage'
-        const baseResponders = isEntourageMode ? 3 : (lowCostMode ? 2 : 4)
+        const isGangFocusMode = chatMode === 'gang_focus'
+        const baseResponders = Math.min(isGangFocusMode ? 3 : (lowCostMode ? 2 : 4), filteredIds.length)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
@@ -756,7 +766,7 @@ USER:
 - User: ${userName || 'User'}${userNickname ? ` (called "${userNickname}")` : ''}.
 - Messages from user have speaker: "user" in the conversation history.
 
-SQUAD:
+SQUAD (id|name|role|voice):
 ${characterContext}
 
 SQUAD DYNAMICS (use these to create natural group banter):
@@ -770,8 +780,8 @@ SAFETY:
 ${safetyDirective}
 
 MODE: ${chatMode.toUpperCase()}
-${chatMode === 'entourage'
-                ? '- Entourage: user-focused only. Respond directly to the user. Keep it tight and personal.'
+${chatMode === 'gang_focus'
+                ? '- Gang Focus: user-focused only. Respond directly to the user. Keep it tight and personal.'
                 : '- Ecosystem: natural group banter allowed. Characters can talk to each other, react to each other, and riff. Keep user included but the chat should feel alive.'}
 LOW_COST_MODE: ${lowCostMode ? 'YES' : 'NO'}.
 
@@ -803,7 +813,7 @@ FLOW FLAGS:
 - INACTIVE_USER: ${isInactive ? 'YES' : 'NO'} -> should_continue FALSE when YES.
 - OPEN_FLOOR_REQUESTED: ${openFloorRequested ? 'YES' : 'NO'}.
 - IDLE_AUTONOMOUS: ${autonomousIdle ? 'YES' : 'NO'}.
-- In entourage or low-cost mode, should_continue should be FALSE.
+- In gang_focus or low-cost mode, should_continue should be FALSE.
 - If idle_autonomous is YES, keep short (1-3 messages), then hand back to user, and set should_continue FALSE.
 `
 
@@ -830,6 +840,8 @@ FLOW FLAGS:
             responders: [fallbackCharacter],
             should_continue: false
         }
+        // Gemini uses implicit prompt caching automatically (prefix-match, no annotations needed).
+        // No manual cacheControl needed — OpenRouter routes to same provider for cache hits.
         const llmPrompt = systemPrompt + "\n\nRECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM)
         let modelSuccess = false
         let providerUsed: 'openrouter' | 'fallback' = 'fallback'
@@ -954,7 +966,7 @@ FLOW FLAGS:
             })
         }
 
-        if (isEntourageMode) {
+        if (isGangFocusMode) {
             object.should_continue = false
             let focusedCount = 0
             object.events = object.events.filter((event) => {
@@ -981,7 +993,7 @@ FLOW FLAGS:
             object.should_continue = false
         }
         // Only set should_continue for explicit open-floor requests
-        if (!lowCostMode && !isEntourageMode && openFloorRequested && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0) {
+        if (!lowCostMode && !isGangFocusMode && openFloorRequested && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0) {
             object.should_continue = true
         } else {
             object.should_continue = false
@@ -989,7 +1001,7 @@ FLOW FLAGS:
 
         // Sometimes break one long message into two short back-to-back bubbles for realism.
         if (object?.events?.length) {
-            const splitChance = isEntourageMode ? 0.34 : 0.42
+            const splitChance = isGangFocusMode ? 0.34 : 0.42
             object.events = maybeSplitAiMessages(object.events, splitChance)
         }
         object.events = ensureEventMessageIds(object.events, serverTurnId)
@@ -1105,6 +1117,8 @@ FLOW FLAGS:
                         })
                     )
                 )
+                // Fire-and-forget: compact memories if threshold exceeded
+                compactMemoriesIfNeeded(user.id).catch((err) => console.error('Memory compaction error:', err))
             }
 
             // 3. Persist chat history

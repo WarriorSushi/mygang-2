@@ -84,6 +84,7 @@ export const MessageList = memo(function MessageList({
     const prevMessagesLength = useRef(messages.length)
     const isGuest = useChatStore((state) => state.isGuest)
     const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
+    const customCharacterNames = useChatStore((state) => state.customCharacterNames)
     const itemCount = messages.length
     const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
     const characterCatalogById = useMemo(
@@ -94,14 +95,16 @@ export const MessageList = memo(function MessageList({
         () => new Map(activeGang.map((character) => {
             const normalized = normalizeSpeaker(character.id)
             const catalogCharacter = characterCatalogById.get(normalized)
+            const merged = catalogCharacter
+                ? { ...catalogCharacter, ...character, roleLabel: character.roleLabel || catalogCharacter.roleLabel }
+                : character
+            const customName = customCharacterNames?.[character.id]
             return [
                 normalized,
-                catalogCharacter
-                    ? { ...catalogCharacter, ...character, roleLabel: character.roleLabel || catalogCharacter.roleLabel }
-                    : character
+                customName ? { ...merged, name: customName } : merged
             ]
         })),
-        [activeGang, characterCatalogById]
+        [activeGang, characterCatalogById, customCharacterNames]
     )
     const seenByMessageId = useMemo(() => {
         const seenMap = new Map<string, string[]>()

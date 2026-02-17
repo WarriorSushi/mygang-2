@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { GlassCard } from '@/components/holographic/glass-card'
 import { CHARACTERS } from '@/constants/characters'
-import { Check, Shuffle, Play } from 'lucide-react'
+import { Check, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
@@ -70,38 +70,6 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
         return 'Fits into most crews without dominating the vibe.'
     }
 
-    const applySelection = (newIds: string[]) => {
-        const current = new Set(selectedIds)
-        const target = new Set(newIds)
-        current.forEach((id) => {
-            if (!target.has(id)) toggleCharacter(id)
-        })
-        target.forEach((id) => {
-            if (!current.has(id)) toggleCharacter(id)
-        })
-    }
-
-    const randomSquad = () => {
-        const support = CHARACTERS.filter(c => c.tags?.includes('support') || c.tags?.includes('empath'))
-        const chaos = CHARACTERS.filter(c => c.tags?.includes('chaos'))
-        const logic = CHARACTERS.filter(c => c.tags?.includes('logic') || c.tags?.includes('facts'))
-        const social = CHARACTERS.filter(c => c.tags?.includes('social') || c.tags?.includes('drama') || c.tags?.includes('style'))
-
-        const pick = (list: typeof CHARACTERS) => list[Math.floor(Math.random() * list.length)]
-
-        const picks = new Set<string>()
-        if (support.length) picks.add(pick(support).id)
-        if (chaos.length) picks.add(pick(chaos).id)
-        if (logic.length) picks.add(pick(logic).id)
-        if (social.length) picks.add(pick(social).id)
-
-        while (picks.size < 4) {
-            picks.add(pick(CHARACTERS).id)
-        }
-
-        applySelection(Array.from(picks).slice(0, 4))
-    }
-
     const handleCharacterKeyDown = (e: KeyboardEvent, id: string) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
@@ -122,7 +90,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
                         <div className="flex flex-col gap-0.5">
                             <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Pick your Gang</h2>
-                            <p className="text-muted-foreground text-xs sm:text-sm">Select exactly 4 unique friends to join your gang.</p>
+                            <p className="text-muted-foreground text-xs sm:text-sm">Select 2–4 unique friends to join your gang.</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-mono text-[11px] border border-primary/20">
@@ -130,12 +98,8 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                                 </span>
-                                {selectedIds.length} / 4 Selected
+                                {selectedIds.length} / 2–4 Selected
                             </div>
-                            <Button variant="ghost" size="sm" onClick={randomSquad} className="rounded-full">
-                                <Shuffle className="w-4 h-4" />
-                                Random Gang
-                            </Button>
                         </div>
                     </div>
                     <div className="flex items-center justify-start gap-2 mt-2 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
@@ -232,15 +196,15 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                             Selected
                         </div>
                         <div className="text-[11px] text-muted-foreground truncate hidden sm:block">
-                            {selectedChars.length ? selectedChars.map((c) => c.name).join(', ') : 'Pick 4 to continue'}
+                            {selectedChars.length ? selectedChars.map((c) => c.name).join(', ') : 'Pick 2–4 to continue'}
                         </div>
                         <div className="text-[11px] text-muted-foreground sm:hidden">
-                            {selectedIds.length} / 4
+                            {selectedIds.length} / 2–4
                         </div>
                     </div>
                     <Button
                         size="lg"
-                        disabled={selectedIds.length !== 4}
+                        disabled={selectedIds.length < 2}
                         data-testid="onboarding-selection-done"
                         onClick={onNext}
                         className="rounded-full px-8 sm:px-12 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95"

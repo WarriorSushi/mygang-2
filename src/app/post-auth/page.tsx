@@ -41,8 +41,8 @@ export default function PostAuthPage() {
 
             const remote = await fetchJourneyState(supabase, userId)
             const remoteGangIds = remote.gangIds
-            const hasRemoteGang = remoteGangIds.length === 4
-            const hasLocalGang = localGangIds.length === 4
+            const hasRemoteGang = remoteGangIds.length >= 2 && remoteGangIds.length <= 4
+            const hasLocalGang = localGangIds.length >= 2 && localGangIds.length <= 4
 
             if (remote.profile?.username) {
                 setUserName(remote.profile.username)
