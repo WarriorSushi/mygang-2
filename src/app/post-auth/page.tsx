@@ -72,11 +72,19 @@ export default function PostAuthPage() {
             await resolveJourney(userId)
         }
 
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user) {
-                tryResolve(user.id)
-            }
-        })
+        const attemptGetUser = () => {
+            supabase.auth.getUser().then(({ data: { user } }) => {
+                if (user) {
+                    tryResolve(user.id)
+                }
+            })
+        }
+
+        // Try immediately, then retry after a short delay in case cookies haven't propagated
+        attemptGetUser()
+        const retryTimer = setTimeout(() => {
+            if (!resolved && !isCancelled) attemptGetUser()
+        }, 1500)
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
@@ -84,16 +92,17 @@ export default function PostAuthPage() {
             }
         })
 
-        // Fallback: if no session after 5 seconds, redirect to landing
+        // Fallback: if no session after 8 seconds, redirect to landing
         const timeout = setTimeout(() => {
             if (!resolved && !isCancelled) {
                 router.replace('/')
             }
-        }, 5000)
+        }, 8000)
 
         return () => {
             isCancelled = true
             subscription.unsubscribe()
+            clearTimeout(retryTimer)
             clearTimeout(timeout)
         }
     }, [router, setActiveGang, setIsGuest, setUserId, setUserName])

@@ -210,6 +210,22 @@ export function LandingPage() {
   const ctaLink = isAuthenticated ? '/post-auth' : '/onboarding'
   const ctaDisabled = !isHydrated
   const safeCtaLink = ctaDisabled ? '#' : ctaLink
+  const wasUnauthRef = useRef(false)
+
+  // Track when user was unauthenticated so we can detect login transitions
+  useEffect(() => {
+    if (isHydrated && !userId) {
+      wasUnauthRef.current = true
+    }
+  }, [isHydrated, userId])
+
+  // Auto-redirect when user completes login while on the landing page (e.g. after OAuth)
+  useEffect(() => {
+    if (isAuthenticated && wasUnauthRef.current) {
+      wasUnauthRef.current = false
+      router.replace('/post-auth')
+    }
+  }, [isAuthenticated, router])
 
   const marqueeItems = useMemo(
     () => [
