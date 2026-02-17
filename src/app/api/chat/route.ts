@@ -30,10 +30,10 @@ const MAX_MEMORY_CONTENT_CHARS = 220
 const MAX_SESSION_SUMMARY_CHARS = 500
 const MAX_PROFILE_LINES = 12
 const MAX_PROFILE_VALUE_CHARS = 120
-const PROVIDER_DEFAULT_COOLDOWN_MS = 90_000
-const PROVIDER_RETRY_FLOOR_MS = 15_000
-const PROVIDER_RETRY_CEILING_MS = 10 * 60 * 1000
-const OPENROUTER_CREDIT_COOLDOWN_MS = 5 * 60 * 1000
+const PROVIDER_DEFAULT_COOLDOWN_MS = 30_000
+const PROVIDER_RETRY_FLOOR_MS = 10_000
+const PROVIDER_RETRY_CEILING_MS = 3 * 60 * 1000
+const OPENROUTER_CREDIT_COOLDOWN_MS = 2 * 60 * 1000
 const ADMIN_SETTINGS_CACHE_MS = 20_000
 
 let geminiCooldownUntil = 0
@@ -494,7 +494,7 @@ function isProviderCapacityError(err: unknown) {
     const statusCode = getStatusCodeFromError(err)
     if (statusCode === 402 || statusCode === 429) return true
     const message = getMessageFromError(err)
-    return /quota|credit|resource_exhausted|max[_\s-]?tokens?|billing|retry in/i.test(message)
+    return /quota|credit|resource_exhausted|billing|rate[_\s-]?limit|retry in/i.test(message)
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -912,16 +912,24 @@ FLOW FLAGS:
         let providerUsed: 'gemini' | 'openrouter' | 'fallback' = 'fallback'
         const llmMaxOutputTokens = lowCostMode ? LOW_COST_MAX_OUTPUT_TOKENS : LLM_MAX_OUTPUT_TOKENS
         const nowMs = Date.now()
-        const geminiCoolingDown = nowMs < geminiCooldownUntil
         const openRouterCoolingDown = nowMs < openRouterCooldownUntil
+        const geminiCoolingDown = nowMs < geminiCooldownUntil
 
-        if (openRouterCoolingDown) {
-            capacityBlocked = true
-        }
-        try {
-            if (!openRouterCoolingDown) {
+        // Build ordered provider list: try non-cooled-down providers first
+        const providers: Array<{ name: 'openrouter' | 'gemini'; model: typeof openRouterModel | typeof geminiModel; coolingDown: boolean }> = [
+            { name: 'openrouter', model: openRouterModel, coolingDown: openRouterCoolingDown },
+            { name: 'gemini', model: geminiModel, coolingDown: geminiCoolingDown },
+        ]
+
+        for (const provider of providers) {
+            if (modelSuccess) break
+            if (provider.coolingDown) {
+                capacityBlocked = true
+                continue
+            }
+            try {
                 const result = await generateObject({
-                    model: openRouterModel,
+                    model: provider.model,
                     schema: responseSchema,
                     prompt: llmPrompt,
                     maxOutputTokens: llmMaxOutputTokens,
@@ -929,39 +937,23 @@ FLOW FLAGS:
                 })
                 object = result.object
                 modelSuccess = true
-                providerUsed = 'openrouter'
-            }
-        } catch (openRouterErr) {
-            console.error('OpenRouter Error, falling back to Gemini:', openRouterErr)
-            if (isProviderCapacityError(openRouterErr)) {
-                capacityBlocked = true
-                openRouterCooldownUntil = Date.now() + getProviderCooldownMs(openRouterErr, 'openrouter')
-            }
-            try {
-                if (!geminiCoolingDown) {
-                    const result = await generateObject({
-                        model: geminiModel,
-                        schema: responseSchema,
-                        prompt: llmPrompt,
-                        maxOutputTokens: llmMaxOutputTokens,
-                        maxRetries: LLM_MAX_RETRIES,
-                    })
-                    object = result.object
-                    modelSuccess = true
-                    providerUsed = 'gemini'
-                } else {
+                providerUsed = provider.name
+                // Clear cooldown on success in case it was stale
+                if (provider.name === 'openrouter') openRouterCooldownUntil = 0
+                else geminiCooldownUntil = 0
+            } catch (err) {
+                console.error(`${provider.name} error:`, err)
+                if (isProviderCapacityError(err)) {
                     capacityBlocked = true
-                }
-            } catch (geminiErr) {
-                console.error('Gemini fallback failed:', geminiErr)
-                if (isProviderCapacityError(geminiErr)) {
-                    capacityBlocked = true
-                    geminiCooldownUntil = Date.now() + getProviderCooldownMs(geminiErr, 'gemini')
+                    const cooldownMs = getProviderCooldownMs(err, provider.name)
+                    if (provider.name === 'openrouter') openRouterCooldownUntil = Date.now() + cooldownMs
+                    else geminiCooldownUntil = Date.now() + cooldownMs
                 }
             }
         }
 
-        if (!modelSuccess && openRouterCoolingDown && !geminiCoolingDown) {
+        // Last resort: if both were cooling down, force-try Gemini direct (free tier resets quickly)
+        if (!modelSuccess && openRouterCoolingDown && geminiCoolingDown) {
             try {
                 const result = await generateObject({
                     model: geminiModel,
@@ -973,10 +965,10 @@ FLOW FLAGS:
                 object = result.object
                 modelSuccess = true
                 providerUsed = 'gemini'
+                geminiCooldownUntil = 0
             } catch (geminiErr) {
-                console.error('Gemini fallback failed after OpenRouter cooldown:', geminiErr)
+                console.error('Last-resort Gemini attempt failed:', geminiErr)
                 if (isProviderCapacityError(geminiErr)) {
-                    capacityBlocked = true
                     geminiCooldownUntil = Date.now() + getProviderCooldownMs(geminiErr, 'gemini')
                 }
             }
