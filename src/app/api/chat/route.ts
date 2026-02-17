@@ -358,7 +358,7 @@ const responseSchema = z.object({
         content: z.string().optional().describe('Message text, emoji, status, or nickname'),
         target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
         delay: z.number().describe('Delay in ms after the previous event'),
-    })).max(20),
+    })),
     responders: z.array(z.string()).optional().describe('Characters chosen to respond this turn'),
     should_continue: z.boolean().optional().describe('True if characters should keep talking'),
     memory_updates: z.object({
