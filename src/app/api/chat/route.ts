@@ -18,7 +18,7 @@ const MAX_TOTAL_RESPONSE_CHARS = 3000
 const MAX_EVENTS = 20
 const MAX_DELAY_MS = 7000
 const LLM_MAX_OUTPUT_TOKENS = 1200
-const LLM_MAX_RETRIES = 0
+const LLM_MAX_RETRIES = 2
 const LLM_HISTORY_LIMIT = 12
 const LLM_IDLE_HISTORY_LIMIT = 8
 const IDLE_MAX_OUTPUT_TOKENS = 600
@@ -829,15 +829,9 @@ FLOW FLAGS:
             target_message_id: m.replyToId
         }))
 
-        const fallbackCharacter = filteredIds[0] || 'system'
         let object: RouteResponseObject = {
-            events: [{
-                type: 'message',
-                character: fallbackCharacter,
-                content: 'Quick signal hiccup. I am still here. Say that again and I will pick it up.',
-                delay: 220
-            }],
-            responders: [fallbackCharacter],
+            events: [],
+            responders: [],
             should_continue: false
         }
         // Gemini uses implicit prompt caching automatically (prefix-match, no annotations needed).
@@ -886,6 +880,27 @@ FLOW FLAGS:
                     headers: { 'Retry-After': '15' }
                 })
             }
+            await logChatRouteMetric(supabase, user?.id ?? null, {
+                source,
+                lowCostMode,
+                globalLowCostOverride,
+                status: 502,
+                providerUsed,
+                providerCapacityBlocked: false,
+                clientMessagesCount: safeMessages.length,
+                llmHistoryCount: historyForLLM.length,
+                promptChars: llmPrompt.length,
+                elapsedMs: Date.now() - requestStartedAt
+            })
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: 'Quick hiccup on our side. Please try again.',
+                    delay: 300
+                }],
+                should_continue: false
+            }, { status: 502 })
         }
 
         if (object?.events && Array.isArray(object.events)) {
