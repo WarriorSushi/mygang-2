@@ -180,7 +180,7 @@ const faq = [
     a: 'Yes. Each persona has a distinct voice and the group chemistry grows with you.',
   },
   {
-    q: 'Can I change my crew later?',
+    q: 'Can I change my gang later?',
     a: 'Absolutely. You can swap personalities anytime until your lineup feels perfect.',
   },
   {
@@ -214,7 +214,7 @@ export function LandingPage() {
   const marqueeItems = useMemo(
     () => [
       'Late-night talks', 'No awkward silence', 'Main-character energy', 'Warm support',
-      'Fun chaos', 'Inside jokes', 'Daily check-ins', 'Crew love',
+      'Fun chaos', 'Inside jokes', 'Daily check-ins', 'Gang love',
       'Zero judgment', 'Instant hype', 'Real banter', 'Your people 24/7',
       'Emotional backup', 'Good vibes only',
     ],
@@ -291,7 +291,7 @@ export function LandingPage() {
               <div className="order-2 lg:order-1 text-center lg:text-left flex-1">
                 <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full border border-border/70 bg-card/70 text-xs sm:text-sm mb-8 backdrop-blur-md shadow-[0_10px_30px_-20px_rgba(15,23,42,0.7)]">
                   <Users className="w-4 h-4 text-cyan-500" />
-                  <span className="text-foreground/90 font-medium">Your personal crew, always online.</span>
+                  <span className="text-foreground/90 font-medium">Your personal gang, always online.</span>
                 </div>
 
                 <h1 className="text-5xl sm:text-7xl lg:text-[7.9rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
@@ -304,7 +304,7 @@ export function LandingPage() {
                 </h1>
 
                 <p className="text-sm sm:text-base lg:text-xl text-muted-foreground/80 mb-10 sm:mb-12 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-                  Real-feeling conversations with a crew that hypes you up, checks on you, and keeps life less lonely.
+                  Real-feeling conversations with a gang that hypes you up, checks on you, and keeps life less lonely.
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start items-center lg:items-start">
@@ -399,7 +399,7 @@ export function LandingPage() {
         </section>
 
         {/* ── How It Works ── */}
-        <Section id="how-it-works" title="How it works" subtitle="Three steps to your crew">
+        <Section id="how-it-works" title="How it works" subtitle="Three steps to your gang">
           {/* Steps - spacious numbered layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-16">
             {steps.map((step, i) => (
@@ -511,7 +511,7 @@ export function LandingPage() {
             <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-accent/10 blur-[60px] rounded-full" />
             <div className="relative text-left">
               <span className="text-xs font-semibold text-primary tracking-wide">Ready to vibe?</span>
-              <h3 className="text-3xl sm:text-4xl font-black mt-2 tracking-tight">Meet your crew in under a minute.</h3>
+              <h3 className="text-3xl sm:text-4xl font-black mt-2 tracking-tight">Meet your gang in under a minute.</h3>
               <p className="text-muted-foreground mt-2 max-w-xl text-sm sm:text-base">
                 Start with one message and watch the room come alive around you.
               </p>

@@ -64,7 +64,7 @@ const structuredData = {
         },
         {
           '@type': 'Question',
-          name: 'Can I change my crew later?',
+          name: 'Can I change my gang later?',
           acceptedAnswer: {
             '@type': 'Answer',
             text: 'Absolutely. You can swap personalities anytime until your lineup feels perfect.',
