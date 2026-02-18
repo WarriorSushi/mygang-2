@@ -414,29 +414,44 @@ function MessageItemComponent({
                         <Button
                             type="button"
                             variant="ghost"
-                            size="xs"
+                            size="sm"
                             className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
                             onClick={() => {
                                 onLike?.(message)
                                 setShowActions(false)
                             }}
                         >
-                            <Heart className="w-3 h-3" />
+                            <Heart className="w-3.5 h-3.5" />
                             Like
                         </Button>
                         <Button
                             type="button"
                             variant="ghost"
-                            size="xs"
+                            size="sm"
                             className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
                             onClick={() => {
                                 onReply?.(message)
                                 setShowActions(false)
                             }}
                         >
-                            <Reply className="w-3 h-3" />
+                            <Reply className="w-3.5 h-3.5" />
                             Reply
                         </Button>
+                        {isUser && !isGuest && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
+                                onClick={() => {
+                                    saveMemoryManual(message.content)
+                                    setShowActions(false)
+                                }}
+                            >
+                                <Bookmark className="w-3.5 h-3.5" />
+                                Save
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>
@@ -447,7 +462,7 @@ function MessageItemComponent({
                     "mt-0.5 flex items-center gap-1.5 px-1",
                     isUser ? "self-end" : "self-start"
                 )}>
-                    <span className="text-[10px] text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] text-muted-foreground/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         {timeLabel}
                     </span>
                     {relativeTime && (
@@ -479,7 +494,7 @@ function MessageItemComponent({
                         <Button
                             type="button"
                             variant="ghost"
-                            size="xs"
+                            size="sm"
                             onClick={() => onRetry(message)}
                             className="ml-1.5 rounded-full text-[10px] border border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
                         >
@@ -494,20 +509,6 @@ function MessageItemComponent({
                 </div>
             )}
 
-            {/* Save to memory */}
-            {isUser && !isReaction && !isGuest && (
-                <div className="mt-0.5 px-1 h-0 group-hover:h-auto overflow-hidden transition-none">
-                    <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => saveMemoryManual(message.content)}
-                        className="rounded-full text-[10px] text-muted-foreground/60 hover:text-foreground"
-                    >
-                        <Bookmark className="w-3 h-3" />
-                        Save to Memory
-                    </Button>
-                </div>
-            )}
         </div>
     )
 }

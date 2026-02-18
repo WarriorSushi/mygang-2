@@ -142,18 +142,24 @@ export const MessageList = memo(function MessageList({
         },
     })
 
+    const isProgrammaticScrollRef = useRef(false)
+
     const scrollToBottom = useCallback(() => {
         if (!scrollRef.current) return
-        rowVirtualizer.scrollToIndex(Math.max(0, itemCount - 1), { align: 'end' })
-        // Double-RAF ensures the virtualizer has committed layout before we affirm position
+        isProgrammaticScrollRef.current = true
+        // Single deferred scroll: wait one frame for virtualizer measurement, then snap
         requestAnimationFrame(() => {
+            if (!scrollRef.current) { isProgrammaticScrollRef.current = false; return }
+            rowVirtualizer.scrollToIndex(Math.max(0, itemCount - 1), { align: 'end' })
+            // One more frame for the virtualizer to commit layout
             requestAnimationFrame(() => {
-                if (!scrollRef.current) return
+                if (!scrollRef.current) { isProgrammaticScrollRef.current = false; return }
                 const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
                 if (scrollHeight - scrollTop - clientHeight > 4) {
                     scrollRef.current.scrollTop = scrollHeight - clientHeight
                 }
                 setIsAtBottom(true)
+                isProgrammaticScrollRef.current = false
             })
         })
     }, [itemCount, rowVirtualizer])
@@ -164,6 +170,7 @@ export const MessageList = memo(function MessageList({
         scrollRafRef.current = window.requestAnimationFrame(() => {
             scrollRafRef.current = null
             if (!scrollRef.current) return
+            if (isProgrammaticScrollRef.current) return
             const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
             const atBottom = scrollHeight - scrollTop - clientHeight < 48
             setIsAtBottom(atBottom)
@@ -232,7 +239,7 @@ export const MessageList = memo(function MessageList({
                 ref={scrollRef}
                 onScroll={handleScroll}
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-4"
-                style={{ paddingBottom: 80 }}
+                style={{ paddingBottom: 80, overflowAnchor: 'none' }}
                 data-testid="chat-scroll"
             >
                 {(hasMoreHistory || loadingHistory) && (
@@ -277,10 +284,7 @@ export const MessageList = memo(function MessageList({
                                 key={message.id}
                                 ref={rowVirtualizer.measureElement}
                                 data-index={index}
-                                className={cn(
-                                    "px-4 md:px-10 lg:px-14",
-                                    shouldAnimate && "animate-msg-appear"
-                                )}
+                                className="px-4 md:px-10 lg:px-14"
                                 style={{
                                     position: 'absolute',
                                     top: 0,
@@ -290,6 +294,7 @@ export const MessageList = memo(function MessageList({
                                     willChange: 'transform',
                                 }}
                             >
+                              <div className={shouldAnimate ? "animate-msg-appear" : undefined}>
                                 <MessageItem
                                     message={message}
                                     character={character}
@@ -305,6 +310,7 @@ export const MessageList = memo(function MessageList({
                                     onLike={onLikeMessage}
                                     onRetry={onRetryMessage}
                                 />
+                              </div>
                             </div>
                         )
                     })}

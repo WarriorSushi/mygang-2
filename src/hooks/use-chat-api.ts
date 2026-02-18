@@ -402,6 +402,7 @@ export function useChatApi({
             if (pendingUserMessagesRef.current) {
                 pendingUserMessagesRef.current = false
                 isGeneratingRef.current = false
+                clearTypingUsers()
                 const sourceId = pendingUserMessageIdRef.current
                 pendingUserMessageIdRef.current = null
                 sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId }).catch((err) => console.error('Pending message retry error:', err))

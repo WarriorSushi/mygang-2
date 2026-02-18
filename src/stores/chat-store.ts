@@ -146,7 +146,21 @@ export const useChatStore = create<ChatState>()(
                 customCharacterNames: state.customCharacterNames
             }),
             onRehydrateStorage: () => (state) => {
-                if (state?.messages) rebuildIdSet(state.messages)
+                if (state?.messages) {
+                    // Reset stale 'sending' statuses that survived a page refresh
+                    let hadStale = false
+                    for (const m of state.messages) {
+                        if (m.deliveryStatus === 'sending') {
+                            m.deliveryStatus = 'failed'
+                            m.deliveryError = 'Message interrupted. Please retry.'
+                            hadStale = true
+                        }
+                    }
+                    rebuildIdSet(state.messages)
+                    if (hadStale) {
+                        useChatStore.setState({ messages: [...state.messages] })
+                    }
+                }
             },
         }
     )

@@ -55,7 +55,7 @@ const CHARACTER_PROMPT_BLOCKS = new Map(
     ])
 )
 
-let cachedDbPromptBlocks: Record<string, string> | null = null
+let cachedDbPromptBlocks: { value: Record<string, string>; expiresAtMs: number } | null = null
 
 type DbCharacterPromptRow = {
     id: string
@@ -164,7 +164,7 @@ function toLegacyHistoryRows(rows: ChatHistoryInsertRow[]) {
 }
 
 async function getDbPromptBlocks(supabase: SupabaseClient) {
-    if (cachedDbPromptBlocks) return cachedDbPromptBlocks
+    if (cachedDbPromptBlocks && Date.now() < cachedDbPromptBlocks.expiresAtMs) return cachedDbPromptBlocks.value
     const { data, error } = await supabase
         .from('characters')
         .select('id, prompt_block, name, archetype, voice_description, sample_line')
@@ -172,7 +172,7 @@ async function getDbPromptBlocks(supabase: SupabaseClient) {
 
     if (error || !data) {
         if (error) console.error('Error loading character prompt blocks:', error)
-        return null
+        return cachedDbPromptBlocks?.value ?? null
     }
 
     const map: Record<string, string> = {}
@@ -182,7 +182,7 @@ async function getDbPromptBlocks(supabase: SupabaseClient) {
             : `- ID: "${row.id}", Name: "${row.name}", Archetype: "${row.archetype}", Voice: "${row.voice_description}", Style: "${row.sample_line}"`
         map[row.id] = block
     })
-    cachedDbPromptBlocks = map
+    cachedDbPromptBlocks = { value: map, expiresAtMs: Date.now() + 5 * 60_000 }
     return map
 }
 
@@ -965,7 +965,7 @@ FLOW FLAGS:
             const seen: string[] = []
             for (const event of object.events) {
                 if (event.type === 'message' || event.type === 'reaction') {
-                    if (!seen.includes(event.character)) seen.push(event.character)
+                    if (filteredIds.includes(event.character) && !seen.includes(event.character)) seen.push(event.character)
                 }
                 if (seen.length >= maxResponders) break
             }
@@ -1021,7 +1021,7 @@ FLOW FLAGS:
         }
         object.events = ensureEventMessageIds(object.events, serverTurnId)
 
-        await logChatRouteMetric(supabase, user?.id ?? null, {
+        logChatRouteMetric(supabase, user?.id ?? null, {
             source,
             lowCostMode,
             globalLowCostOverride,
@@ -1034,7 +1034,7 @@ FLOW FLAGS:
             eventsCount: object.events.length,
             shouldContinue: !!object.should_continue,
             elapsedMs: Date.now() - requestStartedAt
-        })
+        }).catch((err) => console.error('Metric log error:', err))
 
         // Build response before persistence (non-blocking)
         const response = Response.json({

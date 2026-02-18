@@ -84,7 +84,6 @@ function mergeRemoteMessagesWithLocalMetadata(remoteMessages: Message[], localMe
 }
 
 function shouldPreserveLocalMessage(localMessage: Message, latestRemoteTimestamp: number) {
-    if (localMessage.speaker !== 'user' && localMessage.speaker !== 'system') return false
     const localTimestamp = parseMessageCreatedAt(localMessage)
     if (!localTimestamp) return true
     if (Date.now() - localTimestamp > 15 * 60 * 1000) return false
