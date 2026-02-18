@@ -335,6 +335,7 @@ export default function ChatPage() {
                     activeGang={activeGang}
                     onOpenVault={() => setIsVaultOpen(true)}
                     onOpenSettings={() => setIsSettingsOpen(true)}
+                    onRefresh={() => history.syncLatestHistory(true)}
                     typingUsers={typing.typingUsers}
                     memoryActive={!isGuest}
                     autoLowCostActive={capacity.autoLowCostMode && !lowCostMode}

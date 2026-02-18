@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Sun, Moon, Brain, Settings2, Info } from 'lucide-react'
+import { Sun, Moon, Brain, Settings2, Info, RefreshCw } from 'lucide-react'
 import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
@@ -20,6 +20,7 @@ interface ChatHeaderProps {
     activeGang: Character[]
     onOpenVault: () => void
     onOpenSettings: () => void
+    onRefresh?: () => void
     typingUsers?: string[]
     memoryActive?: boolean
     autoLowCostActive?: boolean
@@ -66,7 +67,7 @@ function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
     )
 }
 
-export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, typingUsers = [], memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
+export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, onRefresh, typingUsers = [], memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
     const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
@@ -75,6 +76,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const showCapacityInfo = autoLowCostActive && showAutoLowCostInfo
     const capacityInfoRef = useRef<HTMLDivElement>(null)
 
+    const [isRefreshing, setIsRefreshing] = useState(false)
     const [devToolsEnabled, setDevToolsEnabled] = useState(false)
     useEffect(() => {
         try {
@@ -184,6 +186,23 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                             </div>
                         )}
                     </div>
+                )}
+                {onRefresh && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                            if (isRefreshing) return
+                            setIsRefreshing(true)
+                            onRefresh()
+                            setTimeout(() => setIsRefreshing(false), 1500)
+                        }}
+                        title="Refresh chat"
+                        aria-label="Refresh chat"
+                        className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
+                    >
+                        <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                    </Button>
                 )}
                 <Button
                     variant="ghost"
