@@ -128,6 +128,15 @@ export const MessageList = memo(function MessageList({
     }, [messages, characterBySpeaker])
 
     const measuredSizes = useRef<Map<number, number>>(new Map())
+    const prevFirstMessageIdRef = useRef<string | null>(null)
+
+    // Clear cached measurements when messages are reconciled/reordered (not just appended).
+    // measuredSizes is keyed by index, so any index shift makes the cache stale.
+    const firstMessageId = messages[0]?.id ?? null
+    if (firstMessageId !== prevFirstMessageIdRef.current) {
+        measuredSizes.current.clear()
+        prevFirstMessageIdRef.current = firstMessageId
+    }
 
     const rowVirtualizer = useVirtualizer({
         count: itemCount,
@@ -204,6 +213,13 @@ export const MessageList = memo(function MessageList({
 
         const previousLength = prevMessagesLength.current
         const isNewMessage = messages.length > previousLength
+        const isReplaced = messages.length < previousLength || (messages.length === previousLength && messages.length > 0)
+
+        // When messages are reconciled/replaced (not just appended), force remeasure
+        if (isReplaced) {
+            measuredSizes.current.clear()
+            rowVirtualizer.measure()
+        }
 
         if (isNewMessage) {
             const appendedMessages = messages.slice(previousLength)
@@ -223,7 +239,7 @@ export const MessageList = memo(function MessageList({
         }
 
         prevMessagesLength.current = messages.length
-    }, [messages, isAtBottom, scrollToBottom])
+    }, [messages, isAtBottom, scrollToBottom, rowVirtualizer])
 
     if (isBootstrappingHistory && messages.length === 0) {
         return (
