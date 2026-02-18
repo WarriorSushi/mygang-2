@@ -81,6 +81,7 @@ export const MessageList = memo(function MessageList({
     const animatedMessageIdsRef = useRef<Set<string>>(new Set())
     const didInitialScrollRef = useRef(false)
     const [isAtBottom, setIsAtBottom] = useState(true)
+    const [liveAnnouncement, setLiveAnnouncement] = useState('')
     const prevMessagesLength = useRef(messages.length)
     const isGuest = useChatStore((state) => state.isGuest)
     const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
@@ -225,6 +226,14 @@ export const MessageList = memo(function MessageList({
             const appendedMessages = messages.slice(previousLength)
             const hasUserMessage = appendedMessages.some((m) => m.speaker === 'user')
             appendedMessages.forEach((m) => animatedMessageIdsRef.current.add(m.id))
+
+            // Announce new non-user messages for screen readers
+            const newAiMessages = appendedMessages.filter(m => m.speaker !== 'user')
+            if (newAiMessages.length > 0) {
+                const last = newAiMessages[newAiMessages.length - 1]
+                const speakerName = characterBySpeaker.get(normalizeSpeaker(last.speaker))?.name ?? last.speaker
+                setLiveAnnouncement(`${speakerName} says: ${last.content.slice(0, 120)}`)
+            }
             if (animationCleanupRef.current) {
                 clearTimeout(animationCleanupRef.current)
             }
@@ -251,9 +260,15 @@ export const MessageList = memo(function MessageList({
 
     return (
         <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
+            {/* Screen reader announcements for new messages */}
+            <div aria-live="polite" aria-atomic="true" className="sr-only">
+                {liveAnnouncement}
+            </div>
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
+                role="log"
+                aria-label="Chat messages"
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-4"
                 style={{ paddingBottom: 80, overflowAnchor: 'none' }}
                 data-testid="chat-scroll"

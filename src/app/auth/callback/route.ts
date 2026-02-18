@@ -6,7 +6,13 @@ export async function GET(request: Request) {
     const code = searchParams.get('code')
     // if "next" is in search params, use it as the redirection URL
     const requestedNext = searchParams.get('next') ?? '/post-auth'
-    const next = requestedNext.startsWith('/') ? requestedNext : '/post-auth'
+    const ALLOWED_REDIRECTS = new Set(['/post-auth', '/chat', '/settings', '/onboarding'])
+    const next = (
+        requestedNext.startsWith('/') &&
+        !requestedNext.startsWith('//') &&
+        !requestedNext.includes('\\') &&
+        ALLOWED_REDIRECTS.has(requestedNext)
+    ) ? requestedNext : '/post-auth'
 
     if (code) {
         const supabase = await createClient()

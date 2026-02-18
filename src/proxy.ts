@@ -33,7 +33,17 @@ async function verifyAdminToken(token: string): Promise<boolean> {
         .replace(/\//g, '_')
         .replace(/=+$/, '')
 
-    if (signature !== expectedSignature) return false
+    // Constant-time comparison to prevent timing side-channel attacks
+    if (signature.length !== expectedSignature.length) return false
+    const encoder2 = new TextEncoder()
+    const a = encoder2.encode(signature)
+    const b = encoder2.encode(expectedSignature)
+    if (a.byteLength !== b.byteLength) return false
+    let mismatch = 0
+    for (let i = 0; i < a.byteLength; i++) {
+        mismatch |= a[i] ^ b[i]
+    }
+    if (mismatch !== 0) return false
 
     // Verify expiration
     try {

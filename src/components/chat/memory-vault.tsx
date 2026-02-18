@@ -28,6 +28,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
     const isGuest = useChatStore((state) => state.isGuest)
 
     const loadMemories = useCallback(async (options?: { reset?: boolean; before?: string | null }) => {
@@ -70,12 +71,29 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
             setCursor(null)
             setHasMore(false)
             loadMemories({ reset: true, before: null })
+        } else {
+            setEditingId(null)
+            setPendingDeleteId(null)
         }
     }, [isOpen, isGuest, loadMemories])
 
-    const handleDelete = async (id: string) => {
-        await deleteMemory(id)
+    const handleDeleteConfirm = async () => {
+        if (!pendingDeleteId) return
+        const id = pendingDeleteId
+        const original = memories.find(m => m.id === id)
+        setPendingDeleteId(null)
+        // Optimistic delete
         setMemories(prev => prev.filter(m => m.id !== id))
+        try {
+            await deleteMemory(id)
+        } catch {
+            // Rollback on failure
+            if (original) {
+                setMemories(prev => [...prev, original].sort((a, b) =>
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                ))
+            }
+        }
     }
 
     const handleEdit = (memory: Memory) => {
@@ -85,10 +103,18 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
 
     const handleSave = async (id: string) => {
         if (!editContent.trim()) return
+        const previousContent = memories.find(m => m.id === id)?.content
         setEditingId(null)
         // Optimistic update
         setMemories(prev => prev.map(m => m.id === id ? { ...m, content: editContent } : m))
-        await updateMemory(id, editContent)
+        try {
+            await updateMemory(id, editContent)
+        } catch {
+            // Rollback on failure
+            if (previousContent !== undefined) {
+                setMemories(prev => prev.map(m => m.id === id ? { ...m, content: previousContent } : m))
+            }
+        }
     }
 
     const filteredMemories = useMemo(() => {
@@ -186,31 +212,41 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                             ) : (
                                                 <>
                                                     <p className="text-sm leading-relaxed pr-8">{memory.content}</p>
-                                                    <div className="mt-3 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
-                                                        <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
-                                                            {new Date(memory.created_at).toLocaleDateString()}
-                                                        </span>
-                                                        <div className="flex items-center gap-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEdit(memory)}
-                                                                className="h-7 w-7 rounded-full hover:bg-muted/60"
-                                                                aria-label="Edit memory"
-                                                            >
-                                                                <Edit3 size={14} />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleDelete(memory.id)}
-                                                                className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
-                                                                aria-label="Delete memory"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </Button>
+                                                    {pendingDeleteId === memory.id ? (
+                                                        <div className="mt-3 flex items-center justify-between">
+                                                            <span className="text-xs text-destructive font-medium">Delete this memory?</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Button variant="ghost" size="sm" onClick={() => setPendingDeleteId(null)} className="text-xs h-7 px-2">Cancel</Button>
+                                                                <Button variant="destructive" size="sm" onClick={handleDeleteConfirm} className="text-xs h-7 px-2">Delete</Button>
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    ) : (
+                                                        <div className="mt-3 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
+                                                            <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
+                                                                {new Date(memory.created_at).toLocaleDateString()}
+                                                            </span>
+                                                            <div className="flex items-center gap-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleEdit(memory)}
+                                                                    className="h-7 w-7 rounded-full hover:bg-muted/60"
+                                                                    aria-label="Edit memory"
+                                                                >
+                                                                    <Edit3 size={14} />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => setPendingDeleteId(memory.id)}
+                                                                    className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                                                                    aria-label="Delete memory"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </>
                                             )}
                                         </GlassCard>

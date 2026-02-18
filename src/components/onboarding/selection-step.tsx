@@ -189,7 +189,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                 {selectedChars.map((c) => (
                                     <div
                                         key={c.id}
-                                        className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 border-background shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                                        className="group/avatar relative w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 border-background shadow-sm cursor-pointer hover:scale-110 transition-transform"
                                         onClick={() => toggleCharacter(c.id)}
                                         title={`Remove ${c.name}`}
                                     >
@@ -200,8 +200,8 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                             height={36}
                                             className="w-full h-full object-cover"
                                         />
-                                        <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-colors flex items-center justify-center">
-                                            <X className="w-3 h-3 text-white opacity-0 hover:opacity-100" />
+                                        <div className="absolute inset-0 bg-black/0 group-hover/avatar:bg-black/40 transition-colors flex items-center justify-center">
+                                            <X className="w-3 h-3 text-white opacity-0 sm:group-hover/avatar:opacity-100" />
                                         </div>
                                     </div>
                                 ))}
@@ -210,7 +210,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                 )}
                             </div>
                             {selectedIds.length > 0 && selectedIds.length < 2 && (
-                                <span className="text-[10px] text-muted-foreground/50 ml-2 hidden sm:inline">
+                                <span className="text-[10px] text-muted-foreground/50 ml-2">
                                     {2 - selectedIds.length} more needed
                                 </span>
                             )}

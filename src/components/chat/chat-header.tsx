@@ -20,7 +20,7 @@ interface ChatHeaderProps {
     activeGang: Character[]
     onOpenVault: () => void
     onOpenSettings: () => void
-    onRefresh?: () => void
+    onRefresh?: () => void | Promise<void>
     typingUsers?: string[]
     memoryActive?: boolean
     autoLowCostActive?: boolean
@@ -191,11 +191,14 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
+                        onClick={async () => {
                             if (isRefreshing) return
                             setIsRefreshing(true)
-                            onRefresh()
-                            setTimeout(() => setIsRefreshing(false), 1500)
+                            try {
+                                await onRefresh()
+                            } finally {
+                                setIsRefreshing(false)
+                            }
                         }}
                         title="Refresh chat"
                         aria-label="Refresh chat"

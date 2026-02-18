@@ -229,16 +229,29 @@ function MessageItemComponent({
         longPressTimerRef.current = null
     }
 
-    const handlePointerDown = () => {
+    const pointerStartPos = useRef<{ x: number; y: number } | null>(null)
+
+    const handlePointerDown = (e: React.PointerEvent) => {
         if (!canShowActions) return
         clearLongPressTimer()
+        pointerStartPos.current = { x: e.clientX, y: e.clientY }
         longPressTimerRef.current = setTimeout(() => {
             setShowActions(true)
         }, 350)
     }
 
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!longPressTimerRef.current || !pointerStartPos.current) return
+        const dx = e.clientX - pointerStartPos.current.x
+        const dy = e.clientY - pointerStartPos.current.y
+        if (dx * dx + dy * dy > 100) {
+            clearLongPressTimer()
+        }
+    }
+
     const handlePointerUp = () => {
         clearLongPressTimer()
+        pointerStartPos.current = null
     }
 
     const handleContextMenu = (e: React.MouseEvent) => {
@@ -353,6 +366,7 @@ function MessageItemComponent({
                             }
                     }
                     onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                     onPointerLeave={handlePointerUp}
                     onContextMenu={handleContextMenu}

@@ -304,6 +304,17 @@
   contain-intrinsic-size: 120px 80px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-msg-appear,
+  .animate-bounce-short,
+  .animate-gradient,
+  .animate-marquee,
+  .animate-floaty,
+  .animate-spin-slow {
+    animation: none !important;
+  }
+}
+
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
