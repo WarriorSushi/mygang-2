@@ -86,6 +86,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     const [deleteEmailError, setDeleteEmailError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     const [renameInputs, setRenameInputs] = useState<Record<string, string>>({})
+    const [renameSaved, setRenameSaved] = useState(false)
 
     const supabase = useMemo(() => createClient(), [])
 
@@ -169,6 +170,23 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         }
         setCustomCharacterNames(next)
         updateUserSettings({ custom_character_names: next } as Parameters<typeof updateUserSettings>[0])
+    }
+
+    const handleSaveAllNames = () => {
+        const next = { ...customCharacterNames }
+        for (const char of activeGang) {
+            const raw = renameInputs[char.id] || ''
+            const trimmed = raw.trim().slice(0, 30)
+            if (trimmed && trimmed !== char.name) {
+                next[char.id] = trimmed
+            } else {
+                delete next[char.id]
+            }
+        }
+        setCustomCharacterNames(next)
+        updateUserSettings({ custom_character_names: next } as Parameters<typeof updateUserSettings>[0])
+        setRenameSaved(true)
+        setTimeout(() => setRenameSaved(false), 2000)
     }
 
     const menuCardClass = 'h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/60 dark:bg-white/[0.09] dark:border-white/20 dark:hover:bg-white/[0.14] px-4 py-4'
@@ -570,6 +588,14 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         />
                                     </div>
                                 ))}
+                                <Button
+                                    type="button"
+                                    onClick={handleSaveAllNames}
+                                    className="w-full rounded-xl mt-2"
+                                    size="sm"
+                                >
+                                    {renameSaved ? 'Saved!' : 'Save Names'}
+                                </Button>
                             </div>
                         </div>
                     </div>

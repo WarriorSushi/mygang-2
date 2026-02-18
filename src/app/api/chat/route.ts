@@ -744,6 +744,13 @@ ${sessionSummary}
             })
         }
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
+        const customNameEntries = Object.entries(customNames).filter(([id]) => filteredIds.includes(id))
+        const customNamesDirective = customNameEntries.length > 0
+            ? `\nCUSTOM NAMES (user renamed these characters — ALWAYS use the custom name, NEVER the original):\n${customNameEntries.map(([id, name]) => {
+                const original = activeGangSafe.find((c) => c.id === id)?.name || id
+                return `- "${id}" is called "${name}" (not "${original}"). Refer to yourself and each other using ONLY the custom name.`
+            }).join('\n')}\n`
+            : ''
 
         const isGangFocusMode = chatMode === 'gang_focus'
         const baseResponders = Math.min(isGangFocusMode ? 3 : (lowCostMode ? 2 : 4), filteredIds.length)
@@ -768,7 +775,7 @@ USER:
 
 SQUAD (id|name|role|voice):
 ${characterContext}
-
+${customNamesDirective}
 SQUAD DYNAMICS (use these to create natural group banter):
 - Characters should sometimes respond to EACH OTHER, not just the user.
 - Different characters have different opinions -- let them disagree, joke, or riff off each other.
