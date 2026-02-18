@@ -25,7 +25,7 @@ export function LoadingStep() {
                 const currentIndex = STATUS_MESSAGES.indexOf(current)
                 return STATUS_MESSAGES[(currentIndex + 1) % STATUS_MESSAGES.length]
             })
-        }, 800)
+        }, 1200)
         return () => clearInterval(interval)
     }, [])
 

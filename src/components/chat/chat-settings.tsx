@@ -327,7 +327,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Intelligence</Label>
                                 </div>
                                 <div className={cn(panelCardClass, 'p-1.5')}>
-                                    <div className="relative grid grid-cols-2 gap-1">
+                                    <div className="relative grid grid-cols-2 gap-1" role="group" aria-label="Intelligence mode">
                                         <div
                                             className={cn(
                                                 'absolute inset-y-0 w-[calc(50%-2px)] rounded-xl bg-primary shadow-[0_8px_24px_-14px_rgba(16,185,129,0.9)] transition-transform duration-300',
@@ -388,13 +388,15 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Chat Wallpaper</Label>
                                 </div>
                                 <p className="px-1 text-[11px] text-muted-foreground">Visual look only. Does not affect AI behavior.</p>
-                                <div className="grid max-h-[calc(100dvh-210px)] grid-cols-1 gap-2 overflow-y-auto pr-1">
+                                <div className="grid max-h-[calc(100dvh-210px)] grid-cols-1 gap-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Wallpaper options">
                                     {CHAT_WALLPAPERS.map((option) => {
                                         const active = chatWallpaper === option.id
                                         return (
                                             <button
                                                 key={option.id}
                                                 type="button"
+                                                role="radio"
+                                                aria-checked={active}
                                                 onClick={() => handleWallpaperChange(option.id)}
                                                 className={cn(
                                                     'flex w-full items-center gap-3 rounded-2xl border px-2.5 py-2 text-left transition-colors',

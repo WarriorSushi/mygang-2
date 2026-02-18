@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Brain, Trash2, Edit3, Check, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,47 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
     const [editContent, setEditContent] = useState('')
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
     const isGuest = useChatStore((state) => state.isGuest)
+    const drawerRef = useRef<HTMLDivElement>(null)
+
+    // Escape key to close
+    useEffect(() => {
+        if (!isOpen) return
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose()
+        }
+        document.addEventListener('keydown', handleKeyDown)
+        return () => document.removeEventListener('keydown', handleKeyDown)
+    }, [isOpen, onClose])
+
+    // Focus trap: keep focus within the drawer
+    useEffect(() => {
+        if (!isOpen) return
+        const drawer = drawerRef.current
+        if (!drawer) return
+        const focusable = drawer.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length > 0) focusable[0].focus()
+
+        const handleTab = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab') return
+            const currentFocusable = drawer.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+            if (currentFocusable.length === 0) return
+            const first = currentFocusable[0]
+            const last = currentFocusable[currentFocusable.length - 1]
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault()
+                last.focus()
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault()
+                first.focus()
+            }
+        }
+        document.addEventListener('keydown', handleTab)
+        return () => document.removeEventListener('keydown', handleTab)
+    }, [isOpen])
 
     const loadMemories = useCallback(async (options?: { reset?: boolean; before?: string | null }) => {
         const reset = options?.reset ?? false
@@ -137,6 +178,10 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
 
                     {/* Drawer */}
                     <motion.div
+                        ref={drawerRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Memory Vault"
                         initial={{ x: '100%' }}
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
@@ -174,7 +219,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                         </div>
 
                         {/* List */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                             {isGuest ? (
                                 <div className="text-center py-12">
                                     <p className="text-muted-foreground text-sm">Memories are saved to your account.</p>
@@ -199,6 +244,8 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                                     <textarea
                                                         value={editContent}
                                                         onChange={(e) => setEditContent(e.target.value)}
+                                                        aria-label="Edit memory content"
+                                                        maxLength={500}
                                                         className="w-full bg-black/20 border border-border/50 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-24 resize-none"
                                                         autoFocus
                                                     />
@@ -230,7 +277,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     onClick={() => handleEdit(memory)}
-                                                                    className="h-7 w-7 rounded-full hover:bg-muted/60"
+                                                                    className="h-9 w-9 rounded-full hover:bg-muted/60"
                                                                     aria-label="Edit memory"
                                                                 >
                                                                     <Edit3 size={14} />
@@ -239,7 +286,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     onClick={() => setPendingDeleteId(memory.id)}
-                                                                    className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                                                                    className="h-9 w-9 rounded-full hover:bg-destructive/20 hover:text-destructive"
                                                                     aria-label="Delete memory"
                                                                 >
                                                                     <Trash2 size={14} />
@@ -275,7 +322,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                             )}
                         </div>
 
-                        <div className="p-6 border-t border-border/50 bg-black/20">
+                        <div className="p-4 sm:p-6 border-t border-border/50 bg-muted/30 dark:bg-black/20">
                             <p className="text-[10px] text-center text-muted-foreground uppercase leading-relaxed font-medium">
                                 Memories shape how the gang interacts with you.<br />
                                 Changes take effect immediately.

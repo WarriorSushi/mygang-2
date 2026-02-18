@@ -11,9 +11,13 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function GlassCard({ children, className, onClick, style, variant = 'default', ...props }: GlassCardProps) {
+    const interactive = !!onClick
     return (
         <div
             onClick={onClick}
+            onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.() } } : undefined}
+            role={interactive ? 'button' : undefined}
+            tabIndex={interactive ? 0 : undefined}
             style={style}
             {...props}
             className={cn(

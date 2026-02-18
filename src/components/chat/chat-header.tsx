@@ -109,11 +109,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     }, [showCapacityInfo])
 
     return (
-        <header data-testid="chat-header" className="px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/50 dark:border-white/8 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/95 dark:bg-[rgba(14,22,37,0.92)] z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
+        <header data-testid="chat-header" aria-label="Chat header" className="px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/50 dark:border-white/8 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/95 dark:bg-[rgba(14,22,37,0.92)] z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
             <div className="flex items-center gap-3 min-w-0">
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">
-                        <div className="flex -space-x-2">
+                        <div className="flex -space-x-2" role="group" aria-label={`${activeGang.length} gang members`}>
                             {activeGang.map((char) => (
                                 <Avatar
                                     key={char.id}
@@ -227,8 +227,8 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                         updateUserSettings({ theme: nextTheme })
                     }}
                 >
-                    <Sun size={18} className="hidden dark:block" />
-                    <Moon size={18} className="dark:hidden" />
+                    <Sun size={18} className="hidden dark:block" aria-hidden="true" />
+                    <Moon size={18} className="dark:hidden" aria-hidden="true" />
                 </Button>
                 <Button
                     variant="ghost"

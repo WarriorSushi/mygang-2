@@ -2,7 +2,10 @@ export const MAX_MESSAGE_ID_CHARS = 128
 
 export function sanitizeMessageId(value: unknown) {
     if (typeof value !== 'string') return ''
-    return value.trim().slice(0, MAX_MESSAGE_ID_CHARS)
+    const trimmed = value.trim().slice(0, MAX_MESSAGE_ID_CHARS)
+    // Only allow alphanumeric, hyphens, underscores, and dots (defense-in-depth)
+    if (!/^[a-zA-Z0-9._-]+$/.test(trimmed)) return ''
+    return trimmed
 }
 
 export function isMissingHistoryMetadataColumnsError(err: unknown) {

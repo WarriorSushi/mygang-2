@@ -324,6 +324,7 @@ function MessageItemComponent({
                                 className="w-full h-full object-cover"
                                 sizes="28px"
                                 priority={false}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                             />
                         ) : (
                             <span className="text-white text-[11px] font-semibold uppercase">
@@ -378,7 +379,7 @@ function MessageItemComponent({
                     aria-expanded={canShowActions ? showActions : undefined}
                 >
                     {isReaction ? (
-                        <span className="text-3xl animate-bounce-short inline-block">{message.content}</span>
+                        <span className="text-3xl animate-bounce-short inline-block" role="img" aria-label={`${character?.name || message.speaker} reacted with ${message.content}`}>{message.content}</span>
                     ) : (
                         <div className="space-y-1.5 min-w-0">
                             {/* Quoted reply (left-border accent style) */}
@@ -429,7 +430,8 @@ function MessageItemComponent({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
+                            role="menuitem"
+                            className="rounded-full text-xs tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white min-h-[44px] sm:min-h-0"
                             onClick={() => {
                                 onLike?.(message)
                                 setShowActions(false)
@@ -442,7 +444,8 @@ function MessageItemComponent({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
+                            role="menuitem"
+                            className="rounded-full text-xs tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white min-h-[44px] sm:min-h-0"
                             onClick={() => {
                                 onReply?.(message)
                                 setShowActions(false)
@@ -456,7 +459,8 @@ function MessageItemComponent({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="rounded-full text-[10px] tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white"
+                                role="menuitem"
+                                className="rounded-full text-xs tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white min-h-[44px] sm:min-h-0"
                                 onClick={() => {
                                     saveMemoryManual(message.content)
                                     setShowActions(false)
@@ -489,7 +493,7 @@ function MessageItemComponent({
 
             {/* Delivery status + Seen by (stable-height container) */}
             {isUser && !isReaction && (
-                <div className="mt-0.5 px-1 min-h-[16px]">
+                <div className="mt-0.5 px-1 min-h-[16px]" aria-live="polite">
                     {message.deliveryStatus && (
                         <span className={cn(
                             "text-[10px]",

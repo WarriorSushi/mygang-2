@@ -279,11 +279,11 @@ export function LandingPage() {
             </span>
           )}
           {isAuthenticated ? (
-            <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-              <Button variant="ghost" disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 border border-border/80 bg-card/70 hover:bg-card transition-all">
+            <Button variant="ghost" asChild disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 border border-border/80 bg-card/70 hover:bg-card transition-all">
+              <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
                 Dashboard
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           ) : (
             <Button
               variant="ghost"
@@ -324,20 +324,21 @@ export function LandingPage() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start items-center lg:items-start">
-                  <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-                    <Button
+                  <Button
                       size="xl"
+                      asChild
                       disabled={ctaDisabled}
                       data-testid="landing-cta"
                       className="rounded-full w-[min(92vw,22rem)] sm:w-auto px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
                     >
+                    <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
                       <span className="relative z-10 flex items-center gap-3">
                         {ctaText}
                         <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-2 transition-transform duration-500" />
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                   <div className="inline-flex w-[min(72vw,16rem)] sm:w-auto">
                     <Button
                       variant="outline"
@@ -498,17 +499,21 @@ export function LandingPage() {
         <Section id="faq" title="Questions, answered" subtitle="Quick clarity, no jargon">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {faq.map((item, i) => (
-              <motion.div
+              <motion.details
                 key={item.q}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
-                className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300"
+                className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
+                open
               >
-                <div className="text-base font-semibold mb-2">{item.q}</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
-              </motion.div>
+                <summary className="text-base font-semibold cursor-pointer list-none flex items-center justify-between [&::-webkit-details-marker]:hidden">
+                  {item.q}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 transition-transform group-open:rotate-90 shrink-0 ml-2" />
+                </summary>
+                <p className="text-sm text-muted-foreground leading-relaxed mt-2">{item.a}</p>
+              </motion.details>
             ))}
           </div>
         </Section>
@@ -532,12 +537,12 @@ export function LandingPage() {
                 Start with one message and watch the room come alive around you.
               </p>
             </div>
-            <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-              <Button size="xl" className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group shrink-0">
+            <Button size="xl" asChild className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group shrink-0">
+              <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
                 {ctaText}
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </motion.div>
         </section>
       </main>
@@ -722,17 +727,20 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1">
           {threads.map((_, i) => (
             <button
               key={i}
               onClick={() => setActiveIndex(i)}
-              className={cn(
-                'h-2 rounded-full transition-all duration-300',
-                i === activeIndex ? 'bg-primary w-6' : 'bg-muted-foreground/30 w-2'
-              )}
+              className="p-2 cursor-pointer"
               aria-label={`Go to chat ${i + 1}`}
-            />
+              aria-current={i === activeIndex ? 'true' : undefined}
+            >
+              <span className={cn(
+                'block h-2 rounded-full transition-all duration-300',
+                i === activeIndex ? 'bg-primary w-6' : 'bg-muted-foreground/30 w-2'
+              )} />
+            </button>
           ))}
         </div>
 

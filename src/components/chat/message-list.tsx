@@ -283,6 +283,7 @@ export const MessageList = memo(function MessageList({
                                 className="rounded-full text-[10px] uppercase tracking-widest"
                                 onClick={onLoadOlderHistory}
                                 disabled={loadingHistory || !hasMoreHistory}
+                                aria-busy={loadingHistory}
                             >
                                 {loadingHistory ? 'Loading earlier messages...' : 'Load earlier messages'}
                             </Button>

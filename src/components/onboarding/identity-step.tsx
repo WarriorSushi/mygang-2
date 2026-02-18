@@ -30,13 +30,17 @@ export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepPro
                     id="onboarding-name-input"
                     placeholder="Your nickname..."
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => setName(e.target.value.slice(0, 30))}
+                    maxLength={30}
                     data-testid="onboarding-name"
-                    aria-label="Your nickname"
+                    aria-describedby="name-hint"
                     className="text-base sm:text-lg py-5 sm:py-7 px-5 sm:px-6 bg-muted/40 border-border/50 rounded-2xl focus-visible:ring-primary/50"
                     autoFocus
                     onKeyDown={(e) => e.key === 'Enter' && canContinue && onNext()}
                 />
+                <p id="name-hint" className="text-[10px] text-muted-foreground/60 px-1">
+                    {trimmedName.length < 2 ? `${2 - trimmedName.length} more character${trimmedName.length === 1 ? '' : 's'} needed` : `${name.length}/30`}
+                </p>
                 <Button
                     className="w-full py-5 sm:py-7 rounded-2xl text-base sm:text-lg font-bold shadow-lg shadow-primary/10 transition-all active:scale-[0.98]"
                     disabled={!canContinue}
