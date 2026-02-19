@@ -311,6 +311,9 @@ export const MessageList = memo(function MessageList({
 
                         const shouldAnimate = animatedMessageIdsRef.current.has(message.id)
 
+                        const isReaction = !!message.reaction
+                        const gapPx = samePrevious ? 3 : isReaction ? 12 : 16
+
                         return (
                             <div
                                 key={message.id}
@@ -324,6 +327,7 @@ export const MessageList = memo(function MessageList({
                                     width: '100%',
                                     transform: `translateY(${virtualRow.start}px)`,
                                     willChange: 'transform',
+                                    paddingTop: index === 0 ? 0 : gapPx,
                                 }}
                             >
                               <div className={shouldAnimate ? "animate-msg-appear" : undefined}>

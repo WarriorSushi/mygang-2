@@ -823,7 +823,15 @@ ${allowedStatusList}
 ${allowMemoryUpdates || shouldUpdateSummary ? `MEMORY/RELATIONSHIP:
 - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
 - SUMMARY_UPDATE_ALLOWED: ${shouldUpdateSummary ? 'YES' : 'NO'}.
-- Relationship deltas must stay in [-3, +3] and be meaningful.` : 'MEMORY/RELATIONSHIP: Updates disabled this turn. Omit memory_updates and session_summary_update.'}
+- Relationship deltas must stay in [-3, +3] and be meaningful.
+${allowMemoryUpdates ? `- MEMORY EXTRACTION RULES (CRITICAL):
+  - ALWAYS extract episodic memories when the user shares personal facts, preferences, or identity info.
+  - Examples of what MUST be stored: name, age, occupation, role, location, relationships, hobbies, likes/dislikes, opinions, goals, anything the user says about themselves.
+  - Store as concise, third-person facts. E.g. user says "I'm the developer who built you" -> episodic: "User is the developer who built this app/gang"
+  - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
+  - If the user corrects a previous fact, store the correction with importance >= 2.
+  - When in doubt, STORE IT. It's better to store too much than to forget what the user told you.
+  - importance: 1 = casual mention, 2 = explicitly stated fact, 3 = corrected/emphasized fact.` : ''}` : 'MEMORY/RELATIONSHIP: Updates disabled this turn. Omit memory_updates and session_summary_update.'}
 
 PLANNING:
 - MAX_RESPONDERS: ${maxResponders}.

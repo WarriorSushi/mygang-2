@@ -304,7 +304,6 @@ function MessageItemComponent({
                 "group relative flex flex-col w-auto max-w-[82vw] sm:max-w-[66vw] lg:max-w-[34rem]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
                 isReaction && "opacity-80",
-                isContinued ? "mt-[3px]" : isReaction ? "mt-3" : "mt-4",
                 showActions ? "z-40" : "z-0"
             )}
         >
