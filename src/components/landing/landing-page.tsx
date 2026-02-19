@@ -375,7 +375,7 @@ export function LandingPage() {
 
 
         {/* ── Marquee ── */}
-        <section className="w-full overflow-hidden bg-card/50 backdrop-blur-sm">
+        <section className="w-full overflow-hidden bg-card/60">
           <div className="hidden sm:flex items-center gap-8 whitespace-nowrap py-6 text-xs sm:text-sm uppercase tracking-[0.3em] text-muted-foreground/80">
             <div className="flex w-max gap-8 animate-marquee">
               {[...marqueeItems, ...marqueeItems].map((item, idx) => (
@@ -411,7 +411,15 @@ export function LandingPage() {
         </section>
 
         {/* ── How It Works ── */}
-        <Section id="how-it-works" title="How it works" subtitle="Three steps to your gang">
+        <Section
+          id="how-it-works"
+          title="How it works"
+          subtitle="Three steps to your gang"
+          glow={<>
+            <div className="section-glow -top-[15%] left-[-8%] w-[55%] h-[70%] bg-cyan-500/[0.06] dark:bg-cyan-500/[0.04] blur-[140px]" />
+            <div className="section-glow -bottom-[20%] right-[-5%] w-[40%] h-[50%] bg-primary/[0.05] dark:bg-primary/[0.03] blur-[120px]" />
+          </>}
+        >
           {/* Steps - spacious numbered layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-16">
             {steps.map((step, i) => (
@@ -452,7 +460,15 @@ export function LandingPage() {
         </Section>
 
         {/* ── Why It Feels Real ── */}
-        <Section id="why-it-feels-real" title="Why it feels real" subtitle="Company, not just answers">
+        <Section
+          id="why-it-feels-real"
+          title="Why it feels real"
+          subtitle="Company, not just answers"
+          glow={<>
+            <div className="section-glow -top-[10%] right-[-10%] w-[50%] h-[60%] bg-rose-500/[0.05] dark:bg-rose-500/[0.03] blur-[130px]" />
+            <div className="section-glow bottom-[-15%] left-[5%] w-[35%] h-[45%] bg-amber-500/[0.04] dark:bg-amber-500/[0.03] blur-[110px]" />
+          </>}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {whyRealFeatures.map((item, i) => (
               <motion.div
@@ -461,7 +477,7 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.45 }}
-                className="group rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-6 sm:p-7 text-left hover:border-primary/30 transition-all duration-300"
+                className="group rounded-2xl border border-border/70 bg-card p-6 sm:p-7 text-left hover:border-primary/30 transition-all duration-300"
               >
                 <div
                   className="w-12 h-12 rounded-xl bg-background/80 border border-border/60 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 animate-floaty"
@@ -477,7 +493,14 @@ export function LandingPage() {
         </Section>
 
         {/* ── Testimonials ── */}
-        <Section id="testimonials" title="Loved by night owls" subtitle="People who wanted a chat that finally feels alive">
+        <Section
+          id="testimonials"
+          title="Loved by night owls"
+          subtitle="People who wanted a chat that finally feels alive"
+          glow={
+            <div className="section-glow top-[10%] left-1/2 -translate-x-1/2 w-[60%] h-[80%] bg-violet-500/[0.05] dark:bg-violet-500/[0.035] blur-[140px]" />
+          }
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {testimonials.map((item, i) => (
               <motion.div
@@ -494,7 +517,14 @@ export function LandingPage() {
         </Section>
 
         {/* ── FAQ ── */}
-        <Section id="faq" title="Questions, answered" subtitle="Quick clarity, no jargon">
+        <Section
+          id="faq"
+          title="Questions, answered"
+          subtitle="Quick clarity, no jargon"
+          glow={
+            <div className="section-glow -top-[10%] left-[-5%] w-[40%] h-[70%] bg-emerald-500/[0.04] dark:bg-emerald-500/[0.025] blur-[120px]" />
+          }
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {faq.map((item, i) => (
               <motion.details
@@ -503,7 +533,7 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
-                className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
+                className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
                 open
               >
                 <summary className="text-base font-semibold cursor-pointer list-none flex items-center justify-between [&::-webkit-details-marker]:hidden">
@@ -575,7 +605,7 @@ export function LandingPage() {
   )
 }
 
-/* ── LiveDemoCard: truly fixed-size, no layout shift ── */
+/* ── LiveDemoCard: CSS-only bubble animations for performance ── */
 function LiveDemoCard({ thread }: { thread: DemoThread }) {
   const [visibleCount, setVisibleCount] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -627,62 +657,51 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
           <h3 className="mt-0.5 text-base font-bold tracking-tight">{thread.title}</h3>
         </div>
 
-        {/* Fixed-size chat area - overflow scroll, never changes page height */}
+        {/* Fixed-size chat area - CSS transitions only, no framer-motion per bubble */}
         <div className="rounded-xl border border-border/60 bg-background/60 p-3 h-[19rem] sm:h-[22rem] flex flex-col">
           <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
             <div className="space-y-2.5 flex flex-col justify-end min-h-full">
               <div className="flex-1" />
-              <AnimatePresence initial={false}>
-                {visibleBubbles.map((bubble, idx) => (
-                  <motion.div
-                    key={`${thread.title}-${bubble.speaker}-${idx}`}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, ease: 'easeOut' }}
-                    className={cn(bubble.side === 'right' ? 'ml-auto' : 'mr-auto', 'max-w-[88%]')}
+              {visibleBubbles.map((bubble, idx) => (
+                <div
+                  key={`${thread.title}-${bubble.speaker}-${idx}`}
+                  className={cn(
+                    bubble.side === 'right' ? 'ml-auto' : 'mr-auto',
+                    'max-w-[88%] animate-msg-appear'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'rounded-2xl px-3.5 py-2.5 border text-[12.5px] leading-relaxed',
+                      bubble.tone === 'user'
+                        ? 'bg-primary text-primary-foreground border-primary/30 rounded-br-md'
+                        : cn('rounded-tl-md', crewColors[bubble.speaker] ?? 'bg-card/95 text-foreground border-border/70')
+                    )}
                   >
-                    <div
-                      className={cn(
-                        'rounded-2xl px-3.5 py-2.5 border text-[12.5px] leading-relaxed',
-                        bubble.tone === 'user'
-                          ? 'bg-primary text-primary-foreground border-primary/30 rounded-br-md'
-                          : cn('rounded-tl-md', crewColors[bubble.speaker] ?? 'bg-card/95 text-foreground border-border/70')
-                      )}
-                    >
-                      {bubble.replyTo && (
-                        <div className="mb-1.5 rounded-lg border border-border/50 bg-background/50 px-2 py-1 text-[10px] italic text-muted-foreground truncate">
-                          {bubble.replyTo}
-                        </div>
-                      )}
-                      <p>{bubble.text}</p>
-                      <div className="mt-1 flex items-center gap-1.5 text-[9px] opacity-60">
-                        {bubble.tone === 'crew' && <span className="font-medium">{bubble.speaker}</span>}
-                        {bubble.reaction && <span>{bubble.reaction}</span>}
+                    {bubble.replyTo && (
+                      <div className="mb-1.5 rounded-lg border border-border/50 bg-background/50 px-2 py-1 text-[10px] italic text-muted-foreground truncate">
+                        {bubble.replyTo}
                       </div>
+                    )}
+                    <p>{bubble.text}</p>
+                    <div className="mt-1 flex items-center gap-1.5 text-[9px] opacity-60">
+                      {bubble.tone === 'crew' && <span className="font-medium">{bubble.speaker}</span>}
+                      {bubble.reaction && <span>{bubble.reaction}</span>}
                     </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Typing indicator anchored at bottom */}
           <div className="h-7 flex items-center mt-2 shrink-0">
-            <AnimatePresence mode="wait">
-              {nextBubble && (
-                <motion.div
-                  key={`typing-${visibleCount}`}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-2.5 py-1 text-[10px] text-muted-foreground"
-                >
-                  <Reply className="w-3 h-3" />
-                  {nextBubble.speaker} is typing...
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {nextBubble && (
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-2.5 py-1 text-[10px] text-muted-foreground animate-msg-appear">
+                <Reply className="w-3 h-3" />
+                {nextBubble.speaker} is typing...
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -760,17 +779,29 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
 /* ── Glowing section divider ── */
 function SectionDivider() {
   return (
-    <div className="w-full flex justify-center pointer-events-none" aria-hidden="true">
-      <div className="w-[70%] max-w-2xl h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+    <div className="w-full flex justify-center pointer-events-none py-1" aria-hidden="true">
+      <div className="w-[60%] max-w-xl h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
     </div>
   )
 }
 
-function Section({ id, title, subtitle, children }: { id?: string; title: string; subtitle: string; children: ReactNode }) {
+/*
+ * Each section gets a unique glow via the `glow` prop — a JSX element
+ * positioned absolutely that bleeds past the section boundaries.
+ * No overflow-hidden, so gradients fade naturally into neighbors.
+ */
+function Section({ id, title, subtitle, glow, children }: {
+  id?: string
+  title: string
+  subtitle: string
+  glow?: ReactNode
+  children: ReactNode
+}) {
   return (
     <>
       <SectionDivider />
       <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24 relative">
+        {glow}
         <div className="max-w-6xl mx-auto relative">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -812,7 +843,7 @@ function Testimonial({ quote, name, role }: { quote: string; name: string; role:
       ref={cardRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-6 sm:p-7 shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-[border-color] duration-300 h-full flex flex-col will-change-transform"
+      className="rounded-2xl border border-border/70 bg-card p-6 sm:p-7 shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-[border-color] duration-300 h-full flex flex-col will-change-transform"
       style={{ transition: 'border-color 0.3s, transform 0.15s ease-out' }}
     >
       <div className="text-base font-medium leading-relaxed flex-1">&quot;{quote}&quot;</div>

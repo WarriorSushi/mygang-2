@@ -304,13 +304,77 @@
   contain-intrinsic-size: 120px 80px;
 }
 
+/* ── Background blob CSS animations (GPU-composited, zero JS) ── */
+
+@keyframes blob-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(80px, 40px) scale(1.12); }
+  66%      { transform: translate(30px, 70px) scale(0.95); }
+}
+
+@keyframes blob-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-60px, -40px) scale(1.08); }
+  66%      { transform: translate(-30px, 50px) scale(1.15); }
+}
+
+@keyframes blob-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25%      { transform: translate(40px, -35px) scale(1.2); }
+  50%      { transform: translate(-30px, 25px) scale(0.9); }
+  75%      { transform: translate(20px, 40px) scale(1.1); }
+}
+
+.animate-blob-drift-1 { animation: blob-drift-1 20s ease-in-out infinite; }
+.animate-blob-drift-2 { animation: blob-drift-2 16s ease-in-out infinite; }
+.animate-blob-drift-3 { animation: blob-drift-3 24s ease-in-out infinite; }
+
+/* ── Film grain overlay ── */
+
+@keyframes grain-shift {
+  0%, 100% { transform: translate(0, 0); }
+  10%      { transform: translate(-2%, -3%); }
+  30%      { transform: translate(3%, 1%); }
+  50%      { transform: translate(-1%, 3%); }
+  70%      { transform: translate(2%, -2%); }
+  90%      { transform: translate(-3%, 1%); }
+}
+
+.landing-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  opacity: 0.07;
+  mix-blend-mode: soft-light;
+  animation: grain-shift 8s steps(6) infinite;
+}
+
+.dark .landing-grain {
+  opacity: 0.05;
+}
+
+/* ── Section glow utilities ── */
+
+.section-glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-msg-appear,
   .animate-bounce-short,
   .animate-gradient,
   .animate-marquee,
   .animate-floaty,
-  .animate-spin-slow {
+  .animate-spin-slow,
+  .animate-blob-drift-1,
+  .animate-blob-drift-2,
+  .animate-blob-drift-3 {
+    animation: none !important;
+  }
+  .landing-grain {
     animation: none !important;
   }
 }
