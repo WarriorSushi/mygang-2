@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { CHARACTERS } from '@/constants/characters'
 
 function ChatSkeleton() {
@@ -86,7 +85,6 @@ export const MessageList = memo(function MessageList({
     const isGuest = useChatStore((state) => state.isGuest)
     const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
     const customCharacterNames = useChatStore((state) => state.customCharacterNames)
-    const itemCount = messages.length
     const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
     const characterCatalogById = useMemo(
         () => new Map(CHARACTERS.map((character) => [normalizeSpeaker(character.id), character])),
@@ -128,51 +126,14 @@ export const MessageList = memo(function MessageList({
         return seenMap
     }, [messages, characterBySpeaker])
 
-    const measuredSizes = useRef<Map<number, number>>(new Map())
-    const prevFirstMessageIdRef = useRef<string | null>(null)
-
-    // Clear cached measurements when messages are reconciled/reordered (not just appended).
-    // measuredSizes is keyed by index, so any index shift makes the cache stale.
-    const firstMessageId = messages[0]?.id ?? null
-    if (firstMessageId !== prevFirstMessageIdRef.current) {
-        measuredSizes.current.clear()
-        prevFirstMessageIdRef.current = firstMessageId
-    }
-
-    const rowVirtualizer = useVirtualizer({
-        count: itemCount,
-        getScrollElement: () => scrollRef.current,
-        estimateSize: (index) => measuredSizes.current.get(index) ?? 120,
-        overscan: 8,
-        measureElement: (el) => {
-            const h = el.getBoundingClientRect().height
-            const idx = Number((el as HTMLElement).dataset.index)
-            if (!Number.isNaN(idx)) measuredSizes.current.set(idx, h)
-            return h
-        },
-    })
-
-    const isProgrammaticScrollRef = useRef(false)
-
     const scrollToBottom = useCallback(() => {
         if (!scrollRef.current) return
-        isProgrammaticScrollRef.current = true
-        // Single deferred scroll: wait one frame for virtualizer measurement, then snap
         requestAnimationFrame(() => {
-            if (!scrollRef.current) { isProgrammaticScrollRef.current = false; return }
-            rowVirtualizer.scrollToIndex(Math.max(0, itemCount - 1), { align: 'end' })
-            // One more frame for the virtualizer to commit layout
-            requestAnimationFrame(() => {
-                if (!scrollRef.current) { isProgrammaticScrollRef.current = false; return }
-                const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
-                if (scrollHeight - scrollTop - clientHeight > 4) {
-                    scrollRef.current.scrollTop = scrollHeight - clientHeight
-                }
-                setIsAtBottom(true)
-                isProgrammaticScrollRef.current = false
-            })
+            if (!scrollRef.current) return
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+            setIsAtBottom(true)
         })
-    }, [itemCount, rowVirtualizer])
+    }, [])
 
     // Handle scroll events
     const handleScroll = () => {
@@ -180,14 +141,13 @@ export const MessageList = memo(function MessageList({
         scrollRafRef.current = window.requestAnimationFrame(() => {
             scrollRafRef.current = null
             if (!scrollRef.current) return
-            if (isProgrammaticScrollRef.current) return
             const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
             const atBottom = scrollHeight - scrollTop - clientHeight < 48
             setIsAtBottom(atBottom)
         })
     }
 
-    // Auto-scroll logic
+    // Cleanup
     useEffect(() => {
         return () => {
             if (scrollRafRef.current !== null) {
@@ -199,28 +159,20 @@ export const MessageList = memo(function MessageList({
         }
     }, [])
 
-    // Initial load should always show latest message.
+    // Initial load — scroll to bottom
     useEffect(() => {
         if (didInitialScrollRef.current) return
-        if (itemCount === 0) return
+        if (messages.length === 0) return
         didInitialScrollRef.current = true
-        requestAnimationFrame(() => {
-            scrollToBottom()
-        })
-    }, [itemCount, scrollToBottom])
+        scrollToBottom()
+    }, [messages.length, scrollToBottom])
 
+    // New messages — auto-scroll + animate
     useEffect(() => {
         if (!scrollRef.current) return
 
         const previousLength = prevMessagesLength.current
         const isNewMessage = messages.length > previousLength
-        const isReplaced = messages.length < previousLength || (messages.length === previousLength && messages.length > 0)
-
-        // When messages are reconciled/replaced (not just appended), force remeasure
-        if (isReplaced) {
-            measuredSizes.current.clear()
-            rowVirtualizer.measure()
-        }
 
         if (isNewMessage) {
             const appendedMessages = messages.slice(previousLength)
@@ -248,7 +200,7 @@ export const MessageList = memo(function MessageList({
         }
 
         prevMessagesLength.current = messages.length
-    }, [messages, isAtBottom, scrollToBottom, rowVirtualizer])
+    }, [messages, isAtBottom, scrollToBottom, characterBySpeaker])
 
     if (isBootstrappingHistory && messages.length === 0) {
         return (
@@ -270,7 +222,7 @@ export const MessageList = memo(function MessageList({
                 role="log"
                 aria-label="Chat messages"
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-4"
-                style={{ paddingBottom: 80, overflowAnchor: 'none' }}
+                style={{ paddingBottom: 80 }}
                 data-testid="chat-scroll"
             >
                 {(hasMoreHistory || loadingHistory) && (
@@ -290,11 +242,8 @@ export const MessageList = memo(function MessageList({
                         </div>
                     </div>
                 )}
-                <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
-                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                        const index = virtualRow.index
-                        const message = messages[index]
-                        if (!message) return null
+                <div className="flex flex-col">
+                    {messages.map((message, index) => {
                         const character = characterBySpeaker.get(normalizeSpeaker(message.speaker))
                         const samePrevious = index > 0 && messages[index - 1].speaker === message.speaker
                         const sameNext = index < messages.length - 1 && messages[index + 1].speaker === message.speaker
@@ -308,45 +257,40 @@ export const MessageList = memo(function MessageList({
                             ? characterBySpeaker.get(normalizeSpeaker(quotedMessage.speaker)) ?? null
                             : null
                         const seenBy = seenByMessageId.get(message.id) ?? []
-
                         const shouldAnimate = animatedMessageIdsRef.current.has(message.id)
-
                         const isReaction = !!message.reaction
-                        const gapPx = samePrevious ? 3 : isReaction ? 12 : 16
 
                         return (
                             <div
                                 key={message.id}
-                                ref={rowVirtualizer.measureElement}
-                                data-index={index}
-                                className="px-4 md:px-10 lg:px-14"
-                                style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    transform: `translateY(${virtualRow.start}px)`,
-                                    willChange: 'transform',
-                                    paddingTop: index === 0 ? 0 : gapPx,
-                                }}
+                                className={cn(
+                                    "px-4 md:px-10 lg:px-14",
+                                    index === 0
+                                        ? ""
+                                        : samePrevious
+                                            ? "pt-[3px]"
+                                            : isReaction
+                                                ? "pt-3"
+                                                : "pt-4"
+                                )}
                             >
-                              <div className={shouldAnimate ? "animate-msg-appear" : undefined}>
-                                <MessageItem
-                                    message={message}
-                                    character={character}
-                                    isContinued={samePrevious}
-                                    groupPosition={groupPosition}
-                                    isFastMode={isFastMode}
-                                    quotedMessage={quotedMessage}
-                                    quotedSpeaker={quotedSpeaker}
-                                    seenBy={seenBy}
-                                    isGuest={isGuest}
-                                    showPersonaRoles={showPersonaRoles}
-                                    onReply={onReplyMessage}
-                                    onLike={onLikeMessage}
-                                    onRetry={onRetryMessage}
-                                />
-                              </div>
+                                <div className={shouldAnimate ? "animate-msg-appear" : undefined}>
+                                    <MessageItem
+                                        message={message}
+                                        character={character}
+                                        isContinued={samePrevious}
+                                        groupPosition={groupPosition}
+                                        isFastMode={isFastMode}
+                                        quotedMessage={quotedMessage}
+                                        quotedSpeaker={quotedSpeaker}
+                                        seenBy={seenBy}
+                                        isGuest={isGuest}
+                                        showPersonaRoles={showPersonaRoles}
+                                        onReply={onReplyMessage}
+                                        onLike={onLikeMessage}
+                                        onRetry={onRetryMessage}
+                                    />
+                                </div>
                             </div>
                         )
                     })}
