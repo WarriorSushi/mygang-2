@@ -416,8 +416,8 @@ export function LandingPage() {
           title="How it works"
           subtitle="Three steps to your gang"
           glow={<>
-            <div className="section-glow -top-[15%] left-[-8%] w-[55%] h-[70%] bg-cyan-500/[0.06] dark:bg-cyan-500/[0.04] blur-[140px]" />
-            <div className="section-glow -bottom-[20%] right-[-5%] w-[40%] h-[50%] bg-primary/[0.05] dark:bg-primary/[0.03] blur-[120px]" />
+            <div className="section-glow -top-[15%] left-[-8%] w-[55%] h-[70%] bg-cyan-500/[0.14] dark:bg-cyan-500/[0.09] blur-[100px]" />
+            <div className="section-glow -bottom-[20%] right-[-5%] w-[40%] h-[50%] bg-primary/[0.12] dark:bg-primary/[0.08] blur-[90px]" />
           </>}
         >
           {/* Steps - spacious numbered layout */}
@@ -465,8 +465,8 @@ export function LandingPage() {
           title="Why it feels real"
           subtitle="Company, not just answers"
           glow={<>
-            <div className="section-glow -top-[10%] right-[-10%] w-[50%] h-[60%] bg-rose-500/[0.05] dark:bg-rose-500/[0.03] blur-[130px]" />
-            <div className="section-glow bottom-[-15%] left-[5%] w-[35%] h-[45%] bg-amber-500/[0.04] dark:bg-amber-500/[0.03] blur-[110px]" />
+            <div className="section-glow -top-[10%] right-[-10%] w-[50%] h-[60%] bg-rose-500/[0.13] dark:bg-rose-500/[0.08] blur-[100px]" />
+            <div className="section-glow bottom-[-15%] left-[5%] w-[35%] h-[45%] bg-amber-500/[0.10] dark:bg-amber-500/[0.07] blur-[80px]" />
           </>}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -498,7 +498,7 @@ export function LandingPage() {
           title="Loved by night owls"
           subtitle="People who wanted a chat that finally feels alive"
           glow={
-            <div className="section-glow top-[10%] left-1/2 -translate-x-1/2 w-[60%] h-[80%] bg-violet-500/[0.05] dark:bg-violet-500/[0.035] blur-[140px]" />
+            <div className="section-glow top-[10%] left-1/2 -translate-x-1/2 w-[60%] h-[80%] bg-violet-500/[0.12] dark:bg-violet-500/[0.08] blur-[100px]" />
           }
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -522,7 +522,7 @@ export function LandingPage() {
           title="Questions, answered"
           subtitle="Quick clarity, no jargon"
           glow={
-            <div className="section-glow -top-[10%] left-[-5%] w-[40%] h-[70%] bg-emerald-500/[0.04] dark:bg-emerald-500/[0.025] blur-[120px]" />
+            <div className="section-glow -top-[10%] left-[-5%] w-[40%] h-[70%] bg-emerald-500/[0.10] dark:bg-emerald-500/[0.07] blur-[90px]" />
           }
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
