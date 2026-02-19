@@ -142,7 +142,7 @@ export const MessageList = memo(function MessageList({
     const rowVirtualizer = useVirtualizer({
         count: itemCount,
         getScrollElement: () => scrollRef.current,
-        estimateSize: (index) => measuredSizes.current.get(index) ?? 85,
+        estimateSize: (index) => measuredSizes.current.get(index) ?? 120,
         overscan: 8,
         measureElement: (el) => {
             const h = el.getBoundingClientRect().height

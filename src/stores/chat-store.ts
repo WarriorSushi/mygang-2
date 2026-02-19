@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ChatWallpaper } from '@/constants/wallpapers'
 
-const MAX_PERSISTED_MESSAGES = 600
+const MAX_PERSISTED_MESSAGES = 100
 
 export interface Message {
     id: string
@@ -45,7 +45,7 @@ interface ChatState {
     chatWallpaper: ChatWallpaper
     showPersonaRoles: boolean
     customCharacterNames: Record<string, string>
-    squadConflict: { local: Character[]; remote: Character[] } | null
+    squadConflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
@@ -60,7 +60,7 @@ interface ChatState {
     setChatWallpaper: (wallpaper: ChatWallpaper) => void
     setShowPersonaRoles: (showPersonaRoles: boolean) => void
     setCustomCharacterNames: (names: Record<string, string>) => void
-    setSquadConflict: (conflict: { local: Character[]; remote: Character[] } | null) => void
+    setSquadConflict: (conflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null) => void
     clearChat: () => void
 }
 

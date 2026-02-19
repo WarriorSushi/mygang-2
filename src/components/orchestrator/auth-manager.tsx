@@ -65,47 +65,63 @@ export function AuthManager() {
                 const profile = remote.profile
                 const remoteIds = savedIds.length >= 2 && savedIds.length <= 4 ? savedIds : null
 
-                if (remoteIds && remoteIds.length >= 2) {
-                    const squad = CHARACTERS.filter(c => remoteIds.includes(c.id))
-                    if (!sameSet(localIds, remoteIds)) {
-                        setActiveGang(squad)
-                    } else if (localGang.length === 0) {
-                        setActiveGang(squad)
-                    }
-                    setSquadConflict(null)
-                } else if (localIds.length >= 2 && localIds.length <= 4) {
-                    try {
-                        await persistUserJourney(supabase, session.user.id, {
-                            gangIds: localIds,
-                            onboardingCompleted: true
-                        })
-                    } catch (err) {
-                        console.error('Error saving local gang:', err)
-                    }
-                }
+                const hasLocalGang = localIds.length >= 2 && localIds.length <= 4
+                const hasRemoteGang = remoteIds && remoteIds.length >= 2
+                const remoteSquad = hasRemoteGang ? CHARACTERS.filter(c => remoteIds!.includes(c.id)) : []
+                const remoteName = profile?.username || null
+                const gangsDiffer = hasLocalGang && hasRemoteGang && !sameSet(localIds, remoteIds!)
+                const namesDiffer = !!localName && !!remoteName && localName !== remoteName
 
-                if (profile?.username) {
-                    setUserName(profile.username)
-                } else if (localName) {
-                    try {
-                        await persistUserJourney(supabase, session.user.id, {
-                            username: localName
-                        })
-                    } catch (err) {
-                        console.error('Error saving username:', err)
-                    }
+                if (gangsDiffer || namesDiffer) {
+                    // Both sides have data and they differ — let user choose
+                    setSquadConflict({
+                        local: localGang,
+                        remote: remoteSquad,
+                        localName: namesDiffer ? localName : null,
+                        remoteName: namesDiffer ? remoteName : null
+                    })
                 } else {
-                    const fallbackName = session.user.user_metadata?.full_name
-                        || session.user.user_metadata?.name
-                        || session.user.email?.split('@')[0]
-                    if (fallbackName) {
-                        setUserName(fallbackName)
+                    // No conflict — merge silently
+                    setSquadConflict(null)
+
+                    if (hasRemoteGang) {
+                        if (localGang.length === 0 || !sameSet(localIds, remoteIds!)) {
+                            setActiveGang(remoteSquad)
+                        }
+                    } else if (hasLocalGang) {
                         try {
                             await persistUserJourney(supabase, session.user.id, {
-                                username: fallbackName
+                                gangIds: localIds,
+                                onboardingCompleted: true
                             })
                         } catch (err) {
-                            console.error('Error saving fallback username:', err)
+                            console.error('Error saving local gang:', err)
+                        }
+                    }
+
+                    if (remoteName) {
+                        setUserName(remoteName)
+                    } else if (localName) {
+                        try {
+                            await persistUserJourney(supabase, session.user.id, {
+                                username: localName
+                            })
+                        } catch (err) {
+                            console.error('Error saving username:', err)
+                        }
+                    } else {
+                        const fallbackName = session.user.user_metadata?.full_name
+                            || session.user.user_metadata?.name
+                            || session.user.email?.split('@')[0]
+                        if (fallbackName) {
+                            setUserName(fallbackName)
+                            try {
+                                await persistUserJourney(supabase, session.user.id, {
+                                    username: fallbackName
+                                })
+                            } catch (err) {
+                                console.error('Error saving fallback username:', err)
+                            }
                         }
                     }
                 }
