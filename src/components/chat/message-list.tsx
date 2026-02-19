@@ -82,6 +82,7 @@ export const MessageList = memo(function MessageList({
     const [isAtBottom, setIsAtBottom] = useState(true)
     const [liveAnnouncement, setLiveAnnouncement] = useState('')
     const prevMessagesLength = useRef(messages.length)
+    const prevFirstMessageIdRef = useRef<string | null>(messages[0]?.id ?? null)
     const isGuest = useChatStore((state) => state.isGuest)
     const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
     const customCharacterNames = useChatStore((state) => state.customCharacterNames)
@@ -167,14 +168,28 @@ export const MessageList = memo(function MessageList({
         scrollToBottom()
     }, [messages.length, scrollToBottom])
 
-    // New messages — auto-scroll + animate
+    // New messages — auto-scroll + animate (but NOT for older history prepend)
     useEffect(() => {
         if (!scrollRef.current) return
 
         const previousLength = prevMessagesLength.current
+        const prevFirstId = prevFirstMessageIdRef.current
+        const currentFirstId = messages[0]?.id ?? null
         const isNewMessage = messages.length > previousLength
 
-        if (isNewMessage) {
+        // Detect prepend: first message ID changed = older messages were added at top
+        const isPrepend = isNewMessage && currentFirstId !== prevFirstId && prevFirstId !== null
+
+        if (isPrepend) {
+            // Preserve scroll position: offset by the new content height
+            const el = scrollRef.current
+            const prevScrollHeight = el.scrollHeight
+            requestAnimationFrame(() => {
+                if (!scrollRef.current) return
+                const newScrollHeight = scrollRef.current.scrollHeight
+                scrollRef.current.scrollTop += newScrollHeight - prevScrollHeight
+            })
+        } else if (isNewMessage) {
             const appendedMessages = messages.slice(previousLength)
             const hasUserMessage = appendedMessages.some((m) => m.speaker === 'user')
             appendedMessages.forEach((m) => animatedMessageIdsRef.current.add(m.id))
@@ -200,6 +215,7 @@ export const MessageList = memo(function MessageList({
         }
 
         prevMessagesLength.current = messages.length
+        prevFirstMessageIdRef.current = currentFirstId
     }, [messages, isAtBottom, scrollToBottom, characterBySpeaker])
 
     if (isBootstrappingHistory && messages.length === 0) {
