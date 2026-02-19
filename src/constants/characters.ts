@@ -127,7 +127,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.25,
         tags: ['support', 'wisdom'],
         gradient: 'from-green-400 to-emerald-700',
-        avatar: '',
+        avatar: '/avatars/sage.png',
     },
     {
         id: 'miko',
@@ -141,7 +141,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.75,
         tags: ['hype', 'chaos', 'drama'],
         gradient: 'from-pink-500 to-rose-600',
-        avatar: '',
+        avatar: '/avatars/miko.png',
     },
     {
         id: 'dash',
@@ -155,7 +155,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.8,
         tags: ['motivation', 'hype'],
         gradient: 'from-blue-500 to-cyan-600',
-        avatar: '',
+        avatar: '/avatars/dash.png',
     },
     {
         id: 'zara',
@@ -169,7 +169,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.0,
         tags: ['roast', 'support'],
         gradient: 'from-amber-600 to-orange-800',
-        avatar: '',
+        avatar: '/avatars/zara.png',
     },
     {
         id: 'jinx',
@@ -183,7 +183,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.9,
         tags: ['chaos', 'logic'],
         gradient: 'from-violet-500 to-indigo-800',
-        avatar: '',
+        avatar: '/avatars/jinx.png',
     },
     {
         id: 'nova',
@@ -197,6 +197,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.3,
         tags: ['vibes', 'philosophy'],
         gradient: 'from-teal-400 to-cyan-700',
-        avatar: '',
+        avatar: '/avatars/nova.png',
     },
 ]
