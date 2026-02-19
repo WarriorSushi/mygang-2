@@ -15,7 +15,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.9,
         tags: ['hype', 'social', 'style'],
         gradient: 'from-amber-200 to-yellow-500',
-        avatar: '/avatars/kael.png?v=2',
+        avatar: '/avatars/kael.png',
     },
     {
         id: 'nyx',
@@ -29,7 +29,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.8,
         tags: ['logic', 'roast'],
         gradient: 'from-purple-500 to-indigo-600',
-        avatar: '/avatars/nyx.png?v=2',
+        avatar: '/avatars/nyx.png',
     },
     {
         id: 'atlas',
@@ -43,7 +43,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.1,
         tags: ['ops', 'support'],
         gradient: 'from-blue-400 to-slate-600',
-        avatar: '/avatars/atlas.png?v=2',
+        avatar: '/avatars/atlas.png',
     },
     {
         id: 'luna',
@@ -57,7 +57,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.15,
         tags: ['empath', 'vibes'],
         gradient: 'from-pink-300 to-rose-400',
-        avatar: '/avatars/luna.png?v=2',
+        avatar: '/avatars/luna.png',
     },
     {
         id: 'rico',
@@ -71,7 +71,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.85,
         tags: ['chaos', 'hype'],
         gradient: 'from-orange-500 to-red-600',
-        avatar: '/avatars/rico.png?v=2',
+        avatar: '/avatars/rico.png',
     },
     {
         id: 'vee',
@@ -85,7 +85,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.2,
         tags: ['logic', 'facts'],
         gradient: 'from-emerald-400 to-teal-600',
-        avatar: '/avatars/vee.png?v=2',
+        avatar: '/avatars/vee.png',
     },
     {
         id: 'ezra',
@@ -99,7 +99,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.05,
         tags: ['art', 'philosophy'],
         gradient: 'from-stone-500 to-neutral-800',
-        avatar: '/avatars/ezra.png?v=2',
+        avatar: '/avatars/ezra.png',
     },
     {
         id: 'cleo',
@@ -113,7 +113,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.95,
         tags: ['drama', 'social'],
         gradient: 'from-fuchsia-300 to-purple-600',
-        avatar: '/avatars/cleo.png?v=2',
+        avatar: '/avatars/cleo.png',
     },
     {
         id: 'sage',
@@ -127,7 +127,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.25,
         tags: ['support', 'wisdom'],
         gradient: 'from-green-400 to-emerald-700',
-        avatar: '/avatars/sage.png?v=2',
+        avatar: '/avatars/sage.png',
     },
     {
         id: 'miko',
@@ -141,7 +141,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.75,
         tags: ['hype', 'chaos', 'drama'],
         gradient: 'from-pink-500 to-rose-600',
-        avatar: '/avatars/miko.png?v=2',
+        avatar: '/avatars/miko.png',
     },
     {
         id: 'dash',
@@ -155,7 +155,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.8,
         tags: ['motivation', 'hype'],
         gradient: 'from-blue-500 to-cyan-600',
-        avatar: '/avatars/dash.png?v=2',
+        avatar: '/avatars/dash.png',
     },
     {
         id: 'zara',
@@ -169,7 +169,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.0,
         tags: ['roast', 'support'],
         gradient: 'from-amber-600 to-orange-800',
-        avatar: '/avatars/zara.png?v=2',
+        avatar: '/avatars/zara.png',
     },
     {
         id: 'jinx',
@@ -183,7 +183,7 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.9,
         tags: ['chaos', 'logic'],
         gradient: 'from-violet-500 to-indigo-800',
-        avatar: '/avatars/jinx.png?v=2',
+        avatar: '/avatars/jinx.png',
     },
     {
         id: 'nova',
@@ -197,6 +197,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.3,
         tags: ['vibes', 'philosophy'],
         gradient: 'from-teal-400 to-cyan-700',
-        avatar: '/avatars/nova.png?v=2',
+        avatar: '/avatars/nova.png',
     },
 ]

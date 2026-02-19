@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+  images: {
+    minimumCacheTTL: 60,
+  },
   async headers() {
     const headers = [
       { key: "X-Content-Type-Options", value: "nosniff" },
