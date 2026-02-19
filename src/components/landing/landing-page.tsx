@@ -375,7 +375,7 @@ export function LandingPage() {
 
 
         {/* ── Marquee ── */}
-        <section className="w-full overflow-hidden border-y border-border/60 bg-card/65">
+        <section className="w-full overflow-hidden bg-card/50 backdrop-blur-sm">
           <div className="hidden sm:flex items-center gap-8 whitespace-nowrap py-6 text-xs sm:text-sm uppercase tracking-[0.3em] text-muted-foreground/80">
             <div className="flex w-max gap-8 animate-marquee">
               {[...marqueeItems, ...marqueeItems].map((item, idx) => (
@@ -461,9 +461,12 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.45 }}
-                className="group rounded-2xl border border-border/70 bg-card p-6 sm:p-7 text-left hover:border-primary/30 transition-all duration-300"
+                className="group rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-6 sm:p-7 text-left hover:border-primary/30 transition-all duration-300"
               >
-                <div className="w-12 h-12 rounded-xl bg-background/80 border border-border/60 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                <div
+                  className="w-12 h-12 rounded-xl bg-background/80 border border-border/60 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 animate-floaty"
+                  style={{ animationDelay: `${i * 0.8}s` }}
+                >
                   {item.icon}
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold tracking-tight mb-2">{item.title}</h3>
@@ -500,7 +503,7 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
-                className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
+                className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
                 open
               >
                 <summary className="text-base font-semibold cursor-pointer list-none flex items-center justify-between [&::-webkit-details-marker]:hidden">
@@ -514,8 +517,8 @@ export function LandingPage() {
         </Section>
 
         {/* ── Final CTA ── */}
-        <section className="w-full px-6 sm:px-10 lg:px-14 pb-24 relative overflow-hidden">
-          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-accent/[0.06] dark:bg-accent/[0.08] blur-[140px] rounded-full" />
+        <SectionDivider />
+        <section className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24 relative">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -543,7 +546,10 @@ export function LandingPage() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="p-8 sm:p-12 text-center text-muted-foreground/40 text-xs sm:text-sm border-t border-border/60">
+      <div className="w-full flex justify-center pointer-events-none" aria-hidden="true">
+        <div className="w-[70%] max-w-2xl h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+      </div>
+      <footer className="p-8 sm:p-12 text-center text-muted-foreground/40 text-xs sm:text-sm">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
           <span>&copy; 2026 MyGang.ai - Your always-on social circle.</span>
           <span className="hidden sm:inline">·</span>
@@ -751,32 +757,64 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
   )
 }
 
+/* ── Glowing section divider ── */
+function SectionDivider() {
+  return (
+    <div className="w-full flex justify-center pointer-events-none" aria-hidden="true">
+      <div className="w-[70%] max-w-2xl h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+    </div>
+  )
+}
+
 function Section({ id, title, subtitle, children }: { id?: string; title: string; subtitle: string; children: ReactNode }) {
   return (
-    <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24 relative overflow-hidden">
-      {/* Subtle spotlight glow */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/[0.04] dark:bg-primary/[0.06] blur-[120px] rounded-full" />
-      <div className="max-w-6xl mx-auto relative">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4 }}
-          className="mb-10 text-left"
-        >
-          <span className="text-xs font-semibold text-primary tracking-wide">{subtitle}</span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mt-2 tracking-tight">{title}</h2>
-        </motion.div>
-        {children}
-      </div>
-    </section>
+    <>
+      <SectionDivider />
+      <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24 relative">
+        <div className="max-w-6xl mx-auto relative">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="mb-10 text-left"
+          >
+            <span className="text-xs font-semibold text-primary tracking-wide">{subtitle}</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mt-2 tracking-tight">{title}</h2>
+          </motion.div>
+          {children}
+        </div>
+      </section>
+    </>
   )
 }
 
 
 function Testimonial({ quote, name, role }: { quote: string; name: string; role: string }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = cardRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const x = (e.clientX - rect.left) / rect.width - 0.5
+    const y = (e.clientY - rect.top) / rect.height - 0.5
+    el.style.transform = `perspective(600px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg)`
+  }
+
+  const handleMouseLeave = () => {
+    const el = cardRef.current
+    if (el) el.style.transform = ''
+  }
+
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-6 sm:p-7 shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 h-full flex flex-col">
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-6 sm:p-7 shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-[border-color] duration-300 h-full flex flex-col will-change-transform"
+      style={{ transition: 'border-color 0.3s, transform 0.15s ease-out' }}
+    >
       <div className="text-base font-medium leading-relaxed flex-1">&quot;{quote}&quot;</div>
       <div className="mt-4 flex items-center gap-2">
         <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
