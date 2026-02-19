@@ -204,28 +204,23 @@ export function LandingPage() {
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92])
 
   const prefersReducedMotion = useReducedMotion()
-  const { userId, isHydrated } = useChatStore()
+  const { userId, isHydrated, activeGang } = useChatStore()
   const isAuthenticated = isHydrated && !!userId
-  const ctaText = !isHydrated ? 'Syncing...' : isAuthenticated ? 'Continue' : 'Assemble Your Gang'
-  const ctaLink = isAuthenticated ? '/post-auth' : '/onboarding'
+  const hasGang = activeGang.length >= 2
+  const ctaText = !isHydrated ? 'Syncing...' : isAuthenticated ? 'Go to Chat' : 'Assemble Your Gang'
+  const ctaLink = isAuthenticated ? (hasGang ? '/chat' : '/onboarding') : '/onboarding'
   const ctaDisabled = !isHydrated
   const safeCtaLink = ctaDisabled ? '#' : ctaLink
-  const wasUnauthRef = useRef(false)
 
-  // Track when user was unauthenticated so we can detect login transitions
+  // Auto-redirect authenticated users away from landing page
   useEffect(() => {
-    if (isHydrated && !userId) {
-      wasUnauthRef.current = true
+    if (!isAuthenticated) return
+    if (hasGang) {
+      router.replace('/chat')
+    } else {
+      router.replace('/onboarding')
     }
-  }, [isHydrated, userId])
-
-  // Auto-redirect when user completes login while on the landing page (e.g. after OAuth)
-  useEffect(() => {
-    if (isAuthenticated && wasUnauthRef.current) {
-      wasUnauthRef.current = false
-      router.replace('/post-auth')
-    }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, hasGang, router])
 
   const marqueeItems = useMemo(
     () => [
@@ -281,7 +276,7 @@ export function LandingPage() {
           {isAuthenticated ? (
             <Button variant="ghost" asChild disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 border border-border/80 bg-card/70 hover:bg-card transition-all">
               <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
-                Dashboard
+                Go to Chat
               </Link>
             </Button>
           ) : (
