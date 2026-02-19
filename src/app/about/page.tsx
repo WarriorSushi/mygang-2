@@ -5,7 +5,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'About',
   description:
-    'Learn about MyGang.ai, the AI group chat where every personality is unique, every conversation is real, and your crew is always online.',
+    'Learn about MyGang.ai, the AI group chat where every friend is unique, every conversation is real, and your gang is always online.',
   alternates: {
     canonical: '/about',
   },
@@ -92,19 +92,19 @@ export default function AboutPage() {
               <span className="text-foreground font-medium">
                 full-on group chat
               </span>{' '}
-              with AI personas who have their own personalities, opinions, humor,
-              and vibes. Think of it like having a crew of friends who are always
+              with AI friends who have their own personalities, opinions, humor,
+              and vibes. Think of it like having a gang of friends who are always
               online, always down to talk, and never leave you on read.
             </p>
             <p>
-              You build your own gang. Pick your personas, name them, shape their
+              You build your own gang. Pick your friends, name them, shape their
               personalities. They don&apos;t just respond to you, they
               talk to <em>each other</em>. They riff, they joke, they argue
               (sometimes), and they genuinely make the chat feel alive.
             </p>
             <p>
               It&apos;s companionship on your terms. No social pressure, no
-              small talk you have to pretend to care about. Just a crew that
+              small talk you have to pretend to care about. Just a gang that
               vibes with you, whenever you need them.
             </p>
           </div>
@@ -136,12 +136,12 @@ export default function AboutPage() {
               MyGang started as a passion project, built by someone who
               genuinely loves the idea of AI that feels{' '}
               <span className="text-foreground font-medium">warm</span>, not
-              clinical. AI that has character, not just capabilities. A crew that
+              clinical. AI that has character, not just capabilities. A gang that
               feels alive, not scripted.
             </p>
             <p>
               And honestly, it&apos;s been a blast to build. Every weird
-              personality quirk, every moment where the AI personas surprise us
+              personality quirk, every moment where the AI friends surprise us
               with something unexpectedly funny or heartfelt, that&apos;s
               why we keep going.
             </p>
@@ -165,7 +165,7 @@ export default function AboutPage() {
               },
               {
                 title: 'Distinct Personalities',
-                body: "No two personas are the same. They have their own voice, their own takes, their own energy. Because a group chat where everyone agrees is just boring.",
+                body: "No two friends are the same. They have their own voice, their own takes, their own energy. Because a group chat where everyone agrees is just boring.",
               },
               {
                 title: 'Genuine Warmth',

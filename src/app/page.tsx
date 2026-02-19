@@ -40,7 +40,7 @@ const structuredData = {
       applicationCategory: 'ChatApplication',
       operatingSystem: 'Web',
       description:
-        'Experience the group chat that never sleeps. 8 unique AI personalities ready to roar, roast, and vibe with you 24/7.',
+        'Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.',
       url: siteUrl,
       offers: {
         '@type': 'Offer',
@@ -59,7 +59,7 @@ const structuredData = {
           name: 'Can this really feel like a friend group?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Yes. Each persona has a distinct voice and the group chemistry grows with you.',
+            text: 'Yes. Each friend has a distinct voice and the group chemistry grows with you.',
           },
         },
         {
@@ -67,7 +67,7 @@ const structuredData = {
           name: 'Can I change my gang later?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Absolutely. You can swap personalities anytime until your lineup feels perfect.',
+            text: 'Absolutely. You can swap friends anytime until your lineup feels perfect.',
           },
         },
         {

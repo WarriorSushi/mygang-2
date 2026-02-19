@@ -225,7 +225,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         {panel === 'root' && 'Main Menu'}
                                         {panel === 'mode' && 'Intelligence'}
                                         {panel === 'wallpaper' && 'Chat Wallpaper'}
-                                        {panel === 'labels' && 'Persona Labels'}
+                                        {panel === 'labels' && 'Friend Labels'}
                                         {panel === 'account' && 'Account'}
                                         {panel === 'rename' && 'Rename Characters'}
                                     </p>
@@ -270,7 +270,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             >
                                 <div className="text-left">
                                     <p className="text-[11px] font-black uppercase tracking-wider">Role Labels</p>
-                                    <p className="text-[11px] text-muted-foreground">Show role next to persona names in chat</p>
+                                    <p className="text-[11px] text-muted-foreground">Show role next to friend names in chat</p>
                                 </div>
                                 <Tags size={16} />
                             </Button>
@@ -425,7 +425,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 px-1">
                                     <Tags size={12} className="text-cyan-400" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Persona Labels</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Friend Labels</Label>
                                 </div>
                                 <div className={cn(panelCardClass, 'flex items-center justify-between px-3 py-3')}>
                                     <div className="pr-3">
@@ -435,7 +435,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <Switch
                                         checked={showPersonaRoles}
                                         onCheckedChange={setShowPersonaRoles}
-                                        aria-label="Toggle persona role labels"
+                                        aria-label="Toggle friend role labels"
                                     />
                                 </div>
                             </div>

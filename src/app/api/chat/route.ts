@@ -367,7 +367,7 @@ const responseSchema = z.object({
         character: z.string().describe('Character ID'),
         message_id: z.string().optional().describe('Stable message ID'),
         content: z.string().optional().describe('Message text, emoji, status, or nickname'),
-        target_message_id: z.string().optional().describe('ID of message being reacted to or quoted'),
+        target_message_id: z.string().optional().describe('RARELY used. ID of message being reacted to or quoted. Omit for most messages — only set when replying to a SPECIFIC earlier message, not the latest user message.'),
         delay: z.number().describe('Delay in ms after the previous event'),
     })),
     responders: z.array(z.string()).optional().describe('Characters chosen to respond this turn'),
@@ -808,11 +808,12 @@ LOW_COST_MODE: ${lowCostMode ? 'YES' : 'NO'}.
 
 CORE RULES:
 1) Latest message is "now". Prioritize newest user info.
-2) QUOTING/REPLYING: Most messages should NOT use target_message_id. Only use it when:
-   - A character is specifically disagreeing with or calling out a particular earlier message
-   - A character is quoting someone else for comedic or dramatic effect
-   - A character wants to directly reply to another character's specific point
-   Approximately 80% of messages should have NO target_message_id. In a real group chat, people just talk -- they rarely quote.
+2) QUOTING/REPLYING — CRITICAL: DO NOT set target_message_id on most messages. Leave it null/omitted.
+   Only set target_message_id when there is a SPECIFIC reason:
+   - A friend is disagreeing with or calling out a PARTICULAR earlier message
+   - A friend is quoting someone else for comedic or dramatic effect
+   - A friend wants to directly reply to another friend's specific point (NOT the user's latest message — that's already obvious context)
+   AT LEAST 85% of messages MUST have NO target_message_id. In a real group chat, people just talk — they don't hit "reply" on every message. Replying to the user's latest message is especially unnecessary since it's already the topic of conversation.
 3) Use occasional reaction events (emoji reactions) for realism. Keep them short and punchy.
 4) Status update content must be exactly one of:
 ${allowedStatusList}

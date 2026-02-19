@@ -126,7 +126,7 @@ const demoThreads: DemoThread[] = [
 const whyRealFeatures = [
   {
     title: 'Distinct voices',
-    copy: 'Every persona has a clear personality. Replies feel like people, not templates.',
+    copy: 'Every friend has a clear personality. Replies feel like people, not templates.',
     icon: <UserRound className="w-6 h-6 text-cyan-500" />,
   },
   {
@@ -177,11 +177,11 @@ const testimonials = [
 const faq = [
   {
     q: 'Can this really feel like a friend group?',
-    a: 'Yes. Each persona has a distinct voice and the group chemistry grows with you.',
+    a: 'Yes. Each friend has a distinct voice and the group chemistry grows with you.',
   },
   {
     q: 'Can I change my gang later?',
-    a: 'Absolutely. You can swap personalities anytime until your lineup feels perfect.',
+    a: 'Absolutely. You can swap friends anytime until your lineup feels perfect.',
   },
   {
     q: 'Is it just for lonely moments?',
@@ -251,7 +251,7 @@ export function LandingPage() {
           className="text-2xl font-bold flex items-center gap-2"
         >
           <Image src="/logo.png" alt="MyGang" width={40} height={40} className="object-contain" priority />
-          <span className="tracking-tighter text-xl sm:text-3xl">
+          <span className="font-[family-name:var(--font-marker)] text-xl sm:text-3xl">
             MyGang<span className="text-primary">.ai</span>
           </span>
         </motion.div>

@@ -37,9 +37,9 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
         >
             {/* Header */}
             <div className="text-center pt-6 sm:pt-10 pb-4 sm:pb-6 px-2">
-                <h2 className="text-2xl sm:text-4xl font-black tracking-tight">Pick your crew</h2>
+                <h2 className="text-2xl sm:text-4xl font-black tracking-tight">Pick your gang</h2>
                 <p className="text-muted-foreground text-sm sm:text-base mt-2">
-                    Choose 2–4 personas for your gang.
+                    Choose 2–4 friends for your gang.
                 </p>
             </div>
 
@@ -93,17 +93,29 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                         "absolute inset-0 bg-gradient-to-br opacity-20",
                                         char.gradient
                                     )} />
-                                    <Image
-                                        src={char.avatar}
-                                        alt={char.name}
-                                        width={200}
-                                        height={200}
-                                        className={cn(
-                                            "w-full h-full object-cover transition-transform duration-500",
-                                            isSelected ? "scale-105" : "group-hover:scale-105"
-                                        )}
-                                        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 180px"
-                                    />
+                                    {char.avatar ? (
+                                        <Image
+                                            src={char.avatar}
+                                            alt={char.name}
+                                            width={200}
+                                            height={200}
+                                            className={cn(
+                                                "w-full h-full object-cover transition-transform duration-500",
+                                                isSelected ? "scale-105" : "group-hover:scale-105"
+                                            )}
+                                            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 180px"
+                                        />
+                                    ) : (
+                                        <div
+                                            className={cn(
+                                                "w-full h-full flex items-center justify-center transition-transform duration-500",
+                                                isSelected ? "scale-105" : "group-hover:scale-105"
+                                            )}
+                                            style={{ backgroundColor: char.color }}
+                                        >
+                                            <span className="text-white text-4xl font-black">{char.name[0]}</span>
+                                        </div>
+                                    )}
                                     {/* Bottom gradient overlay for text readability */}
                                     <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
 
@@ -193,13 +205,19 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                         onClick={() => toggleCharacter(c.id)}
                                         title={`Remove ${c.name}`}
                                     >
-                                        <Image
-                                            src={c.avatar}
-                                            alt={c.name}
-                                            width={36}
-                                            height={36}
-                                            className="w-full h-full object-cover"
-                                        />
+                                        {c.avatar ? (
+                                            <Image
+                                                src={c.avatar}
+                                                alt={c.name}
+                                                width={36}
+                                                height={36}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: c.color }}>
+                                                <span className="text-white text-xs font-bold">{c.name[0]}</span>
+                                            </div>
+                                        )}
                                         <div className="absolute inset-0 bg-black/0 group-hover/avatar:bg-black/40 transition-colors flex items-center justify-center">
                                             <X className="w-3 h-3 text-white opacity-0 sm:group-hover/avatar:opacity-100" />
                                         </div>
