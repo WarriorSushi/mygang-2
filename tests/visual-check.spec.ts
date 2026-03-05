@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 test.setTimeout(120000);
 
@@ -12,10 +12,13 @@ test('Capture All Screens', async ({ page }) => {
     // 1. Landing Page
     console.log('Capturing Landing Page...');
     await page.goto('/');
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: 'screenshots/1_landing.png', animations: 'disabled' });
 
     // 2. Onboarding - Identity
     console.log('Clicking Assemble Your Gang...');
+    await page.locator('[data-testid="landing-cta"]').waitFor({ state: 'visible' });
+    await expect(page.locator('[data-testid="landing-cta"]')).toBeEnabled({ timeout: 30000 });
     await page.locator('[data-testid="landing-cta"]').click({ force: true });
     await page.waitForURL(/.*onboarding/);
     await page.screenshot({ path: 'screenshots/2_onboarding_start.png' });

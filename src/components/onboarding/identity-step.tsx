@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -12,15 +12,16 @@ interface IdentityStepProps {
 }
 
 export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepProps) {
+    const prefersReducedMotion = useReducedMotion()
     const trimmedName = name.trim()
     const canContinue = trimmedName.length >= 2
 
     return (
         <motion.div
             key="identity"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={prefersReducedMotion ? {} : { opacity: 0, x: 20 }}
+            animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
+            exit={prefersReducedMotion ? {} : { opacity: 0, x: -20 }}
             className="w-full max-w-md"
         >
             <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center">What should they call you?</h2>

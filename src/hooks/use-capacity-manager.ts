@@ -49,7 +49,8 @@ export function useCapacityManager({ onToast }: UseCapacityManagerArgs) {
         const stressCount = withinHardWindow.filter((timestamp) => now - timestamp <= AUTO_LOW_COST_STRESS_WINDOW_MS).length
         const hardCount = withinHardWindow.length
         const shouldEnableAutoMode = stressCount >= 2 || hardCount >= 4
-        if (!lowCostMode && shouldEnableAutoMode && !autoLowCostModeRef.current) {
+        const currentLowCostMode = useChatStore.getState().lowCostMode
+        if (!currentLowCostMode && shouldEnableAutoMode && !autoLowCostModeRef.current) {
             autoLowCostModeRef.current = true
             setAutoLowCostMode(true)
             onToast('Capacity is tight. Running temporary low-cost mode.')

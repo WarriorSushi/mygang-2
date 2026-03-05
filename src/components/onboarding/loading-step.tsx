@@ -20,6 +20,10 @@ export function LoadingStep() {
     const prefersReducedMotion = useReducedMotion()
 
     useEffect(() => {
+        if (prefersReducedMotion) {
+            setStatus("Summoning your gang...")
+            return
+        }
         const interval = setInterval(() => {
             setStatus(current => {
                 const currentIndex = STATUS_MESSAGES.indexOf(current)
@@ -27,7 +31,7 @@ export function LoadingStep() {
             })
         }, 1200)
         return () => clearInterval(interval)
-    }, [])
+    }, [prefersReducedMotion])
 
     return (
         <motion.div

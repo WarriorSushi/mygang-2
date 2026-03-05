@@ -18,6 +18,7 @@ import { ChatInput } from '@/components/chat/chat-input'
 import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 import { InlineToast } from '@/components/chat/inline-toast'
 const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
+const PaywallPopup = dynamic(() => import('@/components/billing/paywall-popup').then((m) => m.PaywallPopup), { ssr: false })
 
 // Custom hooks
 import { useChatHistory } from '@/hooks/use-chat-history'
@@ -37,6 +38,7 @@ export default function ChatPage() {
         chatMode,
         lowCostMode,
         chatWallpaper,
+        subscriptionTier,
         squadConflict,
         setSquadConflict,
     } = useChatStore(useShallow((s) => ({
@@ -49,6 +51,7 @@ export default function ChatPage() {
         chatMode: s.chatMode,
         lowCostMode: s.lowCostMode,
         chatWallpaper: s.chatWallpaper,
+        subscriptionTier: s.subscriptionTier,
         squadConflict: s.squadConflict,
         setSquadConflict: s.setSquadConflict,
     })))
@@ -58,8 +61,11 @@ export default function ChatPage() {
     const [showResumeBanner, setShowResumeBanner] = useState(false)
     const [resumeBannerText, setResumeBannerText] = useState('Resumed your last session')
     const [toastMessage, setToastMessage] = useState<string | null>(null)
-    const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+    const [isOnline, setIsOnline] = useState(true)
     const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+    const [paywallOpen, setPaywallOpen] = useState(false)
+    const [paywallCooldown, setPaywallCooldown] = useState(0)
+    const [paywallTier, setPaywallTier] = useState('free')
 
     const captureRootRef = useRef<HTMLDivElement>(null)
     const resumeBannerRef = useRef(false)
@@ -95,6 +101,11 @@ export default function ChatPage() {
         recordCapacityError: capacity.recordCapacityError,
         recordSuccessfulUserTurn: capacity.recordSuccessfulUserTurn,
         setReplyingTo,
+        onPaywall: (cooldownSeconds, tier) => {
+            setPaywallCooldown(cooldownSeconds)
+            setPaywallTier(tier)
+            setPaywallOpen(true)
+        },
     })
 
     const autonomous = useAutonomousFlow({
@@ -187,6 +198,8 @@ export default function ChatPage() {
 
     // ── Online/offline ──
     useEffect(() => {
+        // Sync initial state client-side (avoids hydration mismatch)
+        setIsOnline(navigator.onLine)
         const goOnline = () => setIsOnline(true)
         const goOffline = () => {
             setIsOnline(false)
@@ -326,6 +339,7 @@ export default function ChatPage() {
                     memoryActive={true}
                     autoLowCostActive={capacity.autoLowCostMode && !lowCostMode}
                     tokenUsage={api.lastTokenUsageRef.current}
+                    subscriptionTier={subscriptionTier}
                 />
 
                 <div className="flex-1 flex flex-col min-h-0 relative">
@@ -380,6 +394,12 @@ export default function ChatPage() {
             <SquadReconcile
                 conflict={squadConflict}
                 onResolve={() => setSquadConflict(null)}
+            />
+            <PaywallPopup
+                open={paywallOpen}
+                onOpenChange={setPaywallOpen}
+                cooldownSeconds={paywallCooldown}
+                tier={paywallTier}
             />
         </main>
     )

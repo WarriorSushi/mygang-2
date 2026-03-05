@@ -11,9 +11,10 @@ export default defineConfig({
     use: {
         baseURL: BASE_URL,
         headless: true,
+        bypassCSP: false,
     },
     webServer: {
-        command: `npm run dev -- --port ${PORT}`,
+        command: `pnpm dev --port ${PORT}`,
         url: `${BASE_URL}/admin/login`,
         reuseExistingServer: true,
         timeout: 180_000,

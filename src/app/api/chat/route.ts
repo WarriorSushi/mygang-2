@@ -5,6 +5,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
+import { getTierFromProfile, isMemoryEnabled } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
@@ -535,11 +536,12 @@ export async function POST(req: Request) {
             userName,
             userNickname,
             silentTurns = 0,
-            chatMode = 'ecosystem',
+            chatMode: requestedChatMode = 'gang_focus',
             lowCostMode: requestedLowCostMode = false,
             source = 'user',
             autonomousIdle = false
         } = parsed.data
+        let chatMode = requestedChatMode
         const requestStartedAt = Date.now()
         const serverTurnId = createServerTurnId()
 
@@ -678,26 +680,55 @@ export async function POST(req: Request) {
 
                 profileRow = profile
 
-                // Daily count check — the RPC handles atomic reset, but we still
-                // need to read the current value for the limit gate.  If the
-                // stored reset is stale (>24h) treat count as 0 (the RPC will
-                // reset it atomically when called later).
-                const now = new Date()
-                const lastReset = profile?.last_msg_reset ? new Date(profile.last_msg_reset) : null
-                const dailyCount = (!lastReset || (now.getTime() - lastReset.getTime()) > 24 * 60 * 60 * 1000)
-                    ? 0
-                    : (profile?.daily_msg_count ?? 0)
+                // Tier-based message gating
+                const tier = getTierFromProfile(profile?.subscription_tier ?? null)
+                const memoryEnabled = isMemoryEnabled(tier)
 
-                const dailyLimit = profile?.subscription_tier === 'pro' ? 300 : 80
-                if (hasFreshUserTurn && dailyCount >= dailyLimit) {
-                    return Response.json({
-                        events: [{
-                            type: 'message',
-                            character: 'system',
-                            content: "Daily limit reached. Come back tomorrow or upgrade for more.",
-                            delay: 200
-                        }]
-                    }, { status: 429 })
+                if (hasFreshUserTurn && tier !== 'pro') {
+                    if (tier === 'basic') {
+                        // Basic tier: 1,000 messages per calendar month
+                        const monthlyKey = `chat:monthly:${user.id}:${new Date().toISOString().slice(0, 7)}`
+                        const monthly = await rateLimit(monthlyKey, 1000, 30 * 24 * 60 * 60 * 1000)
+                        if (!monthly.success) {
+                            // Monthly exhausted — fall back to free tier window
+                            const freeWindowKey = `chat:free-window:${user.id}`
+                            const freeWindow = await rateLimit(freeWindowKey, 20, 60 * 60 * 1000)
+                            if (!freeWindow.success) {
+                                const cooldownSeconds = Math.max(1, Math.ceil((freeWindow.reset - Date.now()) / 1000))
+                                return Response.json({
+                                    events: [{
+                                        type: 'message',
+                                        character: 'system',
+                                        content: "You've used all 1,000 monthly messages and your free bonus messages for this hour. Try again soon or upgrade to Pro for unlimited.",
+                                        delay: 200
+                                    }],
+                                    paywall: true,
+                                    cooldown_seconds: cooldownSeconds,
+                                    tier: 'basic',
+                                    should_continue: false
+                                }, { status: 429 })
+                            }
+                        }
+                    } else {
+                        // Free tier: 20 messages per 60-minute sliding window
+                        const freeWindowKey = `chat:free-window:${user.id}`
+                        const freeWindow = await rateLimit(freeWindowKey, 20, 60 * 60 * 1000)
+                        if (!freeWindow.success) {
+                            const cooldownSeconds = Math.max(1, Math.ceil((freeWindow.reset - Date.now()) / 1000))
+                            return Response.json({
+                                events: [{
+                                    type: 'message',
+                                    character: 'system',
+                                    content: "You've reached your free message limit for this hour. Upgrade to keep chatting!",
+                                    delay: 200
+                                }],
+                                paywall: true,
+                                cooldown_seconds: cooldownSeconds,
+                                tier: 'free',
+                                should_continue: false
+                            }, { status: 429 })
+                        }
+                    }
                 }
 
                 if (hasFreshUserTurn) {
@@ -718,8 +749,17 @@ export async function POST(req: Request) {
                 summaryTurns = profile?.summary_turns ?? 0
                 shouldUpdateSummary = summaryTurns >= 8
                 allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && !autonomousIdle
+                // Disable memory for free tier
+                if (!memoryEnabled) {
+                    allowMemoryUpdates = false
+                }
 
-                if (lastUserMsg.trim() && !greetingOnly && !autonomousIdle) {
+                // Enforce gang_focus for free tier (ecosystem is a paid feature)
+                if (tier === 'free') {
+                    chatMode = 'gang_focus'
+                }
+
+                if (memoryEnabled && lastUserMsg.trim() && !greetingOnly && !autonomousIdle) {
                     const memories = await retrieveMemoriesLite(user.id, lastUserMsg, 5)
                     relevantMemories = memories.map((m) => ({ id: m.id, content: m.content }))
                     await touchMemories(memories.map((m) => m.id))

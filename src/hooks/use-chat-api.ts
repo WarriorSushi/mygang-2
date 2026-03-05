@@ -24,6 +24,9 @@ type ChatApiResponse = {
     events: ChatEvent[]
     should_continue?: boolean
     usage?: TokenUsage
+    paywall?: boolean
+    cooldown_seconds?: number
+    tier?: string
 }
 
 export type SendToApiArgs = {
@@ -68,6 +71,8 @@ interface UseChatApiArgs {
     recordSuccessfulUserTurn: () => void
     // UI state setters
     setReplyingTo: (msg: Message | null) => void
+    // Paywall callback
+    onPaywall?: (cooldownSeconds: number, tier: string) => void
 }
 
 export function useChatApi({
@@ -90,6 +95,7 @@ export function useChatApi({
     recordCapacityError,
     recordSuccessfulUserTurn,
     setReplyingTo,
+    onPaywall,
 }: UseChatApiArgs) {
     const { addMessage, setMessages, setCharacterStatus, setUserNickname } = useChatStore()
 
@@ -246,6 +252,15 @@ export function useChatApi({
             }
             if (!res) {
                 throw new Error('No response from chat API')
+            }
+
+            // Paywall detection: API signals the user hit their message limit
+            if (data?.paywall === true) {
+                updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', 'Message limit reached')
+                if (onPaywall) {
+                    onPaywall(data.cooldown_seconds ?? 300, data.tier ?? 'free')
+                }
+                return
             }
 
             if (!res.ok) {

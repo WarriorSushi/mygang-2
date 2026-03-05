@@ -41,5 +41,8 @@ export async function assertTrustedAdminRequest() {
     if (originHost && originHost !== meta.host) return false
     if (!originHost && refererHost && refererHost !== meta.host) return false
 
+    // Deny when both Origin and Referer are absent (blocks curl-based CSRF)
+    if (!originHost && !refererHost) return false
+
     return true
 }

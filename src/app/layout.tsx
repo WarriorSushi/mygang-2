@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Permanent_Marker } from "next/font/google";
+import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthManager } from "@/components/orchestrator/auth-manager";
@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const permanentMarker = Permanent_Marker({
-  weight: "400",
-  variable: "--font-marker",
+const outfit = Outfit({
+  variable: "--font-brand",
   subsets: ["latin"],
+  weight: ["700", "800", "900"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mygang.ai";
@@ -93,7 +93,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${permanentMarker.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}
         suppressHydrationWarning
       >
         <a

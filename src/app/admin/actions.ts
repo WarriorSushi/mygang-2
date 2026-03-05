@@ -71,8 +71,8 @@ export async function adminSignIn(formData: FormData) {
     const ip = requestMeta.ip
     const attemptKey = buildLoginAttemptKey(email, ip)
     const ipAttemptKey = buildIpAttemptKey(ip)
-    const userLockoutSeconds = getLockoutRemainingSeconds(attemptKey)
-    const ipLockoutSeconds = getLockoutRemainingSeconds(ipAttemptKey)
+    const userLockoutSeconds = await getLockoutRemainingSeconds(attemptKey)
+    const ipLockoutSeconds = await getLockoutRemainingSeconds(ipAttemptKey)
     const lockoutSeconds = Math.max(userLockoutSeconds, ipLockoutSeconds)
     if (lockoutSeconds > 0) {
         await applyFailedLoginDelay(true)
@@ -81,8 +81,8 @@ export async function adminSignIn(formData: FormData) {
 
     const valid = verifyAdminCredentials(email, password)
     if (!valid) {
-        const userResult = recordFailedAdminLoginAttempt(attemptKey)
-        const ipResult = recordFailedAdminLoginAttempt(ipAttemptKey)
+        const userResult = await recordFailedAdminLoginAttempt(attemptKey)
+        const ipResult = await recordFailedAdminLoginAttempt(ipAttemptKey)
         const locked = userResult.locked || ipResult.locked
         const retryAfterSeconds = Math.max(userResult.retryAfterSeconds, ipResult.retryAfterSeconds)
         await applyFailedLoginDelay(locked)
@@ -97,8 +97,8 @@ export async function adminSignIn(formData: FormData) {
         redirect('/admin/login?error=config')
     }
 
-    clearAdminLoginAttempts(attemptKey)
-    clearAdminLoginAttempts(ipAttemptKey)
+    await clearAdminLoginAttempts(attemptKey)
+    await clearAdminLoginAttempts(ipAttemptKey)
     try {
         await setAdminSession(configuredEmail)
     } catch (err) {

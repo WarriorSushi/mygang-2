@@ -17,11 +17,11 @@ test.describe('Landing Page', () => {
         await expect(heading).toContainText('YOUR')
         await expect(heading).toContainText('GANG')
 
-        // CTA button
+        // CTA button — wait for store hydration (shows "Syncing..." until ready)
         const cta = page.locator('[data-testid="landing-cta"]')
         await expect(cta).toBeVisible()
-        await expect(cta).toBeEnabled({ timeout: 15000 })
-        await expect(cta).toContainText('Assemble Your Gang')
+        await expect(cta).toBeEnabled({ timeout: 30000 })
+        await expect(cta).toContainText(/Assemble Your Gang|Go to Chat/)
     })
 
     test('marquee section has rotating items', async ({ page }) => {
@@ -46,14 +46,14 @@ test.describe('Landing Page', () => {
         await expect(page.locator('text=Watch the room come alive').first()).toBeVisible()
     })
 
-    test('Why it feels real section renders comparison table', async ({ page }) => {
+    test('Why it feels real section renders feature cards', async ({ page }) => {
         await page.goto('/')
         const section = page.locator('#why-it-feels-real')
         await section.scrollIntoViewIfNeeded()
 
-        await expect(page.locator('text=Reply quality').first()).toBeVisible()
-        await expect(page.locator('text=Social feel').first()).toBeVisible()
-        await expect(page.locator('text=Emotional tone').first()).toBeVisible()
+        await expect(page.locator('text=Distinct voices').first()).toBeVisible()
+        await expect(page.locator('text=Group chemistry').first()).toBeVisible()
+        await expect(page.locator('text=Memory that sticks').first()).toBeVisible()
     })
 
     test('demo chat cards have fixed height (no jitter)', async ({ page }) => {
@@ -106,7 +106,12 @@ test.describe('Landing Page', () => {
             const authWall = page.locator('[data-testid="auth-wall"]')
             await expect(authWall).toBeVisible({ timeout: 5000 })
 
-            // Auth wall has email and password fields
+            // Auth wall shows Google and email options
+            await expect(page.locator('text=Continue with Google')).toBeVisible()
+
+            // Click "Continue with email" to reveal email/password form
+            const emailToggle = page.locator('button:has-text("Continue with email")')
+            await emailToggle.click()
             await expect(page.locator('input[type="email"]')).toBeVisible()
             await expect(page.locator('input[type="password"]')).toBeVisible()
         }
@@ -115,7 +120,7 @@ test.describe('Landing Page', () => {
     test('CTA links to onboarding for unauthenticated users', async ({ page }) => {
         await page.goto('/')
         const cta = page.locator('[data-testid="landing-cta"]')
-        await expect(cta).toBeEnabled({ timeout: 15000 })
+        await expect(cta).toBeEnabled({ timeout: 30000 })
         await cta.click({ force: true })
         await page.waitForURL(/.*onboarding/, { timeout: 15000 })
     })
@@ -125,8 +130,9 @@ test.describe('Landing Page', () => {
         const section = page.locator('#faq')
         await section.scrollIntoViewIfNeeded()
 
+        // Summary text is always visible (no need to click open)
         await expect(page.locator('text=Can this really feel like a friend group?').first()).toBeVisible()
-        await expect(page.locator('text=Can I change my crew later?').first()).toBeVisible()
+        await expect(page.locator('text=Can I change my gang later?').first()).toBeVisible()
     })
 
     test('testimonials section renders', async ({ page }) => {
@@ -141,7 +147,7 @@ test.describe('Landing Page', () => {
 
     test('final CTA section renders', async ({ page }) => {
         await page.goto('/')
-        const finalCta = page.locator('text=Meet your crew in under a minute.')
+        const finalCta = page.locator('text=Meet your gang in under a minute.')
         await finalCta.scrollIntoViewIfNeeded()
         await expect(finalCta).toBeVisible()
     })
@@ -160,7 +166,7 @@ test.describe('Landing Page - Mobile', () => {
         // CTA should be full-width on mobile
         const cta = page.locator('[data-testid="landing-cta"]')
         await expect(cta).toBeVisible()
-        await expect(cta).toBeEnabled({ timeout: 15000 })
+        await expect(cta).toBeEnabled({ timeout: 30000 })
 
         // Swipeable demo cards on mobile
         const swipeHint = page.locator('text=Swipe to see more')

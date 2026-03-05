@@ -12,6 +12,7 @@ export type JourneyProfile = {
     preferred_squad: string[] | null
     onboarding_completed: boolean | null
     custom_character_names: Record<string, string> | null
+    subscription_tier: 'free' | 'basic' | 'pro' | null
 }
 
 type GangRow = { id: string }
@@ -20,7 +21,7 @@ type GangMemberRow = { character_id: string | null }
 export async function fetchJourneyState(supabase: SupabaseClient, userId: string) {
     const { data: profile } = await supabase
         .from('profiles')
-        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names')
+        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier')
         .eq('id', userId)
         .single<JourneyProfile>()
 

@@ -1,25 +1,28 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTheme } from 'next-themes'
 import { useChatStore } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
-import { Label } from '@/components/ui/label'
 import {
-    Settings2,
-    Zap,
     Trash2,
     Camera,
     ChevronRight,
     ArrowLeft,
     Paintbrush,
-    Tags,
-    UserRound,
-    Mail,
     LogOut,
     ShieldAlert,
-    Gauge,
     PenLine,
+    Crown,
+    ArrowRight,
+    Check,
+    ChevronDown,
+    Sparkles,
+    ExternalLink,
+    Zap,
+    X,
+    Lock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { deleteAccount, deleteAllMessages, signOut, updateUserSettings } from '@/app/auth/actions'
@@ -28,8 +31,9 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { CHAT_WALLPAPERS, type ChatWallpaper } from '@/constants/wallpapers'
 import { createClient } from '@/lib/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
 
-type SettingsPanel = 'root' | 'mode' | 'wallpaper' | 'labels' | 'account' | 'rename'
+type SettingsPanel = 'root' | 'wallpaper' | 'rename'
 
 interface ChatSettingsProps {
     isOpen: boolean
@@ -47,6 +51,206 @@ function wallpaperPreviewClass(id: ChatWallpaper) {
     return 'bg-[radial-gradient(circle_at_20%_25%,rgba(99,102,241,0.75),rgba(99,102,241,0.06)_45%),radial-gradient(circle_at_80%_25%,rgba(16,185,129,0.7),rgba(16,185,129,0.05)_45%),radial-gradient(circle_at_50%_90%,rgba(236,72,153,0.6),rgba(236,72,153,0.06)_45%)]'
 }
 
+/* ── Stagger animation helper ── */
+const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: { staggerChildren: 0.04, delayChildren: 0.06 },
+    },
+} as const
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 8 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: 'easeOut' as const } },
+} as const
+
+/* ── Upgrade Card ── */
+function UpgradeJewel({ tier, onClose, isDark }: { tier: 'free' | 'basic'; onClose: () => void; isDark: boolean }) {
+    const isBasic = tier === 'basic'
+
+    return (
+        <Link href="/pricing" onClick={onClose} className="group block">
+            <div
+                className="relative overflow-hidden rounded-2xl"
+                style={{
+                    background: isDark
+                        ? 'linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #115e59 100%)'
+                        : 'linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%)',
+                    boxShadow: isDark
+                        ? '0 8px 32px -4px rgba(13, 148, 136, 0.35), 0 0 0 1px rgba(255,255,255,0.06) inset'
+                        : '0 8px 32px -4px rgba(13, 148, 136, 0.3), 0 0 0 1px rgba(255,255,255,0.2) inset',
+                }}
+            >
+                {/* Light orbs */}
+                <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+                <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+
+                <div className="relative px-6 py-6">
+                    {isBasic ? (
+                        <>
+                            <div className="flex items-center gap-2.5 mb-3">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm">
+                                    <Crown className="w-4 h-4 text-white" />
+                                </div>
+                                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/90">Upgrade to Pro</span>
+                            </div>
+                            <p className="text-[16px] font-bold text-white leading-snug">
+                                Go unlimited. Zero cooldowns, full memory.
+                            </p>
+                            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-[11px] font-semibold group-hover:bg-white/30 transition-colors">
+                                <span>View plans</span>
+                                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm">
+                                        <Sparkles className="w-4 h-4 text-white" />
+                                    </div>
+                                    <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/90">80% off launch</span>
+                                </div>
+                                <span className="text-[11px] text-white/50 line-through">$99/mo</span>
+                            </div>
+                            <p className="text-[17px] font-bold text-white leading-snug">
+                                Unlock memory & unlimited messages
+                            </p>
+                            <p className="text-[12px] text-white/70 mt-1.5 leading-relaxed">
+                                Your gang wants to remember you. From $14.99/mo.
+                            </p>
+                            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-[11px] font-semibold group-hover:bg-white/30 transition-colors">
+                                <span>See plans</span>
+                                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </Link>
+    )
+}
+
+/* ── Pro Status Card ── */
+function ProStatusCard({ onClose, isDark }: { onClose: () => void; isDark: boolean }) {
+    return (
+        <div
+            className="relative overflow-hidden rounded-2xl"
+            style={{
+                background: isDark ? 'rgba(251, 191, 36, 0.08)' : 'rgba(251, 191, 36, 0.06)',
+                border: `1px solid ${isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 191, 36, 0.2)'}`,
+            }}
+        >
+            <div className="absolute top-0 left-0 right-0 h-[1.5px]" style={{ background: 'linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.4), transparent)' }} />
+            <div className="relative px-6 py-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full" style={{ background: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 191, 36, 0.12)' }}>
+                        <Crown className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div>
+                        <p className="text-[13px] font-semibold">Pro</p>
+                        <p className="text-[11px] text-muted-foreground">Unlimited everything</p>
+                    </div>
+                </div>
+                <Link
+                    href="/api/customer-portal"
+                    onClick={onClose}
+                    className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    Manage
+                    <ExternalLink className="w-3 h-3" />
+                </Link>
+            </div>
+        </div>
+    )
+}
+
+/* ── Section Card wrapper ── */
+function SectionCard({ children, isDark, className: extra }: { children: React.ReactNode; isDark: boolean; className?: string }) {
+    return (
+        <div
+            className={cn('rounded-2xl px-4 py-4 sm:px-5 sm:py-5', extra)}
+            style={{
+                background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            }}
+        >
+            {children}
+        </div>
+    )
+}
+
+/* ── Section Label ── */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+    return (
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-4">
+            {children}
+        </p>
+    )
+}
+
+/* ── Menu Row ── */
+function MenuRow({
+    children,
+    onClick,
+    href,
+    onCloseDrawer,
+    destructive,
+    chevron,
+    isDark,
+    className: extraClass,
+}: {
+    children: React.ReactNode
+    onClick?: () => void | Promise<void>
+    href?: string
+    onCloseDrawer?: () => void
+    destructive?: boolean
+    chevron?: boolean
+    isDark?: boolean
+    className?: string
+}) {
+    const hoverBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'
+    const cls = cn(
+        'w-full flex items-center justify-between gap-3 rounded-xl px-4 py-[14px] transition-colors cursor-pointer',
+        extraClass,
+    )
+
+    const style = {
+        ['--hover-bg' as string]: hoverBg,
+    }
+
+    if (href) {
+        return (
+            <Link
+                href={href}
+                onClick={onCloseDrawer}
+                className={cn(cls, !destructive && 'hover:bg-[var(--hover-bg)]', destructive && 'hover:bg-red-500/8')}
+                style={style}
+            >
+                {children}
+                {chevron && <ChevronRight size={14} className="text-muted-foreground shrink-0" />}
+            </Link>
+        )
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={cn(cls, !destructive && 'hover:bg-[var(--hover-bg)]', destructive && 'hover:bg-red-500/8')}
+            style={style}
+        >
+            {children}
+            {chevron && <ChevronRight size={14} className="text-muted-foreground shrink-0" />}
+        </button>
+    )
+}
+
+/* ════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ════════════════════════════════════════════════════ */
+
 export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettingsProps) {
     const {
         chatMode,
@@ -62,6 +266,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         activeGang,
         customCharacterNames,
         setCustomCharacterNames,
+        subscriptionTier,
     } = useChatStore(useShallow((s) => ({
         chatMode: s.chatMode,
         setChatMode: s.setChatMode,
@@ -76,7 +281,11 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         activeGang: s.activeGang,
         customCharacterNames: s.customCharacterNames,
         setCustomCharacterNames: s.setCustomCharacterNames,
+        subscriptionTier: s.subscriptionTier,
     })))
+
+    const { resolvedTheme } = useTheme()
+    const isDark = resolvedTheme === 'dark'
 
     const [panel, setPanel] = useState<SettingsPanel>('root')
     const [accountEmail, setAccountEmail] = useState<string | null>(null)
@@ -85,13 +294,13 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
     const [isDeleting, setIsDeleting] = useState(false)
     const [renameInputs, setRenameInputs] = useState<Record<string, string>>({})
     const [renameSaved, setRenameSaved] = useState(false)
+    const [dangerExpanded, setDangerExpanded] = useState(false)
 
     const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
         if (!isOpen) return
         let mounted = true
-
         const loadUser = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser()
@@ -102,11 +311,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                 setAccountEmail(null)
             }
         }
-
         loadUser()
-        return () => {
-            mounted = false
-        }
+        return () => { mounted = false }
     }, [isOpen, supabase])
 
     const handleChatModeChange = (value: string) => {
@@ -130,6 +336,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setPanel('root')
         setDeleteEmailInput('')
         setDeleteEmailError(null)
+        setDangerExpanded(false)
         onClose()
     }
 
@@ -145,10 +352,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setIsDeleting(true)
         try {
             await deleteAccount()
-            // deleteAccount redirects on success; if we reach here, redirect manually
             window.location.href = '/'
         } catch (err) {
-            // Next.js redirect throws NEXT_REDIRECT — only show error for real failures
             const message = err instanceof Error ? err.message : ''
             if (!message.includes('NEXT_REDIRECT')) {
                 setDeleteEmailError('Could not delete account. Please try again.')
@@ -187,212 +392,400 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         setTimeout(() => setRenameSaved(false), 2000)
     }
 
-    const menuCardClass = 'h-auto w-full justify-between rounded-2xl border border-border/70 bg-card/60 dark:bg-white/[0.09] dark:border-white/20 dark:hover:bg-white/[0.14] px-4 py-4'
-    const panelCardClass = 'rounded-2xl border border-border/70 bg-card/55 dark:bg-white/[0.09] dark:border-white/20'
+    const tierLabel = subscriptionTier === 'pro' ? 'Pro' : subscriptionTier === 'basic' ? 'Basic' : 'Free'
+    const greeting = userName ? `Hey, ${userName}` : 'Settings'
+
+    // Surface colors — inline to bypass Tailwind v4 arbitrary value bug
+    const surface = {
+        bg: isDark ? '#191b22' : '#ffffff',
+        shadow: isDark
+            ? '0 0 60px -10px rgba(0,0,0,0.8), -4px 0 20px -4px rgba(0,0,0,0.4)'
+            : '0 0 60px -10px rgba(0,0,0,0.15), -4px 0 20px -4px rgba(0,0,0,0.08)',
+        headerBorder: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)',
+        footerBorder: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)',
+    }
 
     return (
         <Sheet open={isOpen} onOpenChange={handleClose}>
             <SheetContent
                 side="right"
                 showCloseButton={false}
-                className="w-[88vw] max-w-[380px] p-0 border-l border-border/50 bg-background/95 backdrop-blur-2xl text-foreground shadow-[0_0_45px_-10px_rgba(0,0,0,0.5)]"
+                className="p-0 border-l-0 text-foreground"
+                style={{
+                    width: '85vw',
+                    maxWidth: 480,
+                    backgroundColor: surface.bg,
+                    boxShadow: surface.shadow,
+                    borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+                }}
             >
-                <SheetTitle className="sr-only">Gang Controls</SheetTitle>
-                <SheetDescription className="sr-only">Adjust mode, wallpaper, labels, account settings, and media controls.</SheetDescription>
+                <SheetTitle className="sr-only">Settings</SheetTitle>
+                <SheetDescription className="sr-only">Adjust your gang experience, wallpaper, account, and billing.</SheetDescription>
+
                 <div className="flex h-full flex-col">
-                    <div className="border-b border-border/70 px-4 py-3">
-                        <div className="flex items-center gap-2">
-                            {panel !== 'root' && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    className="rounded-full"
-                                    onClick={() => setPanel('root')}
-                                    aria-label="Back to settings"
-                                >
-                                    <ArrowLeft size={16} />
-                                </Button>
-                            )}
-                            <div className="flex items-center gap-2">
-                                <div className="rounded-lg border border-primary/20 bg-primary/15 p-1.5">
-                                    <Settings2 size={14} className="text-primary" />
+
+                    {/* ─── HEADER ─── */}
+                    <div className="relative px-5 sm:px-7 pt-6 sm:pt-7 pb-4 sm:pb-5">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="absolute top-5 right-4 sm:top-6 sm:right-6 p-2 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                            style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }}
+                            aria-label="Close settings"
+                        >
+                            <X size={16} />
+                        </button>
+
+                        {panel !== 'root' ? (
+                            <button
+                                type="button"
+                                onClick={() => setPanel('root')}
+                                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors -ml-1"
+                                aria-label="Back to settings"
+                            >
+                                <ArrowLeft size={16} />
+                                <span className="text-[12px] font-medium">Back</span>
+                            </button>
+                        ) : (
+                            <>
+                                <h2 className="text-[24px] font-bold tracking-tight leading-tight">{greeting}</h2>
+                                <div className="flex items-center gap-2.5 mt-2">
+                                    <p className="text-[13px] text-muted-foreground truncate">{accountEmail || '\u00A0'}</p>
+                                    <span
+                                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em]"
+                                        style={
+                                            subscriptionTier === 'pro' ? { background: isDark ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)' }
+                                                : subscriptionTier === 'basic' ? { background: isDark ? 'rgba(96,165,250,0.12)' : 'rgba(96,165,250,0.1)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)' }
+                                                    : { background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }
+                                        }
+                                    >
+                                        {subscriptionTier === 'pro' && <Crown className="w-2.5 h-2.5" />}
+                                        {subscriptionTier === 'basic' && <Zap className="w-2.5 h-2.5" />}
+                                        {tierLabel}
+                                    </span>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-black uppercase tracking-wide">Gang Controls</p>
-                                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                                        {panel === 'root' && 'Main Menu'}
-                                        {panel === 'mode' && 'Intelligence'}
-                                        {panel === 'wallpaper' && 'Chat Wallpaper'}
-                                        {panel === 'labels' && 'Friend Labels'}
-                                        {panel === 'account' && 'Account'}
-                                        {panel === 'rename' && 'Rename Characters'}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
 
+                    {/* Header divider */}
+                    <div className="h-px mx-5 sm:mx-7" style={{ background: `linear-gradient(90deg, transparent, ${surface.headerBorder}, transparent)` }} />
+
+                    {/* ─── CONTENT ─── */}
                     <div className="relative flex-1 overflow-hidden">
+
+                        {/* ROOT PANEL */}
                         <div
                             {...(panel !== 'root' ? { inert: true } : {})}
                             className={cn(
-                            'absolute inset-0 space-y-3 overflow-y-auto p-4 transition-all duration-250',
-                            panel === 'root' ? 'translate-x-0 opacity-100' : '-translate-x-6 opacity-0 pointer-events-none'
-                        )}>
-                            <Button
-                                variant="ghost"
-                                className={menuCardClass}
-                                onClick={() => setPanel('mode')}
+                                'absolute inset-0 overflow-y-auto transition-all duration-300 ease-out',
+                                panel === 'root' ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0 pointer-events-none'
+                            )}
+                        >
+                            <motion.div
+                                key="root"
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="show"
+                                className="px-5 sm:px-7 py-5 sm:py-6 space-y-5"
                             >
-                                <div className="text-left">
-                                    <p className="text-[11px] font-black uppercase tracking-wider">Intelligence Mode</p>
-                                    <p className="text-[11px] text-muted-foreground">Gang Focus or Ecosystem</p>
-                                </div>
-                                <ChevronRight size={16} />
-                            </Button>
+                                {/* Upgrade / Plan */}
+                                <motion.div variants={itemVariants}>
+                                    {subscriptionTier === 'pro' ? (
+                                        <ProStatusCard onClose={onClose} isDark={isDark} />
+                                    ) : (
+                                        <UpgradeJewel tier={subscriptionTier} onClose={onClose} isDark={isDark} />
+                                    )}
+                                </motion.div>
 
-                            <Button
-                                variant="ghost"
-                                className={menuCardClass}
-                                onClick={() => setPanel('wallpaper')}
-                            >
-                                <div className="text-left">
-                                    <p className="text-[11px] font-black uppercase tracking-wider">Wallpaper</p>
-                                    <p className="text-[11px] text-muted-foreground">Current: {CHAT_WALLPAPERS.find((w) => w.id === chatWallpaper)?.label || 'Default'}</p>
-                                </div>
-                                <Paintbrush size={16} />
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                className={menuCardClass}
-                                onClick={() => setPanel('labels')}
-                            >
-                                <div className="text-left">
-                                    <p className="text-[11px] font-black uppercase tracking-wider">Role Labels</p>
-                                    <p className="text-[11px] text-muted-foreground">Show role next to friend names in chat</p>
-                                </div>
-                                <Tags size={16} />
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                className={menuCardClass}
-                                onClick={() => {
-                                    setRenameInputs({ ...customCharacterNames })
-                                    setPanel('rename')
-                                }}
-                            >
-                                <div className="text-left">
-                                    <p className="text-[11px] font-black uppercase tracking-wider">Rename Characters</p>
-                                    <p className="text-[11px] text-muted-foreground">Give your gang custom names</p>
-                                </div>
-                                <PenLine size={16} />
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                className={menuCardClass}
-                                onClick={async () => {
-                                    await onTakeScreenshot()
-                                }}
-                            >
-                                <div className="text-left">
-                                    <p className="text-[11px] font-black uppercase tracking-wider">Capture Moment</p>
-                                    <p className="text-[11px] text-muted-foreground">Download chat as PNG</p>
-                                </div>
-                                <Camera size={16} />
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                className={menuCardClass}
-                                onClick={() => setPanel('account')}
-                            >
-                                <div className="text-left">
-                                    <p className="text-[11px] font-black uppercase tracking-wider">Account</p>
-                                    <p className="text-[11px] text-muted-foreground">Email, sign out, and account actions</p>
-                                </div>
-                                <UserRound size={16} />
-                            </Button>
-                        </div>
-
-                        <div
-                            {...(panel !== 'mode' ? { inert: true } : {})}
-                            className={cn(
-                            'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
-                            panel === 'mode' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
-                        )}>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Zap size={12} className="text-amber-400" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Intelligence</Label>
-                                </div>
-                                <div className={cn(panelCardClass, 'p-1.5')}>
-                                    <div className="relative grid grid-cols-2 gap-1" role="group" aria-label="Intelligence mode">
+                                {/* Chat Mode */}
+                                <motion.div variants={itemVariants}>
+                                    <SectionCard isDark={isDark}>
+                                        <SectionLabel>Chat Mode</SectionLabel>
                                         <div
-                                            className={cn(
-                                                'absolute inset-y-0 w-[calc(50%-2px)] rounded-xl bg-primary shadow-[0_8px_24px_-14px_rgba(16,185,129,0.9)] transition-transform duration-300',
-                                                chatMode === 'ecosystem' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
-                                            )}
-                                            aria-hidden="true"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => handleChatModeChange('gang_focus')}
-                                            className={cn(
-                                                'relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors',
-                                                chatMode === 'gang_focus' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                                            )}
-                                            aria-pressed={chatMode === 'gang_focus'}
+                                            className="rounded-xl p-1"
+                                            style={{ background: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.04)' }}
                                         >
-                                            Gang Focus
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleChatModeChange('ecosystem')}
-                                            className={cn(
-                                                'relative z-10 h-11 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest transition-colors',
-                                                chatMode === 'ecosystem' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                            <div className="relative grid grid-cols-2 gap-1" role="group" aria-label="Intelligence mode">
+                                                <div
+                                                    className={cn(
+                                                        'absolute inset-y-0 w-[calc(50%-2px)] rounded-lg bg-primary transition-transform duration-300 ease-out',
+                                                        chatMode === 'ecosystem' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
+                                                    )}
+                                                    style={{ boxShadow: '0 2px 8px -2px rgba(0,0,0,0.3)' }}
+                                                    aria-hidden="true"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleChatModeChange('gang_focus')}
+                                                    className={cn(
+                                                        'relative z-10 h-10 rounded-lg px-3 text-[12px] font-semibold transition-colors',
+                                                        chatMode === 'gang_focus' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                                    )}
+                                                    aria-pressed={chatMode === 'gang_focus'}
+                                                >
+                                                    Gang Focus
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (subscriptionTier === 'free') return
+                                                        handleChatModeChange('ecosystem')
+                                                    }}
+                                                    className={cn(
+                                                        'relative z-10 h-10 rounded-lg px-3 text-[12px] font-semibold transition-colors',
+                                                        subscriptionTier === 'free' && 'opacity-40 cursor-not-allowed',
+                                                        chatMode === 'ecosystem' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                                    )}
+                                                    aria-pressed={chatMode === 'ecosystem'}
+                                                    aria-disabled={subscriptionTier === 'free'}
+                                                >
+                                                    Ecosystem
+                                                    {subscriptionTier === 'free' && <Lock size={10} className="inline ml-1 -mt-0.5" />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {subscriptionTier === 'free' ? (
+                                            <p className="text-[11px] text-amber-500/80 mt-3 leading-relaxed">
+                                                Ecosystem mode unlocks with Basic or Pro — your gang talks freely, reacts to each other, and the chat feels alive.
+                                            </p>
+                                        ) : (
+                                            <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
+                                                {chatMode === 'gang_focus'
+                                                    ? 'Replies stay focused on you. Less side chatter.'
+                                                    : 'Natural group banter with side conversations.'}
+                                            </p>
+                                        )}
+                                    </SectionCard>
+                                </motion.div>
+
+                                {/* Preferences */}
+                                <motion.div variants={itemVariants}>
+                                    <SectionCard isDark={isDark}>
+                                        <SectionLabel>Preferences</SectionLabel>
+                                        <div className="space-y-0">
+                                            <div className="flex items-center justify-between py-3">
+                                                <div>
+                                                    <p className="text-[13px] font-medium">Role Labels</p>
+                                                    <p className="text-[11px] text-muted-foreground mt-0.5">Show role under character names</p>
+                                                </div>
+                                                <Switch
+                                                    checked={showPersonaRoles}
+                                                    onCheckedChange={setShowPersonaRoles}
+                                                    aria-label="Toggle friend role labels"
+                                                />
+                                            </div>
+                                            <div className="h-px" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }} />
+                                            <div className="flex items-center justify-between py-3">
+                                                <div>
+                                                    <p className="text-[13px] font-medium">Low-Cost Mode</p>
+                                                    <p className="text-[11px] text-muted-foreground mt-0.5">Fewer AI calls, smaller context</p>
+                                                </div>
+                                                <Switch
+                                                    checked={lowCostMode}
+                                                    onCheckedChange={handleLowCostModeChange}
+                                                    aria-label="Toggle low-cost mode"
+                                                />
+                                            </div>
+                                        </div>
+                                    </SectionCard>
+                                </motion.div>
+
+                                {/* Personalize */}
+                                <motion.div variants={itemVariants}>
+                                    <SectionCard isDark={isDark} className="!px-2 !py-2">
+                                        <div className="px-3 pt-3 pb-1">
+                                            <SectionLabel>Personalize</SectionLabel>
+                                        </div>
+                                        <div>
+                                            {subscriptionTier === 'free' ? (
+                                                <div className="px-4 py-3">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <Paintbrush size={16} className="text-muted-foreground/40" />
+                                                        <p className="text-[13px] font-medium text-muted-foreground/50">Wallpaper</p>
+                                                        <Lock size={11} className="text-muted-foreground/30" />
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <PenLine size={16} className="text-muted-foreground/40" />
+                                                        <p className="text-[13px] font-medium text-muted-foreground/50">Rename Characters</p>
+                                                        <Lock size={11} className="text-muted-foreground/30" />
+                                                    </div>
+                                                    <Link
+                                                        href="/pricing"
+                                                        onClick={onClose}
+                                                        className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors"
+                                                    >
+                                                        Upgrade to unlock
+                                                        <ArrowRight size={12} />
+                                                    </Link>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <MenuRow onClick={() => setPanel('wallpaper')} chevron isDark={isDark}>
+                                                        <div className="flex items-center gap-3">
+                                                            <Paintbrush size={16} className="text-muted-foreground" />
+                                                            <div>
+                                                                <p className="text-[13px] font-medium">Wallpaper</p>
+                                                                <p className="text-[11px] text-muted-foreground">{CHAT_WALLPAPERS.find((w) => w.id === chatWallpaper)?.label || 'Default'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </MenuRow>
+                                                    <MenuRow onClick={() => { setRenameInputs({ ...customCharacterNames }); setPanel('rename') }} chevron isDark={isDark}>
+                                                        <div className="flex items-center gap-3">
+                                                            <PenLine size={16} className="text-muted-foreground" />
+                                                            <div>
+                                                                <p className="text-[13px] font-medium">Rename Characters</p>
+                                                                <p className="text-[11px] text-muted-foreground">Give your gang custom names</p>
+                                                            </div>
+                                                        </div>
+                                                    </MenuRow>
+                                                </>
                                             )}
-                                            aria-pressed={chatMode === 'ecosystem'}
-                                        >
-                                            Ecosystem
-                                        </button>
-                                    </div>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground">
-                                    {chatMode === 'gang_focus'
-                                        ? 'Focused on your message only. Minimal side chatter and no autonomous drifts.'
-                                        : 'Natural group banter, autonomous turns, and richer side interactions.'}
-                                </p>
-                                <div className={cn(panelCardClass, 'flex items-center justify-between px-3 py-3')}>
-                                    <div className="pr-3">
-                                        <p className="text-[11px] font-bold uppercase tracking-wider">Low-Cost Mode</p>
-                                        <p className="text-[11px] text-muted-foreground">Reduces autonomous calls and context size.</p>
-                                    </div>
-                                    <Switch
-                                        checked={lowCostMode}
-                                        onCheckedChange={handleLowCostModeChange}
-                                        aria-label="Toggle low-cost mode"
-                                    />
-                                </div>
-                            </div>
+                                            <MenuRow onClick={async () => { await onTakeScreenshot() }} isDark={isDark}>
+                                                <div className="flex items-center gap-3">
+                                                    <Camera size={16} className="text-muted-foreground" />
+                                                    <div>
+                                                        <p className="text-[13px] font-medium">Capture Moment</p>
+                                                        <p className="text-[11px] text-muted-foreground">Save chat as image</p>
+                                                    </div>
+                                                </div>
+                                            </MenuRow>
+                                        </div>
+                                    </SectionCard>
+                                </motion.div>
+
+                                {/* Account */}
+                                <motion.div variants={itemVariants}>
+                                    <SectionCard isDark={isDark} className="!px-2 !py-2">
+                                        <div className="px-3 pt-3 pb-1">
+                                            <SectionLabel>Account</SectionLabel>
+                                        </div>
+                                        <div>
+                                            <MenuRow href="/settings" onCloseDrawer={onClose} chevron isDark={isDark}>
+                                                <div>
+                                                    <p className="text-[13px] font-medium">Usage & Preferences</p>
+                                                    <p className="text-[11px] text-muted-foreground">Detailed account settings</p>
+                                                </div>
+                                            </MenuRow>
+                                            <MenuRow isDark={isDark} onClick={async () => {
+                                                useChatStore.getState().setUserId(null)
+                                                useChatStore.getState().setActiveGang([])
+                                                useChatStore.getState().clearChat()
+                                                useChatStore.getState().setUserName(null)
+                                                useChatStore.getState().setUserNickname(null)
+                                                useChatStore.getState().setCustomCharacterNames({})
+                                                await signOut()
+                                            }}>
+                                                <div className="flex items-center gap-3">
+                                                    <LogOut size={15} className="text-muted-foreground" />
+                                                    <p className="text-[13px] font-medium">Sign Out</p>
+                                                </div>
+                                            </MenuRow>
+                                        </div>
+                                    </SectionCard>
+                                </motion.div>
+
+                                {/* Danger Zone */}
+                                <motion.div variants={itemVariants}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDangerExpanded(!dangerExpanded)}
+                                        className="flex items-center gap-2 py-2 text-muted-foreground hover:text-destructive transition-colors"
+                                        style={{ opacity: dangerExpanded ? 1 : 0.5 }}
+                                    >
+                                        <ShieldAlert size={13} />
+                                        <span className="text-[10px] font-medium uppercase tracking-[0.15em]">Danger Zone</span>
+                                        <ChevronDown size={12} className={cn('transition-transform duration-200', dangerExpanded && 'rotate-180')} />
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {dangerExpanded && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2, ease: 'easeOut' }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="pt-3 pb-1 space-y-3">
+                                                    <p className="text-[11px] text-destructive/60">
+                                                        These actions cannot be undone.
+                                                    </p>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            if (!confirm("Delete all messages? This can't be undone.")) return
+                                                            const result = await deleteAllMessages()
+                                                            if (!result.ok) {
+                                                                alert(result.error || 'Could not delete messages right now.')
+                                                                return
+                                                            }
+                                                            clearChat()
+                                                            if (typeof window !== 'undefined') {
+                                                                window.dispatchEvent(new CustomEvent('mygang:timeline-cleared'))
+                                                            }
+                                                            onClose()
+                                                        }}
+                                                        className="w-full flex items-center justify-between rounded-xl border border-destructive/20 px-4 py-3 text-destructive/70 hover:bg-destructive/8 hover:text-destructive transition-colors"
+                                                    >
+                                                        <span className="text-[11px] font-medium">Delete All Messages</span>
+                                                        <Trash2 size={14} />
+                                                    </button>
+
+                                                    <div className="rounded-xl border border-destructive/15 px-4 py-4 space-y-3">
+                                                        <label htmlFor="delete-email-confirm" className="block text-[11px] font-medium text-destructive/60">
+                                                            Type your email to delete account
+                                                        </label>
+                                                        <input
+                                                            id="delete-email-confirm"
+                                                            type="email"
+                                                            value={deleteEmailInput}
+                                                            onChange={(event) => {
+                                                                setDeleteEmailInput(event.target.value)
+                                                                if (deleteEmailError) setDeleteEmailError(null)
+                                                            }}
+                                                            placeholder={accountEmail || 'your@email.com'}
+                                                            className="h-10 w-full rounded-lg border border-destructive/20 bg-transparent px-3 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-destructive/50"
+                                                            autoComplete="email"
+                                                        />
+                                                        {deleteEmailError && (
+                                                            <p className="text-[10px] text-destructive/80">{deleteEmailError}</p>
+                                                        )}
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            onClick={handleDeleteAccount}
+                                                            disabled={isDeleting || !accountEmail}
+                                                            className="h-auto w-full justify-center rounded-xl border border-destructive/25 py-2.5 text-destructive/70 hover:bg-destructive hover:text-white hover:border-destructive disabled:opacity-40"
+                                                        >
+                                                            <span className="text-[11px] font-medium">{isDeleting ? 'Deleting...' : 'Delete Account'}</span>
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+
+                                <div className="pt-2" />
+                            </motion.div>
                         </div>
 
+                        {/* WALLPAPER PANEL */}
                         <div
                             {...(panel !== 'wallpaper' ? { inert: true } : {})}
                             className={cn(
-                            'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
-                            panel === 'wallpaper' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
-                        )}>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Paintbrush size={12} className="text-fuchsia-400" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Chat Wallpaper</Label>
+                                'absolute inset-0 overflow-y-auto transition-all duration-300 ease-out',
+                                panel === 'wallpaper' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                            )}
+                        >
+                            <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-5">
+                                <div>
+                                    <h3 className="text-[18px] font-bold tracking-tight">Wallpaper</h3>
+                                    <p className="text-[12px] text-muted-foreground mt-1">Visual only — doesn&apos;t affect AI behavior.</p>
                                 </div>
-                                <p className="px-1 text-[11px] text-muted-foreground">Visual look only. Does not affect AI behavior.</p>
-                                <div className="grid max-h-[calc(100dvh-210px)] grid-cols-1 gap-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Wallpaper options">
+                                <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Wallpaper options">
                                     {CHAT_WALLPAPERS.map((option) => {
                                         const active = chatWallpaper === option.id
                                         return (
@@ -403,18 +796,25 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                                 aria-checked={active}
                                                 onClick={() => handleWallpaperChange(option.id)}
                                                 className={cn(
-                                                    'flex w-full items-center gap-3 rounded-2xl border px-2.5 py-2 text-left transition-colors',
-                                                    active
-                                                        ? 'border-primary/50 bg-primary/10 dark:bg-primary/20'
-                                                        : 'border-border/70 bg-card/45 dark:bg-white/[0.08] dark:border-white/20 hover:bg-card/70 dark:hover:bg-white/[0.14]'
+                                                    'flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left transition-all duration-200',
+                                                    active ? 'ring-2 ring-primary/40' : ''
                                                 )}
+                                                style={{
+                                                    background: active
+                                                        ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+                                                        : 'transparent',
+                                                }}
                                             >
-                                                <div className={cn('h-12 w-16 shrink-0 rounded-xl border border-border/60', wallpaperPreviewClass(option.id))} />
+                                                <div className={cn('h-11 w-16 shrink-0 rounded-lg', wallpaperPreviewClass(option.id))} />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-[11px] font-black uppercase tracking-wider">{option.label}</p>
+                                                    <p className="text-[13px] font-medium">{option.label}</p>
                                                     <p className="truncate text-[11px] text-muted-foreground">{option.description}</p>
                                                 </div>
-                                                {active && <span className="text-[10px] font-black uppercase tracking-widest text-primary">Active</span>}
+                                                {active && (
+                                                    <div className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-primary">
+                                                        <Check className="w-3 h-3 text-primary-foreground" />
+                                                    </div>
+                                                )}
                                             </button>
                                         )
                                     })}
@@ -422,188 +822,43 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             </div>
                         </div>
 
-                        <div
-                            {...(panel !== 'labels' ? { inert: true } : {})}
-                            className={cn(
-                            'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
-                            panel === 'labels' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
-                        )}>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Tags size={12} className="text-cyan-400" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Friend Labels</Label>
-                                </div>
-                                <div className={cn(panelCardClass, 'flex items-center justify-between px-3 py-3')}>
-                                    <div className="pr-3">
-                                        <p className="text-[11px] font-bold uppercase tracking-wider">Show role next to name</p>
-                                        <p className="text-[11px] text-muted-foreground">Example: Nyx - the hacker</p>
-                                    </div>
-                                    <Switch
-                                        checked={showPersonaRoles}
-                                        onCheckedChange={setShowPersonaRoles}
-                                        aria-label="Toggle friend role labels"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            {...(panel !== 'account' ? { inert: true } : {})}
-                            className={cn(
-                            'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
-                            panel === 'account' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
-                        )}>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <UserRound size={12} className="text-blue-400" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Account</Label>
-                                </div>
-
-                                <div className={cn(panelCardClass, 'px-4 py-4 space-y-2')}>
-                                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                                        <Mail size={12} />
-                                        Signed In Email
-                                    </div>
-                                    <p className="text-sm font-semibold break-all">{accountEmail || 'Email unavailable'}</p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                        {userName ? `Display name: ${userName}` : 'No display name saved yet.'}
-                                    </p>
-                                </div>
-
-                                <div className={cn(panelCardClass, 'p-2 space-y-2')}>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        className="h-auto w-full justify-between rounded-xl px-3 py-3"
-                                        onClick={async () => {
-                                            // Clear persisted store before server sign-out to prevent stale UI on landing page
-                                            useChatStore.getState().setUserId(null)
-                                            useChatStore.getState().setActiveGang([])
-                                            useChatStore.getState().clearChat()
-                                            useChatStore.getState().setUserName(null)
-                                            useChatStore.getState().setUserNickname(null)
-                                            useChatStore.getState().setCustomCharacterNames({})
-                                            await signOut()
-                                        }}
-                                    >
-                                        <span className="text-[11px] font-black uppercase tracking-wider">Sign Out</span>
-                                        <LogOut size={14} />
-                                    </Button>
-                                </div>
-
-                                <Button
-                                    variant="ghost"
-                                    asChild
-                                    className={menuCardClass}
-                                >
-                                    <Link href="/settings" onClick={onClose}>
-                                        <div className="text-left">
-                                            <p className="text-[11px] font-black uppercase tracking-wider">Usage & Preferences</p>
-                                            <p className="text-[11px] text-muted-foreground">Detailed account and usage view</p>
-                                        </div>
-                                        <Gauge size={16} />
-                                    </Link>
-                                </Button>
-
-                                <div className="rounded-2xl border border-destructive/40 bg-destructive/10 dark:bg-destructive/15 p-3 space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <ShieldAlert size={13} className="text-destructive" />
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-destructive">Danger Zone</p>
-                                    </div>
-                                    <p className="text-[11px] text-destructive/90">
-                                        These actions are irreversible. Review before continuing.
-                                    </p>
-
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        className="h-auto w-full justify-between rounded-xl border border-destructive/40 bg-background/20 px-3 py-3 text-destructive hover:bg-destructive hover:text-white"
-                                        onClick={async () => {
-                                            if (!confirm("Delete all messages? This can't be undone.")) return
-                                            const result = await deleteAllMessages()
-                                            if (!result.ok) {
-                                                alert(result.error || 'Could not delete messages right now.')
-                                                return
-                                            }
-                                            clearChat()
-                                            if (typeof window !== 'undefined') {
-                                                window.dispatchEvent(new CustomEvent('mygang:timeline-cleared'))
-                                            }
-                                            onClose()
-                                        }}
-                                    >
-                                        <span className="text-[11px] font-black uppercase tracking-wider">Delete All Messages</span>
-                                        <Trash2 size={14} />
-                                    </Button>
-
-                                    <div className="space-y-2 rounded-xl border border-destructive/35 bg-background/20 px-3 py-3">
-                                        <label htmlFor="delete-email-confirm" className="block text-[10px] font-black uppercase tracking-[0.15em] text-destructive">
-                                            Confirm Email To Delete Account
-                                        </label>
-                                        <input
-                                            id="delete-email-confirm"
-                                            type="email"
-                                            value={deleteEmailInput}
-                                            onChange={(event) => {
-                                                setDeleteEmailInput(event.target.value)
-                                                if (deleteEmailError) setDeleteEmailError(null)
-                                            }}
-                                            placeholder={accountEmail || 'your@email.com'}
-                                            className="h-10 w-full rounded-lg border border-destructive/40 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-destructive"
-                                            autoComplete="email"
-                                        />
-                                        {deleteEmailError && (
-                                            <p className="text-[10px] text-destructive">{deleteEmailError}</p>
-                                        )}
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            onClick={handleDeleteAccount}
-                                            disabled={isDeleting || !accountEmail}
-                                            className="h-auto w-full justify-between rounded-xl border border-destructive/40 px-3 py-3 text-destructive hover:bg-destructive hover:text-white disabled:opacity-60"
-                                        >
-                                            <span className="text-[11px] font-black uppercase tracking-wider">{isDeleting ? 'Deleting...' : 'Delete Account'}</span>
-                                            {!isDeleting && <ShieldAlert size={14} />}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
+                        {/* RENAME PANEL */}
                         <div
                             {...(panel !== 'rename' ? { inert: true } : {})}
                             className={cn(
-                            'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
-                            panel === 'rename' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
-                        )}>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <PenLine size={12} className="text-violet-400" />
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">Rename Characters</Label>
+                                'absolute inset-0 overflow-y-auto transition-all duration-300 ease-out',
+                                panel === 'rename' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+                            )}
+                        >
+                            <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-5">
+                                <div>
+                                    <h3 className="text-[18px] font-bold tracking-tight">Rename Characters</h3>
+                                    <p className="text-[12px] text-muted-foreground mt-1">Leave blank to keep the default name.</p>
                                 </div>
-                                <p className="px-1 text-[11px] text-muted-foreground">Give your gang members custom names. Leave blank to use their default name.</p>
-                                {activeGang.map((char) => (
-                                    <div key={char.id} className={cn(panelCardClass, 'px-3 py-3 space-y-1.5')}>
-                                        <label htmlFor={`rename-${char.id}`} className="block text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground">
-                                            {char.name}
-                                        </label>
-                                        <input
-                                            id={`rename-${char.id}`}
-                                            type="text"
-                                            value={renameInputs[char.id] || ''}
-                                            onChange={(e) => setRenameInputs((prev) => ({ ...prev, [char.id]: e.target.value }))}
-                                            onBlur={() => handleRenameCharacter(char.id, renameInputs[char.id] || '')}
-                                            placeholder={char.name}
-                                            maxLength={30}
-                                            className="h-9 w-full rounded-lg border border-border/60 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary"
-                                        />
-                                    </div>
-                                ))}
+                                <div className="space-y-4">
+                                    {activeGang.map((char) => (
+                                        <div key={char.id}>
+                                            <label htmlFor={`rename-${char.id}`} className="block text-[11px] font-medium text-muted-foreground mb-2">
+                                                {char.name}
+                                            </label>
+                                            <input
+                                                id={`rename-${char.id}`}
+                                                type="text"
+                                                value={renameInputs[char.id] || ''}
+                                                onChange={(e) => setRenameInputs((prev) => ({ ...prev, [char.id]: e.target.value }))}
+                                                onBlur={() => handleRenameCharacter(char.id, renameInputs[char.id] || '')}
+                                                placeholder={char.name}
+                                                maxLength={30}
+                                                className="h-11 w-full rounded-xl bg-transparent px-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-primary/30"
+                                                style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)'}` }}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
                                 <Button
                                     type="button"
                                     onClick={handleSaveAllNames}
-                                    className="w-full rounded-xl mt-2"
-                                    size="sm"
+                                    className="w-full rounded-xl h-11"
                                 >
                                     {renameSaved ? 'Saved!' : 'Save Names'}
                                 </Button>
@@ -611,8 +866,12 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                         </div>
                     </div>
 
-                    <div className="border-t border-border/70 px-4 py-2 text-center text-[9px] uppercase tracking-[0.35em] text-muted-foreground/70">
-                        MyGang Stable v1.7
+                    {/* ─── FOOTER ─── */}
+                    <div className="px-5 sm:px-7 py-3">
+                        <div className="h-px mb-3" style={{ background: `linear-gradient(90deg, transparent, ${surface.footerBorder}, transparent)` }} />
+                        <p className="text-center text-[9px] uppercase tracking-[0.35em] text-muted-foreground/50">
+                            MyGang v1.7
+                        </p>
                     </div>
                 </div>
             </SheetContent>

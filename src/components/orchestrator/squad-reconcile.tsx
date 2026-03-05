@@ -54,9 +54,14 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
         setIsSaving(true)
         try {
             if (hasGangConflict) {
+                await saveGang(remote.map((c) => c.id))
                 setActiveGang(remote)
             }
-            if (hasNameConflict) {
+            if (hasNameConflict && userId) {
+                setUserName(remoteName)
+                const supabase = createClient()
+                await persistUserJourney(supabase, userId, { username: remoteName })
+            } else if (hasNameConflict) {
                 setUserName(remoteName)
             }
             trackEvent('squad_reconcile', { metadata: { choice: 'cloud', hasGangConflict, hasNameConflict } })

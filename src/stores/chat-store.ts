@@ -35,6 +35,7 @@ interface ChatState {
     activeGang: Character[]
     userName: string | null
     userId: string | null
+    subscriptionTier: 'free' | 'basic' | 'pro'
     userNickname: string | null // For "Nickname Evolution"
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
@@ -49,6 +50,7 @@ interface ChatState {
     setActiveGang: (gang: Character[]) => void
     setUserName: (name: string | null) => void
     setUserId: (id: string | null) => void
+    setSubscriptionTier: (tier: 'free' | 'basic' | 'pro') => void
     setUserNickname: (nickname: string | null) => void
     setCharacterStatus: (characterId: string, status: string) => void
     setIsHydrated: (isHydrated: boolean) => void
@@ -75,10 +77,11 @@ export const useChatStore = create<ChatState>()(
             activeGang: [],
             userName: null,
             userId: null,
+            subscriptionTier: 'free',
             userNickname: null,
             characterStatuses: {},
             isHydrated: false,
-            chatMode: 'ecosystem',
+            chatMode: 'gang_focus',
             lowCostMode: false,
             chatWallpaper: 'default',
             showPersonaRoles: true,
@@ -109,6 +112,7 @@ export const useChatStore = create<ChatState>()(
             setActiveGang: (gang) => set({ activeGang: gang }),
             setUserName: (name) => set({ userName: name }),
             setUserId: (userId) => set({ userId }),
+            setSubscriptionTier: (subscriptionTier) => set({ subscriptionTier }),
             setUserNickname: (nickname) => set({ userNickname: nickname }),
             setCharacterStatus: (characterId, status) => set((state) => ({
                 characterStatuses: { ...state.characterStatuses, [characterId]: status }

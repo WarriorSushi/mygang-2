@@ -11,7 +11,10 @@ const nextConfig: NextConfig = {
       { key: "X-Frame-Options", value: "DENY" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai; frame-ancestors 'none';" },
+      // unsafe-inline is required because Next.js injects inline scripts/styles without nonce support by default.
+      // unsafe-eval has been removed — it's not needed for production builds.
+      // NOTE: Do NOT add 'strict-dynamic' — it overrides 'unsafe-inline' in modern browsers, breaking Next.js hydration.
+      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://*.dodopayments.com; frame-src 'self' https://*.dodopayments.com; frame-ancestors 'none';" },
     ]
 
     if (process.env.NODE_ENV === "production") {

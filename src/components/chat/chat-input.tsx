@@ -22,17 +22,22 @@ const DRAFT_STORAGE_KEY = 'mygang-chat-draft'
 const MAX_CHARS = 2000
 
 export const ChatInput = memo(function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply }: ChatInputProps) {
-    const [input, setInput] = useState(() => {
-        if (typeof window === 'undefined') return ''
-        const savedDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY)
-        return savedDraft ? savedDraft.slice(0, MAX_CHARS) : ''
-    })
+    const [input, setInput] = useState('')
+    const draftLoadedRef = useRef(false)
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const limitWarnedRef = useRef(false)
     const [limitNotice, setLimitNotice] = useState(false)
 
+    // Restore draft from localStorage after mount (avoids hydration mismatch)
     useEffect(() => {
-        if (typeof window === 'undefined') return
+        if (draftLoadedRef.current) return
+        draftLoadedRef.current = true
+        const saved = window.localStorage.getItem(DRAFT_STORAGE_KEY)
+        if (saved) setInput(saved.slice(0, MAX_CHARS))
+    }, [])
+
+    useEffect(() => {
+        if (!draftLoadedRef.current) return
         if (input.trim()) {
             window.localStorage.setItem(DRAFT_STORAGE_KEY, input)
         } else {

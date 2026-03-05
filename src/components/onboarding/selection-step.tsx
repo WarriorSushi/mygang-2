@@ -199,11 +199,12 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                             <div className="flex -space-x-2">
                                 {selectedChars.map((c) => (
-                                    <div
+                                    <button
                                         key={c.id}
+                                        type="button"
+                                        aria-label={`Remove ${c.name}`}
                                         className="group/avatar relative w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 border-background shadow-sm cursor-pointer hover:scale-110 transition-transform"
                                         onClick={() => toggleCharacter(c.id)}
-                                        title={`Remove ${c.name}`}
                                     >
                                         {c.avatar ? (
                                             <Image
@@ -219,9 +220,9 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                             </div>
                                         )}
                                         <div className="absolute inset-0 bg-black/0 group-hover/avatar:bg-black/40 transition-colors flex items-center justify-center">
-                                            <X className="w-3 h-3 text-white opacity-0 sm:group-hover/avatar:opacity-100" />
+                                            <X className="w-3 h-3 text-white opacity-100 sm:opacity-0 sm:group-hover/avatar:opacity-100" />
                                         </div>
-                                    </div>
+                                    </button>
                                 ))}
                                 {selectedIds.length === 0 && (
                                     <span className="text-xs text-muted-foreground/50 pl-1">Pick 2–4</span>

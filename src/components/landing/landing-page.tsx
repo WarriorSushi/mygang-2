@@ -251,7 +251,7 @@ export function LandingPage() {
           className="text-2xl font-bold flex items-center gap-2"
         >
           <Image src="/logo.png" alt="MyGang" width={40} height={40} className="object-contain" priority />
-          <span className="font-[family-name:var(--font-marker)] text-xl sm:text-3xl">
+          <span className="font-[family-name:var(--font-brand)] font-extrabold text-xl sm:text-3xl">
             MyGang<span className="text-primary">.ai</span>
           </span>
         </motion.div>

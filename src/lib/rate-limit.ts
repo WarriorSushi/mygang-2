@@ -9,7 +9,17 @@ const DEFAULT_WINDOW_MS = 60_000
 
 const memoryStore = new Map<string, { count: number; reset: number }>()
 
+let warnedAboutMemoryFallback = false
+
 function memoryRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
+  if (process.env.NODE_ENV === 'production' && !warnedAboutMemoryFallback) {
+    warnedAboutMemoryFallback = true
+    console.warn(
+      '[rate-limit] WARNING: Using in-memory rate limiting in production. ' +
+      'This resets per serverless container and is ineffective at scale. ' +
+      'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for persistent rate limiting.'
+    )
+  }
   const now = Date.now()
   const entry = memoryStore.get(key)
   if (!entry || now > entry.reset) {

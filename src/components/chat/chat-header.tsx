@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Sun, Moon, Brain, Settings2, Info, RefreshCw } from 'lucide-react'
+import { Sun, Moon, Brain, Settings2, Info, RefreshCw, Crown, Zap } from 'lucide-react'
 import { Character } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
@@ -25,6 +25,7 @@ interface ChatHeaderProps {
     memoryActive?: boolean
     autoLowCostActive?: boolean
     tokenUsage?: TokenUsage | null
+    subscriptionTier?: 'free' | 'basic' | 'pro'
 }
 
 function formatChars(n: number): string {
@@ -67,7 +68,7 @@ function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
     )
 }
 
-export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, onRefresh, typingUsers = [], memoryActive = false, autoLowCostActive = false, tokenUsage }: ChatHeaderProps) {
+export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, onRefresh, typingUsers = [], memoryActive = false, autoLowCostActive = false, tokenUsage, subscriptionTier = 'free' }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
     const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
@@ -136,6 +137,18 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                             ))}
                         </div>
                         <h1 className="font-semibold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
+                        {subscriptionTier === 'pro' && (
+                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-400">
+                                <Crown className="w-2.5 h-2.5" />
+                                Pro
+                            </span>
+                        )}
+                        {subscriptionTier === 'basic' && (
+                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-500/15 border border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-400">
+                                <Zap className="w-2.5 h-2.5" />
+                                Basic
+                            </span>
+                        )}
                     </div>
                     <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1.5 mt-0.5 min-h-[14px]">
                         <span className={`w-1.5 h-1.5 rounded-full ${typingUsers.length > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
@@ -153,6 +166,18 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                 {activeGang.length} online
                                 {memoryActive && <span> &middot; Memory active</span>}
                             </>
+                        )}
+                        {subscriptionTier === 'pro' && (
+                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-400">
+                                <Crown className="w-2.5 h-2.5" />
+                                Pro
+                            </span>
+                        )}
+                        {subscriptionTier === 'basic' && (
+                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-500/15 border border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-400">
+                                <Zap className="w-2.5 h-2.5" />
+                                Basic
+                            </span>
                         )}
                     </span>
                 </div>

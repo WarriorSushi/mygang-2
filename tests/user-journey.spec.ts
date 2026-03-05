@@ -14,8 +14,8 @@ test.describe('Full User Journey - Guest Flow', () => {
         await expect(page).toHaveTitle(/MyGang/)
 
         const cta = page.locator('[data-testid="landing-cta"]')
-        await expect(cta).toBeEnabled({ timeout: 15000 })
-        await expect(cta).toContainText('Assemble Your Gang')
+        await expect(cta).toBeEnabled({ timeout: 30000 })
+        await expect(cta).toContainText(/Assemble Your Gang|Go to Chat/)
         await cta.click({ force: true })
 
         // 2. Onboarding - Welcome step
@@ -51,7 +51,7 @@ test.describe('Full User Journey - Guest Flow', () => {
         await expect(chatHeader).toBeVisible({ timeout: 10000 })
     })
 
-    test('onboarding requires exactly 4 characters', async ({ page }) => {
+    test('onboarding requires at least 2 characters', async ({ page }) => {
         await page.addInitScript(() => {
             window.localStorage.clear()
             window.localStorage.setItem('mock_ai', 'true')
@@ -68,18 +68,23 @@ test.describe('Full User Journey - Guest Flow', () => {
         const nameNext = page.locator('[data-testid="onboarding-name-next"]')
         await nameNext.click({ force: true })
 
-        // Select only 3 characters
-        const partialSquad = ['kael', 'nyx', 'rico']
-        for (const id of partialSquad) {
-            const card = page.locator(`[data-testid="character-${id}"]`)
-            await card.click({ force: true })
-            await page.waitForTimeout(200)
-        }
+        // Select only 1 character — below the 2-character minimum
+        const card = page.locator('[data-testid="character-kael"]')
+        await card.click({ force: true })
+        await page.waitForTimeout(200)
 
-        // Done button should be disabled or not present
+        // Done button should be disabled with fewer than 2 characters
         const doneBtn = page.locator('[data-testid="onboarding-selection-done"]')
         if (await doneBtn.isVisible()) {
             await expect(doneBtn).toBeDisabled()
+        }
+
+        // Select a second character — button should now be enabled
+        const card2 = page.locator('[data-testid="character-nyx"]')
+        await card2.click({ force: true })
+        await page.waitForTimeout(200)
+        if (await doneBtn.isVisible()) {
+            await expect(doneBtn).toBeEnabled()
         }
     })
 

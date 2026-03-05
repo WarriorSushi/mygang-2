@@ -168,63 +168,92 @@ export async function compactMemoriesIfNeeded(userId: string) {
 
         if (countError || count === null || count < COMPACTION_THRESHOLD) return
 
-        // Fetch all episodic memories to compact
-        const { data: memories, error: fetchError } = await supabase
+        // Atomically claim episodic memories by marking them as 'compacting'.
+        // If another request already changed them, this returns 0 rows and we bail.
+        const { data: claimed, error: claimError } = await supabase
             .from('memories')
-            .select('id, content, importance, tags, created_at')
+            .update({ kind: 'compacting' })
             .eq('user_id', userId)
             .eq('kind', 'episodic')
-            .order('created_at', { ascending: true })
+            .select('id, content, importance, tags, created_at')
 
-        if (fetchError || !memories || memories.length < COMPACTION_THRESHOLD) return
-
-        // Build the memory list for LLM summarization
-        const memoryList = memories
-            .map((m, i) => `${i + 1}. ${m.content}`)
-            .join('\n')
-
-        const { text: summary } = await generateText({
-            model: openRouterModel,
-            prompt: `You are a memory compaction assistant. Below are ${memories.length} individual memory entries about a user. Summarize them into a single concise paragraph (max 400 chars) that preserves all important personal facts, preferences, relationships, and key events. Drop redundant or trivial details. Output ONLY the summary, nothing else.\n\nMemories:\n${memoryList}`,
-            maxOutputTokens: 200,
-        })
-
-        const compactedContent = summary.trim().slice(0, 500)
-        if (!compactedContent || compactedContent.length < 10) {
-            console.error('Memory compaction produced empty summary')
+        if (claimError || !claimed || claimed.length < COMPACTION_THRESHOLD) {
+            // Another request won the lock or not enough memories — revert any we claimed
+            if (claimed && claimed.length > 0) {
+                await supabase
+                    .from('memories')
+                    .update({ kind: 'episodic' })
+                    .in('id', claimed.map((m) => m.id))
+                    .eq('user_id', userId)
+            }
             return
         }
 
-        // Collect all high-importance tags
-        const allTags = new Set<string>()
-        memories.forEach((m) => {
-            if (Array.isArray(m.tags)) m.tags.forEach((t: string) => allTags.add(t))
-        })
-
-        // Archive originals (change kind from 'episodic' to 'archived')
+        const memories = claimed
         const memoryIds = memories.map((m) => m.id)
-        const { error: archiveError } = await supabase
-            .from('memories')
-            .update({ kind: 'archived' })
-            .in('id', memoryIds)
-            .eq('user_id', userId)
 
-        if (archiveError) {
-            console.error('Error archiving memories:', archiveError)
-            return
-        }
+        try {
+            // Build the memory list for LLM summarization
+            const memoryList = memories
+                .map((m, i) => `${i + 1}. ${m.content}`)
+                .join('\n')
 
-        // Insert the compacted summary as a new episodic memory
-        const { error: insertError } = await supabase.from('memories').insert({
-            user_id: userId,
-            content: compactedContent,
-            kind: 'episodic',
-            tags: Array.from(allTags).slice(0, 10),
-            importance: 3,
-        })
+            const { text: summary } = await generateText({
+                model: openRouterModel,
+                prompt: `You are a memory compaction assistant. Below are ${memories.length} individual memory entries about a user. Summarize them into a single concise paragraph (max 400 chars) that preserves all important personal facts, preferences, relationships, and key events. Drop redundant or trivial details. Output ONLY the summary, nothing else.\n\nMemories:\n${memoryList}`,
+                maxOutputTokens: 200,
+            })
 
-        if (insertError) {
-            console.error('Error inserting compacted memory:', insertError)
+            const compactedContent = summary.trim().slice(0, 500)
+            if (!compactedContent || compactedContent.length < 10) {
+                console.error('Memory compaction produced empty summary')
+                // Revert compacting back to episodic
+                await supabase
+                    .from('memories')
+                    .update({ kind: 'episodic' })
+                    .in('id', memoryIds)
+                    .eq('user_id', userId)
+                return
+            }
+
+            // Collect all high-importance tags
+            const allTags = new Set<string>()
+            memories.forEach((m) => {
+                if (Array.isArray(m.tags)) m.tags.forEach((t: string) => allTags.add(t))
+            })
+
+            // Archive originals (they are currently 'compacting')
+            const { error: archiveError } = await supabase
+                .from('memories')
+                .update({ kind: 'archived' })
+                .in('id', memoryIds)
+                .eq('user_id', userId)
+
+            if (archiveError) {
+                console.error('Error archiving memories:', archiveError)
+                return
+            }
+
+            // Insert the compacted summary as a new episodic memory
+            const { error: insertError } = await supabase.from('memories').insert({
+                user_id: userId,
+                content: compactedContent,
+                kind: 'episodic',
+                tags: Array.from(allTags).slice(0, 10),
+                importance: 3,
+            })
+
+            if (insertError) {
+                console.error('Error inserting compacted memory:', insertError)
+            }
+        } catch (compactionErr) {
+            // Revert compacting back to episodic on any failure
+            await supabase
+                .from('memories')
+                .update({ kind: 'episodic' })
+                .in('id', memoryIds)
+                .eq('user_id', userId)
+            throw compactionErr
         }
     } catch (err) {
         console.error('Memory compaction error:', err)

@@ -20,6 +20,7 @@ export function useTypingSimulation() {
     const fastModeRef = useRef({ lastAt: 0, streak: 0 })
     const fastModeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const statusTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
+    const statusGenRef = useRef<Record<string, number>>({})
 
     const flushTypingUsers = () => {
         typingFlushRef.current = null
@@ -81,7 +82,10 @@ export function useTypingSimulation() {
         if (statusTimersRef.current[characterId]) {
             clearTimeout(statusTimersRef.current[characterId]!)
         }
+        const gen = (statusGenRef.current[characterId] ?? 0) + 1
+        statusGenRef.current[characterId] = gen
         statusTimersRef.current[characterId] = setTimeout(() => {
+            if (statusGenRef.current[characterId] !== gen) return
             setCharacterStatus(characterId, "")
             statusTimersRef.current[characterId] = null
         }, duration)

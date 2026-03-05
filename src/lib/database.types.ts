@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -93,6 +91,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "analytics_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_events: {
+        Row: {
+          created_at: string | null
+          dodo_event_id: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dodo_event_id?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dodo_event_id?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -320,7 +353,9 @@ export type Database = {
           chat_mode: string | null
           chat_wallpaper: string | null
           created_at: string | null
+          custom_character_names: Json | null
           daily_msg_count: number | null
+          dodo_customer_id: string | null
           gang_vibe_score: number | null
           id: string
           last_active_at: string | null
@@ -342,7 +377,9 @@ export type Database = {
           chat_mode?: string | null
           chat_wallpaper?: string | null
           created_at?: string | null
+          custom_character_names?: Json | null
           daily_msg_count?: number | null
+          dodo_customer_id?: string | null
           gang_vibe_score?: number | null
           id: string
           last_active_at?: string | null
@@ -364,7 +401,9 @@ export type Database = {
           chat_mode?: string | null
           chat_wallpaper?: string | null
           created_at?: string | null
+          custom_character_names?: Json | null
           daily_msg_count?: number | null
+          dodo_customer_id?: string | null
           gang_vibe_score?: number | null
           id?: string
           last_active_at?: string | null
@@ -383,6 +422,47 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          id: string
+          plan: string
+          product_id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end?: string | null
+          id: string
+          plan: string
+          product_id: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          plan?: string
+          product_id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -392,13 +472,17 @@ export type Database = {
         Args: {
           p_abuse_score_increment?: number
           p_daily_msg_increment?: number
+          p_last_active_at?: string
           p_relationship_state?: Json
           p_session_summary?: string
           p_summary_turns?: number
           p_user_id: string
           p_user_profile?: Json
         }
-        Returns: undefined
+        Returns: {
+          daily_msg_count: number
+          last_msg_reset: string
+        }[]
       }
       match_memories: {
         Args: {
@@ -413,8 +497,6 @@ export type Database = {
           similarity: number
         }[]
       }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never

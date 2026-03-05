@@ -20,7 +20,8 @@ export function AuthManager() {
         setLowCostMode,
         setChatWallpaper,
         setSquadConflict,
-        setCustomCharacterNames
+        setCustomCharacterNames,
+        setSubscriptionTier
     } = useChatStore()
     const supabase = useMemo(() => createClient(), [])
     const hadSessionRef = useRef(false)
@@ -145,6 +146,9 @@ export function AuthManager() {
                 if (profile?.custom_character_names && typeof profile.custom_character_names === 'object') {
                     setCustomCharacterNames(profile.custom_character_names)
                 }
+                if (profile?.subscription_tier) {
+                    setSubscriptionTier(profile.subscription_tier)
+                }
             } catch (err) {
                 console.error('Auth sync error:', err)
             } finally {
@@ -171,7 +175,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsHydrated, setLowCostMode, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
+    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsHydrated, setLowCostMode, setSquadConflict, setSubscriptionTier, setTheme, setUserId, setUserName, setUserNickname, supabase])
 
     return null
 }

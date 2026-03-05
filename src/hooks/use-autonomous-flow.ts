@@ -74,9 +74,13 @@ export function useAutonomousFlow({
     const idleAutonomousTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const greetingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
     const triggerLocalGreetingRef = useRef<() => void>(() => { })
+    const isMountedRef = useRef(true)
 
     const scheduleGreeting = (fn: () => void, delay: number) => {
-        const timer = setTimeout(fn, delay)
+        const timer = setTimeout(() => {
+            if (!isMountedRef.current) return
+            fn()
+        }, delay)
         greetingTimersRef.current.push(timer)
     }
 
@@ -125,6 +129,7 @@ export function useAutonomousFlow({
     }, [canRunIdleAutonomous, clearIdleAutonomousTimer, idleAutoCountRef, isGeneratingRef, lastUserMessageIdRef, pendingUserMessagesRef, sendToApiRef])
 
     const triggerLocalGreeting = useCallback(() => {
+        if (!isMountedRef.current) return
         if (initialGreetingRef.current) return
         const state = useChatStore.getState()
         if (state.activeGang.length === 0 || state.messages.length > 0) return
@@ -204,6 +209,15 @@ export function useAutonomousFlow({
             triggerLocalGreetingRef.current()
         }
     }, [activeGang.length, initialGreetingRef, messages.length, userId])
+
+    // Cleanup: cancel all greeting timers on unmount
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false
+            greetingTimersRef.current.forEach(clearTimeout)
+            greetingTimersRef.current = []
+        }
+    }, [])
 
     return {
         greetingTimersRef,
