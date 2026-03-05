@@ -1,12 +1,11 @@
 'use client'
 
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useState } from 'react'
 import { Character, Message } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
-import { saveMemoryManual } from '@/app/auth/actions'
-import { Bookmark, Heart, Reply } from 'lucide-react'
+import { Heart, Reply } from 'lucide-react'
 import Image from 'next/image'
 
 // ── Avatar with fallback ──
@@ -189,9 +188,7 @@ function MessageItemComponent({
     const isReaction = !!message.reaction
     const { theme, resolvedTheme } = useTheme()
     const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
-    const [showActions, setShowActions] = useState(false)
-    const actionWrapRef = useRef<HTMLDivElement>(null)
-    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [liked, setLiked] = useState(false)
     const canShowActions = !isReaction && message.speaker !== 'system'
 
     const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -249,101 +246,13 @@ function MessageItemComponent({
     const quotePreviewShort = truncateText(quotePreviewRaw, 38)
     const quotePreviewLong = truncateText(quotePreviewRaw, 72)
 
-    // ── Interaction handlers ──
-    const clearLongPressTimer = () => {
-        if (!longPressTimerRef.current) return
-        clearTimeout(longPressTimerRef.current)
-        longPressTimerRef.current = null
-    }
-
-    const pointerStartPos = useRef<{ x: number; y: number } | null>(null)
-
-    const handlePointerDown = (e: React.PointerEvent) => {
-        if (!canShowActions) return
-        clearLongPressTimer()
-        pointerStartPos.current = { x: e.clientX, y: e.clientY }
-        longPressTimerRef.current = setTimeout(() => {
-            setShowActions(true)
-        }, 350)
-    }
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!longPressTimerRef.current || !pointerStartPos.current) return
-        const dx = e.clientX - pointerStartPos.current.x
-        const dy = e.clientY - pointerStartPos.current.y
-        if (dx * dx + dy * dy > 100) {
-            clearLongPressTimer()
-        }
-    }
-
-    const handlePointerUp = () => {
-        clearLongPressTimer()
-        pointerStartPos.current = null
-    }
-
-    const handleContextMenu = (e: React.MouseEvent) => {
-        if (!canShowActions) return
-        e.preventDefault()
-        setShowActions(true)
-    }
-
-    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const handleMouseEnter = () => {
-        if (!canShowActions) return
-        hoverTimerRef.current = setTimeout(() => setShowActions(true), 200)
-    }
-    const handleMouseLeave = () => {
-        if (hoverTimerRef.current) {
-            clearTimeout(hoverTimerRef.current)
-            hoverTimerRef.current = null
-        }
-    }
-
-    const handleBubbleKeyDown = (e: React.KeyboardEvent) => {
-        if (!canShowActions) return
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            setShowActions((prev) => !prev)
-            return
-        }
-        if (e.key === 'Escape') {
-            e.preventDefault()
-            setShowActions(false)
-        }
-    }
-
-    useEffect(() => {
-        return () => clearLongPressTimer()
-    }, [])
-
-    useEffect(() => {
-        if (!showActions) return
-        const onDocPointerDown = (e: PointerEvent) => {
-            const node = actionWrapRef.current
-            if (!node) return
-            if (node.contains(e.target as Node)) return
-            setShowActions(false)
-        }
-        const onDocKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setShowActions(false)
-            }
-        }
-        document.addEventListener('pointerdown', onDocPointerDown)
-        document.addEventListener('keydown', onDocKeyDown)
-        return () => {
-            document.removeEventListener('pointerdown', onDocPointerDown)
-            document.removeEventListener('keydown', onDocKeyDown)
-        }
-    }, [showActions])
 
     return (
         <div
             className={cn(
                 "group relative flex flex-col w-auto max-w-[82vw] sm:max-w-[66vw] lg:max-w-[34rem]",
                 isUser ? "ml-auto items-end" : "mr-auto items-start",
-                isReaction && "opacity-80",
-                showActions ? "z-40" : "z-0"
+                isReaction && "opacity-80"
             )}
         >
             {/* Avatar + Name row */}
@@ -370,7 +279,7 @@ function MessageItemComponent({
             )}
 
             {/* Message bubble */}
-            <div ref={actionWrapRef} className={cn('relative min-w-0 max-w-full', isUser ? 'self-end' : 'self-start')} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+            <div className={cn('min-w-0 max-w-full', isUser ? 'self-end' : 'self-start')}>
                 <div
                     className={cn(
                         "relative max-w-full px-3.5 py-2.5 sm:px-4 sm:py-3 transition-colors",
@@ -389,17 +298,6 @@ function MessageItemComponent({
                                 ...(isDark ? {} : { border: `1px solid ${toRgbString(aiBorderLight)}` }),
                             }
                     }
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerLeave={handlePointerUp}
-                    onContextMenu={handleContextMenu}
-                    onKeyDown={handleBubbleKeyDown}
-                    tabIndex={canShowActions ? 0 : undefined}
-                    role={canShowActions ? 'button' : undefined}
-                    aria-label={canShowActions ? 'Open message actions' : undefined}
-                    aria-haspopup={canShowActions ? 'menu' : undefined}
-                    aria-expanded={canShowActions ? showActions : undefined}
                 >
                     {isReaction ? (
                         <span className="text-3xl animate-bounce-short inline-block" role="img" aria-label={`${character?.name || message.speaker} reacted with ${message.content}`}>{message.content}</span>
@@ -443,56 +341,38 @@ function MessageItemComponent({
                     )}
                 </div>
 
-                {/* Action buttons — visible on hover (desktop) or long-press (mobile) */}
-                {canShowActions && (showActions) && (
+                {/* Inline action icons below bubble */}
+                {canShowActions && (
                     <div className={cn(
-                        "absolute z-50 bottom-full mb-1.5 flex items-center gap-0.5 rounded-full border border-border/50 bg-card/95 dark:border-white/12 dark:bg-[rgba(18,26,42,0.95)] p-1 shadow-lg backdrop-blur-xl",
-                        isUser ? 'right-0' : 'left-0'
-                    )} role="menu" aria-label="Message actions">
-                        <Button
+                        "flex items-center gap-2.5 mt-0.5 px-1",
+                        isUser ? "justify-end" : "justify-start"
+                    )}>
+                        <button
                             type="button"
-                            variant="ghost"
-                            size="sm"
-                            role="menuitem"
-                            className="rounded-full text-xs tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white min-h-[44px] sm:min-h-0"
+                            aria-label={liked ? 'Unlike message' : 'Like message'}
+                            className="p-0.5 transition-colors"
                             onClick={() => {
+                                setLiked((prev) => !prev)
                                 onLike?.(message)
-                                setShowActions(false)
                             }}
                         >
-                            <Heart className="w-3.5 h-3.5" />
-                            Like
-                        </Button>
-                        <Button
+                            <Heart
+                                className={cn(
+                                    "w-3 h-3 transition-all",
+                                    liked
+                                        ? "fill-red-500 text-red-500 scale-110"
+                                        : "text-muted-foreground/40 hover:text-muted-foreground/70"
+                                )}
+                            />
+                        </button>
+                        <button
                             type="button"
-                            variant="ghost"
-                            size="sm"
-                            role="menuitem"
-                            className="rounded-full text-xs tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white min-h-[44px] sm:min-h-0"
-                            onClick={() => {
-                                onReply?.(message)
-                                setShowActions(false)
-                            }}
+                            aria-label="Reply to message"
+                            className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                            onClick={() => onReply?.(message)}
                         >
-                            <Reply className="w-3.5 h-3.5" />
-                            Reply
-                        </Button>
-                        {isUser && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                role="menuitem"
-                                className="rounded-full text-xs tracking-wide text-foreground/70 dark:text-white/75 hover:bg-muted/50 dark:hover:bg-white/8 hover:text-foreground dark:hover:text-white min-h-[44px] sm:min-h-0"
-                                onClick={() => {
-                                    saveMemoryManual(message.content)
-                                    setShowActions(false)
-                                }}
-                            >
-                                <Bookmark className="w-3.5 h-3.5" />
-                                Save
-                            </Button>
-                        )}
+                            <Reply className="w-3 h-3" />
+                        </button>
                     </div>
                 )}
             </div>

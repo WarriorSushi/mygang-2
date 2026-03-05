@@ -206,11 +206,14 @@ export function LandingPage() {
 
   const prefersReducedMotion = useReducedMotion()
   const { userId, isHydrated, activeGang } = useChatStore()
-  const isAuthenticated = isHydrated && !!userId
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const ready = mounted && isHydrated
+  const isAuthenticated = ready && !!userId
   const hasGang = activeGang.length >= 2
-  const ctaText = !isHydrated ? 'Loading...' : isAuthenticated ? 'Go to Chat' : 'Assemble Your Gang'
+  const ctaText = !ready ? 'Assemble Your Gang' : isAuthenticated ? 'Go to Chat' : 'Assemble Your Gang'
   const ctaLink = isAuthenticated ? (hasGang ? '/chat' : '/onboarding') : null
-  const ctaDisabled = !isHydrated
+  const ctaDisabled = !ready
 
   // Auto-redirect authenticated users away from landing page
   useEffect(() => {
