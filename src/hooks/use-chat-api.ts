@@ -34,6 +34,7 @@ export type SendToApiArgs = {
     isAutonomous: boolean
     autonomousIdle?: boolean
     sourceUserMessageId?: string | null
+    purchaseCelebration?: 'basic' | 'pro'
 }
 
 export type SendToApiHandler = (args: SendToApiArgs) => Promise<void>
@@ -156,11 +157,11 @@ export function useChatApi({
         setMessages(updated)
     }, [setMessages])
 
-    const sendToApi: SendToApiHandler = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId }) => {
+    const sendToApi: SendToApiHandler = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId, purchaseCelebration }) => {
         const effectiveLowCostModeForCall = lowCostMode || autoLowCostModeRef.current
 
         if (isAutonomous) {
-            if (effectiveLowCostModeForCall) {
+            if (effectiveLowCostModeForCall && !purchaseCelebration) {
                 isGeneratingRef.current = false
                 return
             }
@@ -223,7 +224,8 @@ export function useChatApi({
                 chatMode,
                 lowCostMode: effectiveLowCostModeForCall,
                 source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
-                autonomousIdle
+                autonomousIdle,
+                ...(purchaseCelebration ? { purchaseCelebration } : {})
             }
 
             let res: Response | null = null
@@ -453,7 +455,7 @@ export function useChatApi({
             }
             const sourceId = pendingUserMessageIdRef.current
             pendingUserMessageIdRef.current = null
-            sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId })
+            sendToApiRef.current({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId })
         }, 600)
     }
 

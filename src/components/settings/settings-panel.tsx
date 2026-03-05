@@ -25,8 +25,6 @@ interface SettingsPanelProps {
     }
 }
 
-const PERF_KEY = 'perf_monitoring'
-
 function UpgradeCard({ tier }: { tier: string | null }) {
     const isPro = tier === 'pro'
     const isBasic = tier === 'basic'
@@ -162,24 +160,10 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     const [deleteEmail, setDeleteEmail] = useState('')
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
-    const [perfEnabled, setPerfEnabled] = useState(() => {
-        if (typeof window === 'undefined') return false
-        return window.localStorage.getItem(PERF_KEY) === 'true'
-    })
-    const isProd = process.env.NODE_ENV === 'production'
-
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setThemeChoice(nextTheme)
         setTheme(nextTheme)
         updateUserSettings({ theme: nextTheme })
-    }
-
-    const handlePerfToggle = (next: boolean) => {
-        setPerfEnabled(next)
-        if (typeof window !== 'undefined') {
-            window.localStorage.setItem(PERF_KEY, next ? 'true' : 'false')
-        }
-        trackEvent(next ? 'perf_monitoring_enabled' : 'perf_monitoring_disabled')
     }
 
     const handleLowCostModeToggle = (next: boolean) => {
@@ -245,36 +229,14 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 </div>
             </section>
 
-            {/* Performance */}
+            {/* Preferences */}
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance</div>
-                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div className="text-sm font-semibold">Production monitoring</div>
-                        <div className="text-[11px] text-muted-foreground">
-                            Captures LCP, CLS, and long tasks in production.
-                        </div>
-                    </div>
-                    <Switch
-                        checked={perfEnabled}
-                        onCheckedChange={handlePerfToggle}
-                        disabled={!isProd}
-                        aria-label="Toggle production monitoring"
-                    />
-                </div>
-                {!isProd && (
-                    <div className="mt-2 text-[11px] text-muted-foreground">Enable this in production builds.</div>
-                )}
-            </section>
-
-            {/* Cost Control */}
-            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Cost Control</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preferences</div>
                 <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <div className="text-sm font-semibold">Low-Cost Mode</div>
                         <div className="text-[11px] text-muted-foreground">
-                            Limits autonomous turns and shrinks AI context to reduce quota usage.
+                            Fewer AI calls and smaller context to save quota.
                         </div>
                     </div>
                     <Switch

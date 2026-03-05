@@ -9,6 +9,35 @@ import { saveMemoryManual } from '@/app/auth/actions'
 import { Bookmark, Heart, Reply } from 'lucide-react'
 import Image from 'next/image'
 
+// ── Avatar with fallback ──
+
+function MessageAvatar({ character, speaker }: { character?: Character; speaker: string }) {
+    const [imgFailed, setImgFailed] = useState(false)
+    const src = character?.avatar
+    const initial = (character?.name || speaker)[0]
+
+    if (src && !imgFailed) {
+        return (
+            <Image
+                src={src}
+                alt={character?.name || 'Avatar'}
+                width={28}
+                height={28}
+                className="w-full h-full object-cover"
+                sizes="28px"
+                priority={false}
+                onError={() => setImgFailed(true)}
+            />
+        )
+    }
+
+    return (
+        <span className="text-white text-[11px] font-semibold uppercase">
+            {initial}
+        </span>
+    )
+}
+
 // ── Color utilities ──
 
 type Rgb = { r: number; g: number; b: number }
@@ -258,6 +287,18 @@ function MessageItemComponent({
         setShowActions(true)
     }
 
+    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const handleMouseEnter = () => {
+        if (!canShowActions) return
+        hoverTimerRef.current = setTimeout(() => setShowActions(true), 200)
+    }
+    const handleMouseLeave = () => {
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current)
+            hoverTimerRef.current = null
+        }
+    }
+
     const handleBubbleKeyDown = (e: React.KeyboardEvent) => {
         if (!canShowActions) return
         if (e.key === 'Enter' || e.key === ' ') {
@@ -312,22 +353,7 @@ function MessageItemComponent({
                         className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center ring-[1.5px] ring-background"
                         style={{ backgroundColor: character?.color || '#555' }}
                     >
-                        {character?.avatar ? (
-                            <Image
-                                src={character.avatar}
-                                alt={character.name || 'Avatar'}
-                                width={28}
-                                height={28}
-                                className="w-full h-full object-cover"
-                                sizes="28px"
-                                priority={false}
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                            />
-                        ) : (
-                            <span className="text-white text-[11px] font-semibold uppercase">
-                                {(character?.name || message.speaker)[0]}
-                            </span>
-                        )}
+                        <MessageAvatar character={character} speaker={message.speaker} />
                     </div>
                     <span
                         className="text-[12px] font-semibold tracking-wide"
@@ -344,7 +370,7 @@ function MessageItemComponent({
             )}
 
             {/* Message bubble */}
-            <div ref={actionWrapRef} className={cn('relative min-w-0 max-w-full', isUser ? 'self-end' : 'self-start')}>
+            <div ref={actionWrapRef} className={cn('relative min-w-0 max-w-full', isUser ? 'self-end' : 'self-start')} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
                 <div
                     className={cn(
                         "relative max-w-full px-3.5 py-2.5 sm:px-4 sm:py-3 transition-colors",
@@ -417,8 +443,8 @@ function MessageItemComponent({
                     )}
                 </div>
 
-                {/* Action buttons popup */}
-                {showActions && canShowActions && (
+                {/* Action buttons — visible on hover (desktop) or long-press (mobile) */}
+                {canShowActions && (showActions) && (
                     <div className={cn(
                         "absolute z-50 bottom-full mb-1.5 flex items-center gap-0.5 rounded-full border border-border/50 bg-card/95 dark:border-white/12 dark:bg-[rgba(18,26,42,0.95)] p-1 shadow-lg backdrop-blur-xl",
                         isUser ? 'right-0' : 'left-0'

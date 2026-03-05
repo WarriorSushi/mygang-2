@@ -110,9 +110,9 @@ export default function OnboardingPage() {
             }
         }
 
-        // Simulate summoning delay
+        // Simulate summoning delay, then replace to prevent back-nav to loading
         setTimeout(() => {
-            router.push('/chat')
+            router.replace('/chat')
         }, 2200)
     }
 

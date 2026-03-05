@@ -95,9 +95,9 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
     }
 
     return (
-        <div className="px-3 sm:px-0 pt-1 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] sm:pb-0 z-20">
+        <div className="px-3 sm:px-0 pt-1 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] sm:pb-0 z-20 max-w-3xl mx-auto w-full">
             {replyingTo && (
-                <div role="status" aria-live="polite" className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border/70 bg-card/85 dark:bg-[rgba(22,35,52,0.92)] px-3 py-2 lg:w-1/2 lg:mx-auto">
+                <div role="status" aria-live="polite" className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border/50 bg-card/90 px-3 py-2">
                     <div className="min-w-0">
                         <p className="text-[10px] uppercase tracking-widest text-foreground/70 dark:text-white/75">Replying to {replyingTo.speaker === 'user' ? 'You' : replyingTo.speaker}</p>
                         <p className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs text-foreground/85 dark:text-white/90">{replyingTo.content}</p>
@@ -116,7 +116,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
             )}
             <form
                 onSubmit={handleSubmit}
-                className="relative flex items-end gap-2 border border-border/50 bg-background/98 dark:border-white/10 dark:bg-[rgba(28,40,60,0.95)] p-2 px-3 rounded-[22px] shadow-none sm:shadow-sm transition-colors focus-within:border-primary/50 dark:focus-within:border-white/25 lg:w-1/2 lg:mx-auto"
+                className="chat-input-desktop relative flex items-end gap-2 border border-border/40 bg-card/95 p-2 px-3 rounded-[22px] shadow-none sm:shadow-sm transition-colors focus-within:border-primary/40"
             >
                 <textarea
                     ref={inputRef}

@@ -34,6 +34,10 @@ function memoryRateLimit(key: string, limit: number, windowMs: number): RateLimi
   return { success: nextCount <= limit, remaining: Math.max(0, limit - nextCount), reset: entry.reset }
 }
 
+// Cache Redis singleton at module level to avoid re-instantiation per request
+let _redisInstance: unknown = null
+let _ratelimitCache = new Map<string, unknown>()
+
 export async function rateLimit(
   key: string,
   limit = DEFAULT_LIMIT,
@@ -42,12 +46,22 @@ export async function rateLimit(
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     const { Ratelimit } = await import("@upstash/ratelimit")
     const { Redis } = await import("@upstash/redis")
-    const redis = Redis.fromEnv()
-    const ratelimit = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(limit, `${Math.max(1, Math.floor(windowMs / 1000))} s`),
-      analytics: true
-    })
+
+    if (!_redisInstance) {
+      _redisInstance = Redis.fromEnv()
+    }
+
+    const cacheKey = `${limit}:${windowMs}`
+    let ratelimit = _ratelimitCache.get(cacheKey) as InstanceType<typeof Ratelimit> | undefined
+    if (!ratelimit) {
+      ratelimit = new Ratelimit({
+        redis: _redisInstance as InstanceType<typeof Redis>,
+        limiter: Ratelimit.slidingWindow(limit, `${Math.max(1, Math.floor(windowMs / 1000))} s`),
+        analytics: true
+      })
+      _ratelimitCache.set(cacheKey, ratelimit)
+    }
+
     const result = await ratelimit.limit(key)
     return {
       success: result.success,

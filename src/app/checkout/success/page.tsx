@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Suspense } from 'react'
+import { useChatStore } from '@/stores/chat-store'
 
 function SuccessContent() {
     const searchParams = useSearchParams()
@@ -20,15 +21,21 @@ function SuccessContent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ subscription_id: subscriptionId }),
             })
-                .then(res => {
+                .then(async (res) => {
                     if (res.ok) {
-                        setStatus('success')
-                        setTimeout(() => router.push('/chat'), 3000)
-                    } else {
-                        // Webhook will handle it — still show success
-                        setStatus('success')
-                        setTimeout(() => router.push('/chat'), 3000)
+                        const data = await res.json()
+                        const plan = data.plan as 'basic' | 'pro' | undefined
+                        if (plan) {
+                            // Update store immediately so badge shows without refresh
+                            useChatStore.getState().setSubscriptionTier(plan)
+                            // Signal that a purchase just happened (for greeting)
+                            if (typeof window !== 'undefined') {
+                                window.sessionStorage.setItem('mygang_just_purchased', plan)
+                            }
+                        }
                     }
+                    setStatus('success')
+                    setTimeout(() => router.push('/chat'), 3000)
                 })
                 .catch(() => {
                     // Webhook will handle activation

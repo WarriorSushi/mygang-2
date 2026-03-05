@@ -363,6 +363,7 @@ export type Database = {
           low_cost_mode: boolean
           onboarding_completed: boolean | null
           preferred_squad: string[] | null
+          purchase_celebration_pending: boolean | null
           relationship_state: Json | null
           session_summary: string | null
           subscription_tier: string | null
@@ -387,6 +388,7 @@ export type Database = {
           low_cost_mode?: boolean
           onboarding_completed?: boolean | null
           preferred_squad?: string[] | null
+          purchase_celebration_pending?: boolean | null
           relationship_state?: Json | null
           session_summary?: string | null
           subscription_tier?: string | null
@@ -411,6 +413,7 @@ export type Database = {
           low_cost_mode?: boolean
           onboarding_completed?: boolean | null
           preferred_squad?: string[] | null
+          purchase_celebration_pending?: boolean | null
           relationship_state?: Json | null
           session_summary?: string | null
           subscription_tier?: string | null

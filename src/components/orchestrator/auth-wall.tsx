@@ -105,10 +105,10 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             </div>
                         </div>
                         <DialogTitle className="text-2xl sm:text-4xl font-black text-center tracking-tight leading-tight">
-                            Sign in to continue
+                            Join the gang
                         </DialogTitle>
                         <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[320px]">
-                            Jump in with Google or use your email.
+                            Sign in or create an account to start chatting. It&apos;s free.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -163,11 +163,12 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                     />
                                     <Input
                                         type="password"
-                                        placeholder="Password"
+                                        placeholder="Password (6+ characters)"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
                                         required
+                                        minLength={6}
                                     />
                                     {errorMessage && (
                                         <div className={cn(

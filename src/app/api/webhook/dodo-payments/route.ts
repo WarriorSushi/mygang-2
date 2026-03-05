@@ -55,11 +55,17 @@ export const POST = Webhooks({
         const subscriptionId = data.subscription_id as string
         const productId = data.product_id as string
         const userId = await findUserByCustomerId(customerId)
-        if (!userId) return
+        if (!userId) {
+            console.error(`[webhook] CRITICAL: No user found for customer_id=${customerId}, subscription_id=${subscriptionId}. User paid but activation was lost.`)
+            await logBillingEvent(null, 'subscription.active.orphaned', data.webhook_id as string ?? null, data)
+            return
+        }
 
         const plan = planFromProductId(productId)
         await upsertSubscription(subscriptionId, userId, productId, plan, 'active')
         await updateProfileTier(userId, plan)
+        // Set celebration flag so AI friends congratulate user on next chat
+        await supabase.from('profiles').update({ purchase_celebration_pending: true }).eq('id', userId)
         await logBillingEvent(userId, 'subscription.active', data.webhook_id as string ?? null, data)
     },
 
@@ -68,7 +74,11 @@ export const POST = Webhooks({
         const customerId = data.customer_id as string
         const subscriptionId = data.subscription_id as string
         const userId = await findUserByCustomerId(customerId)
-        if (!userId) return
+        if (!userId) {
+            console.error(`[webhook] No user found for customer_id=${customerId} on renewal, subscription_id=${subscriptionId}`)
+            await logBillingEvent(null, 'subscription.renewed.orphaned', null, data)
+            return
+        }
 
         await supabase.from('subscriptions').update({
             status: 'active',
@@ -82,7 +92,11 @@ export const POST = Webhooks({
         const customerId = data.customer_id as string
         const subscriptionId = data.subscription_id as string
         const userId = await findUserByCustomerId(customerId)
-        if (!userId) return
+        if (!userId) {
+            console.error(`[webhook] No user found for customer_id=${customerId} on cancellation, subscription_id=${subscriptionId}`)
+            await logBillingEvent(null, 'subscription.cancelled.orphaned', null, data)
+            return
+        }
 
         await supabase.from('subscriptions').update({
             status: 'cancelled',
@@ -97,7 +111,11 @@ export const POST = Webhooks({
         const customerId = data.customer_id as string
         const subscriptionId = data.subscription_id as string
         const userId = await findUserByCustomerId(customerId)
-        if (!userId) return
+        if (!userId) {
+            console.error(`[webhook] No user found for customer_id=${customerId} on expiration, subscription_id=${subscriptionId}`)
+            await logBillingEvent(null, 'subscription.expired.orphaned', null, data)
+            return
+        }
 
         await supabase.from('subscriptions').update({
             status: 'expired',

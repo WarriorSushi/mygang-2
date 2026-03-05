@@ -27,7 +27,7 @@ export function BackgroundBlobs({ isMuted = false, className }: BackgroundBlobsP
     const disableMotion = useMemo(() => isMuted || isLowEnd, [isMuted, isLowEnd])
 
     return (
-        <div className={cn("fixed inset-0 -z-10 overflow-hidden pointer-events-none", className)}>
+        <div className={cn("fixed inset-0 -z-10 pointer-events-none", className)}>
             {/* Primary blob — top-left drift */}
             <div
                 className={cn(
@@ -52,8 +52,8 @@ export function BackgroundBlobs({ isMuted = false, className }: BackgroundBlobsP
                     !disableMotion && "animate-blob-drift-3"
                 )}
             />
-            {/* Film grain overlay — CSS noise */}
-            <div className="absolute inset-0 landing-grain" />
+            {/* Film grain overlay — CSS noise (disabled on low-end devices) */}
+            {!isLowEnd && <div className="absolute inset-0 landing-grain" />}
         </div>
     )
 }

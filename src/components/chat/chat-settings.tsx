@@ -23,6 +23,7 @@ import {
     Zap,
     X,
     Lock,
+    Settings2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { deleteAccount, deleteAllMessages, signOut, updateUserSettings } from '@/app/auth/actions'
@@ -172,8 +173,22 @@ function SectionCard({ children, isDark, className: extra }: { children: React.R
         <div
             className={cn('rounded-2xl px-4 py-4 sm:px-5 sm:py-5', extra)}
             style={{
-                background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)',
+                background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            }}
+        >
+            {children}
+        </div>
+    )
+}
+
+/* ── Icon Container ── */
+function IconBox({ children, isDark }: { children: React.ReactNode; isDark: boolean }) {
+    return (
+        <div
+            className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
+            style={{
+                background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
             }}
         >
             {children}
@@ -210,39 +225,26 @@ function MenuRow({
     isDark?: boolean
     className?: string
 }) {
-    const hoverBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'
     const cls = cn(
-        'w-full flex items-center justify-between gap-3 rounded-xl px-4 py-[14px] transition-colors cursor-pointer',
+        'group/row w-full flex items-center justify-between gap-3 rounded-xl px-4 py-4 transition-all duration-200 cursor-pointer',
+        !destructive && 'hover:bg-primary/5 active:scale-[0.99]',
+        destructive && 'hover:bg-red-500/8',
         extraClass,
     )
 
-    const style = {
-        ['--hover-bg' as string]: hoverBg,
-    }
-
     if (href) {
         return (
-            <Link
-                href={href}
-                onClick={onCloseDrawer}
-                className={cn(cls, !destructive && 'hover:bg-[var(--hover-bg)]', destructive && 'hover:bg-red-500/8')}
-                style={style}
-            >
+            <Link href={href} onClick={onCloseDrawer} className={cls}>
                 {children}
-                {chevron && <ChevronRight size={14} className="text-muted-foreground shrink-0" />}
+                {chevron && <ChevronRight size={14} className="text-muted-foreground/50 shrink-0 transition-transform duration-200 group-hover/row:translate-x-0.5 group-hover/row:text-muted-foreground" />}
             </Link>
         )
     }
 
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(cls, !destructive && 'hover:bg-[var(--hover-bg)]', destructive && 'hover:bg-red-500/8')}
-            style={style}
-        >
+        <button type="button" onClick={onClick} className={cls}>
             {children}
-            {chevron && <ChevronRight size={14} className="text-muted-foreground shrink-0" />}
+            {chevron && <ChevronRight size={14} className="text-muted-foreground/50 shrink-0 transition-transform duration-200 group-hover/row:translate-x-0.5 group-hover/row:text-muted-foreground" />}
         </button>
     )
 }
@@ -429,8 +431,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                         <button
                             type="button"
                             onClick={onClose}
-                            className="absolute top-5 right-4 sm:top-6 sm:right-6 p-2 rounded-full text-muted-foreground hover:text-foreground transition-colors"
-                            style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }}
+                            className="absolute top-5 right-4 sm:top-6 sm:right-6 p-2 rounded-xl text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95"
+                            style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }}
                             aria-label="Close settings"
                         >
                             <X size={16} />
@@ -564,7 +566,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                     <SectionCard isDark={isDark}>
                                         <SectionLabel>Preferences</SectionLabel>
                                         <div className="space-y-0">
-                                            <div className="flex items-center justify-between py-3">
+                                            <div className="flex items-center justify-between py-4">
                                                 <div>
                                                     <p className="text-[13px] font-medium">Role Labels</p>
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Show role under character names</p>
@@ -576,7 +578,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                                 />
                                             </div>
                                             <div className="h-px" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }} />
-                                            <div className="flex items-center justify-between py-3">
+                                            <div className="flex items-center justify-between py-4">
                                                 <div>
                                                     <p className="text-[13px] font-medium">Low-Cost Mode</p>
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Fewer AI calls, smaller context</p>
@@ -600,13 +602,17 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         <div>
                                             {subscriptionTier === 'free' ? (
                                                 <div className="px-4 py-3">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <Paintbrush size={16} className="text-muted-foreground/40" />
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 opacity-40" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}>
+                                                            <Paintbrush size={15} className="text-muted-foreground" />
+                                                        </div>
                                                         <p className="text-[13px] font-medium text-muted-foreground/50">Wallpaper</p>
                                                         <Lock size={11} className="text-muted-foreground/30" />
                                                     </div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <PenLine size={16} className="text-muted-foreground/40" />
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 opacity-40" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}>
+                                                            <PenLine size={15} className="text-muted-foreground" />
+                                                        </div>
                                                         <p className="text-[13px] font-medium text-muted-foreground/50">Rename Characters</p>
                                                         <Lock size={11} className="text-muted-foreground/30" />
                                                     </div>
@@ -623,7 +629,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                                 <>
                                                     <MenuRow onClick={() => setPanel('wallpaper')} chevron isDark={isDark}>
                                                         <div className="flex items-center gap-3">
-                                                            <Paintbrush size={16} className="text-muted-foreground" />
+                                                            <IconBox isDark={isDark}>
+                                                                <Paintbrush size={15} className="text-muted-foreground" />
+                                                            </IconBox>
                                                             <div>
                                                                 <p className="text-[13px] font-medium">Wallpaper</p>
                                                                 <p className="text-[11px] text-muted-foreground">{CHAT_WALLPAPERS.find((w) => w.id === chatWallpaper)?.label || 'Default'}</p>
@@ -632,7 +640,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                                     </MenuRow>
                                                     <MenuRow onClick={() => { setRenameInputs({ ...customCharacterNames }); setPanel('rename') }} chevron isDark={isDark}>
                                                         <div className="flex items-center gap-3">
-                                                            <PenLine size={16} className="text-muted-foreground" />
+                                                            <IconBox isDark={isDark}>
+                                                                <PenLine size={15} className="text-muted-foreground" />
+                                                            </IconBox>
                                                             <div>
                                                                 <p className="text-[13px] font-medium">Rename Characters</p>
                                                                 <p className="text-[11px] text-muted-foreground">Give your gang custom names</p>
@@ -643,7 +653,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                             )}
                                             <MenuRow onClick={async () => { await onTakeScreenshot() }} isDark={isDark}>
                                                 <div className="flex items-center gap-3">
-                                                    <Camera size={16} className="text-muted-foreground" />
+                                                    <IconBox isDark={isDark}>
+                                                        <Camera size={15} className="text-muted-foreground" />
+                                                    </IconBox>
                                                     <div>
                                                         <p className="text-[13px] font-medium">Capture Moment</p>
                                                         <p className="text-[11px] text-muted-foreground">Save chat as image</p>
@@ -662,9 +674,14 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         </div>
                                         <div>
                                             <MenuRow href="/settings" onCloseDrawer={onClose} chevron isDark={isDark}>
-                                                <div>
-                                                    <p className="text-[13px] font-medium">Usage & Preferences</p>
-                                                    <p className="text-[11px] text-muted-foreground">Detailed account settings</p>
+                                                <div className="flex items-center gap-3">
+                                                    <IconBox isDark={isDark}>
+                                                        <Settings2 size={15} className="text-muted-foreground" />
+                                                    </IconBox>
+                                                    <div>
+                                                        <p className="text-[13px] font-medium">Usage & Preferences</p>
+                                                        <p className="text-[11px] text-muted-foreground">Detailed account settings</p>
+                                                    </div>
                                                 </div>
                                             </MenuRow>
                                             <MenuRow isDark={isDark} onClick={async () => {
@@ -677,7 +694,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                                 await signOut()
                                             }}>
                                                 <div className="flex items-center gap-3">
-                                                    <LogOut size={15} className="text-muted-foreground" />
+                                                    <IconBox isDark={isDark}>
+                                                        <LogOut size={15} className="text-muted-foreground" />
+                                                    </IconBox>
                                                     <p className="text-[13px] font-medium">Sign Out</p>
                                                 </div>
                                             </MenuRow>
@@ -867,9 +886,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                     </div>
 
                     {/* ─── FOOTER ─── */}
-                    <div className="px-5 sm:px-7 py-3">
-                        <div className="h-px mb-3" style={{ background: `linear-gradient(90deg, transparent, ${surface.footerBorder}, transparent)` }} />
-                        <p className="text-center text-[9px] uppercase tracking-[0.35em] text-muted-foreground/50">
+                    <div className="px-5 sm:px-7 py-4">
+                        <div className="h-px mb-4" style={{ background: `linear-gradient(90deg, transparent, ${surface.footerBorder}, transparent)` }} />
+                        <p className="text-center text-[9px] uppercase tracking-[0.35em] text-muted-foreground/40 select-none">
                             MyGang v1.7
                         </p>
                     </div>

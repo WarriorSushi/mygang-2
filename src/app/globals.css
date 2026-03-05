@@ -299,6 +299,18 @@
   opacity: 0.12;
 }
 
+/* ── Desktop dark mode chat chrome ── */
+@media (min-width: 640px) {
+  .dark .chat-input-desktop {
+    background: #0a0a0a;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .dark .chat-header-desktop {
+    background: #0a0a0a;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
 .content-auto {
   content-visibility: auto;
   contain-intrinsic-size: 120px 80px;

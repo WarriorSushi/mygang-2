@@ -181,6 +181,62 @@ export default function ChatPage() {
         }
     }, [isHydrated])
 
+    // ── Purchase celebration: trigger one-time greeting from characters ──
+    // Uses sessionStorage (fast) + DB flag (reliable fallback for tab closure)
+    const purchaseCelebrationTriggeredRef = useRef(false)
+    useEffect(() => {
+        if (!isHydrated || !userId || activeGang.length === 0) return
+        if (purchaseCelebrationTriggeredRef.current) return
+        if (api.isGeneratingRef.current) return
+
+        // Check sessionStorage first (fast path)
+        const sessionPlan = typeof window !== 'undefined'
+            ? window.sessionStorage.getItem('mygang_just_purchased') as 'basic' | 'pro' | null
+            : null
+
+        const triggerCelebration = (plan: 'basic' | 'pro') => {
+            purchaseCelebrationTriggeredRef.current = true
+            if (typeof window !== 'undefined') {
+                window.sessionStorage.removeItem('mygang_just_purchased')
+            }
+            // Clear DB flag
+            import('@/lib/supabase/client').then(({ createClient }) => {
+                const supabase = createClient()
+                supabase.from('profiles').update({ purchase_celebration_pending: false }).eq('id', userId).then(() => {})
+            })
+
+            const timer = setTimeout(() => {
+                api.sendToApiRef.current({
+                    isIntro: false,
+                    isAutonomous: true,
+                    purchaseCelebration: plan,
+                }).catch((err) => console.error('Purchase celebration error:', err))
+            }, 1500)
+            return timer
+        }
+
+        if (sessionPlan) {
+            const timer = triggerCelebration(sessionPlan)
+            return () => clearTimeout(timer)
+        }
+
+        // Fallback: check DB flag (handles tab closure before sessionStorage was read)
+        let cancelled = false
+        import('@/lib/supabase/client').then(({ createClient }) => {
+            const supabase = createClient()
+            supabase.from('profiles')
+                .select('purchase_celebration_pending, subscription_tier')
+                .eq('id', userId)
+                .single()
+                .then(({ data }) => {
+                    if (cancelled || !data?.purchase_celebration_pending) return
+                    const plan = (data.subscription_tier === 'pro' ? 'pro' : 'basic') as 'basic' | 'pro'
+                    triggerCelebration(plan)
+                })
+        })
+        return () => { cancelled = true }
+    }, [isHydrated, userId, activeGang.length, api.isGeneratingRef, api.sendToApiRef])
+
     // ── Cleanup timers ──
     useEffect(() => {
         const greetingTimers = autonomous.greetingTimersRef.current
@@ -236,7 +292,7 @@ export default function ChatPage() {
                 setResumeBannerText('Resumed your last session')
             }
             setShowResumeBanner(true)
-            const timer = setTimeout(() => setShowResumeBanner(false), 4000)
+            const timer = setTimeout(() => setShowResumeBanner(false), 6000)
             return () => clearTimeout(timer)
         }
     }, [isHydrated, messages])
@@ -326,7 +382,7 @@ export default function ChatPage() {
 
     return (
         <main id="main-content" className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative isolate">
-            <BackgroundBlobs isMuted={typing.typingUsers.length > 0} className="absolute inset-0 z-0 overflow-hidden pointer-events-none" />
+            <BackgroundBlobs isMuted={typing.typingUsers.length > 0} className="absolute inset-0 z-0 pointer-events-none" />
             <div className="chat-wallpaper-layer" data-wallpaper={chatWallpaper} aria-hidden="true" />
 
             <div ref={captureRootRef} className="flex-1 flex flex-col w-full relative min-h-0 z-10">
@@ -343,7 +399,7 @@ export default function ChatPage() {
                 />
 
                 <div className="flex-1 flex flex-col min-h-0 relative">
-                    <div className="px-4 md:px-10 lg:px-14">
+                    <div className="px-4 max-w-3xl mx-auto w-full">
                         {showResumeBanner && (
                             <div className="mb-2 rounded-full border border-border/50 bg-muted/40 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                                 {resumeBannerText}
@@ -362,12 +418,14 @@ export default function ChatPage() {
                                 onReplyMessage={(message) => setReplyingTo(message)}
                                 onLikeMessage={api.handleQuickLike}
                                 onRetryMessage={api.handleRetryMessage}
+                                onSendSuggestion={(text) => api.handleSend(text)}
+                                typingUsers={typing.typingUsers}
                             />
                         </ErrorBoundary>
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-border/40 dark:border-white/8 bg-card/95 dark:bg-[rgba(14,22,37,0.92)] backdrop-blur-xl px-0 pb-0 sm:border-t sm:bg-card/95 sm:dark:bg-[rgba(14,22,37,0.92)] sm:backdrop-blur-xl sm:px-10 lg:px-14 sm:pb-3">
+                <div className="shrink-0 px-0 pb-0 sm:px-4 sm:pb-4 border-t border-border/30 sm:border-t-0 bg-card/95 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none">
                     {!isOnline && (
                         <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
                             Offline mode - reconnect to send messages

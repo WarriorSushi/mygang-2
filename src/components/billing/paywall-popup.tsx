@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
+import { Clock, Infinity, Brain, Zap, ArrowRight, Check } from 'lucide-react'
 
 interface PaywallPopupProps {
     open: boolean
@@ -51,68 +52,73 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
 
                 <div className="p-8">
                     <DialogHeader className="flex flex-col items-center gap-4 pb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                            <Clock className="w-6 h-6 text-primary" />
+                        </div>
                         <DialogTitle className="text-xl sm:text-2xl font-black text-center tracking-tight leading-tight">
-                            <span className="text-3xl">😅</span> ok so... we kinda blew up
+                            Cooldown active
                         </DialogTitle>
-                        <DialogDescription className="text-center text-sm sm:text-base text-muted-foreground/80 leading-relaxed max-w-[360px]">
-                            due to unexpected (but very welcome) adoption, we had to cap the {tier} tier
-                            before our servers start crying. your gang still loves you — they just need
-                            a coffee break.
+                        <DialogDescription className="text-center text-sm text-muted-foreground/80 leading-relaxed max-w-[340px]">
+                            You&apos;ve hit the {tier} tier limit. Your gang will be back soon.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex flex-col items-center gap-5 py-4">
                         {/* Countdown */}
-                        <div className="text-center">
-                            <p className="text-lg sm:text-xl text-muted-foreground/90">
-                                <span className="text-xl">☕</span> come back in{' '}
-                                <span className="font-mono font-bold text-foreground text-2xl tabular-nums">
-                                    {formatTimeLeft(secondsLeft)}
-                                </span>
-                            </p>
+                        <div className="text-center flex items-center gap-2.5">
+                            <span className="text-sm text-muted-foreground/70">Ready in</span>
+                            <span className="font-mono font-bold text-foreground text-3xl tabular-nums tracking-tight">
+                                {formatTimeLeft(secondsLeft)}
+                            </span>
                         </div>
 
                         {/* Divider */}
                         <div className="flex items-center gap-3 w-full">
-                            <div className="flex-1 h-px bg-border/50" />
-                            <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-medium">or skip the wait forever</span>
-                            <div className="flex-1 h-px bg-border/50" />
+                            <div className="flex-1 h-px bg-border/40" />
+                            <span className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-medium">or skip the wait</span>
+                            <div className="flex-1 h-px bg-border/40" />
                         </div>
 
-                        {/* CTA */}
+                        {/* Feature list */}
+                        <div className="flex flex-col gap-2.5 w-full">
+                            {[
+                                { icon: Infinity, text: 'Unlimited messages' },
+                                { icon: Brain, text: 'Your gang remembers everything' },
+                                { icon: Zap, text: 'No cooldowns, ever' },
+                            ].map((f) => (
+                                <div key={f.text} className="flex items-center gap-2.5">
+                                    <Check className="w-4 h-4 text-primary shrink-0" />
+                                    <span className="text-sm text-foreground/80">{f.text}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* CTA — Pro */}
                         <Button
                             asChild
-                            className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
+                            className="w-full h-12 rounded-xl text-[15px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
                         >
-                            <Link href="/pricing?upgrade=pro">
-                                🚀 Upgrade to Pro — $19.99/mo
+                            <Link href="/pricing?upgrade=pro" className="flex items-center justify-center gap-2">
+                                Upgrade to Pro — $19.99/mo
+                                <ArrowRight className="w-4 h-4" />
                             </Link>
                         </Button>
 
-                        <p className="text-sm text-muted-foreground/70 text-center">
+                        <p className="text-xs text-muted-foreground/60 text-center">
                             <span className="line-through text-muted-foreground/40">$99/mo</span>{' '}
-                            <span className="text-primary font-semibold">80% off launch week</span>
+                            <span className="text-primary font-medium">80% off launch price</span>
                         </p>
 
-                        {/* Feature list */}
-                        <div className="flex flex-col gap-1.5 text-sm text-muted-foreground/80 w-full">
-                            <p>✓ unlimited messages</p>
-                            <p>✓ your gang remembers everything</p>
-                            <p>✓ no cooldowns, ever</p>
-                        </div>
-
-                        {/* View All Plans link */}
-                        <Link
-                            href="/pricing"
-                            className="text-sm text-muted-foreground/60 hover:text-foreground underline underline-offset-4 transition-colors"
+                        {/* Basic option */}
+                        <Button
+                            asChild
+                            variant="outline"
+                            className="w-full h-10 rounded-xl text-[13px] font-semibold border-blue-500/25 text-blue-400 hover:bg-blue-500/10 transition-all"
                         >
-                            View All Plans
-                        </Link>
-
-                        {/* Footer */}
-                        <p className="text-center text-[11px] text-muted-foreground/50 mt-2">
-                            (your besties aren&apos;t going anywhere — they&apos;re just napping 💤)
-                        </p>
+                            <Link href="/pricing?upgrade=basic" className="flex items-center justify-center gap-2">
+                                Or get Basic — $14.99/mo
+                            </Link>
+                        </Button>
                     </div>
                 </div>
             </DialogContent>

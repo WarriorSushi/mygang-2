@@ -27,7 +27,7 @@ const IDLE_MAX_OUTPUT_TOKENS = 600
 const LOW_COST_MAX_OUTPUT_TOKENS = 800
 const LOW_COST_HISTORY_LIMIT = 8
 const LOW_COST_IDLE_HISTORY_LIMIT = 6
-const MAX_LLM_MESSAGE_CHARS = 500
+const MAX_LLM_MESSAGE_CHARS = 1000
 const MAX_MEMORY_CONTENT_CHARS = 220
 const MAX_SESSION_SUMMARY_CHARS = 500
 const MAX_PROFILE_LINES = 12
@@ -429,6 +429,7 @@ const requestSchema = z.object({
     lowCostMode: z.boolean().optional(),
     source: z.enum(['user', 'autonomous', 'autonomous_idle']).optional(),
     autonomousIdle: z.boolean().optional(),
+    purchaseCelebration: z.enum(['basic', 'pro']).optional(),
 })
 
 function getStatusCodeFromError(err: unknown, depth = 0): number | null {
@@ -539,7 +540,8 @@ export async function POST(req: Request) {
             chatMode: requestedChatMode = 'gang_focus',
             lowCostMode: requestedLowCostMode = false,
             source = 'user',
-            autonomousIdle = false
+            autonomousIdle = false,
+            purchaseCelebration
         } = parsed.data
         let chatMode = requestedChatMode
         const requestStartedAt = Date.now()
@@ -686,9 +688,9 @@ export async function POST(req: Request) {
 
                 if (hasFreshUserTurn && tier !== 'pro') {
                     if (tier === 'basic') {
-                        // Basic tier: 1,000 messages per calendar month
+                        // Basic tier: 500 messages per calendar month
                         const monthlyKey = `chat:monthly:${user.id}:${new Date().toISOString().slice(0, 7)}`
-                        const monthly = await rateLimit(monthlyKey, 1000, 30 * 24 * 60 * 60 * 1000)
+                        const monthly = await rateLimit(monthlyKey, 500, 30 * 24 * 60 * 60 * 1000)
                         if (!monthly.success) {
                             // Monthly exhausted — fall back to free tier window
                             const freeWindowKey = `chat:free-window:${user.id}`
@@ -699,7 +701,7 @@ export async function POST(req: Request) {
                                     events: [{
                                         type: 'message',
                                         character: 'system',
-                                        content: "You've used all 1,000 monthly messages and your free bonus messages for this hour. Try again soon or upgrade to Pro for unlimited.",
+                                        content: "You've used all 500 monthly messages and your free bonus messages for this hour. Try again soon or upgrade to Pro for unlimited.",
                                         delay: 200
                                     }],
                                     paywall: true,
@@ -873,7 +875,14 @@ ${chatMode === 'gang_focus'
                 : '- Ecosystem: natural group banter allowed. Characters can talk to each other, react to each other, and riff. Keep user included but the chat should feel alive.'}
 LOW_COST_MODE: ${lowCostMode ? 'YES' : 'NO'}.
 
-CORE RULES:
+${purchaseCelebration ? `SPECIAL EVENT — PURCHASE CELEBRATION:
+The user JUST upgraded to the ${purchaseCelebration.toUpperCase()} plan! This is a one-time moment. The gang should:
+- Show genuine warmth, excitement, and appreciation for the user joining ${purchaseCelebration === 'pro' ? 'Pro' : 'Basic'}.
+- Each responding character should react in their own unique voice/personality.
+- Make the user feel like they made an amazing decision and that the gang is thrilled.
+- Keep it natural — like friends celebrating good news, not a corporate welcome email.
+- This is the FIRST thing the gang should address this turn. Prioritize it over other conversation.
+` : ''}CORE RULES:
 1) Latest message is "now". Prioritize newest user info.
 2) QUOTING/REPLYING — CRITICAL: DO NOT set target_message_id on most messages. Leave it null/omitted.
    Only set target_message_id when there is a SPECIFIC reason:

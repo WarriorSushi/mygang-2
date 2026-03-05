@@ -208,7 +208,7 @@ export function LandingPage() {
   const { userId, isHydrated, activeGang } = useChatStore()
   const isAuthenticated = isHydrated && !!userId
   const hasGang = activeGang.length >= 2
-  const ctaText = !isHydrated ? 'Syncing...' : isAuthenticated ? 'Go to Chat' : 'Assemble Your Gang'
+  const ctaText = !isHydrated ? 'Loading...' : isAuthenticated ? 'Go to Chat' : 'Assemble Your Gang'
   const ctaLink = isAuthenticated ? (hasGang ? '/chat' : '/onboarding') : null
   const ctaDisabled = !isHydrated
 
@@ -451,7 +451,7 @@ export function LandingPage() {
                   <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 group-hover:scale-110 transition-transform duration-300">
                     {step.icon}
                   </div>
-                  <span className="text-5xl font-black text-primary/15 leading-none select-none">{step.num}</span>
+                  <span className="text-5xl font-black text-primary/25 leading-none select-none">{step.num}</span>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">{step.title}</h3>
                 <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-sm">{step.copy}</p>

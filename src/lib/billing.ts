@@ -13,7 +13,7 @@ export type SubscriptionTier = 'free' | 'basic' | 'pro'
 
 export const TIER_LIMITS = {
   free: { messagesPerWindow: 20, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: false },
-  basic: { messagesPerWindow: null, windowMs: null, monthlyLimit: 1000, memoryEnabled: true },
+  basic: { messagesPerWindow: null, windowMs: null, monthlyLimit: 500, memoryEnabled: true },
   pro: { messagesPerWindow: null, windowMs: null, monthlyLimit: null, memoryEnabled: true },
 } as const
 

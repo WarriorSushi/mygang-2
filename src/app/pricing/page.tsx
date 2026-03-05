@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
-  ArrowLeft, Check, X, Zap, Crown, MessageCircle, Brain,
+  ArrowLeft, Check, Zap, Crown, MessageCircle, Brain,
   Infinity, Clock, Shield, Sparkles, ArrowRight, ChevronDown,
-  Lock, CreditCard, RefreshCw, Star, Users, Heart, Gauge,
-  Palette, Volume2, BellRing, Layers
+  CreditCard, RefreshCw, Users, Heart, Gauge,
+  Palette, Volume2, BellRing, Layers, X
 } from 'lucide-react'
 import { useChatStore } from '@/stores/chat-store'
 import { createClient } from '@/lib/supabase/client'
@@ -27,7 +27,7 @@ interface Feature {
 }
 
 const features: Feature[] = [
-  { text: 'Messages per month', free: '~20/hr', basic: '1,000', pro: 'Unlimited' },
+  { text: 'Messages per month', free: '~20/hr', basic: '500/mo', pro: 'Unlimited' },
   { text: 'Gang members in chat', free: 'Up to 4', basic: 'Up to 4', pro: 'Up to 4' },
   { text: 'Hourly cooldowns', free: '60 min when capped', basic: 'None', pro: 'None' },
   { text: 'Memory — gang remembers you', free: false, basic: true, pro: true },
@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: 'Why is Pro so cheap right now?',
-    a: 'We\'re running a launch special to thank early adopters. The regular price will be $99/mo once we exit the launch period. Lock in the $19.99/mo price now and keep it forever.',
+    a: 'We\'re running a launch special to thank early adopters. The regular price will be $99/mo once we exit the launch period. Lock in the $19.99/mo price now.',
   },
 ]
 
@@ -87,7 +87,7 @@ function FeatureValue({ value }: { value: boolean | string }) {
 
 function FAQItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="border-b border-white/5 last:border-0">
+    <div className="border-b border-border/20 last:border-0">
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between py-5 sm:py-6 text-left gap-4 group cursor-pointer"
@@ -215,7 +215,7 @@ export default function PricingPage() {
       <BackgroundBlobs />
 
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-white/5">
+      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/30">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
           <Link
             href="/chat"
@@ -262,41 +262,22 @@ export default function PricingPage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="relative rounded-3xl border border-white/8 bg-card/50 backdrop-blur-sm px-7 py-7 sm:px-9 sm:py-9 flex flex-col"
+              className="relative rounded-3xl border border-border/30 bg-card/50 backdrop-blur-sm p-8 sm:p-10 flex flex-col"
             >
-              <div className="flex items-center gap-3.5 mb-7">
-                <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center">
-                  <MessageCircle className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-xl">Free</h3>
-                  <p className="text-sm text-muted-foreground">Dip your toes in</p>
-                </div>
-              </div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60 mb-2">Free</p>
+              <h3 className="text-3xl sm:text-4xl font-black tracking-tight">$0</h3>
+              <p className="text-sm text-muted-foreground mt-2 mb-8">Free forever, no card needed</p>
 
-              <div className="mb-9">
-                <div className="flex items-baseline">
-                  <span className="text-6xl font-black tracking-tighter">$0</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">Free forever, no card needed</p>
-              </div>
-
-              <ul className="space-y-4 mb-10 flex-1">
+              <ul className="space-y-3.5 mb-8 flex-1">
                 {[
                   { text: '20 messages per hour', icon: MessageCircle },
                   { text: 'Pick up to 4 gang members', icon: Users },
                   { text: 'Gang Focus chat mode', icon: Volume2 },
                   { text: 'Dark & light themes', icon: Palette },
-                  { text: '60 min cooldown when capped', icon: Clock, muted: true },
-                  { text: 'No memory — fresh each time', icon: Brain, muted: true },
-                  { text: 'No wallpapers or nicknames', icon: Star, muted: true },
-                  { text: 'No Ecosystem mode', icon: Sparkles, muted: true },
                 ].map((f) => (
-                  <li key={f.text} className="flex items-start gap-3.5">
-                    <span className={`mt-0.5 shrink-0 ${f.muted ? 'text-muted-foreground/30' : 'text-muted-foreground/60'}`}>
-                      {f.muted ? <X className="w-4.5 h-4.5" /> : <Check className="w-4.5 h-4.5 text-emerald-400/70" />}
-                    </span>
-                    <span className={`text-[15px] leading-snug ${f.muted ? 'text-muted-foreground/40 line-through' : 'text-foreground/80'}`}>
+                  <li key={f.text} className="flex items-start gap-3">
+                    <Check className="w-4.5 h-4.5 mt-0.5 shrink-0 text-emerald-400/70" />
+                    <span className="text-[15px] leading-snug text-foreground/80">
                       {f.text}
                     </span>
                   </li>
@@ -304,11 +285,11 @@ export default function PricingPage() {
               </ul>
 
               {isCurrentPlan('free') ? (
-                <div className="w-full py-4 sm:py-5 rounded-2xl text-[15px] font-semibold text-center bg-muted/30 text-muted-foreground/50 border border-white/5">
+                <div className="w-full py-3.5 sm:py-4 rounded-2xl text-[15px] font-semibold text-center bg-muted/30 text-muted-foreground/50 border border-border/20">
                   Current plan
                 </div>
               ) : (
-                <div className="w-full py-4 sm:py-5 rounded-2xl text-[15px] font-semibold text-center bg-muted/20 text-muted-foreground/40 border border-white/5">
+                <div className="w-full py-3.5 sm:py-4 rounded-2xl text-[15px] font-semibold text-center bg-muted/20 text-muted-foreground/40 border border-border/20">
                   Free forever
                 </div>
               )}
@@ -319,42 +300,27 @@ export default function PricingPage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="relative rounded-3xl border border-blue-500/20 bg-card/50 backdrop-blur-sm px-7 py-7 sm:px-9 sm:py-9 flex flex-col"
+              className="relative rounded-3xl border border-blue-500/20 bg-card/50 backdrop-blur-sm p-8 sm:p-10 flex flex-col"
             >
-              <div className="flex items-center gap-3.5 mb-7">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-xl">Basic</h3>
-                  <p className="text-sm text-muted-foreground">For the daily hangs</p>
-                </div>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2">Basic</p>
+              <div className="flex items-baseline gap-1">
+                <h3 className="text-3xl sm:text-4xl font-black tracking-tight">$14.99</h3>
+                <span className="text-base text-muted-foreground font-medium">/mo</span>
               </div>
+              <p className="text-sm text-muted-foreground mt-2 mb-8">Billed monthly, cancel anytime</p>
 
-              <div className="mb-9">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-6xl font-black tracking-tighter">$14.99</span>
-                  <span className="text-xl text-muted-foreground font-medium">/mo</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">Billed monthly, cancel anytime</p>
-              </div>
-
-              <ul className="space-y-4 mb-10 flex-1">
+              <ul className="space-y-3.5 mb-8 flex-1">
                 {[
-                  { text: '1,000 messages per month', icon: MessageCircle },
-                  { text: 'Memory enabled — they know you', icon: Brain, highlight: true },
+                  { text: '500 messages per month', icon: MessageCircle },
+                  { text: 'Memory — they know you', icon: Brain, highlight: true },
                   { text: 'Ecosystem mode — real group chat', icon: Sparkles, highlight: true },
                   { text: 'Zero hourly cooldowns', icon: Clock },
-                  { text: 'Chat wallpapers', icon: Palette },
-                  { text: 'Custom character nicknames', icon: Star },
-                  { text: 'Memory vault — review & manage', icon: Lock },
-                  { text: 'Pick up to 4 gang members', icon: Users },
-                  { text: 'All themes included', icon: Palette },
-                  { text: 'Everything in Free', icon: Sparkles },
+                  { text: 'Wallpapers & custom nicknames', icon: Palette },
+                  { text: 'Memory vault access', icon: Brain },
                 ].map((f) => (
                   <li key={f.text} className="flex items-start gap-3.5">
                     <Check className={`w-4.5 h-4.5 mt-0.5 shrink-0 ${f.highlight ? 'text-blue-400' : 'text-emerald-400/70'}`} />
-                    <span className={`text-[15px] leading-snug ${f.highlight ? 'text-foreground font-semibold' : 'text-foreground/80'}`}>
+                    <span className={`text-[15px] leading-snug ${f.highlight ? 'text-foreground font-medium' : 'text-foreground/80'}`}>
                       {f.text}
                     </span>
                   </li>
@@ -373,7 +339,7 @@ export default function PricingPage() {
                 <button
                   onClick={() => handleCheckout('basic')}
                   disabled={loadingPlan !== null}
-                  className="w-full py-4 sm:py-5 rounded-2xl text-[15px] font-bold text-center bg-blue-500/15 text-blue-400 border border-blue-500/25 hover:bg-blue-500/25 hover:border-blue-500/40 transition-all duration-200 active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2.5"
+                  className="btn-gradient-border w-full py-4 sm:py-5 rounded-2xl text-[15px] font-bold text-center bg-card/90 text-blue-400 cursor-pointer disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2.5 active:scale-[0.97]"
                 >
                   {loadingPlan === 'basic' ? (
                     <>
@@ -392,58 +358,40 @@ export default function PricingPage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="relative rounded-3xl border-2 border-primary/40 bg-card/60 backdrop-blur-sm px-7 py-7 sm:px-9 sm:py-9 flex flex-col shadow-[0_0_80px_-20px] shadow-primary/15"
+              className="relative rounded-3xl border-2 border-primary/40 bg-card/60 backdrop-blur-sm p-8 sm:p-10 flex flex-col shadow-[0_0_80px_-20px] shadow-primary/15"
             >
-              {/* Most Popular badge */}
-              <div className="absolute -top-4 left-6 sm:left-8">
-                <span className="px-5 py-2 rounded-full bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest whitespace-nowrap shadow-lg shadow-primary/30">
+              {/* Most Popular badge — centered on the top border */}
+              <div className="absolute left-6 sm:left-8 z-10" style={{ top: '-14px' }}>
+                <span className="px-5 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-black uppercase tracking-widest whitespace-nowrap shadow-lg shadow-primary/30">
                   Most Popular
                 </span>
               </div>
 
-              <div className="flex items-center gap-3.5 mb-7 mt-5">
-                <div className="w-12 h-12 rounded-2xl bg-primary/15 flex items-center justify-center">
-                  <Crown className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-xl">Pro</h3>
-                  <p className="text-sm text-muted-foreground">Your gang, unhinged</p>
-                </div>
+              <div className="flex items-baseline gap-1">
+                <h3 className="text-3xl sm:text-4xl font-black tracking-tight">$19.99</h3>
+                <span className="text-base text-muted-foreground font-medium">/mo</span>
               </div>
-
-              <div className="mb-9">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-6xl font-black tracking-tighter">$19.99</span>
-                  <span className="text-xl text-muted-foreground font-medium">/mo</span>
-                </div>
-                <div className="flex items-center gap-3 mt-3">
-                  <span className="text-sm text-muted-foreground line-through">$99/mo</span>
-                  <span className="px-3 py-1 rounded-lg bg-primary/15 text-primary text-xs font-bold uppercase tracking-wider border border-primary/25">
-                    Save 80%
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">Lock in forever at launch price</p>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-sm text-muted-foreground/60" style={{ textDecoration: 'line-through', textDecorationColor: '#f87171', textDecorationThickness: '2px' }}>$99/mo</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-red-500/15 text-red-400 text-xs font-bold uppercase tracking-wider border border-red-500/25">
+                  Save 80%
+                </span>
               </div>
+              <p className="text-sm text-muted-foreground mt-2 mb-8">Lock in forever at launch price</p>
 
-              <ul className="space-y-4 mb-10 flex-1">
+              <ul className="space-y-3.5 mb-8 flex-1">
                 {[
-                  { text: 'Unlimited messages — no caps ever', icon: Infinity, highlight: true },
-                  { text: 'Full memory — they remember everything', icon: Brain, highlight: true },
+                  { text: 'Unlimited messages — no caps', icon: Infinity, highlight: true },
+                  { text: 'Full memory — they know everything', icon: Brain, highlight: true },
                   { text: 'Priority response speed', icon: Gauge, highlight: true },
                   { text: 'Ecosystem mode — real group chat', icon: Sparkles, highlight: true },
-                  { text: 'Zero cooldowns, always', icon: Clock },
-                  { text: 'Pro badge in your chat', icon: Crown },
-                  { text: 'Chat wallpapers', icon: Palette },
-                  { text: 'Custom character nicknames', icon: Star },
-                  { text: 'Memory vault — review & manage', icon: Lock },
-                  { text: 'Pick up to 4 gang members', icon: Users },
-                  { text: 'All themes included', icon: Palette },
-                  { text: 'Everything in Basic + Free', icon: Sparkles },
+                  { text: 'Pro badge in chat', icon: Crown },
                   { text: 'Early access to new features', icon: BellRing },
+                  { text: 'Everything in Basic', icon: Layers },
                 ].map((f) => (
-                  <li key={f.text} className="flex items-start gap-3.5">
+                  <li key={f.text} className="flex items-start gap-3">
                     <Check className={`w-4.5 h-4.5 mt-0.5 shrink-0 ${f.highlight ? 'text-primary' : 'text-emerald-400/70'}`} />
-                    <span className={`text-[15px] leading-snug ${f.highlight ? 'text-foreground font-semibold' : 'text-foreground/80'}`}>
+                    <span className={`text-[15px] leading-snug ${f.highlight ? 'text-foreground font-medium' : 'text-foreground/80'}`}>
                       {f.text}
                     </span>
                   </li>
@@ -458,7 +406,7 @@ export default function PricingPage() {
                 <button
                   onClick={() => handleCheckout('pro')}
                   disabled={loadingPlan !== null}
-                  className="w-full py-4 sm:py-5 rounded-2xl text-[15px] font-bold text-center bg-primary text-primary-foreground hover:brightness-110 transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2.5"
+                  className="btn-gradient-border btn-gradient-border-pro w-full py-4 sm:py-5 rounded-2xl text-[15px] font-bold text-center bg-card/90 text-emerald-400 cursor-pointer disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2.5 active:scale-[0.97]"
                 >
                   {loadingPlan === 'pro' ? (
                     <>
@@ -477,61 +425,113 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* ══════════ COMPARISON TABLE (desktop) ══════════ */}
-        <section className="px-5 sm:px-8 pb-20 sm:pb-28 hidden md:block">
+        {/* ══════════ COMPARISON TABLE ══════════ */}
+        <section className="px-5 sm:px-8 pt-4 sm:pt-8 pb-20 sm:pb-28">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-center mb-10 sm:mb-14">
               Compare plans side by side
             </h2>
 
-            <div className="rounded-3xl border border-white/8 bg-card/30 backdrop-blur-sm overflow-hidden">
-              {/* Header row */}
+            {/* Comparison table — responsive grid */}
+            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto">
+              <div className="min-w-[420px]">
               <div
-                className="border-b border-white/8 bg-white/[0.02]"
-                style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr' }}
+                className="border-b border-border/20 bg-muted/5"
+                style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1fr 1fr' }}
               >
-                <div className="p-6 text-[15px] font-semibold text-muted-foreground">Feature</div>
-                <div className="p-6 text-[15px] font-semibold text-center text-muted-foreground">Free</div>
-                <div className="p-6 text-[15px] font-semibold text-center text-blue-400">Basic</div>
-                <div className="p-6 text-[15px] font-semibold text-center text-primary">Pro</div>
+                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-muted-foreground">Feature</div>
+                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-muted-foreground">Free</div>
+                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-blue-400">Basic</div>
+                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-primary">Pro</div>
               </div>
 
-              {/* Feature rows */}
               {features.map((f, i) => (
                 <div
                   key={f.text}
-                  className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? '' : 'bg-white/[0.01]'}`}
-                  style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr' }}
+                  className={`border-b border-border/10 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/[0.03]'}`}
+                  style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1fr 1fr' }}
                 >
-                  <div className="p-5 sm:p-6 text-[15px] text-foreground/70">{f.text}</div>
-                  <div className="p-5 sm:p-6 flex justify-center items-center"><FeatureValue value={f.free} /></div>
-                  <div className="p-5 sm:p-6 flex justify-center items-center"><FeatureValue value={f.basic} /></div>
-                  <div className="p-5 sm:p-6 flex justify-center items-center"><FeatureValue value={f.pro} /></div>
+                  <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] text-foreground/70">{f.text}</div>
+                  <div className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.free} /></div>
+                  <div className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.basic} /></div>
+                  <div className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.pro} /></div>
                 </div>
               ))}
+            </div>
             </div>
           </div>
         </section>
 
-        {/* ══════════ SOCIAL PROOF ══════════ */}
+        {/* ══════════ CONVERSION HEADLINE + STATS ══════════ */}
         <section className="px-5 sm:px-8 pb-20 sm:pb-28">
           <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-14 leading-tight">
+              Your personal group of friends,{' '}
+              <span
+                className="inline-block bg-clip-text text-transparent"
+                style={{
+                  backgroundImage: 'linear-gradient(90deg, #10b981, #06b6d4, #8b5cf6, #ec4899, #10b981)',
+                  backgroundSize: '200% 100%',
+                  animation: 'gradient-slide 4s linear infinite',
+                }}
+              >
+                always with you
+              </span>
+            </h2>
+            <style>{`
+              @keyframes gradient-slide { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+              @keyframes border-spin { 0% { --border-angle: 0deg; } 100% { --border-angle: 360deg; } }
+              @property --border-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+              .btn-gradient-border {
+                position: relative;
+                background: transparent;
+                isolation: isolate;
+                border: none;
+                transition: transform 0.3s, box-shadow 0.3s;
+              }
+              .btn-gradient-border::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                padding: 1.5px;
+                background: conic-gradient(from var(--border-angle), transparent 30%, #3b82f6 50%, #06b6d4 60%, transparent 70%);
+                animation: border-spin 3.5s linear infinite;
+                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+                -webkit-mask-composite: xor;
+                mask-composite: exclude;
+                z-index: -1;
+              }
+              .btn-gradient-border:hover { transform: scale(1.03); }
+
+              .btn-gradient-border-pro::before {
+                padding: 2px;
+                background: conic-gradient(from var(--border-angle), #10b981 0%, #06b6d4 25%, #8b5cf6 50%, #ec4899 75%, #10b981 100%);
+                animation: border-spin 2.5s linear infinite;
+              }
+              .btn-gradient-border-pro::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                background: conic-gradient(from var(--border-angle), transparent 0%, rgba(16,185,129,0.12) 25%, transparent 50%, rgba(6,182,212,0.12) 75%, transparent 100%);
+                animation: border-spin 2.5s linear infinite;
+                z-index: -1;
+                filter: blur(12px);
+              }
+              .btn-gradient-border-pro:hover {
+                transform: scale(1.04);
+                box-shadow: 0 0 40px -8px rgba(16,185,129,0.4), 0 0 20px -4px rgba(6,182,212,0.3);
+              }
+            `}</style>
+
             <div className="flex flex-wrap items-center justify-center gap-10 sm:gap-16 text-muted-foreground/50">
               <div>
                 <div className="text-4xl sm:text-5xl font-black text-foreground">24/7</div>
                 <div className="text-sm uppercase tracking-widest mt-2">Always online</div>
               </div>
-              <div className="w-px h-12 bg-white/10 hidden sm:block" />
-              <div>
-                <div className="text-4xl sm:text-5xl font-black text-foreground">4</div>
-                <div className="text-sm uppercase tracking-widest mt-2">Unique characters</div>
-              </div>
-              <div className="w-px h-12 bg-white/10 hidden sm:block" />
-              <div>
-                <div className="text-4xl sm:text-5xl font-black text-foreground">0</div>
-                <div className="text-sm uppercase tracking-widest mt-2">Boring replies</div>
-              </div>
-              <div className="w-px h-12 bg-white/10 hidden sm:block" />
+              <div className="w-px h-12 bg-border/30 hidden sm:block" />
               <div>
                 <div className="text-4xl sm:text-5xl font-black text-foreground flex items-center gap-1.5">
                   <Heart className="w-6 h-6 text-red-400" />
@@ -549,7 +549,7 @@ export default function PricingPage() {
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-center mb-12">
               Frequently asked questions
             </h2>
-            <div className="rounded-3xl border border-white/8 bg-card/30 backdrop-blur-sm px-7 sm:px-10">
+            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm px-7 sm:px-10">
               {faqs.map((faq, i) => (
                 <FAQItem
                   key={i}
@@ -577,16 +577,40 @@ export default function PricingPage() {
               <button
                 onClick={() => handleCheckout('pro')}
                 disabled={loadingPlan !== null}
-                className="inline-flex items-center gap-3 px-10 py-5 rounded-2xl text-base font-bold bg-primary text-primary-foreground hover:brightness-110 transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-xl shadow-primary/30 disabled:opacity-50 disabled:cursor-wait"
+                style={{
+                  padding: '18px 48px',
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  borderRadius: '16px',
+                  border: '2px solid rgba(16,185,129,0.4)',
+                  background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,182,212,0.08) 100%)',
+                  color: '#34d399',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 0 30px -8px rgba(16,185,129,0.3)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(16,185,129,0.7)'
+                  e.currentTarget.style.boxShadow = '0 0 40px -4px rgba(16,185,129,0.45)'
+                  e.currentTarget.style.transform = 'scale(1.03)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(16,185,129,0.4)'
+                  e.currentTarget.style.boxShadow = '0 0 30px -8px rgba(16,185,129,0.3)'
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
               >
                 {loadingPlan === 'pro' ? (
                   <>
-                    <span className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    <span className="w-5 h-5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
                     Processing...
                   </>
                 ) : (
                   <>
-                    Get Pro — $19.99/mo
+                    Get Pro $19.99/mo
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -594,7 +618,7 @@ export default function PricingPage() {
             )}
 
             {/* Trust signals */}
-            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 mt-12 text-xs uppercase tracking-widest text-muted-foreground/40 font-medium">
+            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 mt-16 text-xs uppercase tracking-widest text-muted-foreground/40 font-medium">
               <span className="inline-flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 Secure checkout
@@ -606,10 +630,6 @@ export default function PricingPage() {
               <span className="inline-flex items-center gap-2">
                 <CreditCard className="w-4 h-4" />
                 No hidden fees
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                Price locked forever
               </span>
             </div>
           </div>

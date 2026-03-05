@@ -45,7 +45,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
 
             {/* Character grid */}
             <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-36 sm:pb-28">
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     {CHARACTERS.map((char) => {
                         const isSelected = selectedIds.includes(char.id)
                         const isExpanded = expandedId === char.id
@@ -240,7 +240,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                             disabled={!canContinue}
                             data-testid="onboarding-selection-done"
                             onClick={onNext}
-                            className="rounded-full px-6 sm:px-10 py-3 sm:py-5 text-sm sm:text-base font-bold shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95 shrink-0"
+                            className="rounded-2xl px-6 sm:px-10 py-3 sm:py-5 text-sm sm:text-base font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95 shrink-0"
                         >
                             Let&apos;s Go
                             <ChevronRight className="w-4 h-4 ml-1" />

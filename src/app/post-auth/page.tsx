@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -105,12 +105,23 @@ export default function PostAuthPage() {
         }
     }, [router, setActiveGang, setUserId, setUserName])
 
+    const [showSlowHint, setShowSlowHint] = useState(false)
+    useEffect(() => {
+        const timer = setTimeout(() => setShowSlowHint(true), 4000)
+        return () => clearTimeout(timer)
+    }, [])
+
     return (
         <main className="min-h-dvh flex items-center justify-center bg-background text-foreground px-6">
             <div className="text-center space-y-4">
                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">Syncing your journey...</h1>
                 <p className="text-sm text-muted-foreground">Getting your gang, name, and settings ready.</p>
+                {showSlowHint && (
+                    <p className="text-xs text-muted-foreground/60 animate-in fade-in duration-500">
+                        Taking longer than expected. You&apos;ll be redirected shortly.
+                    </p>
+                )}
             </div>
         </main>
     )

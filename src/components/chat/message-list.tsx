@@ -12,7 +12,7 @@ import { CHARACTERS } from '@/constants/characters'
 
 function ChatSkeleton() {
     return (
-        <div className="flex flex-col gap-4 px-4 md:px-10 lg:px-14 py-6" aria-label="Loading messages">
+        <div className="flex flex-col gap-4 px-4 py-6" aria-label="Loading messages">
             {/* Incoming message skeleton */}
             <div className="flex items-start gap-3 max-w-[75%]">
                 <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
@@ -52,10 +52,12 @@ interface MessageListProps {
     onReplyMessage?: (message: Message) => void
     onLikeMessage?: (message: Message) => void
     onRetryMessage?: (message: Message) => void
+    onSendSuggestion?: (text: string) => void
     hasMoreHistory?: boolean
     loadingHistory?: boolean
     onLoadOlderHistory?: () => void
     isBootstrappingHistory?: boolean
+    typingUsers?: string[]
 }
 
 function normalizeSpeaker(value: string) {
@@ -69,10 +71,12 @@ export const MessageList = memo(function MessageList({
     onReplyMessage,
     onLikeMessage,
     onRetryMessage,
+    onSendSuggestion,
     hasMoreHistory = false,
     loadingHistory = false,
     onLoadOlderHistory,
-    isBootstrappingHistory = false
+    isBootstrappingHistory = false,
+    typingUsers = []
 }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollRafRef = useRef<number | null>(null)
@@ -80,6 +84,7 @@ export const MessageList = memo(function MessageList({
     const animatedMessageIdsRef = useRef<Set<string>>(new Set())
     const didInitialScrollRef = useRef(false)
     const [isAtBottom, setIsAtBottom] = useState(true)
+    const [unreadCount, setUnreadCount] = useState(0)
     const [liveAnnouncement, setLiveAnnouncement] = useState('')
     const prevMessagesLength = useRef(messages.length)
     const prevFirstMessageIdRef = useRef<string | null>(messages[0]?.id ?? null)
@@ -95,7 +100,7 @@ export const MessageList = memo(function MessageList({
             const normalized = normalizeSpeaker(character.id)
             const catalogCharacter = characterCatalogById.get(normalized)
             const merged = catalogCharacter
-                ? { ...catalogCharacter, ...character, roleLabel: character.roleLabel || catalogCharacter.roleLabel }
+                ? { ...catalogCharacter, ...character, avatar: character.avatar || catalogCharacter.avatar, roleLabel: character.roleLabel || catalogCharacter.roleLabel }
                 : character
             const customName = customCharacterNames?.[character.id]
             return [
@@ -132,6 +137,7 @@ export const MessageList = memo(function MessageList({
             if (!scrollRef.current) return
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight
             setIsAtBottom(true)
+            setUnreadCount(0)
         })
     }, [])
 
@@ -144,6 +150,7 @@ export const MessageList = memo(function MessageList({
             const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
             const atBottom = scrollHeight - scrollTop - clientHeight < 48
             setIsAtBottom(atBottom)
+            if (atBottom) setUnreadCount(0)
         })
     }
 
@@ -210,6 +217,8 @@ export const MessageList = memo(function MessageList({
 
             if (isAtBottom || hasUserMessage) {
                 scrollToBottom()
+            } else if (newAiMessages.length > 0) {
+                setUnreadCount((prev) => prev + newAiMessages.length)
             }
         }
 
@@ -240,8 +249,9 @@ export const MessageList = memo(function MessageList({
                 style={{ paddingBottom: 80 }}
                 data-testid="chat-scroll"
             >
+              <div className="max-w-3xl mx-auto w-full">
                 {(hasMoreHistory || loadingHistory) && (
-                    <div className="px-4 md:px-10 lg:px-14 pb-2">
+                    <div className="px-4 pb-2">
                         <div className="flex justify-center" aria-live="polite">
                             <Button
                                 type="button"
@@ -258,9 +268,26 @@ export const MessageList = memo(function MessageList({
                     </div>
                 )}
                 {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full py-20 text-center">
+                    <div className="flex flex-col items-center justify-center h-full py-16 sm:py-20 text-center px-4">
                         <p className="text-lg mb-1">👋</p>
-                        <p className="text-sm text-muted-foreground">Say hello to kick things off!</p>
+                        <p className="text-sm text-muted-foreground mb-6">Say hello to kick things off!</p>
+                        <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+                            {[
+                                "What's good?",
+                                "I need advice",
+                                "Roast me",
+                                "Tell me something wild",
+                            ].map((chip) => (
+                                <button
+                                    key={chip}
+                                    type="button"
+                                    onClick={() => onSendSuggestion?.(chip)}
+                                    className="px-3.5 py-2 rounded-full text-xs font-medium border border-border/40 bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer active:scale-95"
+                                >
+                                    {chip}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
                 <div className="flex flex-col">
@@ -285,14 +312,15 @@ export const MessageList = memo(function MessageList({
                             <div
                                 key={message.id}
                                 className={cn(
-                                    "px-4 md:px-10 lg:px-14",
+                                    "px-4",
                                     index === 0
                                         ? ""
                                         : samePrevious
                                             ? "pt-[3px]"
                                             : isReaction
                                                 ? "pt-3"
-                                                : "pt-4"
+                                                : "pt-4",
+                                    index < messages.length - 6 && "content-auto"
                                 )}
                             >
                                 <div className={shouldAnimate ? "animate-msg-appear" : undefined}>
@@ -315,6 +343,35 @@ export const MessageList = memo(function MessageList({
                         )
                     })}
                 </div>
+
+                {/* Inline typing indicator */}
+                {typingUsers.length > 0 && (
+                    <div className="px-4 pt-2 pb-1">
+                        <div className="flex items-center gap-2">
+                            <div className="flex -space-x-1.5">
+                                {typingUsers.slice(0, 3).map((uid) => {
+                                    const char = characterBySpeaker.get(normalizeSpeaker(uid))
+                                    return char?.avatar ? (
+                                        <img
+                                            key={uid}
+                                            src={char.avatar}
+                                            alt={char.name}
+                                            className="w-5 h-5 rounded-full border border-background object-cover"
+                                        />
+                                    ) : null
+                                })}
+                            </div>
+                            <span className="flex items-center gap-0.5 text-xs text-muted-foreground/70">
+                                <span className="inline-flex gap-[2px]">
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                )}
+              </div>
             </div>
 
             {/* Scroll To Latest */}
@@ -331,9 +388,14 @@ export const MessageList = memo(function MessageList({
                             size="icon"
                             data-screenshot-exclude="true"
                             className="relative rounded-full shadow-lg bg-black hover:bg-black/90 text-white size-9 border border-white/25"
-                            aria-label="Jump to latest"
+                            aria-label={unreadCount > 0 ? `${unreadCount} new messages — jump to latest` : 'Jump to latest'}
                         >
                             <ChevronDown className="w-4 h-4" />
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-primary text-[10px] font-bold flex items-center justify-center px-1 text-primary-foreground">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                            )}
                         </Button>
                     </motion.div>
                 )}

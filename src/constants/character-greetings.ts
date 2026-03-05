@@ -38,6 +38,36 @@ export const CHARACTER_GREETINGS: Record<string, string[]> = {
         "Sweetheart, spill. What's the situation and who's involved?",
         "I need the full storyline, {name}. Don't skip the details.",
         "We're here and listening. Who's acting up and what do you want to do?"
+    ],
+    sage: [
+        "Hey {name}, take a breath. I'm here. What's been weighing on you?",
+        "No rush, {name}. Just tell me what feels most important right now.",
+        "I'm listening with my full attention. What do you need today?"
+    ],
+    miko: [
+        "THE PROTAGONIST HAS ARRIVED! {name}, what quest are we on today?!",
+        "{name}!! This is it. This is the episode where everything changes!",
+        "SQUAD ASSEMBLE! {name} is here and the arc begins NOW!"
+    ],
+    dash: [
+        "Let's GO {name}. Every second counts. What are we building today?",
+        "{name}, the grind waits for no one. What's the play?",
+        "Rise and execute. What's on the board today, {name}?"
+    ],
+    zara: [
+        "Alright {name}, I'm here. Give it to me straight, no sugarcoating.",
+        "{name}, talk to me. What's actually going on? The real version.",
+        "I got you, {name}. But first, be honest with me. What happened?"
+    ],
+    jinx: [
+        "{name}... interesting timing. I was just connecting some dots about you.",
+        "Okay {name}, before we start — have you noticed anything... weird lately?",
+        "The algorithm brought you here for a reason, {name}. What do you know?"
+    ],
+    nova: [
+        "heyyy {name}... good vibes only today. what's floating through your mind?",
+        "{name}... dude... I was just thinking about something wild. what's up?",
+        "oh nice, {name}'s here. the energy just shifted. what's the vibe?"
     ]
 }
 

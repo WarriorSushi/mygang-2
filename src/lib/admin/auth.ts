@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 
-type AdminConfigMode = 'hash' | 'plain' | 'missing'
+type AdminConfigMode = 'hash' | 'missing'
 
 function safeEqual(left: string, right: string) {
     const leftBuffer = Buffer.from(left)
@@ -20,11 +20,8 @@ function isSha256Hex(value: string) {
 export function getAdminConfigMode(): AdminConfigMode {
     const email = process.env.ADMIN_PANEL_EMAIL?.trim()
     const hash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim()
-    const plain = process.env.ADMIN_PANEL_PASSWORD?.trim()
-    if (!email) return 'missing'
-    if (hash) return 'hash'
-    if (plain) return 'plain'
-    return 'missing'
+    if (!email || !hash) return 'missing'
+    return 'hash'
 }
 
 export function getConfiguredAdminEmail() {
@@ -39,14 +36,11 @@ export function verifyAdminCredentials(emailInput: string, passwordInput: string
     if (!emailMatches) return false
 
     const configuredHash = process.env.ADMIN_PANEL_PASSWORD_HASH?.trim()
-    if (configuredHash) {
-        const normalizedConfiguredHash = normalizeHash(configuredHash)
-        if (!isSha256Hex(normalizedConfiguredHash)) return false
+    if (!configuredHash) return false
 
-        const submittedHash = crypto.createHash('sha256').update(passwordInput).digest('hex')
-        return safeEqual(submittedHash, normalizedConfiguredHash)
-    }
+    const normalizedConfiguredHash = normalizeHash(configuredHash)
+    if (!isSha256Hex(normalizedConfiguredHash)) return false
 
-    const configuredPlain = process.env.ADMIN_PANEL_PASSWORD?.trim() || ''
-    return configuredPlain.length > 0 && safeEqual(passwordInput, configuredPlain)
+    const submittedHash = crypto.createHash('sha256').update(passwordInput).digest('hex')
+    return safeEqual(submittedHash, normalizedConfiguredHash)
 }

@@ -24,6 +24,20 @@ export async function POST(req: Request) {
             return Response.json({ error: 'Subscription not found' }, { status: 404 })
         }
 
+        // Verify subscription belongs to this user by matching customer_id
+        const subCustomerId = subscription.customer_id as string | undefined
+        if (subCustomerId) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('dodo_customer_id')
+                .eq('id', user.id)
+                .single()
+
+            if (profile?.dodo_customer_id && profile.dodo_customer_id !== subCustomerId) {
+                return Response.json({ error: 'Subscription does not belong to this account' }, { status: 403 })
+            }
+        }
+
         // Determine plan from product ID
         const productId = (subscription.product_id as string) || ''
         const plan = productId === process.env.DODO_PRODUCT_PRO ? 'pro' : 'basic'

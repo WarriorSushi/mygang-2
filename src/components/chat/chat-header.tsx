@@ -110,7 +110,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     }, [showCapacityInfo])
 
     return (
-        <header data-testid="chat-header" aria-label="Chat header" className="px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/50 dark:border-white/8 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/95 dark:bg-[rgba(14,22,37,0.92)] z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
+        <header data-testid="chat-header" aria-label="Chat header" className="chat-header-desktop px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/40 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/95 z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
             <div className="flex items-center gap-3 min-w-0">
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                 id="capacity-mode-info"
                                 role="dialog"
                                 aria-label="Temporary capacity mode info"
-                                className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-400/35 bg-card/95 dark:bg-[rgba(14,22,37,0.95)] p-2 text-[10px] leading-relaxed text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
+                                className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-400/35 bg-card/98 p-2 text-[10px] leading-relaxed text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
                             >
                                 Temporary low-cost mode is active due to provider capacity. Full mode restores automatically after stable turns.
                             </div>
