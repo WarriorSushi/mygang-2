@@ -27,6 +27,15 @@ import { useCapacityManager } from '@/hooks/use-capacity-manager'
 import { useAutonomousFlow } from '@/hooks/use-autonomous-flow'
 import { useChatApi } from '@/hooks/use-chat-api'
 
+const STARTER_CHIPS = [
+    "I'm bored, entertain me",
+    "I need advice about something",
+    "Roast me lol",
+    "Tell me something interesting",
+    "I had a rough day",
+    "Hype me up rn",
+]
+
 export default function ChatPage() {
     const {
         messages,
@@ -55,6 +64,8 @@ export default function ChatPage() {
         squadConflict: s.squadConflict,
         setSquadConflict: s.setSquadConflict,
     })))
+
+    const hasUserSentMessage = useMemo(() => messages.some((m) => m.speaker === 'user'), [messages])
 
     const [isVaultOpen, setIsVaultOpen] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -418,7 +429,6 @@ export default function ChatPage() {
                                 onReplyMessage={(message) => setReplyingTo(message)}
                                 onLikeMessage={api.handleQuickLike}
                                 onRetryMessage={api.handleRetryMessage}
-                                onSendSuggestion={(text) => api.handleSend(text)}
                                 typingUsers={typing.typingUsers}
                             />
                         </ErrorBoundary>
@@ -437,6 +447,7 @@ export default function ChatPage() {
                         online={isOnline}
                         replyingTo={replyingToDisplay}
                         onCancelReply={() => setReplyingTo(null)}
+                        starterChips={hasUserSentMessage ? [] : STARTER_CHIPS}
                     />
                 </div>
             </div>

@@ -549,7 +549,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         </div>
                                         {subscriptionTier === 'free' ? (
                                             <p className="text-[11px] text-amber-500/80 mt-3 leading-relaxed">
-                                                Ecosystem mode unlocks with Basic or Pro — your gang talks freely, reacts to each other, and the chat feels alive.
+                                                Ecosystem mode unlocks with Basic or Pro. Your gang talks freely, reacts to each other, and the chat feels alive.
                                             </p>
                                         ) : (
                                             <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">

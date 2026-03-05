@@ -52,7 +52,6 @@ interface MessageListProps {
     onReplyMessage?: (message: Message) => void
     onLikeMessage?: (message: Message) => void
     onRetryMessage?: (message: Message) => void
-    onSendSuggestion?: (text: string) => void
     hasMoreHistory?: boolean
     loadingHistory?: boolean
     onLoadOlderHistory?: () => void
@@ -71,7 +70,6 @@ export const MessageList = memo(function MessageList({
     onReplyMessage,
     onLikeMessage,
     onRetryMessage,
-    onSendSuggestion,
     hasMoreHistory = false,
     loadingHistory = false,
     onLoadOlderHistory,
@@ -270,24 +268,7 @@ export const MessageList = memo(function MessageList({
                 {messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full py-16 sm:py-20 text-center px-4">
                         <p className="text-lg mb-1">👋</p>
-                        <p className="text-sm text-muted-foreground mb-6">Say hello to kick things off!</p>
-                        <div className="flex flex-wrap justify-center gap-2 max-w-sm">
-                            {[
-                                "What's good?",
-                                "I need advice",
-                                "Roast me",
-                                "Tell me something wild",
-                            ].map((chip) => (
-                                <button
-                                    key={chip}
-                                    type="button"
-                                    onClick={() => onSendSuggestion?.(chip)}
-                                    className="px-3.5 py-2 rounded-full text-xs font-medium border border-border/40 bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer active:scale-95"
-                                >
-                                    {chip}
-                                </button>
-                            ))}
-                        </div>
+                        <p className="text-sm text-muted-foreground">Say hello to kick things off!</p>
                     </div>
                 )}
                 <div className="flex flex-col">

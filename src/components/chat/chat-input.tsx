@@ -16,12 +16,13 @@ interface ChatInputProps {
     online?: boolean
     replyingTo?: ReplyTarget | null
     onCancelReply?: () => void
+    starterChips?: string[]
 }
 
 const DRAFT_STORAGE_KEY = 'mygang-chat-draft'
 const MAX_CHARS = 2000
 
-export const ChatInput = memo(function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply }: ChatInputProps) {
+export const ChatInput = memo(function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply, starterChips = [] }: ChatInputProps) {
     const [input, setInput] = useState('')
     const draftLoadedRef = useRef(false)
     const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -112,6 +113,20 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
                     >
                         <X size={14} />
                     </Button>
+                </div>
+            )}
+            {starterChips.length > 0 && (
+                <div className="mb-2 flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+                    {starterChips.map((chip) => (
+                        <button
+                            key={chip}
+                            type="button"
+                            onClick={() => onSend(chip)}
+                            className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium border border-border/40 bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                        >
+                            {chip}
+                        </button>
+                    ))}
                 </div>
             )}
             <form
