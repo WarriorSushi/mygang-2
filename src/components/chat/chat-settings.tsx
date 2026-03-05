@@ -59,7 +59,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         showPersonaRoles,
         setShowPersonaRoles,
         userName,
-        isGuest,
         activeGang,
         customCharacterNames,
         setCustomCharacterNames,
@@ -74,7 +73,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         showPersonaRoles: s.showPersonaRoles,
         setShowPersonaRoles: s.setShowPersonaRoles,
         userName: s.userName,
-        isGuest: s.isGuest,
         activeGang: s.activeGang,
         customCharacterNames: s.customCharacterNames,
         setCustomCharacterNames: s.setCustomCharacterNames,
@@ -235,7 +233,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                     </div>
 
                     <div className="relative flex-1 overflow-hidden">
-                        <div className={cn(
+                        <div
+                            {...(panel !== 'root' ? { inert: true } : {})}
+                            className={cn(
                             'absolute inset-0 space-y-3 overflow-y-auto p-4 transition-all duration-250',
                             panel === 'root' ? 'translate-x-0 opacity-100' : '-translate-x-6 opacity-0 pointer-events-none'
                         )}>
@@ -317,7 +317,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             </Button>
                         </div>
 
-                        <div className={cn(
+                        <div
+                            {...(panel !== 'mode' ? { inert: true } : {})}
+                            className={cn(
                             'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
                             panel === 'mode' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                         )}>
@@ -378,7 +380,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             </div>
                         </div>
 
-                        <div className={cn(
+                        <div
+                            {...(panel !== 'wallpaper' ? { inert: true } : {})}
+                            className={cn(
                             'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
                             panel === 'wallpaper' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                         )}>
@@ -418,7 +422,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             </div>
                         </div>
 
-                        <div className={cn(
+                        <div
+                            {...(panel !== 'labels' ? { inert: true } : {})}
+                            className={cn(
                             'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
                             panel === 'labels' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                         )}>
@@ -441,7 +447,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             </div>
                         </div>
 
-                        <div className={cn(
+                        <div
+                            {...(panel !== 'account' ? { inert: true } : {})}
+                            className={cn(
                             'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
                             panel === 'account' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                         )}>
@@ -456,7 +464,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         <Mail size={12} />
                                         Signed In Email
                                     </div>
-                                    <p className="text-sm font-semibold break-all">{accountEmail || (isGuest ? 'Guest mode' : 'Email unavailable')}</p>
+                                    <p className="text-sm font-semibold break-all">{accountEmail || 'Email unavailable'}</p>
                                     <p className="text-[11px] text-muted-foreground">
                                         {userName ? `Display name: ${userName}` : 'No display name saved yet.'}
                                     </p>
@@ -470,7 +478,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                         onClick={async () => {
                                             // Clear persisted store before server sign-out to prevent stale UI on landing page
                                             useChatStore.getState().setUserId(null)
-                                            useChatStore.getState().setIsGuest(true)
                                             useChatStore.getState().setActiveGang([])
                                             useChatStore.getState().clearChat()
                                             useChatStore.getState().setUserName(null)
@@ -563,7 +570,9 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                             </div>
                         </div>
 
-                        <div className={cn(
+                        <div
+                            {...(panel !== 'rename' ? { inert: true } : {})}
+                            className={cn(
                             'absolute inset-0 overflow-y-auto p-4 transition-all duration-250',
                             panel === 'rename' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
                         )}>

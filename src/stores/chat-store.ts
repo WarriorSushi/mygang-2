@@ -9,7 +9,6 @@ export interface Message {
     speaker: string // 'user' or Character ID
     content: string
     created_at: string
-    is_guest?: boolean
     reaction?: string // For "Reaction-Only Turns"
     replyToId?: string // For "Quote-Reply UI"
     deliveryStatus?: 'sending' | 'sent' | 'failed'
@@ -34,7 +33,6 @@ export interface Character {
 interface ChatState {
     messages: Message[]
     activeGang: Character[]
-    isGuest: boolean
     userName: string | null
     userId: string | null
     userNickname: string | null // For "Nickname Evolution"
@@ -49,7 +47,6 @@ interface ChatState {
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
-    setIsGuest: (isGuest: boolean) => void
     setUserName: (name: string | null) => void
     setUserId: (id: string | null) => void
     setUserNickname: (nickname: string | null) => void
@@ -76,7 +73,6 @@ export const useChatStore = create<ChatState>()(
         (set) => ({
             messages: [],
             activeGang: [],
-            isGuest: true,
             userName: null,
             userId: null,
             userNickname: null,
@@ -111,7 +107,6 @@ export const useChatStore = create<ChatState>()(
                 return { messages: next }
             }),
             setActiveGang: (gang) => set({ activeGang: gang }),
-            setIsGuest: (isGuest) => set({ isGuest }),
             setUserName: (name) => set({ userName: name }),
             setUserId: (userId) => set({ userId }),
             setUserNickname: (nickname) => set({ userNickname: nickname }),
@@ -135,7 +130,6 @@ export const useChatStore = create<ChatState>()(
             partialize: (state) => ({
                 messages: state.messages,
                 activeGang: state.activeGang,
-                isGuest: state.isGuest,
                 userName: state.userName,
                 userNickname: state.userNickname,
                 userId: state.userId,

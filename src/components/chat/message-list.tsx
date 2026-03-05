@@ -83,7 +83,6 @@ export const MessageList = memo(function MessageList({
     const [liveAnnouncement, setLiveAnnouncement] = useState('')
     const prevMessagesLength = useRef(messages.length)
     const prevFirstMessageIdRef = useRef<string | null>(messages[0]?.id ?? null)
-    const isGuest = useChatStore((state) => state.isGuest)
     const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
     const customCharacterNames = useChatStore((state) => state.customCharacterNames)
     const messageById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
@@ -243,7 +242,7 @@ export const MessageList = memo(function MessageList({
             >
                 {(hasMoreHistory || loadingHistory) && (
                     <div className="px-4 md:px-10 lg:px-14 pb-2">
-                        <div className="flex justify-center">
+                        <div className="flex justify-center" aria-live="polite">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -256,6 +255,12 @@ export const MessageList = memo(function MessageList({
                                 {loadingHistory ? 'Loading earlier messages...' : 'Load earlier messages'}
                             </Button>
                         </div>
+                    </div>
+                )}
+                {messages.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full py-20 text-center">
+                        <p className="text-lg mb-1">👋</p>
+                        <p className="text-sm text-muted-foreground">Say hello to kick things off!</p>
                     </div>
                 )}
                 <div className="flex flex-col">
@@ -300,7 +305,6 @@ export const MessageList = memo(function MessageList({
                                         quotedMessage={quotedMessage}
                                         quotedSpeaker={quotedSpeaker}
                                         seenBy={seenBy}
-                                        isGuest={isGuest}
                                         showPersonaRoles={showPersonaRoles}
                                         onReply={onReplyMessage}
                                         onLike={onLikeMessage}

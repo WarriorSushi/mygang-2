@@ -29,7 +29,6 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
-    const isGuest = useChatStore((state) => state.isGuest)
     const drawerRef = useRef<HTMLDivElement>(null)
 
     // Escape key to close
@@ -47,10 +46,14 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
         if (!isOpen) return
         const drawer = drawerRef.current
         if (!drawer) return
-        const focusable = drawer.querySelectorAll<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-        if (focusable.length > 0) focusable[0].focus()
+
+        // Delay initial focus until React has painted dynamic content
+        const rafId = requestAnimationFrame(() => {
+            const focusable = drawer.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+            if (focusable.length > 0) focusable[0].focus()
+        })
 
         const handleTab = (e: KeyboardEvent) => {
             if (e.key !== 'Tab') return
@@ -69,7 +72,10 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
             }
         }
         document.addEventListener('keydown', handleTab)
-        return () => document.removeEventListener('keydown', handleTab)
+        return () => {
+            cancelAnimationFrame(rafId)
+            document.removeEventListener('keydown', handleTab)
+        }
     }, [isOpen])
 
     const loadMemories = useCallback(async (options?: { reset?: boolean; before?: string | null }) => {
@@ -104,11 +110,6 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
 
     useEffect(() => {
         if (isOpen) {
-            if (isGuest) {
-                setMemories([])
-                setLoading(false)
-                return
-            }
             setCursor(null)
             setHasMore(false)
             loadMemories({ reset: true, before: null })
@@ -116,7 +117,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
             setEditingId(null)
             setPendingDeleteId(null)
         }
-    }, [isOpen, isGuest, loadMemories])
+    }, [isOpen, loadMemories])
 
     const handleDeleteConfirm = async () => {
         if (!pendingDeleteId) return
@@ -220,12 +221,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
 
                         {/* List */}
                         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                            {isGuest ? (
-                                <div className="text-center py-12">
-                                    <p className="text-muted-foreground text-sm">Memories are saved to your account.</p>
-                                    <p className="text-[10px] uppercase mt-2 opacity-50">Sign in to unlock long-term memory.</p>
-                                </div>
-                            ) : loading ? (
+                            {loading ? (
                                 <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
                                     <Loader2 className="animate-spin" size={24} />
                                     <span className="text-xs font-medium uppercase tracking-tighter">Syncing Neural Links...</span>

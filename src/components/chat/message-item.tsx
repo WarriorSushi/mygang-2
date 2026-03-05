@@ -136,7 +136,6 @@ interface MessageItemProps {
     quotedMessage?: Message | null
     quotedSpeaker?: Character | null
     seenBy?: string[]
-    isGuest?: boolean
     showPersonaRoles?: boolean
     onReply?: (message: Message) => void
     onLike?: (message: Message) => void
@@ -152,7 +151,6 @@ function MessageItemComponent({
     quotedMessage = null,
     quotedSpeaker = null,
     seenBy = [],
-    isGuest = true,
     showPersonaRoles = true,
     onReply,
     onLike,
@@ -349,7 +347,7 @@ function MessageItemComponent({
             <div ref={actionWrapRef} className={cn('relative min-w-0 max-w-full', isUser ? 'self-end' : 'self-start')}>
                 <div
                     className={cn(
-                        "relative max-w-full px-3.5 py-2.5 sm:px-4 sm:py-3 transition-colors select-none",
+                        "relative max-w-full px-3.5 py-2.5 sm:px-4 sm:py-3 transition-colors",
                         isUser
                             ? cn("bg-primary text-primary-foreground shadow-sm", userShape)
                             : isReaction
@@ -453,7 +451,7 @@ function MessageItemComponent({
                             <Reply className="w-3.5 h-3.5" />
                             Reply
                         </Button>
-                        {isUser && !isGuest && (
+                        {isUser && (
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -479,7 +477,7 @@ function MessageItemComponent({
                     "mt-0.5 flex items-center gap-1.5 px-1",
                     isUser ? "self-end" : "self-start"
                 )}>
-                    <span className="text-[10px] text-muted-foreground/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] text-muted-foreground/40 transition-opacity">
                         {timeLabel}
                     </span>
                     {relativeTime && (

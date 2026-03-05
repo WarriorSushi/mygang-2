@@ -29,6 +29,9 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     const { setTheme } = useTheme()
     const [themeChoice, setThemeChoice] = useState<'light' | 'dark'>(initialSettings.theme)
     const [lowCostMode, setLowCostMode] = useState<boolean>(initialSettings.lowCostMode)
+    const [deleteEmail, setDeleteEmail] = useState('')
+    const [deleteError, setDeleteError] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
     const [perfEnabled, setPerfEnabled] = useState(() => {
         if (typeof window === 'undefined') return false
         return window.localStorage.getItem(PERF_KEY) === 'true'
@@ -142,7 +145,6 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         onClick={async () => {
                             const store = useChatStore.getState()
                             store.setUserId(null)
-                            store.setIsGuest(true)
                             store.setActiveGang([])
                             store.clearChat()
                             store.setUserName(null)
@@ -153,16 +155,49 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     >
                         Sign Out
                     </Button>
+                </div>
+                <div className="mt-4 space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-destructive">Danger Zone</div>
+                    <p className="text-[11px] text-destructive/80">Type your email to confirm account deletion. This cannot be undone.</p>
+                    <input
+                        type="email"
+                        value={deleteEmail}
+                        onChange={(e) => {
+                            setDeleteEmail(e.target.value)
+                            if (deleteError) setDeleteError(null)
+                        }}
+                        placeholder={email || 'your@email.com'}
+                        className="h-10 w-full rounded-lg border border-destructive/40 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-destructive"
+                        autoComplete="email"
+                    />
+                    {deleteError && (
+                        <p className="text-[10px] text-destructive">{deleteError}</p>
+                    )}
                     <Button
                         variant="destructive"
-                        className="rounded-full text-[10px] uppercase tracking-widest"
+                        className="rounded-full text-[10px] uppercase tracking-widest w-full"
+                        disabled={isDeleting || !email || deleteEmail.trim().toLowerCase() !== (email || '').trim().toLowerCase()}
                         onClick={async () => {
+                            if (!email || deleteEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+                                setDeleteError('Type your exact email to confirm.')
+                                return
+                            }
                             const confirmed = confirm('Delete your account and all data? This cannot be undone.')
                             if (!confirmed) return
-                            await deleteAccount()
+                            setIsDeleting(true)
+                            try {
+                                await deleteAccount()
+                            } catch (err) {
+                                const message = err instanceof Error ? err.message : ''
+                                if (!message.includes('NEXT_REDIRECT')) {
+                                    setDeleteError('Could not delete account. Please try again.')
+                                }
+                            } finally {
+                                setIsDeleting(false)
+                            }
                         }}
                     >
-                        Delete Account
+                        {isDeleting ? 'Deleting...' : 'Delete Account'}
                     </Button>
                 </div>
             </section>

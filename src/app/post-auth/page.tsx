@@ -12,7 +12,6 @@ export default function PostAuthPage() {
     const router = useRouter()
     const {
         setUserId,
-        setIsGuest,
         setUserName,
         setActiveGang
     } = useChatStore()
@@ -26,7 +25,6 @@ export default function PostAuthPage() {
 
         const resolveJourney = async (userId: string) => {
             setUserId(userId)
-            setIsGuest(false)
 
             const localState = useChatStore.getState()
             const localGangIds = localState.activeGang.map((c) => c.id)
@@ -105,7 +103,7 @@ export default function PostAuthPage() {
             clearTimeout(retryTimer)
             clearTimeout(timeout)
         }
-    }, [router, setActiveGang, setIsGuest, setUserId, setUserName])
+    }, [router, setActiveGang, setUserId, setUserName])
 
     return (
         <main className="min-h-dvh flex items-center justify-center bg-background text-foreground px-6">

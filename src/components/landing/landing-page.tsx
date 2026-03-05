@@ -17,6 +17,7 @@ import {
   Reply,
   Layers3,
   UserRound,
+  Brain,
 } from 'lucide-react'
 import Image from 'next/image'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
@@ -150,9 +151,9 @@ const whyRealFeatures = [
     icon: <Users className="w-6 h-6 text-amber-500" />,
   },
   {
-    title: 'Alive group vibes',
-    copy: 'They bounce off each other naturally, so every chat feels lively and real.',
-    icon: <Sparkles className="w-6 h-6 text-violet-500" />,
+    title: 'Memory that sticks',
+    copy: 'Your squad remembers past conversations, inside jokes, and what matters to you.',
+    icon: <Brain className="w-6 h-6 text-violet-500" />,
   },
 ]
 
@@ -208,9 +209,8 @@ export function LandingPage() {
   const isAuthenticated = isHydrated && !!userId
   const hasGang = activeGang.length >= 2
   const ctaText = !isHydrated ? 'Syncing...' : isAuthenticated ? 'Go to Chat' : 'Assemble Your Gang'
-  const ctaLink = isAuthenticated ? (hasGang ? '/chat' : '/onboarding') : '/onboarding'
+  const ctaLink = isAuthenticated ? (hasGang ? '/chat' : '/onboarding') : null
   const ctaDisabled = !isHydrated
-  const safeCtaLink = ctaDisabled ? '#' : ctaLink
 
   // Auto-redirect authenticated users away from landing page
   useEffect(() => {
@@ -240,7 +240,7 @@ export function LandingPage() {
   }, [isHydrated, router])
 
   return (
-    <div className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
+    <div id="main-content" className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
 
       {/* ── Nav ── */}
@@ -275,7 +275,7 @@ export function LandingPage() {
           )}
           {isAuthenticated ? (
             <Button variant="ghost" asChild disabled={ctaDisabled} className="rounded-full px-4 sm:px-6 border border-border/80 bg-card/70 hover:bg-card transition-all">
-              <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+              <Link href={ctaLink || '/'} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
                 Go to Chat
               </Link>
             </Button>
@@ -319,21 +319,37 @@ export function LandingPage() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start items-center lg:items-start">
-                  <Button
+                  {ctaLink ? (
+                    <Button
                       size="xl"
                       asChild
                       disabled={ctaDisabled}
                       data-testid="landing-cta"
                       className="rounded-full w-[min(92vw,22rem)] sm:w-auto px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
                     >
-                    <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+                      <Link href={ctaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+                        <span className="relative z-10 flex items-center gap-3">
+                          {ctaText}
+                          <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-2 transition-transform duration-500" />
+                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="xl"
+                      disabled={ctaDisabled}
+                      data-testid="landing-cta"
+                      className="rounded-full w-[min(92vw,22rem)] sm:w-auto px-10 sm:px-16 py-6 sm:py-10 text-lg sm:text-2xl font-black group relative overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-primary/20"
+                      onClick={() => setShowAuthWall(true)}
+                    >
                       <span className="relative z-10 flex items-center gap-3">
                         {ctaText}
                         <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-2 transition-transform duration-500" />
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Link>
-                  </Button>
+                    </Button>
+                  )}
                   <div className="inline-flex w-[min(72vw,16rem)] sm:w-auto">
                     <Button
                       variant="outline"
@@ -534,7 +550,7 @@ export function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
                 className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
-                open
+                {...(i === 0 ? { open: true } : {})}
               >
                 <summary className="text-base font-semibold cursor-pointer list-none flex items-center justify-between [&::-webkit-details-marker]:hidden">
                   {item.q}
@@ -565,12 +581,19 @@ export function LandingPage() {
                 Start with one message and watch the room come alive around you.
               </p>
             </div>
-            <Button size="xl" asChild className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group shrink-0">
-              <Link href={safeCtaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+            {ctaLink ? (
+              <Button size="xl" asChild className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group shrink-0">
+                <Link href={ctaLink} prefetch aria-disabled={ctaDisabled} onClick={(e) => ctaDisabled && e.preventDefault()}>
+                  {ctaText}
+                  <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+            ) : (
+              <Button size="xl" className="rounded-full px-10 sm:px-14 py-6 text-lg font-black group shrink-0" onClick={() => setShowAuthWall(true)} disabled={ctaDisabled}>
                 {ctaText}
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </Button>
+              </Button>
+            )}
           </motion.div>
         </section>
       </main>
@@ -712,6 +735,14 @@ function LiveDemoCard({ thread }: { thread: DemoThread }) {
 /* ── Demo carousel with arrow navigation (all screen sizes) ── */
 function DemoCarousel({ threads }: { threads: DemoThread[] }) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const dotRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+  const goTo = useCallback((newIndex: number, refocusEl?: HTMLElement | null) => {
+    setActiveIndex(newIndex)
+    if (refocusEl) {
+      requestAnimationFrame(() => refocusEl.focus())
+    }
+  }, [])
 
   const goNext = useCallback(() => {
     setActiveIndex((prev) => (prev + 1) % threads.length)
@@ -740,7 +771,10 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
       {/* Arrow controls + dots */}
       <div className="flex items-center justify-center gap-5 mt-5">
         <button
-          onClick={goPrev}
+          onClick={(e) => {
+            goPrev()
+            requestAnimationFrame(() => e.currentTarget.focus())
+          }}
           className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
           aria-label="Previous chat"
         >
@@ -751,8 +785,9 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
           {threads.map((_, i) => (
             <button
               key={i}
-              onClick={() => setActiveIndex(i)}
-              className="p-2 cursor-pointer"
+              ref={(el) => { dotRefs.current[i] = el }}
+              onClick={() => goTo(i, dotRefs.current[i])}
+              className="p-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded-full"
               aria-label={`Go to chat ${i + 1}`}
               aria-current={i === activeIndex ? 'true' : undefined}
             >
@@ -765,7 +800,10 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
         </div>
 
         <button
-          onClick={goNext}
+          onClick={(e) => {
+            goNext()
+            requestAnimationFrame(() => e.currentTarget.focus())
+          }}
           className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
           aria-label="Next chat"
         >

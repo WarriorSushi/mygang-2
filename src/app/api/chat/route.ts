@@ -10,6 +10,7 @@ import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/characte
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
 import type { Json } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { waitUntil } from '@vercel/functions'
 
 export const maxDuration = 45
 
@@ -36,16 +37,17 @@ let cachedGlobalLowCostOverride: { value: boolean; expiresAtMs: number } = {
     value: false,
     expiresAtMs: 0
 }
+let isFetchingGlobalLowCost = false
 
 const CHARACTER_EXTENDED_VOICES: Record<string, string> = {
-    kael: 'Hypes everything up. Uses "we" a lot. Speaks in declarations. Loves emojis but not excessively. Competitive with Cleo. Thinks he is the main character.',
-    nyx: 'Deadpan one-liners. Uses lowercase. Rarely uses emojis. Roasts everyone equally. Clashes with Rico (logic vs chaos). Secretly cares but would never admit it.',
-    atlas: 'Short, direct sentences. Protective dad-friend energy. Gives actual advice. Gets annoyed by Rico. Respects Vee. Uses military-adjacent language casually.',
-    luna: 'Dreamy and warm. Uses "..." and trailing thoughts. Reads the room emotionally. Mediates conflicts. Sometimes too real. Vibes with Ezra on deep topics.',
-    rico: 'ALL CAPS when excited. Chaotic energy. Derails conversations. Uses excessive emojis and slang. Clashes with Nyx and Atlas. Hypes up bad ideas enthusiastically.',
-    vee: 'Starts corrections with "actually" or "technically". Uses precise language. Dry humor. Respects Atlas. Gets exasperated by Rico. Drops random facts.',
-    ezra: 'References obscure art/philosophy. Uses italics mentally. Pretentious but self-aware about it. Vibes with Luna. Judges Kael\'s taste. Speaks in metaphors.',
-    cleo: 'Judgmental but entertaining. Uses "honey", "darling", "sweetie". Gossips. Competes with Kael for social dominance. Has strong opinions on everything. Dramatic pauses.',
+    kael: 'Hypes everything up. Uses "we" a lot. Speaks in declarations. Loves emojis but not excessively. Competitive with Cleo. Thinks he is the main character. Genuinely excited when user shares wins — celebrates them loud.',
+    nyx: 'Deadpan one-liners. Uses lowercase. Rarely uses emojis. Roasts everyone equally. Clashes with Rico (logic vs chaos). Roasts come from love — would defend user against anyone. Secretly cares but would never admit it.',
+    atlas: 'Short, direct sentences. Protective dad-friend energy. Gives actual advice. Gets annoyed by Rico. Respects Vee. Checks in on user, remembers what they shared. Uses military-adjacent language casually.',
+    luna: 'Dreamy and warm. Uses "..." and trailing thoughts. Reads the room emotionally. Mediates conflicts. Makes user feel emotionally safe and seen. Sometimes too real. Vibes with Ezra on deep topics.',
+    rico: 'ALL CAPS when excited. Chaotic energy. Derails conversations. Uses excessive emojis and slang. Clashes with Nyx and Atlas. Hypes up bad ideas enthusiastically. Always down for whatever user suggests.',
+    vee: 'Starts corrections with "actually" or "technically". Uses precise language. Dry humor. Respects Atlas. Gets exasperated by Rico. Drops random facts. Shows care through helpfulness.',
+    ezra: 'References obscure art/philosophy. Uses italics mentally. Pretentious but self-aware about it. Vibes with Luna. Judges Kael\'s taste. Speaks in metaphors. Genuinely curious about user\'s thoughts.',
+    cleo: 'Judgmental but entertaining. Uses "honey", "darling", "sweetie". Gossips. Competes with Kael for social dominance. Has strong opinions on everything. Dramatic pauses. Protective of the group — user included.',
 }
 
 const CHARACTER_PROMPT_BLOCKS = new Map(
@@ -56,6 +58,7 @@ const CHARACTER_PROMPT_BLOCKS = new Map(
 )
 
 let cachedDbPromptBlocks: { value: Record<string, string>; expiresAtMs: number } | null = null
+let isFetchingDbPromptBlocks = false
 
 type DbCharacterPromptRow = {
     id: string
@@ -123,7 +126,6 @@ type ChatHistoryInsertRow = {
     gang_id: string
     speaker: string
     content: string
-    is_guest: boolean
     created_at: string
     client_message_id?: string | null
     reply_to_client_message_id?: string | null
@@ -158,32 +160,38 @@ function toLegacyHistoryRows(rows: ChatHistoryInsertRow[]) {
         gang_id: row.gang_id,
         speaker: row.speaker,
         content: row.content,
-        is_guest: row.is_guest,
         created_at: row.created_at
     }))
 }
 
 async function getDbPromptBlocks(supabase: SupabaseClient) {
     if (cachedDbPromptBlocks && Date.now() < cachedDbPromptBlocks.expiresAtMs) return cachedDbPromptBlocks.value
-    const { data, error } = await supabase
-        .from('characters')
-        .select('id, prompt_block, name, archetype, voice_description, sample_line')
-        .returns<DbCharacterPromptRow[]>()
+    // Prevent cache stampede: if another request is already fetching, return stale value
+    if (isFetchingDbPromptBlocks) return cachedDbPromptBlocks?.value ?? null
+    isFetchingDbPromptBlocks = true
+    try {
+        const { data, error } = await supabase
+            .from('characters')
+            .select('id, prompt_block, name, archetype, voice_description, sample_line')
+            .returns<DbCharacterPromptRow[]>()
 
-    if (error || !data) {
-        if (error) console.error('Error loading character prompt blocks:', error)
-        return cachedDbPromptBlocks?.value ?? null
+        if (error || !data) {
+            if (error) console.error('Error loading character prompt blocks:', error)
+            return cachedDbPromptBlocks?.value ?? null
+        }
+
+        const map: Record<string, string> = {}
+        data.forEach((row) => {
+            const block = row.prompt_block
+                ? row.prompt_block
+                : `- ID: "${row.id}", Name: "${row.name}", Archetype: "${row.archetype}", Voice: "${row.voice_description}", Style: "${row.sample_line}"`
+            map[row.id] = block
+        })
+        cachedDbPromptBlocks = { value: map, expiresAtMs: Date.now() + 5 * 60_000 }
+        return map
+    } finally {
+        isFetchingDbPromptBlocks = false
     }
-
-    const map: Record<string, string> = {}
-    data.forEach((row) => {
-        const block = row.prompt_block
-            ? row.prompt_block
-            : `- ID: "${row.id}", Name: "${row.name}", Archetype: "${row.archetype}", Voice: "${row.voice_description}", Style: "${row.sample_line}"`
-        map[row.id] = block
-    })
-    cachedDbPromptBlocks = { value: map, expiresAtMs: Date.now() + 5 * 60_000 }
-    return map
 }
 
 async function getGlobalLowCostOverride() {
@@ -191,6 +199,9 @@ async function getGlobalLowCostOverride() {
     if (nowMs < cachedGlobalLowCostOverride.expiresAtMs) {
         return cachedGlobalLowCostOverride.value
     }
+    // Prevent cache stampede: if another request is already fetching, return stale value
+    if (isFetchingGlobalLowCost) return cachedGlobalLowCostOverride.value
+    isFetchingGlobalLowCost = true
 
     try {
         const admin = createAdminClient()
@@ -214,6 +225,8 @@ async function getGlobalLowCostOverride() {
         console.error('Failed to load admin runtime settings:', err)
         cachedGlobalLowCostOverride = { value: false, expiresAtMs: nowMs + ADMIN_SETTINGS_CACHE_MS }
         return false
+    } finally {
+        isFetchingGlobalLowCost = false
     }
 }
 
@@ -587,13 +600,25 @@ export async function POST(req: Request) {
             supabase.auth.getUser(),
             getGlobalLowCostOverride(),
         ])
+
+        if (!user) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: 'Authentication required. Please sign in to use MyGang.',
+                    delay: 200
+                }]
+            }, { status: 401 })
+        }
+
         const lowCostMode = requestedLowCostMode || globalLowCostOverride
 
         const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
             || req.headers.get('x-real-ip')
             || 'unknown'
-        const rateKey = user?.id ? `chat:user:${user.id}` : `chat:ip:${ip}`
-        const rateLimitMax = user ? 60 : 20
+        const rateKey = `chat:user:${user.id}`
+        const rateLimitMax = 60
         const rate = await rateLimit(rateKey, rateLimitMax, 60_000)
         if (!rate.success) {
             return Response.json({
@@ -633,6 +658,7 @@ export async function POST(req: Request) {
             }, { status: 400 })
         }
 
+
         // 1. Retrieve Memories + Profile State
         let relevantMemories: { id: string; content: string }[] = []
         let memorySnapshot = 'No memory snapshot available.'
@@ -652,16 +678,15 @@ export async function POST(req: Request) {
 
                 profileRow = profile
 
+                // Daily count check — the RPC handles atomic reset, but we still
+                // need to read the current value for the limit gate.  If the
+                // stored reset is stale (>24h) treat count as 0 (the RPC will
+                // reset it atomically when called later).
                 const now = new Date()
-                let dailyCount = profile?.daily_msg_count ?? 0
                 const lastReset = profile?.last_msg_reset ? new Date(profile.last_msg_reset) : null
-                if (!lastReset || (now.getTime() - lastReset.getTime()) > 24 * 60 * 60 * 1000) {
-                    dailyCount = 0
-                    await supabase.from('profiles').update({
-                        daily_msg_count: 0,
-                        last_msg_reset: now.toISOString()
-                    }).eq('id', user.id)
-                }
+                const dailyCount = (!lastReset || (now.getTime() - lastReset.getTime()) > 24 * 60 * 60 * 1000)
+                    ? 0
+                    : (profile?.daily_msg_count ?? 0)
 
                 const dailyLimit = profile?.subscription_tier === 'pro' ? 300 : 80
                 if (hasFreshUserTurn && dailyCount >= dailyLimit) {
@@ -787,11 +812,13 @@ USER:
 SQUAD (id|name|role|voice):
 ${characterContext}
 ${customNamesDirective}
-SQUAD DYNAMICS (use these to create natural group banter):
+SQUAD DYNAMICS:
+- The user is a core member of this friend group. Make them feel included, welcome, and part of the vibe.
+- These characters genuinely like the user. The tone should be warm, casual, and like texting your best friends.
 - Characters should sometimes respond to EACH OTHER, not just the user.
 - Different characters have different opinions -- let them disagree, joke, or riff off each other.
-- Not every character needs to address the user directly every time.
-- Conversations should feel like overhearing a friend group, not a panel Q&A.
+- At least one character should directly engage with what the user said. Others can riff, but user should feel heard.
+- Conversations should feel like being IN a friend group, not a panel Q&A.
 
 ${(greetingOnly || autonomousIdle) ? '' : memorySnapshot}
 SAFETY:
@@ -820,6 +847,8 @@ ${allowedStatusList}
 5) If silent_turns is high (${silentTurns}), re-engage user directly.
 6) VOICE: Each character must sound distinctly different. Use their vocabulary, tone, and personality consistently. Vary message lengths -- some characters are verbose, others are terse.
 7) NATURALNESS: Write like real people text. Use lowercase, abbreviations, slang where it fits the character. Avoid perfect grammar unless that IS the character's style.
+8) GROUNDING: Only reference events, places, and facts from the conversation history or stored memories. NEVER invent shared experiences, locations, or events that weren't mentioned. If unsure about something, ask — don't assume or fabricate.
+9) EARLY RAPPORT: For new or short conversations, keep it chill and welcoming. Don't overwhelm with character quirks — build rapport naturally.
 
 ${allowMemoryUpdates || shouldUpdateSummary ? `MEMORY/RELATIONSHIP:
 - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
@@ -1148,18 +1177,17 @@ FLOW FLAGS:
 
             try {
                 // Use RPC for atomic counter increments + profile field updates
-                await Promise.all([
-                    supabase.from('profiles').update({ last_active_at: nowIso }).eq('id', user.id),
-                    supabase.rpc('increment_profile_counters', {
-                        p_user_id: user.id,
-                        p_daily_msg_increment: dailyMsgIncrement,
-                        p_abuse_score_increment: abuseScoreIncrement,
-                        p_session_summary: profileUpdates.session_summary || undefined,
-                        p_summary_turns: profileUpdates.summary_turns ?? undefined,
-                        p_user_profile: profileUpdates.user_profile || undefined,
-                        p_relationship_state: profileUpdates.relationship_state || undefined,
-                    }),
-                ])
+                // The RPC also handles daily counter reset and last_active_at in one query
+                await supabase.rpc('increment_profile_counters', {
+                    p_user_id: user.id,
+                    p_daily_msg_increment: dailyMsgIncrement,
+                    p_abuse_score_increment: abuseScoreIncrement,
+                    p_session_summary: profileUpdates.session_summary || undefined,
+                    p_summary_turns: profileUpdates.summary_turns ?? undefined,
+                    p_user_profile: profileUpdates.user_profile || undefined,
+                    p_relationship_state: profileUpdates.relationship_state || undefined,
+                    p_last_active_at: nowIso,
+                })
             } catch (err) {
                 console.error('Error updating profile state:', err)
             }
@@ -1182,11 +1210,27 @@ FLOW FLAGS:
 
             // 3. Persist chat history
             try {
-                const { data: gang, error: gangError } = await supabase
+                let gang: { id: string } | null = null
+                let gangError: unknown = null
+                const { data: existingGang, error: selectErr } = await supabase
                     .from('gangs')
-                    .upsert({ user_id: user.id }, { onConflict: 'user_id' })
                     .select('id')
+                    .eq('user_id', user.id)
                     .single()
+                if (existingGang) {
+                    gang = existingGang
+                } else if (!selectErr || selectErr.code === 'PGRST116') {
+                    // No gang exists yet — insert one
+                    const { data: newGang, error: insertErr } = await supabase
+                        .from('gangs')
+                        .insert({ user_id: user.id })
+                        .select('id')
+                        .single()
+                    gang = newGang
+                    gangError = insertErr
+                } else {
+                    gangError = selectErr
+                }
 
                 if (!gangError && gang?.id) {
                     const rows: ChatHistoryInsertRow[] = []
@@ -1253,7 +1297,7 @@ FLOW FLAGS:
                                 gang_id: gang.id,
                                 speaker: 'user',
                                 content: userContent,
-                                is_guest: false,
+
                                 created_at: candidate.created_at || new Date().toISOString(),
                                 client_message_id: candidateClientMessageId,
                                 reply_to_client_message_id: sanitizeMessageId(candidate.replyToId) || null,
@@ -1273,7 +1317,7 @@ FLOW FLAGS:
                                     gang_id: gang.id,
                                     speaker: event.character,
                                     content: eventContent,
-                                    is_guest: false,
+    
                                     created_at: new Date(eventTimeMs).toISOString(),
                                     client_message_id: sanitizeMessageId(event.message_id) || null,
                                     reply_to_client_message_id: sanitizeMessageId(event.target_message_id) || null,
@@ -1355,7 +1399,7 @@ FLOW FLAGS:
                 console.error('Chat history persistence error:', err)
             }
             }
-            persistAsync().catch((err) => console.error('Background persistence error:', err))
+            waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err)))
         }
 
         return response

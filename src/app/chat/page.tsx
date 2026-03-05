@@ -12,7 +12,6 @@ import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 // Modular components
 import { ChatHeader } from '@/components/chat/chat-header'
 import { MessageList } from '@/components/chat/message-list'
-const AuthWall = dynamic(() => import('@/components/orchestrator/auth-wall').then((m) => m.AuthWall), { ssr: false })
 const MemoryVault = dynamic(() => import('@/components/chat/memory-vault').then((m) => m.MemoryVault), { ssr: false })
 const ChatSettings = dynamic(() => import('@/components/chat/chat-settings').then((m) => m.ChatSettings), { ssr: false })
 import { ChatInput } from '@/components/chat/chat-input'
@@ -34,9 +33,7 @@ export default function ChatPage() {
         userId,
         userName,
         userNickname,
-        isGuest,
         isHydrated,
-        setIsGuest,
         chatMode,
         lowCostMode,
         chatWallpaper,
@@ -48,9 +45,7 @@ export default function ChatPage() {
         userId: s.userId,
         userName: s.userName,
         userNickname: s.userNickname,
-        isGuest: s.isGuest,
         isHydrated: s.isHydrated,
-        setIsGuest: s.setIsGuest,
         chatMode: s.chatMode,
         lowCostMode: s.lowCostMode,
         chatWallpaper: s.chatWallpaper,
@@ -58,7 +53,6 @@ export default function ChatPage() {
         setSquadConflict: s.setSquadConflict,
     })))
 
-    const [showAuthWall, setShowAuthWall] = useState(false)
     const [isVaultOpen, setIsVaultOpen] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const [showResumeBanner, setShowResumeBanner] = useState(false)
@@ -86,7 +80,6 @@ export default function ChatPage() {
         userId,
         userName,
         userNickname,
-        isGuest,
         messages,
         chatMode,
         lowCostMode,
@@ -101,7 +94,6 @@ export default function ChatPage() {
         triggerReadingStatuses: typing.triggerReadingStatuses,
         recordCapacityError: capacity.recordCapacityError,
         recordSuccessfulUserTurn: capacity.recordSuccessfulUserTurn,
-        setShowAuthWall,
         setReplyingTo,
     })
 
@@ -154,10 +146,17 @@ export default function ChatPage() {
         }
     }, [replyingTo, activeGang])
 
+    // ── Auth guard: redirect to landing if not authenticated ──
+    useEffect(() => {
+        if (isHydrated && !userId) {
+            router.replace('/')
+        }
+    }, [isHydrated, userId, router])
+
     // ── Guard: Redirect if no squad ──
     useEffect(() => {
-        if (isHydrated && activeGang.length === 0) {
-            router.replace(userId ? '/post-auth' : '/onboarding')
+        if (isHydrated && userId && activeGang.length === 0) {
+            router.replace('/post-auth')
         }
     }, [activeGang, isHydrated, router, userId])
 
@@ -236,19 +235,6 @@ export default function ChatPage() {
         return () => clearTimeout(timer)
     }, [toastMessage])
 
-    // ── Auth wall conversion ──
-    useEffect(() => {
-        if (showAuthWall && !isGuest) {
-            setShowAuthWall(false)
-            trackEvent('auth_wall_conversion', { metadata: { source: 'chat' } })
-            const pending = api.pendingBlockedMessageRef.current
-            api.pendingBlockedMessageRef.current = null
-            if (pending) {
-                void api.handleSendRef.current(pending.content, { replyToId: pending.replyToId, reaction: pending.reaction })
-            }
-        }
-    }, [isGuest, showAuthWall, api.pendingBlockedMessageRef, api.handleSendRef])
-
     // ── Screenshot ──
     const takeScreenshot = async () => {
         if (captureRootRef.current === null) return
@@ -326,7 +312,7 @@ export default function ChatPage() {
     }
 
     return (
-        <main className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative isolate">
+        <main id="main-content" className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative isolate">
             <BackgroundBlobs isMuted={typing.typingUsers.length > 0} className="absolute inset-0 z-0 overflow-hidden pointer-events-none" />
             <div className="chat-wallpaper-layer" data-wallpaper={chatWallpaper} aria-hidden="true" />
 
@@ -337,7 +323,7 @@ export default function ChatPage() {
                     onOpenSettings={() => setIsSettingsOpen(true)}
                     onRefresh={() => history.syncLatestHistory(true)}
                     typingUsers={typing.typingUsers}
-                    memoryActive={!isGuest}
+                    memoryActive={true}
                     autoLowCostActive={capacity.autoLowCostMode && !lowCostMode}
                     tokenUsage={api.lastTokenUsageRef.current}
                 />
@@ -385,14 +371,6 @@ export default function ChatPage() {
 
             <InlineToast message={toastMessage} onClose={() => setToastMessage(null)} />
 
-            <AuthWall
-                isOpen={showAuthWall}
-                onClose={() => setShowAuthWall(false)}
-                onSuccess={() => {
-                    setIsGuest(false)
-                    setShowAuthWall(false)
-                }}
-            />
             <MemoryVault isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} />
             <ChatSettings
                 isOpen={isSettingsOpen}

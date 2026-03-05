@@ -11,7 +11,6 @@ import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-jou
 export function AuthManager() {
     const {
         setUserId,
-        setIsGuest,
         setActiveGang,
         setUserName,
         setUserNickname,
@@ -25,12 +24,12 @@ export function AuthManager() {
     } = useChatStore()
     const supabase = useMemo(() => createClient(), [])
     const hadSessionRef = useRef(false)
+    const initialSyncDoneRef = useRef(false)
     const { setTheme } = useTheme()
 
     useEffect(() => {
         const clearAuthState = () => {
             setUserId(null)
-            setIsGuest(true)
             setActiveGang([])
             clearChat()
             setUserName(null)
@@ -42,7 +41,9 @@ export function AuthManager() {
 
         const syncSession = async (incomingSession?: Session | null) => {
             try {
-                setIsHydrated(false)
+                if (!initialSyncDoneRef.current) {
+                    setIsHydrated(false)
+                }
                 const session = incomingSession ?? (await supabase.auth.getSession()).data.session
 
                 if (!session?.user) {
@@ -54,7 +55,6 @@ export function AuthManager() {
                 }
 
                 setUserId(session.user.id)
-                setIsGuest(false)
                 hadSessionRef.current = true
 
                 const { activeGang: localGang, userName: localName } = useChatStore.getState()
@@ -149,6 +149,7 @@ export function AuthManager() {
                 console.error('Auth sync error:', err)
             } finally {
                 setIsHydrated(true)
+                initialSyncDoneRef.current = true
             }
         }
 
@@ -170,7 +171,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsGuest, setIsHydrated, setLowCostMode, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
+    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsHydrated, setLowCostMode, setSquadConflict, setTheme, setUserId, setUserName, setUserNickname, supabase])
 
     return null
 }

@@ -50,7 +50,6 @@ interface UseChatApiArgs {
     userId: string | null
     userName: string | null
     userNickname: string | null
-    isGuest: boolean
     messages: Message[]
     chatMode: 'gang_focus' | 'ecosystem'
     lowCostMode: boolean
@@ -68,7 +67,6 @@ interface UseChatApiArgs {
     recordCapacityError: (status: number, isUserInitiated: boolean) => void
     recordSuccessfulUserTurn: () => void
     // UI state setters
-    setShowAuthWall: (show: boolean) => void
     setReplyingTo: (msg: Message | null) => void
 }
 
@@ -77,7 +75,6 @@ export function useChatApi({
     userId,
     userName,
     userNickname,
-    isGuest,
     messages,
     chatMode,
     lowCostMode,
@@ -92,14 +89,12 @@ export function useChatApi({
     triggerReadingStatuses,
     recordCapacityError,
     recordSuccessfulUserTurn,
-    setShowAuthWall,
     setReplyingTo,
 }: UseChatApiArgs) {
     const { addMessage, setMessages, setCharacterStatus, setUserNickname } = useChatStore()
 
     const isGeneratingRef = useRef(false)
     const pendingUserMessagesRef = useRef(false)
-    const pendingBlockedMessageRef = useRef<{ content: string; replyToId?: string; reaction?: string } | null>(null)
     const pendingUserMessageIdRef = useRef<string | null>(null)
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const silentTurnsRef = useRef(0)
@@ -249,20 +244,20 @@ export function useChatApi({
             } catch (err) {
                 console.error('Failed to parse response:', err)
             }
-            trackEvent('chat_api_call', {
-                metadata: {
-                    source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
-                    status: res.status,
-                    lowCostMode: effectiveLowCostModeForCall,
-                    payloadMessages: payloadMessages.length
-                }
-            })
-
             if (!res) {
                 throw new Error('No response from chat API')
             }
 
             if (!res.ok) {
+                trackEvent('chat_api_call', {
+                    metadata: {
+                        source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
+                        status: res.status,
+                        ok: false,
+                        lowCostMode: effectiveLowCostModeForCall,
+                        payloadMessages: payloadMessages.length
+                    }
+                })
                 const responseHint = data?.events?.[0]?.content || ''
                 const retryAfterValue = res.headers.get('Retry-After')
                 const retryAfterHeader = Number(retryAfterValue || '')
@@ -304,6 +299,16 @@ export function useChatApi({
                 }
                 return
             }
+
+            trackEvent('chat_api_call', {
+                metadata: {
+                    source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
+                    status: res.status,
+                    ok: true,
+                    lowCostMode: effectiveLowCostModeForCall,
+                    payloadMessages: payloadMessages.length
+                }
+            })
 
             if (!data?.events) {
                 throw new Error('Invalid response shape')
@@ -401,10 +406,10 @@ export function useChatApi({
         } finally {
             if (pendingUserMessagesRef.current) {
                 pendingUserMessagesRef.current = false
-                isGeneratingRef.current = false
                 clearTypingUsers()
                 const sourceId = pendingUserMessageIdRef.current
                 pendingUserMessageIdRef.current = null
+                isGeneratingRef.current = true
                 sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId }).catch((err) => console.error('Pending message retry error:', err))
             } else {
                 isGeneratingRef.current = false
@@ -443,16 +448,6 @@ export function useChatApi({
 
         localMessageCounterRef.current += 1
         const localId = `user-${Date.now()}-${localMessageCounterRef.current}`
-
-        const currentMessages = useChatStore.getState().messages
-        if (isGuest && !currentMessages.some(m => m.speaker === 'user')) {
-            pendingBlockedMessageRef.current = { content: trimmed, replyToId: options?.replyToId, reaction: options?.reaction }
-            setShowAuthWall(true)
-            if (currentMessages.length === 0 && !initialGreetingRef.current) {
-                triggerLocalGreetingRef.current()
-            }
-            return false
-        }
 
         const userMsg: Message = {
             id: localId,
@@ -503,8 +498,9 @@ export function useChatApi({
             onToast('You are offline. Reconnect and try again.')
             return
         }
-        const isIntro = content.trim() === "" && messages.length === 0
-        const isAutonomous = content.trim() === "" && messages.length > 0
+        const currentMessageCount = useChatStore.getState().messages.length
+        const isIntro = content.trim() === "" && currentMessageCount === 0
+        const isAutonomous = content.trim() === "" && currentMessageCount > 0
 
         if (!isIntro && !isAutonomous && content.trim()) {
             const sent = enqueueUserMessage(content, options)
@@ -558,7 +554,6 @@ export function useChatApi({
         debounceTimerRef,
         sendToApiRef,
         handleSendRef,
-        pendingBlockedMessageRef,
         lastUserMessageIdRef,
         silentTurnsRef,
         burstCountRef,

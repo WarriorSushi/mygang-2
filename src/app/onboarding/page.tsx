@@ -8,7 +8,6 @@ import { useChatStore } from '@/stores/chat-store'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
-import { AuthWall } from '@/components/orchestrator/auth-wall'
 import { createClient } from '@/lib/supabase/client'
 import { persistUserJourney } from '@/lib/supabase/client-journey'
 
@@ -49,11 +48,17 @@ export default function OnboardingPage() {
     const [step, setStep] = useState<Step>('WELCOME')
     const [name, setName] = useState(() => useChatStore.getState().userName ?? '')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
-    const [showAuthWall, setShowAuthWall] = useState(false)
-    const { setUserName, setActiveGang, setIsGuest, userId, activeGang, isHydrated } = useChatStore()
+    const { setUserName, setActiveGang, userId, activeGang, isHydrated } = useChatStore()
     const router = useRouter()
     const isSelection = step === 'SELECTION'
     const supabase = useMemo(() => createClient(), [])
+
+    // Auth guard: redirect to landing if not authenticated
+    useEffect(() => {
+        if (isHydrated && !userId) {
+            router.replace('/')
+        }
+    }, [isHydrated, userId, router])
 
     // Bypass onboarding once squad exists locally
     useEffect(() => {
@@ -87,7 +92,6 @@ export default function OnboardingPage() {
         const selectedCharacters = CHARACTERS.filter((c) => selectedIds.includes(c.id))
         setActiveGang(selectedCharacters)
         setUserName(name)
-        setIsGuest(userId === null)
         setStep('LOADING')
 
         const session = ensureAnalyticsSession()
@@ -114,6 +118,7 @@ export default function OnboardingPage() {
 
     return (
         <main
+            id="main-content"
             className={cn(
                 "h-dvh flex flex-col relative bg-background pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1.5rem)]",
                 isSelection
@@ -125,9 +130,21 @@ export default function OnboardingPage() {
 
             <StepProgress current={step} />
 
+            {(step === 'IDENTITY' || step === 'SELECTION') && (
+                <button
+                    type="button"
+                    onClick={() => setStep(step === 'SELECTION' ? 'IDENTITY' : 'WELCOME')}
+                    className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] left-4 z-20 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    aria-label="Go back"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    Back
+                </button>
+            )}
+
             <AnimatePresence mode="wait" initial={false}>
                 {step === 'WELCOME' && (
-                    <WelcomeStep onNext={() => setStep('IDENTITY')} onLogin={() => setShowAuthWall(true)} />
+                    <WelcomeStep onNext={() => setStep('IDENTITY')} />
                 )}
 
                 {step === 'IDENTITY' && (
@@ -135,7 +152,6 @@ export default function OnboardingPage() {
                         name={name}
                         setName={setName}
                         onNext={() => setStep('SELECTION')}
-                        onLogin={() => setShowAuthWall(true)}
                     />
                 )}
 
@@ -152,14 +168,6 @@ export default function OnboardingPage() {
                 )}
             </AnimatePresence>
 
-            <AuthWall
-                isOpen={showAuthWall}
-                onClose={() => setShowAuthWall(false)}
-                onSuccess={() => {
-                    setShowAuthWall(false)
-                    router.push('/post-auth')
-                }}
-            />
         </main>
     )
 }
