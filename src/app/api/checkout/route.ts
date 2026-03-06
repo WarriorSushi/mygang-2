@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
                 .eq('id', user.id)
         }
 
-        const returnUrl = process.env.DODO_PAYMENTS_RETURN_URL || `${req.nextUrl.origin}/checkout/success`
+        // Always derive from request origin — avoids stale env vars pointing to localhost
+        const returnUrl = `${req.nextUrl.origin}/checkout/success`
 
         const session = await dodo.checkoutSessions.create({
             product_cart: [{ product_id: productId, quantity: 1 }],

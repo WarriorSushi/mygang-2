@@ -66,7 +66,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                         </div>
                         <div className="text-[10px] uppercase tracking-widest text-blue-500 dark:text-blue-400 font-bold">Basic Plan</div>
                     </div>
-                    <p className="text-sm font-semibold mt-1">1,000 messages/month + memory</p>
+                    <p className="text-sm font-semibold mt-1">500 messages/month + memory</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
                         Want unlimited? Upgrade to Pro.
                     </p>
