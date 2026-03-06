@@ -201,7 +201,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="relative w-full max-w-md h-full bg-background/80 backdrop-blur-2xl border-l border-border/50 shadow-2xl pointer-events-auto flex flex-col pt-safe"
+                        className="relative w-full max-w-md h-full bg-background/[0.97] backdrop-blur-3xl border-l border-border/50 shadow-2xl pointer-events-auto flex flex-col pt-safe"
                     >
                         <div className="p-6 border-b border-border/50 flex items-center justify-between">
                             <div className="flex items-center gap-2">
