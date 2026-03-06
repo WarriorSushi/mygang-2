@@ -1,5 +1,10 @@
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getDodoClient } from '@/lib/billing'
+
+const activateSchema = z.object({
+    subscription_id: z.string().min(1).max(256),
+})
 
 export async function POST(req: Request) {
     const supabase = await createClient()
@@ -10,11 +15,11 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const subscriptionId = body.subscription_id as string
-
-    if (!subscriptionId) {
-        return Response.json({ error: 'Missing subscription_id' }, { status: 400 })
+    const parsed = activateSchema.safeParse(body)
+    if (!parsed.success) {
+        return Response.json({ error: 'Invalid or missing subscription_id' }, { status: 400 })
     }
+    const { subscription_id: subscriptionId } = parsed.data
 
     try {
         const dodo = getDodoClient()
@@ -85,7 +90,7 @@ export async function POST(req: Request) {
 
         return Response.json({ success: true, plan })
     } catch (error) {
-        console.error('[activate] Error:', error)
+        console.error('[activate] Error:', error instanceof Error ? error.message : 'Unknown error')
         return Response.json({ error: 'Activation failed' }, { status: 500 })
     }
 }

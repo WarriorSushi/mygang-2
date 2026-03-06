@@ -48,7 +48,11 @@ export default function OnboardingPage() {
     const [step, setStep] = useState<Step>('WELCOME')
     const [name, setName] = useState(() => useChatStore.getState().userName ?? '')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
-    const { setUserName, setActiveGang, userId, activeGang, isHydrated } = useChatStore()
+    const setUserName = useChatStore((s) => s.setUserName)
+    const setActiveGang = useChatStore((s) => s.setActiveGang)
+    const userId = useChatStore((s) => s.userId)
+    const activeGang = useChatStore((s) => s.activeGang)
+    const isHydrated = useChatStore((s) => s.isHydrated)
     const router = useRouter()
     const isSelection = step === 'SELECTION'
     const supabase = useMemo(() => createClient(), [])

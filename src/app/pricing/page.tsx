@@ -90,6 +90,7 @@ function FAQItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
     <div className="border-b border-border/20 last:border-0">
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         className="w-full flex items-center justify-between py-5 sm:py-6 text-left gap-4 group cursor-pointer"
       >
         <span className="text-[15px] sm:text-base font-semibold text-foreground/90 group-hover:text-foreground transition-colors">
@@ -121,7 +122,10 @@ function FAQItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
    ══════════════════════════════════════════════════════ */
 
 export default function PricingPage() {
-  const { userId, isHydrated, subscriptionTier, setSubscriptionTier } = useChatStore()
+  const userId = useChatStore((s) => s.userId)
+  const isHydrated = useChatStore((s) => s.isHydrated)
+  const subscriptionTier = useChatStore((s) => s.subscriptionTier)
+  const setSubscriptionTier = useChatStore((s) => s.setSubscriptionTier)
   const [tierLoaded, setTierLoaded] = useState(false)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [sdkReady, setSdkReady] = useState(false)
@@ -227,17 +231,17 @@ export default function PricingPage() {
       <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/30">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
           <Link
-            href="/chat"
+            href={userId ? '/chat' : '/'}
             className="inline-flex items-center gap-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to chat</span>
+            <span className="hidden sm:inline">{userId ? 'Back to chat' : 'Back to home'}</span>
           </Link>
           <span className="text-sm font-bold tracking-tight">MyGang<span className="text-primary">.ai</span></span>
         </div>
       </nav>
 
-      <main className="relative z-10">
+      <main id="main-content" className="relative z-10">
 
         {/* ══════════ HERO ══════════ */}
         <section className="pt-16 sm:pt-24 pb-4 text-center px-5 sm:px-8">
@@ -614,31 +618,7 @@ export default function PricingPage() {
               <button
                 onClick={() => handleCheckout('pro')}
                 disabled={loadingPlan !== null}
-                style={{
-                  padding: '18px 48px',
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  borderRadius: '16px',
-                  border: '2px solid rgba(16,185,129,0.4)',
-                  background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,182,212,0.08) 100%)',
-                  color: '#34d399',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 0 30px -8px rgba(16,185,129,0.3)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(16,185,129,0.7)'
-                  e.currentTarget.style.boxShadow = '0 0 40px -4px rgba(16,185,129,0.45)'
-                  e.currentTarget.style.transform = 'scale(1.03)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(16,185,129,0.4)'
-                  e.currentTarget.style.boxShadow = '0 0 30px -8px rgba(16,185,129,0.3)'
-                  e.currentTarget.style.transform = 'scale(1)'
-                }}
+                className="rounded-2xl px-12 py-5 text-lg font-bold border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:border-emerald-500/70 hover:scale-[1.03] transition-all shadow-[0_0_30px_-8px_rgba(16,185,129,0.3)] hover:shadow-[0_0_40px_-4px_rgba(16,185,129,0.45)] cursor-pointer disabled:opacity-50 disabled:cursor-wait inline-flex items-center gap-3"
               >
                 {loadingPlan === 'pro' ? (
                   <>

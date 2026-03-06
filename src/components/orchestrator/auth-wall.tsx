@@ -157,6 +157,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                         placeholder="your@email.com"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
+                                        aria-label="Email address"
                                         className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
                                         required
                                         autoFocus
@@ -166,6 +167,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                         placeholder="Password (6+ characters)"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        aria-label="Password"
                                         className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
                                         required
                                         minLength={6}

@@ -205,7 +205,8 @@ export function useChatHistory({
     pendingUserMessagesRef,
     debounceTimerRef,
 }: UseChatHistoryArgs) {
-    const { messages, setMessages } = useChatStore()
+    const messagesLength = useChatStore((s) => s.messages.length)
+    const setMessages = useChatStore((s) => s.setMessages)
 
     const [historyCursor, setHistoryCursor] = useState<string | null>(null)
     const [hasMoreHistory, setHasMoreHistory] = useState(false)
@@ -239,17 +240,17 @@ export function useChatHistory({
             setHasMoreHistory(false)
             return
         }
-        if (messages.length > 0) {
+        if (messagesLength > 0) {
             setHistoryStatus('has_history')
             setHistoryBootstrapDone(true)
         }
-    }, [isHydrated, messages.length, userId])
+    }, [isHydrated, messagesLength, userId])
 
     // Bootstrap history on first load
     useEffect(() => {
         if (!isHydrated || !userId) return
         if (historyBootstrapDone) return
-        if (messages.length > 0) return
+        if (messagesLength > 0) return
 
         let cancelled = false
         const bootstrapHistory = async () => {
@@ -279,7 +280,7 @@ export function useChatHistory({
         return () => {
             cancelled = true
         }
-    }, [historyBootstrapDone, isHydrated, messages.length, setMessages, userId])
+    }, [historyBootstrapDone, isHydrated, messagesLength, setMessages, userId])
 
     // Periodic sync
     const syncLatestHistory = useCallback(async (force = false) => {

@@ -79,6 +79,12 @@ function cleanupState(key: string, state: LoginAttemptState, nowMs: number) {
 
 export async function getLockoutRemainingSeconds(key: string) {
     warnIfProductionMemory()
+
+    // Fail closed in production without Redis
+    if (process.env.NODE_ENV === 'production' && !useRedis) {
+        return Infinity
+    }
+
     const nowMs = Date.now()
 
     if (useRedis) {
@@ -99,6 +105,12 @@ export async function getLockoutRemainingSeconds(key: string) {
 
 export async function recordFailedAdminLoginAttempt(key: string) {
     warnIfProductionMemory()
+
+    // Fail closed in production without Redis
+    if (process.env.NODE_ENV === 'production' && !useRedis) {
+        return { locked: true, retryAfterSeconds: LOCKOUT_MS / 1000 }
+    }
+
     const nowMs = Date.now()
 
     if (useRedis) {
@@ -149,6 +161,10 @@ export async function recordFailedAdminLoginAttempt(key: string) {
 }
 
 export async function clearAdminLoginAttempts(key: string) {
+    // In production without Redis, no state to clear (fail-closed prevents login anyway)
+    if (process.env.NODE_ENV === 'production' && !useRedis) {
+        return
+    }
     if (useRedis) {
         await deleteStateFromRedis(key)
     }

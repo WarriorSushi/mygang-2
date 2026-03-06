@@ -22,7 +22,9 @@ interface SquadReconcileProps {
 }
 
 export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
-    const { setActiveGang, setUserName, userId } = useChatStore()
+    const setActiveGang = useChatStore((s) => s.setActiveGang)
+    const setUserName = useChatStore((s) => s.setUserName)
+    const userId = useChatStore((s) => s.userId)
     const [isSaving, setIsSaving] = useState(false)
 
     if (!conflict) return null

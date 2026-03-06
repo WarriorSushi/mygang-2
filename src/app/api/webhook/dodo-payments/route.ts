@@ -130,13 +130,11 @@ export const POST = Webhooks({
                     .select('id')
                     .eq('user_id', userId)
                     .single()
-                if (gang) {
-                    for (const id of restoreIds) {
-                        await supabase.from('gang_members').upsert(
-                            { gang_id: gang.id, character_id: id },
-                            { onConflict: 'gang_id,character_id' }
-                        )
-                    }
+                if (gang && restoreIds.length > 0) {
+                    await supabase.from('gang_members').upsert(
+                        restoreIds.map(id => ({ gang_id: gang.id, character_id: id })),
+                        { onConflict: 'gang_id,character_id' }
+                    )
                 }
 
                 const allIds = [...(currentGang?.map(g => g.character_id) ?? []), ...restoreIds]

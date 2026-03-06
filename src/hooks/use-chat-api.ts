@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { normalizeActivityStatus } from '@/constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
@@ -54,7 +54,6 @@ interface UseChatApiArgs {
     userId: string | null
     userName: string | null
     userNickname: string | null
-    messages: Message[]
     chatMode: 'gang_focus' | 'ecosystem'
     lowCostMode: boolean
     isOnline: boolean
@@ -81,7 +80,6 @@ export function useChatApi({
     userId,
     userName,
     userNickname,
-    messages,
     chatMode,
     lowCostMode,
     isOnline,
@@ -98,7 +96,10 @@ export function useChatApi({
     setReplyingTo,
     onPaywall,
 }: UseChatApiArgs) {
-    const { addMessage, setMessages, setCharacterStatus, setUserNickname } = useChatStore()
+    const addMessage = useChatStore((s) => s.addMessage)
+    const setMessages = useChatStore((s) => s.setMessages)
+    const setCharacterStatus = useChatStore((s) => s.setCharacterStatus)
+    const setUserNickname = useChatStore((s) => s.setUserNickname)
 
     const isGeneratingRef = useRef(false)
     const pendingUserMessagesRef = useRef(false)
@@ -122,6 +123,12 @@ export function useChatApi({
     const scheduleIdleAutonomousRef = useRef<(sourceUserMessageId: string | null) => void>(() => { })
     const triggerLocalGreetingRef = useRef<() => void>(() => { })
     const initialGreetingRef = useRef(false)
+    const abortControllerRef = useRef<AbortController | null>(null)
+
+    // Cleanup: abort any in-flight fetch on unmount
+    useEffect(() => {
+        return () => { abortControllerRef.current?.abort() }
+    }, [])
 
     const updateUserDeliveryStatus = useCallback((
         messageIds: string[],
@@ -239,13 +246,16 @@ export function useChatApi({
                 }
             }
             lastApiCallAtRef.current = Date.now()
+            abortControllerRef.current?.abort()
+            abortControllerRef.current = new AbortController()
             res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(mockAi ? { 'x-mock-ai': 'true' } : {})
                 },
-                body: JSON.stringify(requestBody)
+                body: JSON.stringify(requestBody),
+                signal: abortControllerRef.current.signal,
             })
             try {
                 data = await res.json()
@@ -417,6 +427,10 @@ export function useChatApi({
             }
 
         } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                // Request was aborted (user sent new message or navigated away), don't mark as failed
+                return
+            }
             console.error('Chat API Error:', err)
             updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', 'Network hiccup. Try again in a moment.')
             onToast('Network hiccup. Try again in a moment.')

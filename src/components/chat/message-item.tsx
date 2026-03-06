@@ -4,7 +4,6 @@ import { memo, useState, useCallback } from 'react'
 import { Character, Message } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useTheme } from 'next-themes'
 import { Heart, Reply } from 'lucide-react'
 import Image from 'next/image'
 
@@ -129,6 +128,18 @@ function ensureReadablePersonaNameOnLight(color: Rgb) {
     return mixRgb(color, darkTarget, 0.9)
 }
 
+// ── Link rendering ──
+
+function renderMessageContent(content: string) {
+    const urlRegex = /(https?:\/\/[^\s<]+)/g
+    const parts = content.split(urlRegex)
+    return parts.map((part, i) =>
+        /^https?:\/\//.test(part)
+            ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80 break-all">{part}</a>
+            : part
+    )
+}
+
 // ── Helpers ──
 
 function formatRelativeTime(dateStr: string) {
@@ -165,6 +176,7 @@ interface MessageItemProps {
     quotedSpeaker?: Character | null
     seenBy?: string[]
     showPersonaRoles?: boolean
+    isDark?: boolean
     onReply?: (message: Message) => void
     onLike?: (message: Message) => void
     onRetry?: (message: Message) => void
@@ -180,14 +192,13 @@ function MessageItemComponent({
     quotedSpeaker = null,
     seenBy = [],
     showPersonaRoles = true,
+    isDark = true,
     onReply,
     onLike,
     onRetry
 }: MessageItemProps) {
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
-    const { theme, resolvedTheme } = useTheme()
-    const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
     const [liked, setLiked] = useState(false)
     const [showAvatar, setShowAvatar] = useState(false)
     const canShowActions = !isReaction && message.speaker !== 'system'
@@ -339,7 +350,7 @@ function MessageItemComponent({
                                 )}
                                 style={!isUser ? { color: toRgbString(aiTextRgb) } : undefined}
                             >
-                                {message.content}
+                                {renderMessageContent(message.content)}
                             </p>
                         </div>
                     )}
@@ -354,7 +365,7 @@ function MessageItemComponent({
                         <button
                             type="button"
                             aria-label={liked ? 'Unlike message' : 'Like message'}
-                            className="p-0.5 transition-colors"
+                            className="p-2 -m-1.5 transition-colors"
                             onClick={() => setLiked((prev) => !prev)}
                         >
                             <Heart
@@ -369,7 +380,7 @@ function MessageItemComponent({
                         <button
                             type="button"
                             aria-label="Reply to message"
-                            className="p-0.5 text-muted-foreground/60 dark:text-muted-foreground/40 hover:text-muted-foreground/90 dark:hover:text-muted-foreground/70 transition-colors"
+                            className="p-2 -m-1.5 text-muted-foreground/60 dark:text-muted-foreground/40 hover:text-muted-foreground/90 dark:hover:text-muted-foreground/70 transition-colors"
                             onClick={() => onReply?.(message)}
                         >
                             <Reply className="w-3 h-3" />
@@ -482,4 +493,20 @@ function MessageItemComponent({
     )
 }
 
-export const MessageItem = memo(MessageItemComponent)
+export const MessageItem = memo(MessageItemComponent, (prev, next) => {
+    return (
+        prev.message === next.message &&
+        prev.character === next.character &&
+        prev.isContinued === next.isContinued &&
+        prev.groupPosition === next.groupPosition &&
+        prev.isFastMode === next.isFastMode &&
+        prev.quotedMessage === next.quotedMessage &&
+        prev.quotedSpeaker === next.quotedSpeaker &&
+        prev.seenBy === next.seenBy &&
+        prev.showPersonaRoles === next.showPersonaRoles &&
+        prev.isDark === next.isDark &&
+        prev.onReply === next.onReply &&
+        prev.onLike === next.onLike &&
+        prev.onRetry === next.onRetry
+    )
+})

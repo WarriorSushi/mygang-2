@@ -49,11 +49,11 @@ function SuccessContent() {
 
     if (status === 'activating') {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950">
+            <div className="flex min-h-screen items-center justify-center bg-background">
                 <div className="text-center space-y-4">
                     <div className="text-4xl animate-pulse">⚡</div>
-                    <h1 className="text-2xl font-bold text-white">Activating your plan...</h1>
-                    <p className="text-gray-400">Just a moment while we power up your gang</p>
+                    <h1 className="text-2xl font-bold text-foreground">Activating your plan...</h1>
+                    <p className="text-muted-foreground">Just a moment while we power up your gang</p>
                 </div>
             </div>
         )
@@ -61,14 +61,14 @@ function SuccessContent() {
 
     if (status === 'error') {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950">
+            <div className="flex min-h-screen items-center justify-center bg-background">
                 <div className="text-center space-y-4">
                     <div className="text-4xl">😕</div>
-                    <h1 className="text-2xl font-bold text-white">Something went wrong</h1>
-                    <p className="text-gray-400">If you were charged, your plan will activate automatically shortly.</p>
+                    <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
+                    <p className="text-muted-foreground">If you were charged, your plan will activate automatically shortly.</p>
                     <button
                         onClick={() => router.push('/chat')}
-                        className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors"
+                        className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                     >
                         Back to Chat
                     </button>
@@ -78,17 +78,17 @@ function SuccessContent() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950">
+        <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="text-center space-y-4">
                 <div className="text-6xl">🎉</div>
-                <h1 className="text-3xl font-bold text-white">Your gang is HYPED!</h1>
-                <p className="text-gray-400 text-lg">
+                <h1 className="text-3xl font-bold text-foreground">Your gang is HYPED!</h1>
+                <p className="text-muted-foreground text-lg">
                     Welcome to the crew. Unlimited vibes, unlocked.
                 </p>
-                <p className="text-gray-500 text-sm">Redirecting to chat in 3 seconds...</p>
+                <p className="text-muted-foreground/70 text-sm">Redirecting to chat in 3 seconds...</p>
                 <button
                     onClick={() => router.push('/chat')}
-                    className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors"
+                    className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 >
                     Go to Chat
                 </button>
@@ -99,12 +99,14 @@ function SuccessContent() {
 
 export default function CheckoutSuccessPage() {
     return (
-        <Suspense fallback={
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950">
-                <div className="text-4xl animate-pulse">⚡</div>
-            </div>
-        }>
-            <SuccessContent />
-        </Suspense>
+        <main id="main-content">
+            <Suspense fallback={
+                <div className="flex min-h-screen items-center justify-center bg-background">
+                    <div className="text-4xl animate-pulse">⚡</div>
+                </div>
+            }>
+                <SuccessContent />
+            </Suspense>
+        </main>
     )
 }

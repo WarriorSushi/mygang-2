@@ -33,6 +33,16 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     const [editContent, setEditContent] = useState('')
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
     const drawerRef = useRef<HTMLDivElement>(null)
+    const triggerRef = useRef<HTMLElement | null>(null)
+
+    // Capture trigger element on open, restore focus on close
+    useEffect(() => {
+        if (isOpen) {
+            triggerRef.current = document.activeElement as HTMLElement
+        } else {
+            triggerRef.current?.focus()
+        }
+    }, [isOpen])
 
     // Escape key to close
     useEffect(() => {

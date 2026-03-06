@@ -1,15 +1,14 @@
 'use client'
 
 import { memo } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
 import { cn } from '@/lib/utils'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CHARACTERS } from '@/constants/characters'
-import LottiePlayer from 'lottie-react'
+import { useTheme } from 'next-themes'
 
 function ChatSkeleton() {
     return (
@@ -48,6 +47,8 @@ function ChatSkeleton() {
 
 function EmptyStateWelcome() {
     const [animationData, setAnimationData] = useState<object | null>(null)
+    const [LottiePlayer, setLottiePlayer] = useState<ComponentType<any> | null>(null)
+
     useEffect(() => {
         fetch('/lottie/confetti.json')
             .then((res) => res.json())
@@ -55,9 +56,13 @@ function EmptyStateWelcome() {
             .catch(() => {})
     }, [])
 
+    useEffect(() => {
+        import('lottie-react').then((mod) => setLottiePlayer(() => mod.default)).catch(() => {})
+    }, [])
+
     return (
         <div className="flex flex-col items-center justify-center h-full py-12 sm:py-16 text-center px-4 relative">
-            {animationData && (
+            {LottiePlayer && animationData && (
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     <LottiePlayer
                         animationData={animationData}
@@ -118,6 +123,8 @@ export const MessageList = memo(function MessageList({
     isBootstrappingHistory = false,
     typingUsers = []
 }: MessageListProps) {
+    const { theme, resolvedTheme } = useTheme()
+    const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollRafRef = useRef<number | null>(null)
     const animationCleanupRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -151,14 +158,15 @@ export const MessageList = memo(function MessageList({
         [activeGang, characterCatalogById, customCharacterNames]
     )
     const seenByMessageId = useMemo(() => {
+        const msgs = useChatStore.getState().messages
         const seenMap = new Map<string, string[]>()
-        for (let i = 0; i < messages.length; i++) {
-            const current = messages[i]
+        for (let i = 0; i < msgs.length; i++) {
+            const current = msgs[i]
             if (current.speaker !== 'user') continue
             const seenNames: string[] = []
             const seenSpeakerIds = new Set<string>()
-            for (let j = i + 1; j < messages.length && seenNames.length < 2; j++) {
-                const next = messages[j]
+            for (let j = i + 1; j < msgs.length && seenNames.length < 2; j++) {
+                const next = msgs[j]
                 if (next.speaker === 'user') continue
                 const normalized = normalizeSpeaker(next.speaker)
                 if (seenSpeakerIds.has(normalized)) continue
@@ -169,7 +177,7 @@ export const MessageList = memo(function MessageList({
             seenMap.set(current.id, seenNames)
         }
         return seenMap
-    }, [messages, characterBySpeaker])
+    }, [messages.length, characterBySpeaker])
 
     const scrollToBottom = useCallback(() => {
         if (!scrollRef.current) return
@@ -354,6 +362,7 @@ export const MessageList = memo(function MessageList({
                                         quotedSpeaker={quotedSpeaker}
                                         seenBy={seenBy}
                                         showPersonaRoles={showPersonaRoles}
+                                        isDark={isDark}
                                         onReply={onReplyMessage}
                                         onLike={onLikeMessage}
                                         onRetry={onRetryMessage}
@@ -395,31 +404,25 @@ export const MessageList = memo(function MessageList({
             </div>
 
             {/* Scroll To Latest */}
-            <AnimatePresence>
-                {!isAtBottom && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute bottom-[calc(env(safe-area-inset-bottom)+0.6rem)] right-3 sm:right-4 z-50"
-                    >
-                        <Button
-                            onClick={scrollToBottom}
-                            size="icon"
-                            data-screenshot-exclude="true"
-                            className="relative rounded-full shadow-lg bg-foreground hover:bg-foreground/90 text-background size-9 border border-background/25"
-                            aria-label={unreadCount > 0 ? `${unreadCount} new messages — jump to latest` : 'Jump to latest'}
-                        >
-                            <ChevronDown className="w-4 h-4" />
-                            {unreadCount > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-primary text-[10px] font-bold flex items-center justify-center px-1 text-primary-foreground">
-                                    {unreadCount > 99 ? '99+' : unreadCount}
-                                </span>
-                            )}
-                        </Button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <div className={cn(
+                "absolute bottom-[calc(env(safe-area-inset-bottom)+0.6rem)] right-3 sm:right-4 z-50 transition-all duration-200 motion-reduce:transition-none",
+                isAtBottom ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100"
+            )}>
+                <Button
+                    onClick={scrollToBottom}
+                    size="icon"
+                    data-screenshot-exclude="true"
+                    className="relative rounded-full shadow-lg bg-foreground hover:bg-foreground/90 text-background size-9 border border-background/25"
+                    aria-label={unreadCount > 0 ? `${unreadCount} new messages — jump to latest` : 'Jump to latest'}
+                >
+                    <ChevronDown className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-primary text-[10px] font-bold flex items-center justify-center px-1 text-primary-foreground">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
+                </Button>
+            </div>
         </div>
     )
 })

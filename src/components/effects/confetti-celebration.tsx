@@ -42,7 +42,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
                     transform: 'translate(-50%, -50%)',
                     width: '100vmax',
                     height: '100vmax',
-                    minWidth: '100vw',
+                    minWidth: '100%',
                     minHeight: '100vh',
                 }}
             />

@@ -13,7 +13,7 @@ interface UseCapacityManagerArgs {
 }
 
 export function useCapacityManager({ onToast }: UseCapacityManagerArgs) {
-    const { lowCostMode } = useChatStore()
+    const lowCostMode = useChatStore((s) => s.lowCostMode)
 
     const [autoLowCostMode, setAutoLowCostMode] = useState(false)
     const autoLowCostModeRef = useRef(false)

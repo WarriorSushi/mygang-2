@@ -16,7 +16,7 @@
 
 | # | Severity | Finding | Location |
 |---|----------|---------|----------|
-| 1 | HIGH | **Chat history stores messages as JSON blob** per user, not as individual rows. This means no per-message querying, no pagination at DB level, and growing JSON payloads. For scaling, consider normalizing to one row per message. | `supabase/migrations/` |
+| 1 | HIGH | **Chat history stores messages as JSON blob** per user, not as individual rows. This means no per-message querying, no pagination at DB level, and growing JSON payloads. For scaling, consider normalizing to one row per message. | `supabase/migrations/` | --##check if doing this will break out chat logic or anything
 | 2 | HIGH | **No index on `chat_history.user_id` explicitly visible** in early migrations. Later migration adds an index (`20260207123000_add_chat_history_user_created_index.sql`). Verify this covers the main query pattern. | `supabase/migrations/` |
 | 3 | MEDIUM | **`profiles.custom_character_names`** is a JSON field. This is fine for the current use case (small key-value map) but doesn't support querying by character name. |  |
 | 4 | MEDIUM | **No foreign key from `gang_members` to a characters table** — characters are defined in code (`constants/characters.ts`), not in DB. This is acceptable for a fixed catalog but means character validation is code-only. |  |

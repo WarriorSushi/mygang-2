@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
 import dynamic from 'next/dynamic'
@@ -113,7 +113,6 @@ export default function ChatPage() {
         userId,
         userName,
         userNickname,
-        messages,
         chatMode,
         lowCostMode,
         isOnline,
@@ -172,6 +171,8 @@ export default function ChatPage() {
             setToastMessage('Could not load chat history. Try refreshing.')
         }
     }, [history.historyStatus])
+
+    const handleReplyMessage = useCallback((message: Message) => setReplyingTo(message), [])
 
     const replyingToDisplay = useMemo(() => {
         if (!replyingTo) return null
@@ -451,7 +452,7 @@ export default function ChatPage() {
                                 hasMoreHistory={history.hasMoreHistory}
                                 loadingHistory={history.isLoadingOlderHistory}
                                 onLoadOlderHistory={history.loadOlderHistory}
-                                onReplyMessage={(message) => setReplyingTo(message)}
+                                onReplyMessage={handleReplyMessage}
                                 onLikeMessage={api.handleQuickLike}
                                 onRetryMessage={api.handleRetryMessage}
                                 typingUsers={typing.typingUsers}

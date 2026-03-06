@@ -45,7 +45,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
             </div>
 
             {/* Character grid */}
-            <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-36 sm:pb-28">
+            <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-44 sm:pb-28">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     {CHARACTERS.map((char) => {
                         const isSelected = selectedIds.includes(char.id)

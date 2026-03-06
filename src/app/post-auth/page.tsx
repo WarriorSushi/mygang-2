@@ -10,11 +10,9 @@ import { useChatStore } from '@/stores/chat-store'
 
 export default function PostAuthPage() {
     const router = useRouter()
-    const {
-        setUserId,
-        setUserName,
-        setActiveGang
-    } = useChatStore()
+    const setUserId = useChatStore((s) => s.setUserId)
+    const setUserName = useChatStore((s) => s.setUserName)
+    const setActiveGang = useChatStore((s) => s.setActiveGang)
 
     useEffect(() => {
         let isCancelled = false
@@ -112,7 +110,7 @@ export default function PostAuthPage() {
     }, [])
 
     return (
-        <main className="min-h-dvh flex items-center justify-center bg-background text-foreground px-6">
+        <main id="main-content" className="min-h-dvh flex items-center justify-center bg-background text-foreground px-6">
             <div className="text-center space-y-4">
                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">Syncing your journey...</h1>

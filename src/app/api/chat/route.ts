@@ -5,7 +5,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
-import { getTierFromProfile, isMemoryEnabled, getContextLimit, getSquadLimit } from '@/lib/billing'
+import { getTierFromProfile, isMemoryEnabled, getContextLimit, getSquadLimit, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
@@ -33,6 +33,10 @@ const MAX_SESSION_SUMMARY_CHARS = 500
 const MAX_PROFILE_LINES = 12
 const MAX_PROFILE_VALUE_CHARS = 120
 const ADMIN_SETTINGS_CACHE_MS = 20_000
+
+const TIER_MAX_EVENTS: Record<string, number> = { free: 3, basic: 6, pro: MAX_EVENTS }
+const TIER_MAX_OUTPUT_TOKENS: Record<string, number> = { free: 600, basic: 1000, pro: 1200 }
+const TIER_SPLIT_CHANCE: Record<string, number> = { free: 0, basic: 0.30, pro: 0.42 }
 
 let cachedGlobalLowCostOverride: { value: boolean; expiresAtMs: number } = {
     value: false,
@@ -228,7 +232,7 @@ async function getGlobalLowCostOverride() {
         cachedGlobalLowCostOverride = { value, expiresAtMs: nowMs + ADMIN_SETTINGS_CACHE_MS }
         return value
     } catch (err) {
-        console.error('Failed to load admin runtime settings:', err)
+        console.error('Failed to load admin runtime settings:', err instanceof Error ? err.message : 'Unknown error')
         cachedGlobalLowCostOverride = { value: false, expiresAtMs: nowMs + ADMIN_SETTINGS_CACHE_MS }
         return false
     } finally {
@@ -257,7 +261,7 @@ async function logChatRouteMetric(
             console.error('Failed to persist chat route metric:', error)
         }
     } catch (err) {
-        console.error('Failed to record chat route metric:', err)
+        console.error('Failed to record chat route metric:', err instanceof Error ? err.message : 'Unknown error')
     }
 }
 
@@ -624,23 +628,6 @@ export async function POST(req: Request) {
 
         const lowCostMode = requestedLowCostMode || globalLowCostOverride
 
-        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-            || req.headers.get('x-real-ip')
-            || 'unknown'
-        const rateKey = `chat:user:${user.id}`
-        const rateLimitMax = 60
-        const rate = await rateLimit(rateKey, rateLimitMax, 60_000)
-        if (!rate.success) {
-            return Response.json({
-                events: [{
-                    type: 'message',
-                    character: 'system',
-                    content: "You're sending messages too fast. Give it a moment and try again.",
-                    delay: 200
-                }]
-            }, { status: 429 })
-        }
-
         const userMessages = safeMessages.filter((m) => m.speaker === 'user')
         const lastUserMessage = userMessages[userMessages.length - 1]
         const latestUserMessageId = lastUserMessage?.id
@@ -668,6 +655,28 @@ export async function POST(req: Request) {
             }, { status: 400 })
         }
 
+        // Parallelize rate limit + profile fetch (both need user.id, independent of each other)
+        const rateKey = `chat:user:${user.id}`
+        const rateLimitMax = 60
+        const [rate, { data: profile }] = await Promise.all([
+            rateLimit(rateKey, rateLimitMax, 60_000),
+            supabase
+                .from('profiles')
+                .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score, custom_character_names')
+                .eq('id', user.id)
+                .single<ProfileStateRow>(),
+        ])
+
+        if (!rate.success) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: "You're sending messages too fast. Give it a moment and try again.",
+                    delay: 200
+                }]
+            }, { status: 429 })
+        }
 
         // 1. Retrieve Memories + Profile State
         let relevantMemories: { id: string; content: string }[] = []
@@ -677,19 +686,16 @@ export async function POST(req: Request) {
         let summaryTurns = 0
         let profileRow: ProfileStateRow | null = null
         let nextAbuseScore: number | null = null
+        let tier: SubscriptionTier = 'free'
 
         if (user) {
             try {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score, custom_character_names')
-                    .eq('id', user.id)
-                    .single<ProfileStateRow>()
+                // Profile already fetched in parallel with rate limit above
 
                 profileRow = profile
 
                 // Tier-based message gating
-                const tier = getTierFromProfile(profile?.subscription_tier ?? null)
+                tier = getTierFromProfile(profile?.subscription_tier ?? null)
                 const memoryEnabled = isMemoryEnabled(tier)
 
                 if (hasFreshUserTurn && tier !== 'pro') {
@@ -805,7 +811,7 @@ SESSION SUMMARY:
 ${sessionSummary}
 `
             } catch (err) {
-                console.error('Error retrieving memory/profile state:', err)
+                console.error('Error retrieving memory/profile state:', err instanceof Error ? err.message : 'Unknown error')
             }
         }
 
@@ -837,7 +843,8 @@ ${sessionSummary}
             : ''
 
         const isGangFocusMode = chatMode === 'gang_focus'
-        const baseResponders = Math.min(isGangFocusMode ? 3 : (lowCostMode ? 2 : 4), filteredIds.length)
+        const tierMaxResp = tier === 'free' ? 2 : tier === 'basic' ? 3 : (isGangFocusMode ? 3 : 4)
+        const baseResponders = Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, filteredIds.length)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
@@ -966,7 +973,8 @@ FLOW FLAGS:
         const llmPromptChars = systemPrompt.length + conversationPayload.length
         let modelSuccess = false
         let providerUsed: 'openrouter' | 'fallback' = 'fallback'
-        const llmMaxOutputTokens = autonomousIdle ? IDLE_MAX_OUTPUT_TOKENS : (lowCostMode ? LOW_COST_MAX_OUTPUT_TOKENS : LLM_MAX_OUTPUT_TOKENS)
+        const tierOutputTokens = TIER_MAX_OUTPUT_TOKENS[tier] ?? LLM_MAX_OUTPUT_TOKENS
+        const llmMaxOutputTokens = autonomousIdle ? IDLE_MAX_OUTPUT_TOKENS : (lowCostMode ? Math.min(LOW_COST_MAX_OUTPUT_TOKENS, tierOutputTokens) : tierOutputTokens)
 
         try {
             const result = await generateObject({
@@ -983,7 +991,7 @@ FLOW FLAGS:
             modelSuccess = true
             providerUsed = 'openrouter'
         } catch (err) {
-            console.error('OpenRouter error:', err)
+            console.error('OpenRouter error:', err instanceof Error ? err.message : 'Unknown error')
             if (isProviderCapacityError(err)) {
                 await logChatRouteMetric(supabase, user?.id ?? null, {
                     source,
@@ -1098,6 +1106,12 @@ FLOW FLAGS:
             object.events = object.events.slice(0, 8)
         }
 
+        // Tier-based event cap (use the lower of low-cost and tier caps)
+        const tierEventCap = TIER_MAX_EVENTS[tier] ?? MAX_EVENTS
+        if (object?.events?.length && object.events.length > tierEventCap) {
+            object.events = object.events.slice(0, tierEventCap)
+        }
+
         // Apply responder filtering to keep events within planned speakers
         const plannedResponders = Array.isArray(object?.responders) ? object.responders.filter((id: string) => filteredIds.includes(id)) : []
         let limitedResponders = plannedResponders.slice(0, maxResponders)
@@ -1168,7 +1182,7 @@ FLOW FLAGS:
 
         // Sometimes break one long message into two short back-to-back bubbles for realism.
         if (object?.events?.length) {
-            const splitChance = isGangFocusMode ? 0.34 : 0.42
+            const splitChance = TIER_SPLIT_CHANCE[tier] ?? (isGangFocusMode ? 0.34 : 0.42)
             object.events = maybeSplitAiMessages(object.events, splitChance)
         }
         object.events = ensureEventMessageIds(object.events, serverTurnId)
@@ -1186,7 +1200,7 @@ FLOW FLAGS:
             eventsCount: object.events.length,
             shouldContinue: !!object.should_continue,
             elapsedMs: Date.now() - requestStartedAt
-        }).catch((err) => console.error('Metric log error:', err))
+        }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
 
         // Build response before persistence (non-blocking)
         const response = Response.json({
@@ -1268,23 +1282,21 @@ FLOW FLAGS:
                     p_last_active_at: nowIso,
                 })
             } catch (err) {
-                console.error('Error updating profile state:', err)
+                console.error('Error updating profile state:', err instanceof Error ? err.message : 'Unknown error')
             }
 
             if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
-                const useEmbedding = lastUserMsg.toLowerCase().includes('remember this')
                 await Promise.all(
                     object.memory_updates.episodic.map((m) =>
                         storeMemory(user.id, m.content, {
                             kind: 'episodic',
                             tags: m.tags || [],
                             importance: m.importance || 1,
-                            useEmbedding
                         })
                     )
                 )
                 // Fire-and-forget: compact memories if threshold exceeded
-                compactMemoriesIfNeeded(user.id).catch((err) => console.error('Memory compaction error:', err))
+                compactMemoriesIfNeeded(user.id).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
             }
 
             // 3. Persist chat history
@@ -1460,15 +1472,15 @@ FLOW FLAGS:
                     console.error('Error ensuring gang exists:', gangError)
                 }
             } catch (err) {
-                console.error('Chat history persistence error:', err)
+                console.error('Chat history persistence error:', err instanceof Error ? err.message : 'Unknown error')
             }
             }
-            waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err)))
+            waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err instanceof Error ? err.message : 'Unknown error')))
         }
 
         return response
     } catch (routeErr) {
-        console.error('Critical Route Error:', routeErr)
+        console.error('Critical Route Error:', routeErr instanceof Error ? routeErr.message : 'Unknown error')
         if (isProviderCapacityError(routeErr)) {
             return Response.json({
                 events: [{

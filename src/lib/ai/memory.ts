@@ -39,7 +39,7 @@ export async function storeMemory(
 ) {
     try {
         const supabase = await createClient()
-        const { kind = 'episodic', tags = [], importance = 1, useEmbedding = false } = options || {}
+        const { kind = 'episodic', tags = [], importance = 1, useEmbedding = true } = options || {}
         const normalizedContent = content.trim().replace(/\s+/g, ' ')
         const embedding = useEmbedding ? await generateEmbedding(normalizedContent) : null
 

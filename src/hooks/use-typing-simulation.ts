@@ -10,7 +10,7 @@ function pickRandom<T>(items: T[]): T | undefined {
 }
 
 export function useTypingSimulation() {
-    const { setCharacterStatus } = useChatStore()
+    const setCharacterStatus = useChatStore((s) => s.setCharacterStatus)
 
     const [typingUsers, setTypingUsers] = useState<string[]>([])
     const [isFastMode, setIsFastMode] = useState(false)

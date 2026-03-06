@@ -11,23 +11,21 @@ import { getSquadLimit, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTER_WELCOME_BACK_MESSAGES } from '@/constants/character-messages'
 
 export function AuthManager() {
-    const {
-        setUserId,
-        setActiveGang,
-        setUserName,
-        setUserNickname,
-        clearChat,
-        setIsHydrated,
-        setChatMode,
-        setLowCostMode,
-        setChatWallpaper,
-        setSquadConflict,
-        setCustomCharacterNames,
-        setSubscriptionTier,
-        setPendingUpgrade,
-        setPendingDowngrade,
-        addMessage,
-    } = useChatStore()
+    const setUserId = useChatStore((s) => s.setUserId)
+    const setActiveGang = useChatStore((s) => s.setActiveGang)
+    const setUserName = useChatStore((s) => s.setUserName)
+    const setUserNickname = useChatStore((s) => s.setUserNickname)
+    const clearChat = useChatStore((s) => s.clearChat)
+    const setIsHydrated = useChatStore((s) => s.setIsHydrated)
+    const setChatMode = useChatStore((s) => s.setChatMode)
+    const setLowCostMode = useChatStore((s) => s.setLowCostMode)
+    const setChatWallpaper = useChatStore((s) => s.setChatWallpaper)
+    const setSquadConflict = useChatStore((s) => s.setSquadConflict)
+    const setCustomCharacterNames = useChatStore((s) => s.setCustomCharacterNames)
+    const setSubscriptionTier = useChatStore((s) => s.setSubscriptionTier)
+    const setPendingUpgrade = useChatStore((s) => s.setPendingUpgrade)
+    const setPendingDowngrade = useChatStore((s) => s.setPendingDowngrade)
+    const addMessage = useChatStore((s) => s.addMessage)
     const supabase = useMemo(() => createClient(), [])
     const hadSessionRef = useRef(false)
     const initialSyncDoneRef = useRef(false)

@@ -78,15 +78,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const capacityInfoRef = useRef<HTMLDivElement>(null)
 
     const [isRefreshing, setIsRefreshing] = useState(false)
-    const [devToolsEnabled, setDevToolsEnabled] = useState(false)
-    useEffect(() => {
-        try {
-            setDevToolsEnabled(
-                typeof window !== 'undefined' &&
-                (window.localStorage.getItem('dev_tools') === 'true' || process.env.NODE_ENV === 'development')
-            )
-        } catch { /* localStorage blocked */ }
-    }, [])
+    const devToolsEnabled = process.env.NODE_ENV === 'development'
 
     useEffect(() => {
         if (!showCapacityInfo) return

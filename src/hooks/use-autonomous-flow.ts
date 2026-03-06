@@ -58,13 +58,13 @@ export function useAutonomousFlow({
 }: UseAutonomousFlowArgs) {
     const {
         activeGang,
-        messages,
+        messageCount,
         userId,
         isHydrated,
         chatMode,
     } = useChatStore(useShallow((s) => ({
         activeGang: s.activeGang,
-        messages: s.messages,
+        messageCount: s.messages.length,
         userId: s.userId,
         isHydrated: s.isHydrated,
         chatMode: s.chatMode,
@@ -173,9 +173,10 @@ export function useAutonomousFlow({
         if (!isHydrated || !userId) return
         if (chatMode !== 'ecosystem') return
         if (resumeAutonomousTriggeredRef.current) return
-        if (messages.length === 0) return
+        if (messageCount === 0) return
         if (!canRunIdleAutonomous()) return
 
+        const messages = useChatStore.getState().messages
         const lastMessage = messages[messages.length - 1]
         const lastAt = lastMessage?.created_at ? new Date(lastMessage.created_at).getTime() : 0
         const gapMs = lastAt ? Date.now() - lastAt : 0
@@ -200,15 +201,15 @@ export function useAutonomousFlow({
             })
         }, 700)
         return () => clearTimeout(timer)
-    }, [canRunIdleAutonomous, chatMode, isHydrated, messages, userId, isGeneratingRef, pendingUserMessagesRef, sendToApiRef])
+    }, [canRunIdleAutonomous, chatMode, isHydrated, messageCount, userId, isGeneratingRef, pendingUserMessagesRef, sendToApiRef])
 
     // Initial greeting for first-time sessions
     useEffect(() => {
         const allowGreeting = !userId || useChatStore.getState().messages.length === 0
-        if (activeGang.length > 0 && messages.length === 0 && !initialGreetingRef.current && allowGreeting) {
+        if (activeGang.length > 0 && messageCount === 0 && !initialGreetingRef.current && allowGreeting) {
             triggerLocalGreetingRef.current()
         }
-    }, [activeGang.length, initialGreetingRef, messages.length, userId])
+    }, [activeGang.length, initialGreetingRef, messageCount, userId])
 
     // Cleanup: cancel all greeting timers on unmount
     useEffect(() => {

@@ -205,7 +205,9 @@ export function LandingPage() {
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.92])
 
   const prefersReducedMotion = useReducedMotion()
-  const { userId, isHydrated, activeGang } = useChatStore()
+  const userId = useChatStore((s) => s.userId)
+  const isHydrated = useChatStore((s) => s.isHydrated)
+  const activeGang = useChatStore((s) => s.activeGang)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   const ready = mounted && isHydrated
@@ -308,7 +310,7 @@ export function LandingPage() {
                   <span className="text-foreground/90 font-medium">Your personal gang, always online.</span>
                 </div>
 
-                <h1 className="text-5xl sm:text-7xl lg:text-[7.9rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
+                <h1 className="text-5xl sm:text-7xl lg:text-[5.5rem] xl:text-[7.9rem] font-black tracking-tighter mb-8 leading-[0.85] uppercase">
                   <span className="inline-flex items-baseline gap-[0.22em] whitespace-nowrap">
                     <span>YOUR</span>
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 via-primary to-blue-600 animate-gradient">GANG</span>
@@ -756,7 +758,16 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
   }, [threads.length])
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div
+      className="max-w-2xl mx-auto"
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowLeft') goPrev()
+        if (e.key === 'ArrowRight') goNext()
+      }}
+      tabIndex={0}
+      role="region"
+      aria-label="Demo screenshots"
+    >
       <div className="relative overflow-hidden">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -866,6 +877,7 @@ function Testimonial({ quote, name, role }: { quote: string; name: string; role:
   const cardRef = useRef<HTMLDivElement>(null)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const el = cardRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()

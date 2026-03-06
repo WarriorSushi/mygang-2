@@ -1,6 +1,11 @@
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getDodoClient } from '@/lib/billing'
+
+const checkoutSchema = z.object({
+    plan: z.enum(['basic', 'pro']),
+})
 
 const PRODUCT_IDS: Record<string, string> = {
     basic: process.env.DODO_PRODUCT_BASIC || '',
@@ -16,11 +21,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const plan = body.plan as string
-
-    if (!plan || !PRODUCT_IDS[plan]) {
+    const parsed = checkoutSchema.safeParse(body)
+    if (!parsed.success) {
         return Response.json({ error: 'Invalid plan' }, { status: 400 })
     }
+    const { plan } = parsed.data
 
     const productId = PRODUCT_IDS[plan]
     if (!productId) {
@@ -83,7 +88,7 @@ export async function POST(req: NextRequest) {
 
         return Response.json({ checkout_url: session.checkout_url })
     } catch (error) {
-        console.error('[checkout] Error creating session:', error)
+        console.error('[checkout] Error creating session:', error instanceof Error ? error.message : 'Unknown error')
         return Response.json({ error: 'Failed to create checkout session' }, { status: 500 })
     }
 }
