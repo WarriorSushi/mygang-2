@@ -125,6 +125,7 @@ export default function PricingPage() {
   const [tierLoaded, setTierLoaded] = useState(false)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [sdkReady, setSdkReady] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   // Fetch current tier
@@ -186,7 +187,7 @@ export default function PricingPage() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        alert(err.error || 'Failed to start checkout. Please try again.')
+        setCheckoutError(err.error || 'Failed to start checkout. Please try again.')
         return
       }
       const { checkout_url } = await res.json()
@@ -198,11 +199,19 @@ export default function PricingPage() {
       }
     } catch (err) {
       console.error('[pricing] Checkout error:', err)
-      alert('Something went wrong. Please try again.')
+      setCheckoutError('Something went wrong. Please try again.')
     } finally {
       setLoadingPlan(null)
     }
   }, [sdkReady])
+
+  // Auto-dismiss checkout error
+  useEffect(() => {
+    if (checkoutError) {
+      const t = setTimeout(() => setCheckoutError(null), 5000)
+      return () => clearTimeout(t)
+    }
+  }, [checkoutError])
 
   const isCurrentPlan = (tier: Tier) => tierLoaded && !!userId && currentTier === tier
   const isDowngrade = (tier: Tier) => tierLoaded && !!userId && (
@@ -252,6 +261,13 @@ export default function PricingPage() {
             </p>
           </motion.div>
         </section>
+
+        {/* Checkout error banner */}
+        {checkoutError && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-xl text-sm shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
+            {checkoutError}
+          </div>
+        )}
 
         {/* ══════════ PRICING CARDS ══════════ */}
         <section className="px-5 sm:px-8 pb-20 sm:pb-28 pt-10 sm:pt-14">

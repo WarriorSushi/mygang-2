@@ -86,6 +86,12 @@ function SuccessContent() {
                     Welcome to the crew. Unlimited vibes, unlocked.
                 </p>
                 <p className="text-gray-500 text-sm">Redirecting to chat in 3 seconds...</p>
+                <button
+                    onClick={() => router.push('/chat')}
+                    className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors"
+                >
+                    Go to Chat
+                </button>
             </div>
         </div>
     )

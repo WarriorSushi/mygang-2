@@ -40,15 +40,37 @@ export async function POST(req: NextRequest) {
         let customerId = profile?.dodo_customer_id
 
         if (!customerId) {
+            // I4: Check for email before creating customer
+            if (!user.email) {
+                return Response.json({ error: 'Account has no email address' }, { status: 400 })
+            }
+
             const customer = await dodo.customers.create({
-                email: user.email!,
-                name: user.user_metadata?.full_name || user.email!,
+                email: user.email,
+                name: user.user_metadata?.full_name || user.email,
             })
             customerId = customer.customer_id
-            await supabase
+
+            // I3: Conditional update — only set if still null (prevents double-click race)
+            const { data: updated } = await supabase
                 .from('profiles')
                 .update({ dodo_customer_id: customerId })
                 .eq('id', user.id)
+                .is('dodo_customer_id', null)
+                .select('dodo_customer_id')
+                .single()
+
+            // If another request already set it, use the existing one
+            if (!updated) {
+                const { data: existing } = await supabase
+                    .from('profiles')
+                    .select('dodo_customer_id')
+                    .eq('id', user.id)
+                    .single()
+                if (existing?.dodo_customer_id) {
+                    customerId = existing.dodo_customer_id
+                }
+            }
         }
 
         const returnUrl = process.env.DODO_PAYMENTS_RETURN_URL!

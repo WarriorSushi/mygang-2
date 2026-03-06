@@ -43,6 +43,12 @@ export async function rateLimit(
   limit = DEFAULT_LIMIT,
   windowMs = DEFAULT_WINDOW_MS
 ): Promise<RateLimitResult> {
+  // C13: Fail closed in production without Redis
+  if (process.env.NODE_ENV === 'production' && !process.env.UPSTASH_REDIS_REST_URL) {
+    console.error('[rate-limit] CRITICAL: No Redis in production. Denying request.')
+    return { success: false, remaining: 0, reset: Date.now() + windowMs }
+  }
+
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     const { Ratelimit } = await import("@upstash/ratelimit")
     const { Redis } = await import("@upstash/redis")

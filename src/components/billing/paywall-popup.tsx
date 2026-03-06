@@ -30,9 +30,9 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
         }
     }, [cooldownSeconds, open])
 
-    // Countdown timer
+    // Countdown timer — M17: removed secondsLeft from deps to prevent interval restart loop
     useEffect(() => {
-        if (!open || secondsLeft <= 0) return
+        if (!open) return
         const interval = setInterval(() => {
             setSecondsLeft((prev) => {
                 if (prev <= 1) {
@@ -43,7 +43,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
             })
         }, 1000)
         return () => clearInterval(interval)
-    }, [open, secondsLeft])
+    }, [open])
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

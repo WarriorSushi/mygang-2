@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -185,7 +187,6 @@ export type Database = {
           created_at: string | null
           gang_id: string
           id: string
-          is_guest: boolean | null
           reaction: string | null
           reply_to_client_message_id: string | null
           speaker: string
@@ -197,7 +198,6 @@ export type Database = {
           created_at?: string | null
           gang_id: string
           id?: string
-          is_guest?: boolean | null
           reaction?: string | null
           reply_to_client_message_id?: string | null
           speaker: string
@@ -209,7 +209,6 @@ export type Database = {
           created_at?: string | null
           gang_id?: string
           id?: string
-          is_guest?: boolean | null
           reaction?: string | null
           reply_to_client_message_id?: string | null
           speaker?: string
@@ -362,9 +361,11 @@ export type Database = {
           last_msg_reset: string | null
           low_cost_mode: boolean
           onboarding_completed: boolean | null
+          pending_squad_downgrade: boolean | null
           preferred_squad: string[] | null
           purchase_celebration_pending: boolean | null
           relationship_state: Json | null
+          restored_members_pending: string[] | null
           session_summary: string | null
           subscription_tier: string | null
           summary_turns: number | null
@@ -387,9 +388,11 @@ export type Database = {
           last_msg_reset?: string | null
           low_cost_mode?: boolean
           onboarding_completed?: boolean | null
+          pending_squad_downgrade?: boolean | null
           preferred_squad?: string[] | null
           purchase_celebration_pending?: boolean | null
           relationship_state?: Json | null
+          restored_members_pending?: string[] | null
           session_summary?: string | null
           subscription_tier?: string | null
           summary_turns?: number | null
@@ -412,9 +415,11 @@ export type Database = {
           last_msg_reset?: string | null
           low_cost_mode?: boolean
           onboarding_completed?: boolean | null
+          pending_squad_downgrade?: boolean | null
           preferred_squad?: string[] | null
           purchase_celebration_pending?: boolean | null
           relationship_state?: Json | null
+          restored_members_pending?: string[] | null
           session_summary?: string | null
           subscription_tier?: string | null
           summary_turns?: number | null
@@ -424,6 +429,44 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      squad_tier_members: {
+        Row: {
+          added_at_tier: string
+          character_id: string
+          created_at: string
+          deactivated_at: string | null
+          id: string
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          added_at_tier: string
+          character_id: string
+          created_at?: string
+          deactivated_at?: string | null
+          id?: string
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          added_at_tier?: string
+          character_id?: string
+          created_at?: string
+          deactivated_at?: string | null
+          id?: string
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "squad_tier_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {

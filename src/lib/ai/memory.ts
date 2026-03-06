@@ -159,6 +159,13 @@ export async function compactMemoriesIfNeeded(userId: string) {
     try {
         const supabase = await createClient()
 
+        // I1: Reset any rows stuck in 'compacting' state from a previous crashed run
+        await supabase
+            .from('memories')
+            .update({ kind: 'episodic' })
+            .eq('user_id', userId)
+            .eq('kind', 'compacting')
+
         // Count active episodic memories
         const { count, error: countError } = await supabase
             .from('memories')

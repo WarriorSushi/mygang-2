@@ -436,6 +436,9 @@ function MessageItemComponent({
                 <div
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
                     onClick={() => setShowAvatar(false)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setShowAvatar(false) }}
+                    tabIndex={0}
+                    ref={(el) => el?.focus()}
                     role="dialog"
                     aria-modal="true"
                     aria-label={`${character.name}'s avatar`}

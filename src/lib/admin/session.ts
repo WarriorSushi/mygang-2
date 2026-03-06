@@ -61,7 +61,7 @@ export async function setAdminSession(email: string) {
     cookieStore.set(ADMIN_SESSION_COOKIE, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'strict',
         path: '/admin',
         expires: new Date(exp * 1000),
     })
@@ -72,7 +72,7 @@ export async function clearAdminSession() {
     cookieStore.set(ADMIN_SESSION_COOKIE, '', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'strict',
         path: '/admin',
         expires: new Date(0),
     })

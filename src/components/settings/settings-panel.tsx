@@ -294,11 +294,15 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                                 setDeleteError('Type your exact email to confirm.')
                                 return
                             }
-                            const confirmed = confirm('Delete your account and all data? This cannot be undone.')
-                            if (!confirmed) return
+                            setDeleteError('Are you sure? Click again to permanently delete your account.')
+                            if (deleteError !== 'Are you sure? Click again to permanently delete your account.') return
                             setIsDeleting(true)
+                            setDeleteError(null)
                             try {
-                                await deleteAccount()
+                                const result = await deleteAccount()
+                                if (result && !result.ok) {
+                                    setDeleteError(result.error)
+                                }
                             } catch (err) {
                                 const message = err instanceof Error ? err.message : ''
                                 if (!message.includes('NEXT_REDIRECT')) {

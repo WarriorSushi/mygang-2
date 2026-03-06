@@ -288,15 +288,23 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                 </div>
 
                                 <div className="grid w-full shrink-0 grid-cols-1 gap-2 sm:w-[360px] sm:grid-cols-2">
-                                    <form action={setUserSubscriptionTier}>
+                                    <form action={setUserSubscriptionTier} className="flex items-center gap-1">
                                         <input type="hidden" name="returnTo" value="/admin/users" />
                                         <input type="hidden" name="userId" value={profile.id} />
-                                        <input type="hidden" name="subscriptionTier" value={tier === 'pro' ? 'free' : 'pro'} />
+                                        <select
+                                            name="subscriptionTier"
+                                            defaultValue={tier}
+                                            className="flex-1 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100"
+                                        >
+                                            <option value="free">Free</option>
+                                            <option value="basic">Basic</option>
+                                            <option value="pro">Pro</option>
+                                        </select>
                                         <button
                                             type="submit"
-                                            className="w-full rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition-colors hover:bg-cyan-400/16"
+                                            className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition-colors hover:bg-cyan-400/16"
                                         >
-                                            Set Tier: {tier === 'pro' ? 'Free' : 'Pro'}
+                                            Set
                                         </button>
                                     </form>
                                     <form action={setUserLowCostMode}>
@@ -320,7 +328,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                             Reset Daily Usage
                                         </button>
                                     </form>
-                                    <form action={clearUserChatHistory}>
+                                    <form action={clearUserChatHistory} onSubmit={(e) => { if (!confirm('Delete all chat history for this user? This cannot be undone.')) e.preventDefault() }}>
                                         <input type="hidden" name="returnTo" value="/admin/users" />
                                         <input type="hidden" name="userId" value={profile.id} />
                                         <button

@@ -119,13 +119,13 @@ export async function signOut() {
 export async function deleteAccount() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) return { ok: false as const, error: 'Not authenticated' }
 
     const admin = createAdminClient()
     const { error } = await admin.auth.admin.deleteUser(user.id)
     if (error) {
         console.error('Delete account error:', error)
-        return
+        return { ok: false as const, error: 'Failed to delete account. Please try again.' }
     }
 
     await supabase.auth.signOut()

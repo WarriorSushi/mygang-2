@@ -412,7 +412,7 @@ export function useChatApi({
                 await new Promise((r) => setTimeout(r, 1200))
                 isGeneratingRef.current = false
                 const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
-                sendToApi({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId }).catch((err) => console.error('Autonomous continuation error:', err))
+                sendToApiRef.current({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId }).catch((err) => console.error('Autonomous continuation error:', err))
                 return
             }
 
@@ -427,7 +427,7 @@ export function useChatApi({
                 const sourceId = pendingUserMessageIdRef.current
                 pendingUserMessageIdRef.current = null
                 isGeneratingRef.current = true
-                sendToApi({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId }).catch((err) => console.error('Pending message retry error:', err))
+                sendToApiRef.current({ isIntro: false, isAutonomous: false, sourceUserMessageId: sourceId }).catch((err) => console.error('Pending message retry error:', err))
             } else {
                 isGeneratingRef.current = false
                 clearTypingUsers()

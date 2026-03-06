@@ -21,24 +21,28 @@ type GangRow = { id: string }
 type GangMemberRow = { character_id: string | null }
 
 export async function fetchJourneyState(supabase: SupabaseClient, userId: string) {
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier, pending_squad_downgrade, restored_members_pending')
-        .eq('id', userId)
-        .single<JourneyProfile>()
+    // I15: Parallelize profile and gang queries
+    const [profileResult, gangResult] = await Promise.all([
+        supabase
+            .from('profiles')
+            .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier, pending_squad_downgrade, restored_members_pending')
+            .eq('id', userId)
+            .single<JourneyProfile>(),
+        supabase
+            .from('gangs')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle<GangRow>(),
+    ])
 
+    const profile = profileResult.data
     let gangIds: string[] = []
-    const { data: gang } = await supabase
-        .from('gangs')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle<GangRow>()
 
-    if (gang?.id) {
+    if (gangResult.data?.id) {
         const { data: members } = await supabase
             .from('gang_members')
             .select('character_id')
-            .eq('gang_id', gang.id)
+            .eq('gang_id', gangResult.data.id)
             .returns<GangMemberRow[]>()
         gangIds = (members || [])
             .map((m) => m.character_id)

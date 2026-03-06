@@ -56,6 +56,12 @@ async function verifyAdminToken(token: string): Promise<boolean> {
     }
 }
 
+const PROTECTED_ROUTES = ['/chat', '/onboarding', '/settings', '/checkout/success']
+
+function isProtectedPath(pathname: string) {
+    return PROTECTED_ROUTES.some(route => pathname.startsWith(route))
+}
+
 export async function proxy(req: NextRequest) {
     // Admin route protection
     if (isAdminProtectedPath(req.nextUrl.pathname)) {
@@ -91,7 +97,14 @@ export async function proxy(req: NextRequest) {
         }
     )
 
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // C6: Server-side auth guard for protected routes
+    if (!user && isProtectedPath(req.nextUrl.pathname)) {
+        const redirectUrl = req.nextUrl.clone()
+        redirectUrl.pathname = '/'
+        return NextResponse.redirect(redirectUrl)
+    }
 
     return supabaseResponse
 }

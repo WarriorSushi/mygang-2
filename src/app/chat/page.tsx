@@ -408,6 +408,15 @@ export default function ChatPage() {
         }
     }
 
+    // I23: Show skeleton during store hydration to prevent flash of empty UI
+    if (!isHydrated) {
+        return (
+            <div className="flex h-dvh items-center justify-center bg-background">
+                <div className="animate-pulse text-muted-foreground text-sm">Loading...</div>
+            </div>
+        )
+    }
+
     return (
         <main id="main-content" className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative isolate">
             <div className="chat-wallpaper-layer" data-wallpaper={chatWallpaper} aria-hidden="true" />

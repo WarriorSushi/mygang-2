@@ -5,7 +5,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
-import { getTierFromProfile, isMemoryEnabled, getContextLimit } from '@/lib/billing'
+import { getTierFromProfile, isMemoryEnabled, getContextLimit, getSquadLimit } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
@@ -554,13 +554,14 @@ export async function POST(req: Request) {
 
         const requestedIds = activeGangIds ?? activeGang?.map((c) => c.id) ?? []
         const knownIds = new Set(CHARACTERS.map((c) => c.id))
-        const filteredIds = requestedIds.filter((id) => knownIds.has(id)).slice(0, 4)
-        if (filteredIds.length < 2 || filteredIds.length > 4) {
+        // M2/M3: Use max possible squad limit for initial filter; tier-based limit enforced after auth
+        const filteredIds = requestedIds.filter((id) => knownIds.has(id)).slice(0, 6)
+        if (filteredIds.length < 2 || filteredIds.length > 6) {
             return Response.json({
                 events: [{
                     type: 'message',
                     character: 'system',
-                    content: "Invalid gang selection. Please pick 2–4 characters and try again.",
+                    content: "Invalid gang selection. Please pick 2–6 characters and try again.",
                     delay: 200
                 }]
             }, { status: 400 })
@@ -1288,27 +1289,12 @@ FLOW FLAGS:
 
             // 3. Persist chat history
             try {
-                let gang: { id: string } | null = null
-                let gangError: unknown = null
-                const { data: existingGang, error: selectErr } = await supabase
+                // C11: Single upsert instead of select-then-insert waterfall
+                const { data: gang, error: gangError } = await supabase
                     .from('gangs')
+                    .upsert({ user_id: user.id }, { onConflict: 'user_id' })
                     .select('id')
-                    .eq('user_id', user.id)
                     .single()
-                if (existingGang) {
-                    gang = existingGang
-                } else if (!selectErr || selectErr.code === 'PGRST116') {
-                    // No gang exists yet — insert one
-                    const { data: newGang, error: insertErr } = await supabase
-                        .from('gangs')
-                        .insert({ user_id: user.id })
-                        .select('id')
-                        .single()
-                    gang = newGang
-                    gangError = insertErr
-                } else {
-                    gangError = selectErr
-                }
 
                 if (!gangError && gang?.id) {
                     const rows: ChatHistoryInsertRow[] = []
