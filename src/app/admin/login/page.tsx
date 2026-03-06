@@ -141,7 +141,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                         )}
 
                         {configMissing && (
-                            <div className="mb-4 rounded-xl border border-amber-400/35 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+                            <div className="mb-4 rounded-xl border border-amber-600/40 dark:border-amber-400/35 bg-amber-100/60 dark:bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-100">
                                 Set `ADMIN_PANEL_EMAIL` and `ADMIN_PANEL_PASSWORD_HASH` (or fallback `ADMIN_PANEL_PASSWORD`) in environment variables.
                             </div>
                         )}

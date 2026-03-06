@@ -75,7 +75,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
                         {/* Divider */}
                         <div className="flex items-center gap-3 w-full">
                             <div className="flex-1 h-px bg-border/40" />
-                            <span className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-medium">or skip the wait</span>
+                            <span className="text-[10px] text-muted-foreground/70 dark:text-muted-foreground/50 uppercase tracking-widest font-medium">or skip the wait</span>
                             <div className="flex-1 h-px bg-border/40" />
                         </div>
 
@@ -104,8 +104,8 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
                             </Link>
                         </Button>
 
-                        <p className="text-xs text-muted-foreground/60 text-center">
-                            <span className="line-through text-muted-foreground/40">$99/mo</span>{' '}
+                        <p className="text-xs text-muted-foreground/70 dark:text-muted-foreground/60 text-center">
+                            <span className="line-through text-muted-foreground/60 dark:text-muted-foreground/40">$99/mo</span>{' '}
                             <span className="text-primary font-medium">80% off launch price</span>
                         </p>
 
@@ -113,7 +113,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
                         <Button
                             asChild
                             variant="outline"
-                            className="w-full h-10 rounded-xl text-[13px] font-semibold border-blue-500/25 text-blue-400 hover:bg-blue-500/10 transition-all"
+                            className="w-full h-10 rounded-xl text-[13px] font-semibold border-blue-600/35 dark:border-blue-500/25 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 transition-all"
                         >
                             <Link href="/pricing?upgrade=basic" className="flex items-center justify-center gap-2">
                                 Or get Basic — $14.99/mo

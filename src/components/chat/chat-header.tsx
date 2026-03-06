@@ -138,13 +138,13 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                         </div>
                         <h1 className="font-semibold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
                         {subscriptionTier === 'pro' && (
-                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-400">
+                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
                                 <Crown className="w-2.5 h-2.5" />
                                 Pro
                             </span>
                         )}
                         {subscriptionTier === 'basic' && (
-                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-500/15 border border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-400">
+                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">
                                 <Zap className="w-2.5 h-2.5" />
                                 Basic
                             </span>
@@ -168,13 +168,13 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                             </>
                         )}
                         {subscriptionTier === 'pro' && (
-                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-400">
+                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
                                 <Crown className="w-2.5 h-2.5" />
                                 Pro
                             </span>
                         )}
                         {subscriptionTier === 'basic' && (
-                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-500/15 border border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-400">
+                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">
                                 <Zap className="w-2.5 h-2.5" />
                                 Basic
                             </span>
@@ -205,7 +205,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                 id="capacity-mode-info"
                                 role="dialog"
                                 aria-label="Temporary capacity mode info"
-                                className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-400/35 bg-card/98 p-2 text-[10px] leading-relaxed text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
+                                className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-600/40 dark:border-amber-400/35 bg-card/98 p-2 text-[10px] leading-relaxed text-amber-800 dark:text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
                             >
                                 Temporary low-cost mode is active due to provider capacity. Full mode restores automatically after stable turns.
                             </div>

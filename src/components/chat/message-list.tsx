@@ -344,9 +344,9 @@ export const MessageList = memo(function MessageList({
                             </div>
                             <span className="flex items-center gap-0.5 text-xs text-muted-foreground/70">
                                 <span className="inline-flex gap-[2px]">
-                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/80 dark:bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/80 dark:bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/80 dark:bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '300ms' }} />
                                 </span>
                             </span>
                         </div>
@@ -368,7 +368,7 @@ export const MessageList = memo(function MessageList({
                             onClick={scrollToBottom}
                             size="icon"
                             data-screenshot-exclude="true"
-                            className="relative rounded-full shadow-lg bg-black hover:bg-black/90 text-white size-9 border border-white/25"
+                            className="relative rounded-full shadow-lg bg-foreground hover:bg-foreground/90 text-background size-9 border border-background/25"
                             aria-label={unreadCount > 0 ? `${unreadCount} new messages — jump to latest` : 'Jump to latest'}
                         >
                             <ChevronDown className="w-4 h-4" />

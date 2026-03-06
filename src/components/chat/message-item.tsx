@@ -271,7 +271,7 @@ function MessageItemComponent({
                         {character?.name || message.speaker}
                     </span>
                     {showPersonaRoles && (character?.roleLabel || character?.archetype) && (
-                        <span className="text-[10px] text-muted-foreground/50 italic">
+                        <span className="text-[10px] text-muted-foreground/60 dark:text-muted-foreground/50 italic">
                             {character?.roleLabel || character?.archetype}
                         </span>
                     )}
@@ -361,14 +361,14 @@ function MessageItemComponent({
                                     "w-3 h-3 transition-all",
                                     liked
                                         ? "fill-red-500 text-red-500 scale-110"
-                                        : "text-muted-foreground/40 hover:text-muted-foreground/70"
+                                        : "text-muted-foreground/60 dark:text-muted-foreground/40 hover:text-muted-foreground/90 dark:hover:text-muted-foreground/70"
                                 )}
                             />
                         </button>
                         <button
                             type="button"
                             aria-label="Reply to message"
-                            className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                            className="p-0.5 text-muted-foreground/60 dark:text-muted-foreground/40 hover:text-muted-foreground/90 dark:hover:text-muted-foreground/70 transition-colors"
                             onClick={() => onReply?.(message)}
                         >
                             <Reply className="w-3 h-3" />
@@ -383,11 +383,11 @@ function MessageItemComponent({
                     "mt-0.5 flex items-center gap-1.5 px-1",
                     isUser ? "self-end" : "self-start"
                 )}>
-                    <span className="text-[10px] text-muted-foreground/40 transition-opacity">
+                    <span className="text-[10px] text-muted-foreground/60 dark:text-muted-foreground/40 transition-opacity">
                         {timeLabel}
                     </span>
                     {relativeTime && (
-                        <span className="text-[10px] text-muted-foreground/45">
+                        <span className="text-[10px] text-muted-foreground/60 dark:text-muted-foreground/45">
                             {relativeTime}
                         </span>
                     )}
@@ -423,7 +423,7 @@ function MessageItemComponent({
                         </Button>
                     )}
                     {seenBy.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground/40 ml-1.5">
+                        <span className="text-[10px] text-muted-foreground/60 dark:text-muted-foreground/40 ml-1.5">
                             Seen by {seenBy.join(', ')}
                         </span>
                     )}

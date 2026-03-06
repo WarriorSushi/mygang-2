@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ChatWallpaper } from '@/constants/wallpapers'
+import { CHARACTERS } from '@/constants/characters'
 
 const MAX_PERSISTED_MESSAGES = 100
 
@@ -158,6 +159,14 @@ export const useChatStore = create<ChatState>()(
                     if (hadStale) {
                         useChatStore.setState({ messages: [...state.messages] })
                     }
+                }
+                // Enrich activeGang from catalog to restore avatar URLs lost during serialization
+                if (state?.activeGang?.length) {
+                    const enriched = state.activeGang.map(char => {
+                        const catalog = CHARACTERS.find(c => c.id === char.id)
+                        return catalog ? { ...catalog, ...char, avatar: catalog.avatar } : char
+                    })
+                    useChatStore.setState({ activeGang: enriched })
                 }
             },
         }

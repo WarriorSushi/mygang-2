@@ -79,8 +79,8 @@ function FeatureValue({ value }: { value: boolean | string }) {
     )
   }
   return (
-    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/5">
-      <X className="w-4 h-4 text-muted-foreground/30" />
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted/30 dark:bg-white/5">
+      <X className="w-4 h-4 text-muted-foreground/50 dark:text-muted-foreground/30" />
     </span>
   )
 }
@@ -285,11 +285,11 @@ export default function PricingPage() {
               </ul>
 
               {isCurrentPlan('free') ? (
-                <div className="w-full py-3.5 sm:py-4 rounded-2xl text-[15px] font-semibold text-center bg-muted/30 text-muted-foreground/50 border border-border/20">
+                <div className="w-full py-3.5 sm:py-4 rounded-2xl text-[15px] font-semibold text-center bg-muted/40 dark:bg-muted/30 text-muted-foreground/70 dark:text-muted-foreground/50 border border-border/40 dark:border-border/20">
                   Current plan
                 </div>
               ) : (
-                <div className="w-full py-3.5 sm:py-4 rounded-2xl text-[15px] font-semibold text-center bg-muted/20 text-muted-foreground/40 border border-border/20">
+                <div className="w-full py-3.5 sm:py-4 rounded-2xl text-[15px] font-semibold text-center bg-muted/30 dark:bg-muted/20 text-muted-foreground/60 dark:text-muted-foreground/40 border border-border/40 dark:border-border/20">
                   Free forever
                 </div>
               )}

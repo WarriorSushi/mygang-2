@@ -122,7 +122,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
                             key={chip}
                             type="button"
                             onClick={() => onSend(chip)}
-                            className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium border border-border/40 bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                            className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium border border-border/50 bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                         >
                             {chip}
                         </button>

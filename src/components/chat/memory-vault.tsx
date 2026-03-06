@@ -242,7 +242,7 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                                         onChange={(e) => setEditContent(e.target.value)}
                                                         aria-label="Edit memory content"
                                                         maxLength={500}
-                                                        className="w-full bg-black/20 border border-border/50 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-24 resize-none"
+                                                        className="w-full bg-muted/40 dark:bg-black/20 border border-border/50 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary h-24 resize-none"
                                                         autoFocus
                                                     />
                                                     <div className="flex justify-end gap-2">

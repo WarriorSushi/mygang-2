@@ -21,13 +21,13 @@ export function InlineToast({ message, onClose, severity = 'info' }: InlineToast
 
     return (
         <div className="fixed bottom-24 left-1/2 z-50 w-[90%] max-w-md -translate-x-1/2" role="alert" aria-live={severity === 'error' ? 'assertive' : 'polite'}>
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/70 px-4 py-3 text-[11px] text-white shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/70 px-4 py-3 text-[11px] text-foreground dark:text-white shadow-2xl backdrop-blur-xl">
                 <span>{message}</span>
                 <Button
                     variant="ghost"
                     size="icon"
                     onClick={onClose}
-                    className="h-9 w-9 rounded-full text-white/70 hover:text-white shrink-0"
+                    className="h-9 w-9 rounded-full text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white shrink-0"
                     aria-label="Dismiss notification"
                 >
                     <X size={14} />
