@@ -32,19 +32,30 @@ async function updateProfileTier(userId: string, tier: string) {
 }
 
 async function logBillingEvent(userId: string | null, eventType: string, dodoEventId: string | null, payload: Record<string, unknown>): Promise<boolean> {
-    // C10: Idempotency check — skip if this event was already processed
+    // MED-3: Use INSERT ON CONFLICT DO NOTHING to eliminate TOCTOU race condition.
+    // If dodoEventId is provided, a unique constraint on dodo_event_id prevents duplicates atomically.
     if (dodoEventId) {
-        const { data: existing } = await supabase
+        // MED-3: Use INSERT ON CONFLICT to handle duplicate webhook events atomically
+        const { error: insertError } = await supabase
             .from('billing_events')
-            .select('id')
-            .eq('dodo_event_id', dodoEventId)
-            .maybeSingle()
-        if (existing) {
-            console.log(`[webhook] Skipping duplicate event: ${dodoEventId}`)
-            return false
+            .insert({
+                user_id: userId,
+                event_type: eventType,
+                dodo_event_id: dodoEventId,
+                payload: payload as unknown as import('@/lib/database.types').Json,
+            })
+        if (insertError) {
+            // Unique constraint violation means duplicate — not an error
+            if (insertError.code === '23505') {
+                console.log(`[webhook] Skipping duplicate event: ${dodoEventId}`)
+                return false
+            }
+            throw new Error(`logBillingEvent failed: ${insertError.message}`)
         }
+        return true
     }
 
+    // No dodoEventId — just insert without idempotency check
     const { error } = await supabase.from('billing_events').insert({
         user_id: userId,
         event_type: eventType,
@@ -153,19 +164,24 @@ export const POST = Webhooks({
         const data = payload.data as Record<string, unknown>
         const customerId = data.customer_id as string
         const subscriptionId = data.subscription_id as string
+        // MED-4: Extract webhook_id for idempotency (same pattern as onSubscriptionActive)
+        const webhookId = data.webhook_id as string ?? null
         const userId = await findUserByCustomerId(customerId)
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on renewal, subscription_id=${subscriptionId}`)
-            await logBillingEvent(null, 'subscription.renewed.orphaned', null, data)
+            await logBillingEvent(null, 'subscription.renewed.orphaned', webhookId, data)
             return
         }
+
+        // MED-4: Check idempotency before processing
+        const isNew = await logBillingEvent(userId, 'subscription.renewed', webhookId, data)
+        if (!isNew) return
 
         const { error } = await supabase.from('subscriptions').update({
             status: 'active',
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
         if (error) console.error('[webhook] Renewal update failed:', error)
-        await logBillingEvent(userId, 'subscription.renewed', null, data)
     },
 
     onSubscriptionCancelled: async (payload) => {

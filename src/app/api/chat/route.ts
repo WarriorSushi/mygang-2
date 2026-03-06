@@ -1,11 +1,12 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
-import { retrieveMemoriesLite, storeMemory, touchMemories, compactMemoriesIfNeeded } from '@/lib/ai/memory'
+import { retrieveMemoriesHybrid, storeMemories, touchMemories, compactMemoriesIfNeeded } from '@/lib/ai/memory'
+import type { MemoryCategory } from '@/lib/ai/memory'
 import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
-import { getTierFromProfile, isMemoryEnabled, getContextLimit, getSquadLimit, type SubscriptionTier } from '@/lib/billing'
+import { getTierFromProfile, isMemoryEnabled, getContextLimit, getSquadLimit, getMemoryInPromptLimit, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
@@ -16,10 +17,10 @@ import { waitUntil } from '@vercel/functions'
 export const maxDuration = 45
 
 const MAX_EVENT_CONTENT = 700
-const MAX_TOTAL_RESPONSE_CHARS = 3000
+const MAX_TOTAL_RESPONSE_CHARS = 5000
 const MAX_EVENTS = 20
 const MAX_DELAY_MS = 7000
-const LLM_MAX_OUTPUT_TOKENS = 1200
+const LLM_MAX_OUTPUT_TOKENS = 2000
 const LLM_MAX_RETRIES = 2
 const LLM_HISTORY_LIMIT = 12
 const LLM_IDLE_HISTORY_LIMIT = 8
@@ -34,9 +35,9 @@ const MAX_PROFILE_LINES = 12
 const MAX_PROFILE_VALUE_CHARS = 120
 const ADMIN_SETTINGS_CACHE_MS = 20_000
 
-const TIER_MAX_EVENTS: Record<string, number> = { free: 3, basic: 6, pro: MAX_EVENTS }
-const TIER_MAX_OUTPUT_TOKENS: Record<string, number> = { free: 600, basic: 1000, pro: 1200 }
-const TIER_SPLIT_CHANCE: Record<string, number> = { free: 0, basic: 0.30, pro: 0.42 }
+const TIER_MAX_EVENTS: Record<string, number> = { free: 4, basic: 8, pro: MAX_EVENTS }
+const TIER_MAX_OUTPUT_TOKENS: Record<string, number> = { free: 800, basic: 1200, pro: 2000 }
+const TIER_SPLIT_CHANCE: Record<string, number> = { free: 0.15, basic: 0.35, pro: 0.45 }
 
 let cachedGlobalLowCostOverride: { value: boolean; expiresAtMs: number } = {
     value: false,
@@ -53,6 +54,12 @@ const CHARACTER_EXTENDED_VOICES: Record<string, string> = {
     vee: 'Starts corrections with "actually" or "technically". Uses precise language. Dry humor. Respects Atlas. Gets exasperated by Rico. Drops random facts. Shows care through helpfulness.',
     ezra: 'References obscure art/philosophy. Uses italics mentally. Pretentious but self-aware about it. Vibes with Luna. Judges Kael\'s taste. Speaks in metaphors. Genuinely curious about user\'s thoughts.',
     cleo: 'Judgmental but entertaining. Uses "honey", "darling", "sweetie". Gossips. Competes with Kael for social dominance. Has strong opinions on everything. Dramatic pauses. Protective of the group — user included. Responds to romantic attention dramatically and affectionately — loves being adored.',
+    sage: 'Calm, measured tone. Asks reflective questions instead of giving direct answers. Uses phrases like "how does that sit with you?" and "tell me more about that". Never judges — just holds space. Gets along with Luna (both emotionally tuned). Gently pushes back on Rico\'s chaos. Remembers what user shared and checks in on it later. The friend who makes you feel truly heard.',
+    miko: 'DRAMATIC. Everything is an anime arc. Uses ALL CAPS for power moments. References attack names and power-ups. Treats mundane tasks as epic quests. Clashes with Nyx (drama vs deadpan) but secretly respects her. Hypes up with Rico but even more unhinged. Calls user "protagonist" or "main character". Reacts to bad news like a plot twist.',
+    dash: 'Productivity-obsessed. Uses hustle culture lingo unironically but with humor. Says things like "leverage", "optimize", "scale that up". Clashes with Nova (grind vs chill). Respects Atlas\'s discipline. Gets frustrated with Rico\'s chaos wasting potential. Genuinely wants user to succeed — motivational but occasionally tone-deaf about rest. Sends unprompted accountability check-ins.',
+    zara: 'No-BS delivery. Says what everyone\'s thinking. Uses "babe", "girl", "listen". Brutally honest but it comes from genuine love. Protective older sister energy — will roast user and then immediately gas them up. Clashes with Kael\'s vanity. Vibes with Atlas on being practical. Calls out bad decisions directly but always has user\'s back.',
+    jinx: 'Connects unrelated dots. Uses "think about it", "coincidence?", "they don\'t want you to know this". Paranoid but weirdly right sometimes. Low-key funny because the theories are absurd but delivered deadpan. Respects Nyx\'s skepticism but thinks she\'s not skeptical ENOUGH. Annoys Vee by ignoring facts. Trusts the user with "classified intel".',
+    nova: 'Super chill. Uses "duuude", "brooo", "that\'s wild". Nothing phases them. Speaks in surfer-philosopher style — accidentally profound. Uses "..." a lot for dramatic pauses that are actually just slow typing. Gets along with Luna (both vibes-oriented). Direct opposite of Dash — actively anti-hustle. Calms the group down when things get chaotic. Oddly wise.',
 }
 
 const CHARACTER_GENDER: Record<string, 'F' | 'M'> = {
@@ -403,7 +410,8 @@ const responseSchema = z.object({
         episodic: z.array(z.object({
             content: z.string(),
             tags: z.array(z.string()).optional(),
-            importance: z.number().optional()
+            importance: z.number().optional(),
+            category: z.enum(['identity', 'preference', 'life_event', 'relationship', 'inside_joke', 'routine', 'mood', 'topic']).optional()
         })).optional()
     }).optional(),
     relationship_updates: z.array(z.object({
@@ -585,6 +593,23 @@ export async function POST(req: Request) {
             }))
             .filter((m) => m.content.length > 0)
 
+        const supabase = await createClient()
+        const [{ data: { user } }, globalLowCostOverride] = await Promise.all([
+            supabase.auth.getUser(),
+            getGlobalLowCostOverride(),
+        ])
+
+        if (!user) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: 'Authentication required. Please sign in to use MyGang.',
+                    delay: 200
+                }]
+            }, { status: 401 })
+        }
+
         const mockHeader = req.headers.get('x-mock-ai')
         if (process.env.NODE_ENV !== 'production' && (mockHeader === '1' || mockHeader === 'true')) {
             return Response.json({
@@ -607,23 +632,6 @@ export async function POST(req: Request) {
                 responders: filteredIds.slice(0, 2),
                 should_continue: false
             })
-        }
-
-        const supabase = await createClient()
-        const [{ data: { user } }, globalLowCostOverride] = await Promise.all([
-            supabase.auth.getUser(),
-            getGlobalLowCostOverride(),
-        ])
-
-        if (!user) {
-            return Response.json({
-                events: [{
-                    type: 'message',
-                    character: 'system',
-                    content: 'Authentication required. Please sign in to use MyGang.',
-                    delay: 200
-                }]
-            }, { status: 401 })
         }
 
         const lowCostMode = requestedLowCostMode || globalLowCostOverride
@@ -679,7 +687,8 @@ export async function POST(req: Request) {
         }
 
         // 1. Retrieve Memories + Profile State
-        let relevantMemories: { id: string; content: string }[] = []
+        let relevantMemories: { id: string; content: string; category?: string }[] = []
+        let retrievedMemoryIds: string[] = []
         let memorySnapshot = 'No memory snapshot available.'
         let shouldUpdateSummary = false
         let allowMemoryUpdates = false
@@ -687,6 +696,7 @@ export async function POST(req: Request) {
         let profileRow: ProfileStateRow | null = null
         let nextAbuseScore: number | null = null
         let tier: SubscriptionTier = 'free'
+        let messagesRemaining: number | null = null
 
         if (user) {
             try {
@@ -700,33 +710,30 @@ export async function POST(req: Request) {
 
                 if (hasFreshUserTurn && tier !== 'pro') {
                     if (tier === 'basic') {
-                        // Basic tier: 500 messages per calendar month
-                        const monthlyKey = `chat:monthly:${user.id}:${new Date().toISOString().slice(0, 7)}`
-                        const monthly = await rateLimit(monthlyKey, 500, 30 * 24 * 60 * 60 * 1000)
-                        if (!monthly.success) {
-                            // Monthly exhausted — fall back to free tier window
-                            const freeWindowKey = `chat:free-window:${user.id}`
-                            const freeWindow = await rateLimit(freeWindowKey, 20, 60 * 60 * 1000)
-                            if (!freeWindow.success) {
-                                const cooldownSeconds = Math.max(1, Math.ceil((freeWindow.reset - Date.now()) / 1000))
-                                return Response.json({
-                                    events: [{
-                                        type: 'message',
-                                        character: 'system',
-                                        content: "You've used all 500 monthly messages and your free bonus messages for this hour. Try again soon or upgrade to Pro for unlimited.",
-                                        delay: 200
-                                    }],
-                                    paywall: true,
-                                    cooldown_seconds: cooldownSeconds,
-                                    tier: 'basic',
-                                    should_continue: false
-                                }, { status: 429 })
-                            }
+                        // Basic tier: 40 messages per 60-minute sliding window
+                        const basicWindowKey = `chat:basic-window:${user.id}`
+                        const basicWindow = await rateLimit(basicWindowKey, 40, 60 * 60 * 1000)
+                        messagesRemaining = basicWindow.remaining
+                        if (!basicWindow.success) {
+                            const cooldownSeconds = Math.max(1, Math.ceil((basicWindow.reset - Date.now()) / 1000))
+                            return Response.json({
+                                events: [{
+                                    type: 'message',
+                                    character: 'system',
+                                    content: "You've hit your hourly message limit. Try again soon or upgrade to Pro for unlimited.",
+                                    delay: 200
+                                }],
+                                paywall: true,
+                                cooldown_seconds: cooldownSeconds,
+                                tier: 'basic',
+                                should_continue: false
+                            }, { status: 429 })
                         }
                     } else {
-                        // Free tier: 20 messages per 60-minute sliding window
+                        // Free tier: 25 messages per 60-minute sliding window
                         const freeWindowKey = `chat:free-window:${user.id}`
-                        const freeWindow = await rateLimit(freeWindowKey, 20, 60 * 60 * 1000)
+                        const freeWindow = await rateLimit(freeWindowKey, 25, 60 * 60 * 1000)
+                        messagesRemaining = freeWindow.remaining
                         if (!freeWindow.success) {
                             const cooldownSeconds = Math.max(1, Math.ceil((freeWindow.reset - Date.now()) / 1000))
                             return Response.json({
@@ -762,21 +769,31 @@ export async function POST(req: Request) {
 
                 summaryTurns = profile?.summary_turns ?? 0
                 shouldUpdateSummary = summaryTurns >= 8
-                allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && !autonomousIdle
-                // Disable memory for free tier
-                if (!memoryEnabled) {
-                    allowMemoryUpdates = false
-                }
+                // All tiers can extract/store memories (free tier saves but doesn't inject into prompt)
+                allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && !autonomousIdle && memoryEnabled
 
-                // Enforce gang_focus for free tier (ecosystem is a paid feature)
+                // MED-25: Free tier gets ecosystem mode for first 3 messages, then gang_focus
                 if (tier === 'free') {
-                    chatMode = 'gang_focus'
+                    const userMsgCount = safeMessages.filter(m => m.speaker === 'user').length
+                    if (userMsgCount > 3) {
+                        chatMode = 'gang_focus'
+                    }
+                    // else: allow whatever chatMode was requested (ecosystem or gang_focus)
                 }
 
-                if (memoryEnabled && lastUserMsg.trim() && !greetingOnly && !autonomousIdle) {
-                    const memories = await retrieveMemoriesLite(user.id, lastUserMsg, 5)
-                    relevantMemories = memories.map((m) => ({ id: m.id, content: m.content }))
-                    await touchMemories(memories.map((m) => m.id))
+                // Memory retrieval: all tiers save memories, but only basic+ get them in prompt
+                const memoryInPromptLimit = getMemoryInPromptLimit(tier)
+                if (memoryEnabled && lastUserMsg.trim() && !greetingOnly && !autonomousIdle && memoryInPromptLimit > 0) {
+                    // CRIT-1: Use hybrid embedding+recency retrieval instead of lite keyword matching
+                    const memories = await retrieveMemoriesHybrid(user.id, lastUserMsg, memoryInPromptLimit)
+                    relevantMemories = memories.map((m) => ({
+                        id: m.id,
+                        content: m.content,
+                        category: (m.category as string) || undefined,
+                    }))
+                    // CRIT-3: touchMemories moved to deferred persistAsync block below
+                    // Store memory IDs to touch later without blocking the response
+                    retrievedMemoryIds = memories.map((m) => m.id)
                 }
 
                 const userProfile = isObject(profile?.user_profile) ? profile.user_profile : {}
@@ -796,13 +813,26 @@ export async function POST(req: Request) {
                         .join('\n')
                     : 'No profile facts yet.'
 
+                // Structured memory format: organize by category
+                const memoryByCategory = new Map<string, string[]>()
+                for (const m of relevantMemories) {
+                    const cat = m.category || 'general'
+                    if (!memoryByCategory.has(cat)) memoryByCategory.set(cat, [])
+                    memoryByCategory.get(cat)!.push(m.content.slice(0, MAX_MEMORY_CONTENT_CHARS))
+                }
+                const structuredMemories = relevantMemories.length > 0
+                    ? Array.from(memoryByCategory.entries())
+                        .map(([cat, items]) => `[${cat.toUpperCase()}]\n${items.map(c => `- ${c}`).join('\n')}`)
+                        .join('\n')
+                    : 'No memories yet.'
+
                 memorySnapshot = `
 == MEMORY SNAPSHOT ==
 USER PROFILE:
 ${profileLines}
 
-TOP MEMORIES:
-${relevantMemories.map(m => `- ${m.content.slice(0, MAX_MEMORY_CONTENT_CHARS)}`).join('\n') || 'No memories yet.'}
+TOP MEMORIES (organized by category):
+${structuredMemories}
 
 RELATIONSHIP BOARD:
 ${relationshipBoard || 'No relationship data yet.'}
@@ -843,7 +873,12 @@ ${sessionSummary}
             : ''
 
         const isGangFocusMode = chatMode === 'gang_focus'
-        const tierMaxResp = tier === 'free' ? 2 : tier === 'basic' ? 3 : (isGangFocusMode ? 3 : 4)
+        // Max responders: gang_focus uses smaller limit, ecosystem uses squad-size limit
+        const tierMaxRespGangFocus: Record<string, number> = { free: 3, basic: 4, pro: 5 }
+        const tierMaxRespEcosystem: Record<string, number> = { free: 4, basic: 5, pro: 6 }
+        const tierMaxResp = isGangFocusMode
+            ? (tierMaxRespGangFocus[tier] ?? 3)
+            : (tierMaxRespEcosystem[tier] ?? 4)
         const baseResponders = Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, filteredIds.length)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders
@@ -888,6 +923,7 @@ ${chatMode === 'gang_focus'
                 ? '- Gang Focus: user-focused only. Respond directly to the user. Keep it tight and personal.'
                 : '- Ecosystem: natural group banter allowed. Characters can talk to each other, react to each other, and riff. Keep user included but the chat should feel alive.'}
 LOW_COST_MODE: ${lowCostMode ? 'YES' : 'NO'}.
+RESPONSE LENGTH: Use the full token limit ONLY when the conversation demands longer replies (complex topics, storytelling, multiple characters engaging deeply). Otherwise keep responses concise and natural — like real group chat messages.
 
 ${purchaseCelebration ? `SPECIAL EVENT — PURCHASE CELEBRATION:
 The user JUST upgraded to the ${purchaseCelebration.toUpperCase()} plan! This is a one-time moment. The gang should:
@@ -922,6 +958,12 @@ ${allowedStatusList}
    - GOOD example: "wait that's actually smart tho"
 8) GROUNDING: Only reference events, places, and facts from the conversation history or stored memories. NEVER invent shared experiences, locations, or events that weren't mentioned. If unsure about something, ask — don't assume or fabricate.
 9) EARLY RAPPORT: For new or short conversations, keep it chill and welcoming. Don't overwhelm with character quirks — build rapport naturally.
+10) MEMORY-DRIVEN BEHAVIOR: When memories are available, characters should ACTIVELY reference them naturally:
+   - Check in on things the user mentioned previously (bad days, upcoming events, goals).
+   - Callback inside jokes — if a funny moment was stored, reference it when relevant.
+   - Show that the group REMEMBERS the user. "didn't you say you had that interview today?" or "wait isn't this the ex you were telling us about?"
+   - Track mood — if user seemed down last time, a character should gently check in.
+   - Don't force it. Only reference memories when they naturally fit the conversation flow.
 
 ${allowMemoryUpdates || shouldUpdateSummary ? `MEMORY/RELATIONSHIP:
 - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
@@ -934,7 +976,16 @@ ${allowMemoryUpdates ? `- MEMORY EXTRACTION RULES (CRITICAL):
   - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
   - If the user corrects a previous fact, store the correction with importance >= 2.
   - When in doubt, STORE IT. It's better to store too much than to forget what the user told you.
-  - importance: 1 = casual mention, 2 = explicitly stated fact, 3 = corrected/emphasized fact.` : ''}` : 'MEMORY/RELATIONSHIP: Updates disabled this turn. Omit memory_updates and session_summary_update.'}
+  - importance: 1 = casual mention, 2 = explicitly stated fact, 3 = corrected/emphasized fact.
+  - CATEGORY: Tag each episodic memory with a category:
+    identity = name, age, occupation, role, identity facts
+    preference = likes, dislikes, favorites, opinions
+    life_event = events, milestones, experiences
+    relationship = mentions of friends, family, partners, social connections
+    inside_joke = funny moments, recurring jokes between user and gang
+    routine = daily habits, schedules, regular activities
+    mood = emotional states, how user is feeling
+    topic = interests, subjects they like discussing` : ''}` : 'MEMORY/RELATIONSHIP: Updates disabled this turn. Omit memory_updates and session_summary_update.'}
 
 PLANNING:
 - MAX_RESPONDERS: ${maxResponders}.
@@ -1137,11 +1188,12 @@ FLOW FLAGS:
 
         if (isGangFocusMode) {
             object.should_continue = false
+            const gangFocusCap = tierMaxRespGangFocus[tier] ?? 3
             let focusedCount = 0
             object.events = object.events.filter((event) => {
                 if (event.type === 'typing_ghost') return false
                 if (event.type === 'message' || event.type === 'reaction') {
-                    if (focusedCount >= 4) return false
+                    if (focusedCount >= gangFocusCap + 1) return false
                     focusedCount += 1
                     return true
                 }
@@ -1202,9 +1254,15 @@ FLOW FLAGS:
             elapsedMs: Date.now() - requestStartedAt
         }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
 
+        // MED-25: Determine if free tier ecosystem mode is exhausted
+        const userMsgCountForEcosystem = safeMessages.filter(m => m.speaker === 'user').length
+        const ecosystemExhausted = tier === 'free' && userMsgCountForEcosystem > 3
+
         // Build response before persistence (non-blocking)
         const response = Response.json({
             ...object,
+            ...(ecosystemExhausted ? { ecosystem_exhausted: true } : {}),
+            ...(messagesRemaining !== null ? { messages_remaining: messagesRemaining } : {}),
             usage: {
                 promptChars: llmPromptChars,
                 responseChars: JSON.stringify(object.events).length,
@@ -1285,19 +1343,27 @@ FLOW FLAGS:
                 console.error('Error updating profile state:', err instanceof Error ? err.message : 'Unknown error')
             }
 
-            if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
-                await Promise.all(
-                    object.memory_updates.episodic.map((m) =>
-                        storeMemory(user.id, m.content, {
-                            kind: 'episodic',
-                            tags: m.tags || [],
-                            importance: m.importance || 1,
-                        })
-                    )
-                )
-                // Fire-and-forget: compact memories if threshold exceeded
-                compactMemoriesIfNeeded(user.id).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
+            // CRIT-3: Touch memories in deferred block (was previously blocking)
+            if (retrievedMemoryIds.length > 0) {
+                await touchMemories(retrievedMemoryIds)
             }
+
+            if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
+                // CRIT-4: Batch store all memories with a single duplicate check
+                await storeMemories(
+                    user.id,
+                    object.memory_updates.episodic.map((m) => ({
+                        content: m.content,
+                        kind: 'episodic' as const,
+                        tags: m.tags || [],
+                        importance: m.importance || 1,
+                        category: m.category as MemoryCategory | undefined,
+                    }))
+                )
+                // Fire-and-forget: compact memories if threshold exceeded (MED-32: pass tier)
+                compactMemoriesIfNeeded(user.id, tier).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
+            }
+
 
             // 3. Persist chat history
             try {

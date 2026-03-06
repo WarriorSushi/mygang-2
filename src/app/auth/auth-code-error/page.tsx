@@ -12,7 +12,7 @@ export default function AuthCodeErrorPage() {
           We couldn&apos;t complete your sign-in. This can happen if the link expired or was already used.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
-          <Link href="/onboarding">
+          <Link href="/">
             <Button className="rounded-full px-6 w-full sm:w-auto">Try Again</Button>
           </Link>
           <Link href="/">

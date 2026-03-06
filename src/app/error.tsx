@@ -14,7 +14,7 @@ export default function GlobalError({
     }, [error])
 
     return (
-        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6" role="alert">
             <h1 className="text-2xl font-semibold mb-2">Something went wrong</h1>
             <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
                 An unexpected error occurred. Try refreshing, or head back to the chat.

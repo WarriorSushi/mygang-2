@@ -125,12 +125,13 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         if (isOpen) {
             setCursor(null)
             setHasMore(false)
-            if (!isFree) loadMemories({ reset: true, before: null })
+            // Load memories for ALL tiers (free users see them blurred)
+            loadMemories({ reset: true, before: null })
         } else {
             setEditingId(null)
             setPendingDeleteId(null)
         }
-    }, [isOpen, isFree, loadMemories])
+    }, [isOpen, loadMemories])
 
     const handleDeleteConfirm = async () => {
         if (!pendingDeleteId) return
@@ -218,30 +219,77 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                         </div>
 
                         {isFree ? (
-                        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-5">
-                            <div className="relative">
-                                <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border/40 flex items-center justify-center">
-                                    <Brain className="text-muted-foreground/40" size={28} />
+                        <div className="flex-1 flex flex-col min-h-0">
+                            {loading ? (
+                                <div className="flex-1 flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
+                                    <Loader2 className="animate-spin" size={24} />
+                                    <span className="text-xs font-medium uppercase tracking-tighter">Syncing Neural Links...</span>
                                 </div>
-                                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-background border border-border/50 flex items-center justify-center">
-                                    <Lock className="text-muted-foreground/60" size={13} />
+                            ) : memories.length === 0 ? (
+                                /* No memories saved yet -- show classic locked state */
+                                <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-5">
+                                    <div className="relative">
+                                        <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border/40 flex items-center justify-center">
+                                            <Brain className="text-muted-foreground/40" size={28} />
+                                        </div>
+                                        <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-background border border-border/50 flex items-center justify-center">
+                                            <Lock className="text-muted-foreground/60" size={13} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-semibold text-foreground/90">Memories are a paid feature</h3>
+                                        <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
+                                            The gang can&apos;t remember your conversations on the free plan. Upgrade so they never forget what matters to you.
+                                        </p>
+                                    </div>
+                                    <Link
+                                        href="/pricing"
+                                        onClick={onClose}
+                                        className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-[1.03] active:scale-[0.98]"
+                                    >
+                                        <Sparkles size={15} className="opacity-80 group-hover:opacity-100 transition-opacity" />
+                                        <span>Unlock Memories — 80% off</span>
+                                    </Link>
+                                    <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Limited time offer</p>
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-sm font-semibold text-foreground/90">Memories are a paid feature</h3>
-                                <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
-                                    The gang can&apos;t remember your conversations on the free plan. Upgrade so they never forget what matters to you.
-                                </p>
-                            </div>
-                            <Link
-                                href="/pricing"
-                                onClick={onClose}
-                                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-[1.03] active:scale-[0.98]"
-                            >
-                                <Sparkles size={15} className="opacity-80 group-hover:opacity-100 transition-opacity" />
-                                <span>Unlock Memories — 80% off</span>
-                            </Link>
-                            <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Limited time offer</p>
+                            ) : (
+                                /* Ghost memories: blurred memories with upgrade overlay */
+                                <div className="flex-1 relative overflow-hidden">
+                                    <div className="blur-sm pointer-events-none opacity-60 p-4 sm:p-6 space-y-4" aria-hidden="true">
+                                        {memories.slice(0, 8).map((memory) => (
+                                            <GlassCard key={memory.id} className="p-4 border-border/50">
+                                                <p className="text-sm leading-relaxed">{memory.content}</p>
+                                                <div className="mt-3 flex items-center justify-between opacity-50">
+                                                    <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
+                                                        {new Date(memory.created_at).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                            </GlassCard>
+                                        ))}
+                                    </div>
+                                    <div className="absolute inset-0 flex items-center justify-center bg-background/20">
+                                        <div className="bg-card/90 backdrop-blur-sm rounded-xl p-5 text-center space-y-3 border border-border shadow-lg max-w-[280px]">
+                                            <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                                <Lock className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                Your gang has stored {memories.length} memor{memories.length === 1 ? 'y' : 'ies'} about you
+                                            </p>
+                                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                                They remember things, but can&apos;t use them on the free plan. Upgrade to unlock memory-powered conversations.
+                                            </p>
+                                            <Link
+                                                href="/pricing?upgrade=basic"
+                                                onClick={onClose}
+                                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-full text-xs font-semibold shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-[1.03] active:scale-[0.98]"
+                                            >
+                                                <Sparkles size={13} />
+                                                Unlock Memories
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         ) : (<>
                         {/* Search */}

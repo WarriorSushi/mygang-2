@@ -37,7 +37,7 @@ export default function AboutPage() {
   return (
     <main className="min-h-dvh bg-background text-foreground">
       {/* Back nav */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border/40">
+      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border/40 pt-[env(safe-area-inset-top)]">
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center gap-3">
           <Link
             href="/"
@@ -255,7 +255,7 @@ export default function AboutPage() {
               },
             ].map((item) => (
               <a
-                key={item.email}
+                key={item.label}
                 href={`mailto:${item.email}`}
                 className="rounded-2xl border border-border/50 bg-muted/30 backdrop-blur-sm p-5 sm:p-6 hover:bg-muted/50 transition-colors group block"
               >

@@ -101,23 +101,18 @@ export default function OnboardingPage() {
         const session = ensureAnalyticsSession()
         trackEvent('onboarding_completed', { sessionId: session.id })
 
-        // Persist to cloud if logged in
-        if (userId) {
-            try {
-                await persistUserJourney(supabase, userId, {
-                    username: name,
-                    gangIds: selectedIds,
-                    onboardingCompleted: true
-                })
-            } catch (err) {
-                console.error('Failed to auto-save to cloud:', err)
-            }
-        }
-
-        // Simulate summoning delay, then replace to prevent back-nav to loading
-        setTimeout(() => {
-            router.replace('/chat')
-        }, 2200)
+        // Persist to cloud (if logged in) and show loading animation for at least 1.5s
+        await Promise.all([
+            userId
+                ? persistUserJourney(supabase, userId, {
+                      username: name,
+                      gangIds: selectedIds,
+                      onboardingCompleted: true,
+                  }).catch((err) => console.error('Failed to auto-save to cloud:', err))
+                : Promise.resolve(),
+            new Promise((resolve) => setTimeout(resolve, 1500)),
+        ])
+        router.replace('/chat')
     }
 
     return (

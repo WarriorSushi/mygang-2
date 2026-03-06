@@ -11,12 +11,15 @@ type AdminSessionPayload = {
 }
 
 function getSessionSecret() {
-    return process.env.ADMIN_PANEL_SESSION_SECRET?.trim() || null
+    const secret = process.env.ADMIN_PANEL_SESSION_SECRET?.trim()
+    if (!secret || secret.length < 32) {
+        throw new Error('ADMIN_PANEL_SESSION_SECRET must be at least 32 characters')
+    }
+    return secret
 }
 
 function signPayload(payloadBase64: string) {
-    const secret = getSessionSecret()
-    if (!secret) return null
+    const secret = getSessionSecret() // throws if missing or too short
     return crypto
         .createHmac('sha256', secret)
         .update(payloadBase64)

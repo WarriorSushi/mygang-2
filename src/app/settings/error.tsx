@@ -14,7 +14,7 @@ export default function SettingsError({
     }, [error])
 
     return (
-        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6" role="alert">
             <h1 className="text-xl font-semibold mb-2">Settings error</h1>
             <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
                 Could not load settings. Try refreshing.

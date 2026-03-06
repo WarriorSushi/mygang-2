@@ -45,6 +45,8 @@ interface ChatState {
     chatWallpaper: ChatWallpaper
     showPersonaRoles: boolean
     customCharacterNames: Record<string, string>
+    messagesRemaining: number | null
+    cooldownSeconds: number | null
     squadConflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null
     pendingUpgrade: { newTier: 'basic' | 'pro'; newSlots: number } | null
     pendingDowngrade: { newLimit: number; autoRemovableIds: string[] } | null
@@ -64,6 +66,8 @@ interface ChatState {
     setCustomCharacterNames: (names: Record<string, string>) => void
     setSquadConflict: (conflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null) => void
     setPendingUpgrade: (upgrade: { newTier: 'basic' | 'pro'; newSlots: number } | null) => void
+    setMessagesRemaining: (remaining: number | null) => void
+    setCooldownSeconds: (seconds: number | null) => void
     setPendingDowngrade: (downgrade: { newLimit: number; autoRemovableIds: string[] } | null) => void
     clearChat: () => void
 }
@@ -91,6 +95,8 @@ export const useChatStore = create<ChatState>()(
             chatWallpaper: 'default',
             showPersonaRoles: true,
             customCharacterNames: {},
+            messagesRemaining: null,
+            cooldownSeconds: null,
             squadConflict: null,
             pendingUpgrade: null,
             pendingDowngrade: null,
@@ -132,6 +138,8 @@ export const useChatStore = create<ChatState>()(
             setCustomCharacterNames: (customCharacterNames) => set({ customCharacterNames }),
             setSquadConflict: (squadConflict) => set({ squadConflict }),
             setPendingUpgrade: (pendingUpgrade) => set({ pendingUpgrade }),
+            setMessagesRemaining: (messagesRemaining) => set({ messagesRemaining }),
+            setCooldownSeconds: (cooldownSeconds) => set({ cooldownSeconds }),
             setPendingDowngrade: (pendingDowngrade) => set({ pendingDowngrade }),
             clearChat: () => {
                 _messageIdSet.clear()

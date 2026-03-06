@@ -557,7 +557,16 @@ export function LandingPage() {
                 className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
                 {...(i === 0 ? { open: true } : {})}
               >
-                <summary className="text-base font-semibold cursor-pointer list-none flex items-center justify-between [&::-webkit-details-marker]:hidden">
+                <summary
+                  aria-expanded={i === 0 ? true : undefined}
+                  onClick={(e) => {
+                    const details = (e.currentTarget as HTMLElement).parentElement as HTMLDetailsElement
+                    requestAnimationFrame(() => {
+                      e.currentTarget.setAttribute('aria-expanded', String(details.open))
+                    })
+                  }}
+                  className="text-base font-semibold cursor-pointer list-none flex items-center justify-between [&::-webkit-details-marker]:hidden"
+                >
                   {item.q}
                   <ChevronRight className="w-4 h-4 text-muted-foreground/50 transition-transform group-open:rotate-90 shrink-0 ml-2" />
                 </summary>

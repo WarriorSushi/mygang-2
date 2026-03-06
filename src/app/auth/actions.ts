@@ -164,16 +164,27 @@ export async function saveGang(characterIds: string[]) {
         return
     }
 
-    // 2. Clear old members and insert new ones
-    await supabase.from('gang_members').delete().eq('gang_id', gang.id)
+    // 2. Atomic gang update: insert new members first, then delete stale ones
+    const newCharacterIds = parsed.data
 
-    const members = parsed.data.map(id => ({
+    const members = newCharacterIds.map(id => ({
         gang_id: gang.id,
         character_id: id
     }))
 
-    const { error: memberError } = await supabase.from('gang_members').insert(members)
-    if (memberError) console.error('Error inserting gang:', memberError)
+    // Upsert new members (safe if they already exist)
+    const { error: memberError } = await supabase
+        .from('gang_members')
+        .upsert(members, { onConflict: 'gang_id,character_id' })
+    if (memberError) console.error('Error upserting gang members:', memberError)
+
+    // Delete old members that are NOT in the new list
+    const { error: deleteError } = await supabase
+        .from('gang_members')
+        .delete()
+        .eq('gang_id', gang.id)
+        .not('character_id', 'in', `(${newCharacterIds.map(id => `"${id}"`).join(',')})`)
+    if (deleteError) console.error('Error removing old gang members:', deleteError)
 
     const { error: settingsError } = await supabase
         .from('profiles')
@@ -467,7 +478,7 @@ export async function saveMemoryManual(content: string) {
         kind: 'episodic',
         tags: [],
         importance: 2,
-        useEmbedding: false
+        useEmbedding: true
     })
 }
 
@@ -482,15 +493,15 @@ export async function addSquadTierMembers(characterIds: string[], tier: 'basic' 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    for (const id of characterIds) {
-        await squadTierTable(supabase).upsert({
-            user_id: user.id,
-            character_id: id,
-            added_at_tier: tier,
-            is_active: true,
-            deactivated_at: null,
-        }, { onConflict: 'user_id,character_id' })
-    }
+    const rows = characterIds.map(id => ({
+        user_id: user.id,
+        character_id: id,
+        added_at_tier: tier,
+        is_active: true,
+        deactivated_at: null,
+    }))
+
+    await squadTierTable(supabase).upsert(rows, { onConflict: 'user_id,character_id' })
 }
 
 export async function deactivateSquadTierMembers(characterIds: string[]) {

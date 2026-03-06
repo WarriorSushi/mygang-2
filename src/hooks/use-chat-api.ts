@@ -27,6 +27,8 @@ type ChatApiResponse = {
     paywall?: boolean
     cooldown_seconds?: number
     tier?: string
+    messages_remaining?: number
+    ecosystem_exhausted?: boolean
 }
 
 export type SendToApiArgs = {
@@ -73,6 +75,8 @@ interface UseChatApiArgs {
     setReplyingTo: (msg: Message | null) => void
     // Paywall callback
     onPaywall?: (cooldownSeconds: number, tier: string) => void
+    // Ecosystem exhausted callback (free tier switches from ecosystem to gang_focus)
+    onEcosystemExhausted?: () => void
 }
 
 export function useChatApi({
@@ -95,6 +99,7 @@ export function useChatApi({
     recordSuccessfulUserTurn,
     setReplyingTo,
     onPaywall,
+    onEcosystemExhausted,
 }: UseChatApiArgs) {
     const addMessage = useChatStore((s) => s.addMessage)
     const setMessages = useChatStore((s) => s.setMessages)
@@ -269,8 +274,24 @@ export function useChatApi({
             // Paywall detection: API signals the user hit their message limit
             if (data?.paywall === true) {
                 updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', 'Message limit reached')
+                const cooldownSec = data.cooldown_seconds ?? 300
                 if (onPaywall) {
-                    onPaywall(data.cooldown_seconds ?? 300, data.tier ?? 'free')
+                    onPaywall(cooldownSec, data.tier ?? 'free')
+                }
+                // Request notification permission and schedule cooldown-end notification
+                if (typeof window !== 'undefined' && 'Notification' in window) {
+                    if (Notification.permission === 'default') {
+                        Notification.requestPermission().catch(() => {})
+                    }
+                    if (cooldownSec > 0) {
+                        const notifTimer = setTimeout(() => {
+                            if (Notification.permission === 'granted') {
+                                new Notification('MyGang', { body: 'Your gang is ready! Come back and chat.' })
+                            }
+                        }, cooldownSec * 1000)
+                        // Store cleanup ref (best-effort, will clear on page unload anyway)
+                        ;(window as unknown as Record<string, unknown>).__mygangCooldownNotif = notifTimer
+                    }
                 }
                 return
             }
@@ -344,7 +365,19 @@ export function useChatApi({
             if (data.usage) {
                 lastTokenUsageRef.current = data.usage
             }
-            updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'sent')
+            // Update messages remaining in store for banner display
+            if (data.messages_remaining !== undefined) {
+                useChatStore.getState().setMessagesRemaining(data.messages_remaining)
+            }
+            // Show ecosystem limit modal for free tier when ecosystem mode is exhausted
+            if (data.ecosystem_exhausted && onEcosystemExhausted) {
+                onEcosystemExhausted()
+            }
+            // Mark ALL user messages still stuck in 'sending' as 'sent', not just the payload window
+            const allSendingIds = useChatStore.getState().messages
+                .filter((m) => m.speaker === 'user' && m.deliveryStatus === 'sending')
+                .map((m) => m.id)
+            updateUserDeliveryStatus(allSendingIds, 'sent')
             if (!isAutonomous && !isIntro) {
                 recordSuccessfulUserTurn()
             }
@@ -368,7 +401,7 @@ export function useChatApi({
                         queueTypingUser(event.character)
                         const eventContent = event.content || ''
                         const speedFactor = activeGang.find(c => c.id === event.character)?.typingSpeed || 1
-                        const typingTime = Math.max(900, eventContent.length * 30 * speedFactor + Math.random() * 500)
+                        const typingTime = Math.max(eventContent.length < 10 ? 400 : 900, eventContent.length * 30 * speedFactor + Math.random() * 500)
                         await new Promise(r => setTimeout(r, typingTime))
 
                         if (pendingUserMessagesRef.current) break

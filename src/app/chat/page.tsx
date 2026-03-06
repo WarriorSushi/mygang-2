@@ -18,9 +18,11 @@ const ChatSettings = dynamic(() => import('@/components/chat/chat-settings').the
 import { ChatInput } from '@/components/chat/chat-input'
 import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 import { InlineToast } from '@/components/chat/inline-toast'
+import { MessagesRemainingBanner } from '@/components/billing/messages-remaining-banner'
 const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
 const PaywallPopup = dynamic(() => import('@/components/billing/paywall-popup').then((m) => m.PaywallPopup), { ssr: false })
 const ConfettiCelebration = dynamic(() => import('@/components/effects/confetti-celebration').then((m) => m.ConfettiCelebration), { ssr: false })
+const EcosystemLimitModal = dynamic(() => import('@/components/chat/ecosystem-limit-modal').then((m) => m.EcosystemLimitModal), { ssr: false })
 const UpgradePickerModal = dynamic(() => import('@/components/squad/upgrade-picker-modal').then((m) => m.UpgradePickerModal), { ssr: false })
 const DowngradeKeeperModal = dynamic(() => import('@/components/squad/downgrade-keeper-modal').then((m) => m.DowngradeKeeperModal), { ssr: false })
 
@@ -93,6 +95,8 @@ export default function ChatPage() {
     const [paywallCooldown, setPaywallCooldown] = useState(0)
     const [paywallTier, setPaywallTier] = useState('free')
     const [showConfetti, setShowConfetti] = useState(false)
+    const [showEcosystemModal, setShowEcosystemModal] = useState(false)
+    const ecosystemModalShownRef = useRef(false)
 
     const captureRootRef = useRef<HTMLDivElement>(null)
     const resumeBannerRef = useRef(false)
@@ -100,7 +104,20 @@ export default function ChatPage() {
     const { theme } = useTheme()
     const router = useRouter()
 
-    const onToast = (msg: string) => setToastMessage(msg)
+    const onToast = useCallback((msg: string) => setToastMessage(msg), [])
+
+    const onPaywall = useCallback((cooldownSeconds: number, tier: string) => {
+        setPaywallCooldown(cooldownSeconds)
+        setPaywallTier(tier)
+        setPaywallOpen(true)
+    }, [])
+
+    const onEcosystemExhausted = useCallback(() => {
+        if (!ecosystemModalShownRef.current) {
+            ecosystemModalShownRef.current = true
+            setShowEcosystemModal(true)
+        }
+    }, [])
 
     // ── Hooks ──
 
@@ -127,11 +144,8 @@ export default function ChatPage() {
         recordCapacityError: capacity.recordCapacityError,
         recordSuccessfulUserTurn: capacity.recordSuccessfulUserTurn,
         setReplyingTo,
-        onPaywall: (cooldownSeconds, tier) => {
-            setPaywallCooldown(cooldownSeconds)
-            setPaywallTier(tier)
-            setPaywallOpen(true)
-        },
+        onPaywall,
+        onEcosystemExhausted,
     })
 
     const autonomous = useAutonomousFlow({
@@ -467,6 +481,7 @@ export default function ChatPage() {
                             Offline mode - reconnect to send messages
                         </div>
                     )}
+                    <MessagesRemainingBanner />
                     <ChatInput
                         onSend={api.handleSend}
                         disabled={!isOnline}
@@ -531,6 +546,7 @@ export default function ChatPage() {
                 cooldownSeconds={paywallCooldown}
                 tier={paywallTier}
             />
+            <EcosystemLimitModal open={showEcosystemModal} onClose={() => setShowEcosystemModal(false)} />
             <ConfettiCelebration trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
         </main>
     )

@@ -4,6 +4,7 @@ import { memo } from 'react'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -158,7 +159,7 @@ export const MessageList = memo(function MessageList({
         [activeGang, characterCatalogById, customCharacterNames]
     )
     const seenByMessageId = useMemo(() => {
-        const msgs = useChatStore.getState().messages
+        const msgs = messages.length > 20 ? messages.slice(-20) : messages
         const seenMap = new Map<string, string[]>()
         for (let i = 0; i < msgs.length; i++) {
             const current = msgs[i]
@@ -177,7 +178,7 @@ export const MessageList = memo(function MessageList({
             seenMap.set(current.id, seenNames)
         }
         return seenMap
-    }, [messages.length, characterBySpeaker])
+    }, [messages, characterBySpeaker])
 
     const scrollToBottom = useCallback(() => {
         if (!scrollRef.current) return
@@ -381,10 +382,12 @@ export const MessageList = memo(function MessageList({
                                 {typingUsers.slice(0, 3).map((uid) => {
                                     const char = characterBySpeaker.get(normalizeSpeaker(uid))
                                     return char?.avatar ? (
-                                        <img
+                                        <Image
                                             key={uid}
                                             src={char.avatar}
                                             alt={char.name}
+                                            width={20}
+                                            height={20}
                                             className="w-5 h-5 rounded-full border border-background object-cover"
                                         />
                                     ) : null

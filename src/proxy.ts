@@ -56,7 +56,7 @@ async function verifyAdminToken(token: string): Promise<boolean> {
     }
 }
 
-const PROTECTED_ROUTES = ['/chat', '/onboarding', '/settings', '/checkout/success']
+const PROTECTED_ROUTES = ['/chat', '/onboarding', '/settings', '/checkout/success', '/post-auth']
 
 function isProtectedPath(pathname: string) {
     return PROTECTED_ROUTES.some(route => pathname.startsWith(route))

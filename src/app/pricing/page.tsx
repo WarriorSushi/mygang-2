@@ -131,6 +131,7 @@ export default function PricingPage() {
   const [sdkReady, setSdkReady] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [tierFetchError, setTierFetchError] = useState(false)
 
   // Fetch current tier
   useEffect(() => {
@@ -153,7 +154,7 @@ export default function PricingPage() {
           else if (tier === 'basic') setSubscriptionTier('basic')
           else setSubscriptionTier('free')
         }
-      } catch { /* fallback to free */ }
+      } catch { setTierFetchError(true) }
       finally { if (!cancelled) setTierLoaded(true) }
     }
     fetchTier()
@@ -182,6 +183,10 @@ export default function PricingPage() {
   const currentTier: Tier = userId ? subscriptionTier : 'free'
 
   const handleCheckout = useCallback(async (plan: 'basic' | 'pro') => {
+    if (!userId) {
+      setCheckoutError('Please sign in before upgrading.')
+      return
+    }
     setLoadingPlan(plan)
     try {
       const res = await fetch('/api/checkout', {
@@ -207,7 +212,7 @@ export default function PricingPage() {
     } finally {
       setLoadingPlan(null)
     }
-  }, [sdkReady])
+  }, [sdkReady, userId])
 
   // Auto-dismiss checkout error
   useEffect(() => {
@@ -228,7 +233,7 @@ export default function PricingPage() {
       <BackgroundBlobs />
 
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/30">
+      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/30 pt-[env(safe-area-inset-top)]">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
           <Link
             href={userId ? '/chat' : '/'}
@@ -270,6 +275,15 @@ export default function PricingPage() {
         {checkoutError && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-xl text-sm shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
             {checkoutError}
+          </div>
+        )}
+
+        {/* Tier fetch error warning */}
+        {tierFetchError && (
+          <div className="max-w-6xl mx-auto px-5 sm:px-8 mt-4">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-3 text-sm text-amber-700 dark:text-amber-300 text-center">
+              Could not verify your current plan. Displayed tiers may not reflect your subscription.
+            </div>
           </div>
         )}
 
@@ -455,31 +469,35 @@ export default function PricingPage() {
             </h2>
 
             {/* Comparison table — responsive grid */}
-            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto">
-              <div className="min-w-[420px]">
+            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto relative">
+              <div className="min-w-[420px]" role="table" aria-label="Plan comparison">
               <div
+                role="row"
                 className="border-b border-border/20 bg-muted/5"
                 style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1fr 1fr' }}
               >
-                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-muted-foreground">Feature</div>
-                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-muted-foreground">Free</div>
-                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-blue-400">Basic</div>
-                <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-primary">Pro</div>
+                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-muted-foreground">Feature</div>
+                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-muted-foreground">Free</div>
+                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-blue-400">Basic</div>
+                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-primary">Pro</div>
               </div>
 
               {features.map((f, i) => (
                 <div
                   key={f.text}
+                  role="row"
                   className={`border-b border-border/10 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/[0.03]'}`}
                   style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1fr 1fr' }}
                 >
-                  <div className="p-3 sm:p-6 text-[11px] sm:text-[15px] text-foreground/70">{f.text}</div>
-                  <div className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.free} /></div>
-                  <div className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.basic} /></div>
-                  <div className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.pro} /></div>
+                  <div role="cell" className="p-3 sm:p-6 text-[11px] sm:text-[15px] text-foreground/70">{f.text}</div>
+                  <div role="cell" className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.free} /></div>
+                  <div role="cell" className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.basic} /></div>
+                  <div role="cell" className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.pro} /></div>
                 </div>
               ))}
             </div>
+              {/* Scroll hint gradient — visible only on small screens */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent sm:hidden" aria-hidden="true" />
             </div>
           </div>
         </section>

@@ -399,7 +399,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
 
     // Surface colors — inline to bypass Tailwind v4 arbitrary value bug
     const surface = {
-        bg: isDark ? '#191b22' : '#ffffff',
+        bg: 'hsl(var(--background))',
         shadow: isDark
             ? '0 0 60px -10px rgba(0,0,0,0.8), -4px 0 20px -4px rgba(0,0,0,0.4)'
             : '0 0 60px -10px rgba(0,0,0,0.15), -4px 0 20px -4px rgba(0,0,0,0.08)',
@@ -454,12 +454,14 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
                                 <div className="flex items-center gap-2.5 mt-2">
                                     <p className="text-[13px] text-muted-foreground truncate">{accountEmail || '\u00A0'}</p>
                                     <span
-                                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em]"
-                                        style={
-                                            subscriptionTier === 'pro' ? { background: isDark ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)' }
-                                                : subscriptionTier === 'basic' ? { background: isDark ? 'rgba(96,165,250,0.12)' : 'rgba(96,165,250,0.1)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)' }
-                                                    : { background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }
-                                        }
+                                        className={cn(
+                                            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] border",
+                                            subscriptionTier === 'pro'
+                                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                                : subscriptionTier === 'basic'
+                                                    ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                                    : "bg-muted/50 text-muted-foreground border-border/50"
+                                        )}
                                     >
                                         {subscriptionTier === 'pro' && <Crown className="w-2.5 h-2.5" />}
                                         {subscriptionTier === 'basic' && <Zap className="w-2.5 h-2.5" />}

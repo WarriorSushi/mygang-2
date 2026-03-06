@@ -12,10 +12,15 @@ const requestSchema = z.object({
 
 export async function POST(req: Request) {
     try {
-        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-            || req.headers.get('x-real-ip')
-            || 'unknown'
-        const rate = await rateLimit(`analytics:ip:${ip}`, 60, 60_000)
+        // CRIT-2: Require authentication — no anonymous analytics tracking
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            return Response.json({ ok: false }, { status: 401 })
+        }
+
+        // LOW-1: Rate limit by authenticated user ID instead of IP
+        const rate = await rateLimit(`analytics:user:${user.id}`, 60, 60_000)
         if (!rate.success) {
             return Response.json({ ok: false }, { status: 429 })
         }
@@ -34,13 +39,10 @@ export async function POST(req: Request) {
             }
         }
 
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-
         const { error } = await supabase
             .from('analytics_events')
             .insert({
-                user_id: user?.id ?? null,
+                user_id: user.id,
                 session_id: parsed.data.session_id,
                 event: parsed.data.event,
                 value: parsed.data.value ?? null,

@@ -29,8 +29,11 @@ function MessageAvatar({ character, speaker }: { character?: Character; speaker:
         )
     }
 
+    const bgRgb = parseColorToRgb(character?.color)
+    const textRgb = pickReadableTextColor(bgRgb)
+
     return (
-        <span className="text-white text-[11px] font-semibold uppercase">
+        <span className="text-[11px] font-semibold uppercase" style={{ color: toRgbString(textRgb) }}>
             {initial}
         </span>
     )
@@ -494,6 +497,8 @@ function MessageItemComponent({
 }
 
 export const MessageItem = memo(MessageItemComponent, (prev, next) => {
+    const seenByEqual = prev.seenBy?.length === next.seenBy?.length &&
+        (prev.seenBy ?? []).every((v, i) => v === (next.seenBy ?? [])[i])
     return (
         prev.message === next.message &&
         prev.character === next.character &&
@@ -502,7 +507,7 @@ export const MessageItem = memo(MessageItemComponent, (prev, next) => {
         prev.isFastMode === next.isFastMode &&
         prev.quotedMessage === next.quotedMessage &&
         prev.quotedSpeaker === next.quotedSpeaker &&
-        prev.seenBy === next.seenBy &&
+        seenByEqual &&
         prev.showPersonaRoles === next.showPersonaRoles &&
         prev.isDark === next.isDark &&
         prev.onReply === next.onReply &&

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { deleteAccount, deleteAllMessages, deleteAllMemories, signOut } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
 import { useChatStore } from '@/stores/chat-store'
-import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle } from 'lucide-react'
+import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3 } from 'lucide-react'
 
 interface SettingsPanelProps {
     username: string | null
@@ -149,6 +149,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     const [deleteEmail, setDeleteEmail] = useState('')
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [deleteConfirmStep, setDeleteConfirmStep] = useState(false)
 
     // Delete Chat modal state
     const [chatModalOpen, setChatModalOpen] = useState(false)
@@ -211,6 +212,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
     const tier = usage.subscriptionTier || 'free'
     const tierLabel = tier === 'pro' ? 'Unlimited messages' : tier === 'basic' ? '500 messages/month' : '20 messages per hour'
+    const messagesRemaining = useChatStore((s) => s.messagesRemaining)
 
     return (
         <div className="space-y-6">
@@ -244,7 +246,10 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
             {/* Usage */}
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Your Plan</div>
+                <div className="flex items-center gap-2">
+                    <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Usage</div>
+                </div>
                 <div className="mt-3 flex items-baseline gap-2">
                     <span className="text-lg font-bold">{tierLabel}</span>
                 </div>
@@ -253,6 +258,47 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         {tier} tier
                     </span>
                 </div>
+                {/* Active usage counter */}
+                {tier === 'pro' ? (
+                    <div className="mt-4 flex items-center gap-2">
+                        <Infinity className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">Messages: Unlimited</span>
+                    </div>
+                ) : messagesRemaining !== null && messagesRemaining !== undefined ? (
+                    <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-foreground">
+                                {tier === 'free'
+                                    ? `${Math.max(0, 25 - messagesRemaining)} / 25 used this hour`
+                                    : `${Math.max(0, 40 - messagesRemaining)} / 40 used this hour`
+                                }
+                            </span>
+                            <span className={`text-xs font-bold ${messagesRemaining <= 5 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {messagesRemaining} left
+                            </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                    messagesRemaining <= 3
+                                        ? 'bg-destructive'
+                                        : messagesRemaining <= 8
+                                            ? 'bg-amber-500'
+                                            : 'bg-primary'
+                                }`}
+                                style={{
+                                    width: `${Math.min(100, ((tier === 'free' ? 25 : 40) - messagesRemaining) / (tier === 'free' ? 25 : 40) * 100)}%`
+                                }}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mt-4">
+                        <span className="text-xs text-muted-foreground">
+                            Send a message to see your usage
+                        </span>
+                    </div>
+                )}
             </section>
 
             {/* Data Management */}
@@ -335,6 +381,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         onChange={(e) => {
                             setDeleteEmail(e.target.value)
                             if (deleteError) setDeleteError(null)
+                            if (deleteConfirmStep) setDeleteConfirmStep(false)
                         }}
                         placeholder={email || 'your@email.com'}
                         className="h-10 w-full rounded-lg border border-destructive/40 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-destructive"
@@ -352,10 +399,14 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                                 setDeleteError('Type your exact email to confirm.')
                                 return
                             }
-                            setDeleteError('Are you sure? Click again to permanently delete your account.')
-                            if (deleteError !== 'Are you sure? Click again to permanently delete your account.') return
+                            if (!deleteConfirmStep) {
+                                setDeleteConfirmStep(true)
+                                setDeleteError('Are you sure? Click again to permanently delete your account.')
+                                return
+                            }
                             setIsDeleting(true)
                             setDeleteError(null)
+                            setDeleteConfirmStep(false)
                             try {
                                 const result = await deleteAccount()
                                 if (result && !result.ok) {

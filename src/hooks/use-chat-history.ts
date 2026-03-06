@@ -327,13 +327,42 @@ export function useChatHistory({
         }
     }, [historyBootstrapDone, isBootstrappingHistory, isLoadingOlderHistory, isOnline, setMessages, userId, isGeneratingRef, pendingUserMessagesRef, debounceTimerRef])
 
-    // Sync interval + focus/visibility
+    // Track last user message time for adaptive polling
+    const lastUserMessageAtRef = useRef(0)
+    useEffect(() => {
+        const msgs = useChatStore.getState().messages
+        const lastUserMsg = [...msgs].reverse().find(m => m.speaker === 'user')
+        if (lastUserMsg) {
+            const ts = new Date(lastUserMsg.created_at).getTime()
+            if (ts > lastUserMessageAtRef.current) lastUserMessageAtRef.current = ts
+        }
+    }, [messagesLength])
+
+    // Sync interval + focus/visibility (adaptive polling)
     useEffect(() => {
         if (!isHydrated || !userId || !historyBootstrapDone) return
 
-        const intervalId = window.setInterval(() => {
-            void syncLatestHistory(false)
-        }, 12000)
+        const getPollingInterval = () => {
+            if (typeof document !== 'undefined' && document.hidden) return null // stop polling when tab hidden
+            const recentActivity = Date.now() - lastUserMessageAtRef.current < 60_000
+            return recentActivity ? 12_000 : 30_000
+        }
+
+        let intervalId: ReturnType<typeof setTimeout> | null = null
+
+        const scheduleNext = () => {
+            const interval = getPollingInterval()
+            if (interval === null) {
+                intervalId = null
+                return
+            }
+            intervalId = setTimeout(() => {
+                void syncLatestHistory(false)
+                scheduleNext()
+            }, interval)
+        }
+
+        scheduleNext()
 
         const handleFocus = () => {
             void syncLatestHistory(true)
@@ -341,6 +370,14 @@ export function useChatHistory({
         const handleVisibility = () => {
             if (document.visibilityState === 'visible') {
                 void syncLatestHistory(true)
+                // Restart adaptive polling when tab becomes visible again
+                if (!intervalId) scheduleNext()
+            } else {
+                // Stop polling when tab is hidden
+                if (intervalId) {
+                    clearTimeout(intervalId)
+                    intervalId = null
+                }
             }
         }
 
@@ -349,7 +386,7 @@ export function useChatHistory({
         void syncLatestHistory(true)
 
         return () => {
-            window.clearInterval(intervalId)
+            if (intervalId) clearTimeout(intervalId)
             window.removeEventListener('focus', handleFocus)
             document.removeEventListener('visibilitychange', handleVisibility)
         }

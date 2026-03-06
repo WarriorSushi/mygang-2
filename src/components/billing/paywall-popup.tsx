@@ -4,13 +4,15 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
-import { Clock, Infinity, Brain, Zap, ArrowRight, Check } from 'lucide-react'
+import { Clock, Infinity, Brain, Zap, ArrowRight, Check, Users, Sparkles, Palette } from 'lucide-react'
 
 interface PaywallPopupProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     cooldownSeconds: number
     tier: string
+    onOpenSettings?: () => void
+    onOpenMemoryVault?: () => void
 }
 
 function formatTimeLeft(totalSeconds: number): string {
@@ -20,8 +22,30 @@ function formatTimeLeft(totalSeconds: number): string {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: PaywallPopupProps) {
+const FREE_TIER_FEATURES = {
+    basic: [
+        { icon: Zap, text: '500 messages/month' },
+        { icon: Brain, text: 'Your gang remembers you' },
+        { icon: Sparkles, text: 'Ecosystem mode' },
+    ],
+    pro: [
+        { icon: Infinity, text: 'Unlimited messages' },
+        { icon: Brain, text: 'Advanced memory' },
+        { icon: Users, text: '6 squad members' },
+    ],
+}
+
+const BASIC_TIER_FEATURES = [
+    { icon: Infinity, text: 'Unlimited messages' },
+    { icon: Brain, text: 'Inside jokes & mood tracking' },
+    { icon: Users, text: '6 squad members' },
+    { icon: Sparkles, text: 'Character-specific memories' },
+]
+
+export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpenSettings, onOpenMemoryVault }: PaywallPopupProps) {
     const [secondsLeft, setSecondsLeft] = useState(cooldownSeconds)
+    const isFree = tier === 'free'
+    const isBasic = tier === 'basic'
 
     // Reset countdown when cooldownSeconds changes or dialog opens
     useEffect(() => {
@@ -30,7 +54,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
         }
     }, [cooldownSeconds, open])
 
-    // Countdown timer — M17: removed secondsLeft from deps to prevent interval restart loop
+    // Countdown timer -- M17: removed secondsLeft from deps to prevent interval restart loop
     useEffect(() => {
         if (!open) return
         const interval = setInterval(() => {
@@ -44,6 +68,8 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
         }, 1000)
         return () => clearInterval(interval)
     }, [open])
+
+    const handleClose = () => onOpenChange(false)
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,46 +105,120 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier }: Payw
                             <div className="flex-1 h-px bg-border/40" />
                         </div>
 
-                        {/* Feature list */}
-                        <div className="flex flex-col gap-2.5 w-full">
-                            {[
-                                { icon: Infinity, text: 'Unlimited messages' },
-                                { icon: Brain, text: 'Your gang remembers everything' },
-                                { icon: Zap, text: 'No cooldowns, ever' },
-                            ].map((f) => (
-                                <div key={f.text} className="flex items-center gap-2.5">
-                                    <Check className="w-4 h-4 text-primary shrink-0" />
-                                    <span className="text-sm text-foreground/80">{f.text}</span>
+                        {/* Tier-specific feature lists */}
+                        {isFree && (
+                            <>
+                                {/* Pro features for free users */}
+                                <div className="flex flex-col gap-2.5 w-full">
+                                    {FREE_TIER_FEATURES.pro.map((f) => (
+                                        <div key={f.text} className="flex items-center gap-2.5">
+                                            <Check className="w-4 h-4 text-primary shrink-0" />
+                                            <span className="text-sm text-foreground/80">{f.text}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
 
-                        {/* CTA — Pro */}
-                        <Button
-                            asChild
-                            className="w-full h-12 rounded-xl text-[15px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
-                        >
-                            <Link href="/pricing?upgrade=pro" className="flex items-center justify-center gap-2">
-                                Upgrade to Pro — $19.99/mo
-                                <ArrowRight className="w-4 h-4" />
-                            </Link>
-                        </Button>
+                                {/* CTA -- Pro */}
+                                <Button
+                                    asChild
+                                    className="w-full h-12 rounded-xl text-[15px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
+                                >
+                                    <Link href="/pricing?upgrade=pro" className="flex items-center justify-center gap-2">
+                                        Get Pro — $19.99/mo
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Link>
+                                </Button>
 
-                        <p className="text-xs text-muted-foreground/70 dark:text-muted-foreground/60 text-center">
-                            <span className="line-through text-muted-foreground/60 dark:text-muted-foreground/40">$99/mo</span>{' '}
-                            <span className="text-primary font-medium">80% off launch price</span>
-                        </p>
+                                <p className="text-xs text-muted-foreground/70 dark:text-muted-foreground/60 text-center">
+                                    <span className="line-through text-muted-foreground/60 dark:text-muted-foreground/40">$99/mo</span>{' '}
+                                    <span className="text-primary font-medium">80% off launch price</span>
+                                </p>
 
-                        {/* Basic option */}
-                        <Button
-                            asChild
-                            variant="outline"
-                            className="w-full h-10 rounded-xl text-[13px] font-semibold border-blue-600/35 dark:border-blue-500/25 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 transition-all"
-                        >
-                            <Link href="/pricing?upgrade=basic" className="flex items-center justify-center gap-2">
-                                Or get Basic — $14.99/mo
-                            </Link>
-                        </Button>
+                                {/* Basic option for free users */}
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="w-full h-10 rounded-xl text-[13px] font-semibold border-blue-600/35 dark:border-blue-500/25 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 transition-all"
+                                >
+                                    <Link href="/pricing?upgrade=basic" className="flex items-center justify-center gap-2">
+                                        Or get Basic — $14.99/mo
+                                    </Link>
+                                </Button>
+                            </>
+                        )}
+
+                        {isBasic && (
+                            <>
+                                {/* Pro features for basic users */}
+                                <div className="flex flex-col gap-2.5 w-full">
+                                    {BASIC_TIER_FEATURES.map((f) => (
+                                        <div key={f.text} className="flex items-center gap-2.5">
+                                            <Check className="w-4 h-4 text-primary shrink-0" />
+                                            <span className="text-sm text-foreground/80">{f.text}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Single CTA -- Pro */}
+                                <Button
+                                    asChild
+                                    className="w-full h-12 rounded-xl text-[15px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
+                                >
+                                    <Link href="/pricing?upgrade=pro" className="flex items-center justify-center gap-2">
+                                        Upgrade to Pro — $19.99/mo
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Link>
+                                </Button>
+
+                                <p className="text-xs text-muted-foreground/70 dark:text-muted-foreground/60 text-center">
+                                    <span className="line-through text-muted-foreground/60 dark:text-muted-foreground/40">$99/mo</span>{' '}
+                                    <span className="text-primary font-medium">80% off launch price</span>
+                                </p>
+                            </>
+                        )}
+
+                        {/* Cooldown engagement suggestions */}
+                        {secondsLeft > 0 && (
+                            <>
+                                <div className="flex items-center gap-3 w-full">
+                                    <div className="flex-1 h-px bg-border/40" />
+                                    <span className="text-[10px] text-muted-foreground/70 dark:text-muted-foreground/50 uppercase tracking-widest font-medium">while you wait</span>
+                                    <div className="flex-1 h-px bg-border/40" />
+                                </div>
+                                <div className="flex flex-wrap gap-2 w-full justify-center">
+                                    {onOpenSettings && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { handleClose(); onOpenSettings() }}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-muted/40 text-[11px] font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                                        >
+                                            <Users className="w-3 h-3" />
+                                            Customize your squad
+                                        </button>
+                                    )}
+                                    {onOpenMemoryVault && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { handleClose(); onOpenMemoryVault() }}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-muted/40 text-[11px] font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                                        >
+                                            <Brain className="w-3 h-3" />
+                                            Review your memories
+                                        </button>
+                                    )}
+                                    {onOpenSettings && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { handleClose(); onOpenSettings() }}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-muted/40 text-[11px] font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                                        >
+                                            <Palette className="w-3 h-3" />
+                                            Change your wallpaper
+                                        </button>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </DialogContent>

@@ -12,9 +12,9 @@ export function getDodoClient() {
 export type SubscriptionTier = 'free' | 'basic' | 'pro'
 
 export const TIER_LIMITS = {
-  free: { messagesPerWindow: 20, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: false, squadLimit: 4, contextLimit: 10 },
-  basic: { messagesPerWindow: null, windowMs: null, monthlyLimit: 500, memoryEnabled: true, squadLimit: 5, contextLimit: 20 },
-  pro: { messagesPerWindow: null, windowMs: null, monthlyLimit: null, memoryEnabled: true, squadLimit: 6, contextLimit: 30 },
+  free: { messagesPerWindow: 25, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: 20, memoryInPrompt: 0, squadLimit: 4, contextLimit: 15 },
+  basic: { messagesPerWindow: 40, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: 50, memoryInPrompt: 3, squadLimit: 5, contextLimit: 25 },
+  pro: { messagesPerWindow: null, windowMs: null, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: null, memoryInPrompt: 5, squadLimit: 6, contextLimit: 35 },
 } as const
 
 export function getTierFromProfile(subscriptionTier: string | null): SubscriptionTier {
@@ -25,6 +25,16 @@ export function getTierFromProfile(subscriptionTier: string | null): Subscriptio
 
 export function isMemoryEnabled(tier: SubscriptionTier): boolean {
   return TIER_LIMITS[tier].memoryEnabled
+}
+
+/** How many memories to inject into the prompt (0 = saved but not used) */
+export function getMemoryInPromptLimit(tier: SubscriptionTier): number {
+  return TIER_LIMITS[tier].memoryInPrompt
+}
+
+/** Max stored memories (null = unlimited) */
+export function getMemoryMaxCount(tier: SubscriptionTier): number | null {
+  return TIER_LIMITS[tier].memoryMaxCount
 }
 
 export function getSquadLimit(tier: SubscriptionTier): number {

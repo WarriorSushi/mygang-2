@@ -49,7 +49,7 @@ function SuccessContent() {
 
     if (status === 'activating') {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-background">
+            <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
                 <div className="text-center space-y-4">
                     <div className="text-4xl animate-pulse">⚡</div>
                     <h1 className="text-2xl font-bold text-foreground">Activating your plan...</h1>
@@ -61,7 +61,7 @@ function SuccessContent() {
 
     if (status === 'error') {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-background">
+            <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
                 <div className="text-center space-y-4">
                     <div className="text-4xl">😕</div>
                     <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
@@ -78,7 +78,7 @@ function SuccessContent() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
             <div className="text-center space-y-4">
                 <div className="text-6xl">🎉</div>
                 <h1 className="text-3xl font-bold text-foreground">Your gang is HYPED!</h1>
@@ -101,7 +101,7 @@ export default function CheckoutSuccessPage() {
     return (
         <main id="main-content">
             <Suspense fallback={
-                <div className="flex min-h-screen items-center justify-center bg-background">
+                <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
                     <div className="text-4xl animate-pulse">⚡</div>
                 </div>
             }>

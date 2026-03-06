@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Check, HeartCrack, Sparkles } from 'lucide-react'
@@ -33,6 +33,38 @@ export function DowngradeKeeperModal({
 }: DowngradeKeeperModalProps) {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [isSaving, setIsSaving] = useState(false)
+    const modalRef = useRef<HTMLDivElement>(null)
+
+    // Note: no Escape key handler — this modal is NOT dismissible (user must choose)
+
+    // Basic focus trap
+    useEffect(() => {
+        const modal = modalRef.current
+        if (!modal) return
+        const focusable = modal.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length > 0) focusable[0].focus()
+
+        const handleTab = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab' || !modal) return
+            const focusableEls = modal.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+            if (focusableEls.length === 0) return
+            const first = focusableEls[0]
+            const last = focusableEls[focusableEls.length - 1]
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault()
+                last.focus()
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault()
+                first.focus()
+            }
+        }
+        document.addEventListener('keydown', handleTab)
+        return () => document.removeEventListener('keydown', handleTab)
+    }, [])
 
     const selectedCount = selectedIds.size
     const isReady = selectedCount === maxKeep
@@ -72,10 +104,14 @@ export function DowngradeKeeperModal({
     return (
         <AnimatePresence>
             <motion.div
+                ref={modalRef}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="downgrade-keeper-title"
             >
                 {/* Backdrop - NOT dismissible */}
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
@@ -97,7 +133,7 @@ export function DowngradeKeeperModal({
                             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
                                 <HeartCrack className="w-6 h-6 text-amber-500" />
                             </div>
-                            <h2 className="text-xl sm:text-2xl font-black text-center tracking-tight">
+                            <h2 id="downgrade-keeper-title" className="text-xl sm:text-2xl font-black text-center tracking-tight">
                                 Your plan has changed
                             </h2>
                             <p className="text-sm text-muted-foreground/80 text-center leading-relaxed max-w-sm">

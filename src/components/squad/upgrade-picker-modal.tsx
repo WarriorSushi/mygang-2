@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { CHARACTERS } from '@/constants/characters'
@@ -29,6 +29,43 @@ export function UpgradePickerModal({
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [saving, setSaving] = useState(false)
     const addMessage = useChatStore((s) => s.addMessage)
+    const modalRef = useRef<HTMLDivElement>(null)
+
+    // Escape key handler
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismiss?.() }
+        document.addEventListener('keydown', handleEsc)
+        return () => document.removeEventListener('keydown', handleEsc)
+    }, [onDismiss])
+
+    // Basic focus trap
+    useEffect(() => {
+        const modal = modalRef.current
+        if (!modal) return
+        const focusable = modal.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length > 0) focusable[0].focus()
+
+        const handleTab = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab' || !modal) return
+            const focusableEls = modal.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+            if (focusableEls.length === 0) return
+            const first = focusableEls[0]
+            const last = focusableEls[focusableEls.length - 1]
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault()
+                last.focus()
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault()
+                first.focus()
+            }
+        }
+        document.addEventListener('keydown', handleTab)
+        return () => document.removeEventListener('keydown', handleTab)
+    }, [])
 
     const availableCharacters = CHARACTERS.filter(
         (c) => !currentSquadIds.includes(c.id)
@@ -73,10 +110,14 @@ export function UpgradePickerModal({
     return (
         <AnimatePresence>
             <motion.div
+                ref={modalRef}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="upgrade-picker-title"
             >
                 {/* Backdrop */}
                 <motion.div
@@ -115,7 +156,7 @@ export function UpgradePickerModal({
                         >
                             <Sparkles className="w-6 h-6 text-primary" />
                         </motion.div>
-                        <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                        <h2 id="upgrade-picker-title" className="text-2xl sm:text-3xl font-black tracking-tight">
                             Your gang just got bigger!
                         </h2>
                         <p className="text-muted-foreground text-sm sm:text-base mt-2">

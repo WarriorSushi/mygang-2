@@ -14,7 +14,7 @@ export default function OnboardingError({
     }, [error])
 
     return (
-        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6" role="alert">
             <h1 className="text-xl font-semibold mb-2">Oops</h1>
             <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
                 Something went wrong during setup. Let&apos;s try again.

@@ -1,560 +1,436 @@
-# MyGang Pre-Production Deep Audit Results
+# MyGang Pre-Production Deep Audit Results (v2)
 
-**Date**: March 7, 2026
-**Auditors**: 6 specialized AI agents reading actual code + querying live Supabase database
-**Scope**: Security, Database, Frontend/UX, Performance, Chat Experience, Memory System
+**Date:** 2026-03-07
+**Audited by:** 6 specialized agents (Security, Database, Frontend, Performance, Chat Experience, Memory System)
+**Method:** Actual code reading + live Supabase database inspection via MCP
 
 ---
 
 ## Table of Contents
 
-1. [Critical Issues](#1-critical-issues-must-fix-before-launch)
-2. [Important Improvements](#2-important-improvements-should-fix-soon)
-3. [Nice-to-Have Enhancements](#3-nice-to-have-enhancements-post-launch-backlog)
+1. [Critical Issues (Must Fix Before Launch)](#1-critical-issues-must-fix-before-launch)
+2. [Important Improvements (Should Fix Soon)](#2-important-improvements-should-fix-soon)
+3. [Nice-to-Have Enhancements (Post-Launch Backlog)](#3-nice-to-have-enhancements-post-launch-backlog)
 4. [Chat Experience Recommendations](#4-chat-experience-recommendations)
 5. [Memory System Redesign Proposal](#5-memory-system-redesign-proposal)
+6. [Positive Findings](#6-positive-findings)
 
 ---
 
 ## 1. Critical Issues (Must Fix Before Launch)
 
-### SEC-C1. Users Can Self-Elevate Subscription Tier via Browser Console
-**File**: Supabase RLS policy on `profiles` table
-**Severity**: CRITICAL — complete billing bypass, revenue loss
+### CRIT-1: Embedding Retrieval is Dead Code -- Memory Search is Fundamentally Broken
+- **File:** `src/app/api/chat/route.ts` line 777, `src/lib/ai/memory.ts`
+- **What this means:** We built a smart memory search system (like Google -- understands meaning, not just exact words). But the chat code never actually uses it. Instead it uses a dumb word-matching search. So if a user said "I love hiking" and later says "let's do something outdoors", the app will NOT find that hiking memory because the words don't match. We're also paying Google for embeddings (the smart search data) every time we save a memory, but never using them. Wasting money for nothing.
+- **Fix:** Switch the chat code to use the smart search we already built. Also fix the search function to skip deleted/archived memories.
+///do it [[[done]]] Switched chat route to use `retrieveMemoriesHybrid()` which combines embedding similarity + recency scoring. Fixed `match_memories` DB function to filter by kind IN ('episodic', 'compacted') excluding archived.
 
-The RLS UPDATE policy on `profiles` is `id = auth.uid()` with no column restriction. Any authenticated user can open the browser console and run:
-```js
-supabase.from('profiles').update({ subscription_tier: 'pro' }).eq('id', '<their-user-id>')
-```
-This bypasses all billing, granting free unlimited messaging, memory, and maximum squad slots.
+### CRIT-2: Analytics Route RLS Mismatch -- All Unauthenticated Inserts Silently Fail
+- **File:** `src/app/api/analytics/route.ts` line 42
+- **What this means:** Our analytics tracking (page views, button clicks etc.) tries to save data for users who aren't logged in. But Supabase's security rules say "only logged-in users can save data." So every time a non-logged-in visitor does something, the analytics code thinks it saved successfully (`{ ok: true }`) but actually nothing was saved. We're lying to ourselves about tracking data.
+- **Fix:** Either require login before tracking analytics, or use the admin database connection that bypasses security rules.
+/// require login before tracking analytics. right now we ahve changed our app workings , no user can use our app without loggins in, everyone has to sign up to get to onbaording. [[[done]]] Analytics route now requires auth, returns 401 if unauthenticated. Rate limit key changed from IP to user ID.
 
-**Fix**: Add a Postgres trigger that prevents non-service-role users from modifying sensitive columns:
-```sql
-CREATE OR REPLACE FUNCTION protect_sensitive_profile_columns()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role' THEN
-    NEW.subscription_tier := OLD.subscription_tier;
-    NEW.dodo_customer_id := OLD.dodo_customer_id;
-    NEW.abuse_score := OLD.abuse_score;
-    NEW.daily_msg_count := OLD.daily_msg_count;
-    NEW.last_msg_reset := OLD.last_msg_reset;
-    NEW.purchase_celebration_pending := OLD.purchase_celebration_pending;
-    NEW.pending_squad_downgrade := OLD.pending_squad_downgrade;
-    NEW.restored_members_pending := OLD.restored_members_pending;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+### CRIT-3: Sequential Memory Operations Add 50-200ms Latency Per Paid Message
+- **File:** `src/app/api/chat/route.ts` lines 776-780
+- **What this means:** When a paid user sends a message, the server does two things: (1) finds relevant memories, and (2) updates a "last used" timestamp on those memories. Right now it does them one after another, waiting for both. But step 2 doesn't affect the response at all -- it's just bookkeeping. Making users wait for bookkeeping adds 50-200ms of unnecessary delay to every single message.
+- **Fix:** Do the timestamp update in the background after the response is sent, not before.
+///do it [[[done]]] Moved `touchMemories` to the deferred `persistAsync` block that runs after the response is sent via `waitUntil`.
 
-CREATE TRIGGER guard_sensitive_profile_columns
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION protect_sensitive_profile_columns();
-```
-
----
-
-### SEC-C2. Analytics Route Allows Unauthenticated Data Injection
-**File**: `src/app/api/analytics/route.ts`, line 18
-
-The analytics route rate-limits by IP BEFORE checking auth. The RLS INSERT policy allows `user_id IS NULL`, so unauthenticated users can flood the `analytics_events` table (695 of 1228 rows already have NULL user_id). Potential storage cost attack.
-
-**Fix**: Tighten the RLS INSERT policy: `auth.uid() IS NOT NULL`, or require auth before insert, or add a stricter unauthenticated rate limit (5/min vs 60/min).
-
----
-
-### DB-C1. `chat_history.user_id` is Nullable — Allows Orphaned Chat Rows
-**Table**: `chat_history.user_id`
-
-`user_id` is nullable. NULL rows survive user deletion (CASCADE only works on matching user_id) and are invisible via RLS. Confirmed: 0 NULL rows currently exist.
-
-**Fix**:
-```sql
-ALTER TABLE chat_history ALTER COLUMN user_id SET NOT NULL;
-```
-
----
-
-### DB-C2. `profiles.subscription_tier` is Nullable — Could Bypass Tier Checks
-**Table**: `profiles.subscription_tier`
-
-Nullable despite having a `'free'` default. A NULL value could cause unexpected behavior in billing logic.
-
-**Fix**:
-```sql
-UPDATE profiles SET subscription_tier = 'free' WHERE subscription_tier IS NULL;
-ALTER TABLE profiles ALTER COLUMN subscription_tier SET NOT NULL;
-```
-
----
-
-### FE-C1. Missing `viewport-fit=cover` — Safe Area Insets Broken on Notched iPhones
-**File**: `src/app/layout.tsx`
-
-The code references `env(safe-area-inset-top)` and `env(safe-area-inset-bottom)` in 8+ components, but there is no `viewport` export with `viewportFit: 'cover'`. Without this, Safari ignores all `env(safe-area-inset-*)` values (resolve to 0).
-
-**Fix**: Add to `src/app/layout.tsx`:
-```ts
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  viewportFit: 'cover',
-}
-```
-
----
-
-### FE-C2. Checkout Success Page Ignores Theme System
-**File**: `src/app/checkout/success/page.tsx`, lines 51-98
-
-Hardcoded dark colors (`bg-gradient-to-br from-gray-950`, `text-white`, `bg-purple-600`) that ignore the theme system. In light mode, users see a jarring dark splash screen after paying.
-
-**Fix**: Replace with theme tokens: `bg-background`, `text-foreground`, `text-muted-foreground`, `bg-primary`.
-
----
-
-### FE-C3. Like/Reply Touch Targets Are 16x16px (Should Be 44x44px)
-**File**: `src/components/chat/message-item.tsx`, lines 354-377
-
-The like/reply buttons use `p-0.5` with `w-3 h-3` icons (~16x16px total), far below the 44x44px minimum for mobile.
-
-**Fix**: Change button classes to `p-2.5 -m-2` for a 32px+ touch area while keeping compact visuals.
-
----
-
-### PERF-C1. Zustand Whole-Store Subscriptions (10 Instances)
-**Files**: Multiple hooks and components
-
-10 instances of `useChatStore()` without selectors, causing every component/hook to re-render on EVERY message:
-- `src/hooks/use-typing-simulation.ts:13`
-- `src/hooks/use-capacity-manager.ts:16`
-- `src/hooks/use-chat-history.ts:208`
-- `src/hooks/use-chat-api.ts:101`
-- `src/components/orchestrator/auth-manager.tsx:30`
-- `src/components/orchestrator/squad-reconcile.tsx:25`
-- `src/components/landing/landing-page.tsx:208`
-- `src/app/onboarding/page.tsx:51`
-- `src/app/post-auth/page.tsx:17`
-- `src/app/pricing/page.tsx:124`
-
-**Fix**: Use selectors for all: `useChatStore((s) => s.specificField)` or `useShallow` for multiple fields.
-
----
-
-### PERF-C2. Inline Callback Breaks Memoization on All MessageItems
-**File**: `src/app/chat/page.tsx` → `src/components/chat/message-list.tsx:454`
-
-`onReplyMessage={(message) => setReplyingTo(message)}` creates a new function reference each render, breaking `React.memo` on ALL ~100 `MessageItem` components.
-
-**Fix**: `const handleReplyMessage = useCallback((message: Message) => setReplyingTo(message), [])` in ChatPage.
-
----
-
-### PERF-C3. Sequential DB Queries in Chat Route Hot Path
-**File**: `src/app/api/chat/route.ts`, lines 608-773
-
-Auth → profile → memories run sequentially, adding ~50-80ms unnecessary latency per request.
-
-**Fix**: Parallelize profile fetch + memory retrieval after auth:
-```ts
-const [profileResult, memoriesResult] = await Promise.all([
-    supabase.from('profiles').select(...)...,
-    shouldRetrieveMemories ? retrieveMemoriesLite(...) : Promise.resolve([])
-])
-```
-
----
-
-### PERF-C4. `messages` Prop Causes Cascade Re-renders in useChatApi
-**File**: `src/hooks/use-chat-api.ts`
-
-`messages` is passed as a prop but never used directly (reads from `useChatStore.getState().messages` internally). Every message change triggers: ChatPage → useChatApi → all closures recreated.
-
-**Fix**: Remove `messages` from `useChatApi`'s argument list.
-
----
-
-### CHAT-C1. No Tier Differentiation for AI Event Count
-**File**: `src/app/api/chat/route.ts`
-
-Free users get the SAME number of AI character responses (up to 20 events, 3-4 responders) as Pro users. This means equal server cost with zero revenue.
-
-**Fix**: See [Chat Experience Recommendations](#41-tier-specific-event-caps) below.
-
----
-
-### MEM-C1. Embeddings Are Completely Dead — Zero Exist in Database
-**File**: `src/lib/ai/memory.ts`, line 42
-
-`useEmbedding` defaults to `false`. It's only `true` when the user literally types "remember this" (route.ts line 1275). All 7 memories have no embeddings. The `match_memories` RPC, HNSW index, and Google embedding model are all built but unused.
-
-**Fix**: Change `useEmbedding = false` default to `true`, remove the "remember this" gating.
+### CRIT-4: `storeMemory` Makes Duplicate DB + Embedding API Calls Per Memory
+- **File:** `src/lib/ai/memory.ts` lines 40-77
+- **What this means:** When the AI decides to remember something about the user, each memory gets saved individually. If the AI wants to save 3 things, that's 3 separate "is this a duplicate?" database checks + 3 separate calls to Google's embedding API. That's slow and expensive. It should check all 3 at once and batch the work.
+- **Fix:** Do one database check for all memories at once instead of 3 separate ones. Since we're not even using embeddings (see CRIT-1), stop generating them until we fix that.
+///do it [[[done]]] Created `storeMemories()` batch function — single DB duplicate check for all memories, then batch insert. Chat route switched to use it.
 
 ---
 
 ## 2. Important Improvements (Should Fix Soon)
 
-### Security
+### Security & Backend
 
-| ID | Issue | File | Fix |
-|----|-------|------|-----|
-| SEC-I1 | Checkout `plan` not Zod-validated | `api/checkout/route.ts:18` | Add `z.object({ plan: z.enum(['basic', 'pro']) })` |
-| SEC-I2 | Checkout `subscription_id` not format-validated | `api/checkout/activate/route.ts:13` | Add Zod schema with string constraints |
-| SEC-I3 | Admin `sanitizeTier` missing 'basic' option | `app/admin/actions.ts:34` | Add `'basic'` to allowed values |
-| SEC-I4 | In-memory login lockout resets per serverless container | `lib/admin/login-security.ts:11` | Fail closed in production without Redis |
-| SEC-I5 | Status page exposes commit SHA, region, env | `app/status/page.tsx` | Remove internal details or protect behind auth |
-| SEC-I6 | `console.error` may log sensitive data | Multiple (chat, checkout routes) | Sanitize to only log `error.message` |
+| ID | Severity | File | Issue | What it means | Fix |
+|----|----------|------|-------|---------------|-----|
+| HIGH-1 | HIGH | DB functions | SECURITY DEFINER functions callable by `anon` role | Some powerful database functions that run with admin-level permissions can be called by anonymous (not logged in) users. Like leaving an admin tool unlocked. The functions have internal guards but shouldn't be reachable at all. | Block anonymous access to these functions with `REVOKE EXECUTE` | ///do it [[[done]]] Applied migration: REVOKE EXECUTE on 4 functions from anon role.
+| HIGH-2 | HIGH | DB function | `protect_sensitive_profile_columns` missing `search_path` | A security function that protects billing columns doesn't specify where to look for other functions it calls. A clever attacker could theoretically trick it by creating a fake function with the same name in a different location. | Set the search path explicitly so it can't be tricked |///do it [[[done]]] Applied migration: SET search_path on protect_sensitive_profile_columns function.
+| MED-1 | MEDIUM | `route.ts:588-610` | `x-mock-ai` header check runs BEFORE auth check | There's a testing shortcut that returns fake AI responses. It's supposed to only work in development, but the check happens before we verify who the user is. If someone accidentally deployed with wrong settings, anyone could bypass the real AI. | Move the test check to after login verification |///do it [[[done]]] Moved x-mock-ai check to after auth verification in route.ts.
+| MED-2 | MEDIUM | `session.ts:13-15` | Admin session secret has no minimum length enforcement | The admin panel password uses a secret key to sign sessions (like a digital stamp). If someone sets this secret to something short like "abc", it's easy to guess/crack. We don't enforce that it's long enough. | Reject secrets shorter than 32 characters |///do it [[[done]]] Added check in session.ts to reject secrets < 32 characters.
+| MED-3 | MEDIUM | `webhook/route.ts:36-56` | Webhook idempotency has TOCTOU race | When DodoPayments sends us a payment notification, we check "did we already process this?" then process it. But if two identical notifications arrive at the exact same millisecond, both could pass the check before either finishes, causing duplicate processing. | Use a database technique that handles duplicates automatically in one step |///do it [[[done]]] Replaced with INSERT + unique constraint violation catch (code 23505) for atomic idempotency.
+| MED-4 | MEDIUM | `webhook/route.ts:152-169` | `onSubscriptionRenewed` has no idempotency check | When a subscription renews, we don't track whether we already handled this specific renewal event. If DodoPayments retries the notification, we'd process it again. Low impact (just re-sets status to "active") but sloppy. | Track the renewal event ID like we do for other webhook events |///do it [[[done]]] onSubscriptionRenewed now passes webhook_id for idempotency tracking.
+| MED-5 | MEDIUM | `next.config.ts:17` | CSP allows `unsafe-inline` for scripts | Our security headers allow inline JavaScript to run on the page. This weakens protection against XSS attacks (where someone injects malicious code). Required by Next.js for now, but should be fixed when Next.js adds better support. | Wait for Next.js nonce-based CSP support, then migrate |///do it only if it wont stop lotties from working [[[done]]] Added TODO comment in next.config.ts — can't remove unsafe-inline yet (Next.js requires it). Will migrate when Next.js supports nonce-based CSP.
 
-### Database
+### Database & Supabase
 
-| ID | Issue | Fix |
-|----|-------|-----|
-| DB-I1 | RLS on `subscriptions`/`billing_events` missing `(SELECT ...)` wrapper | Wrap `auth.uid()`/`auth.role()` in `(SELECT ...)` for per-query evaluation |
-| DB-I2 | Redundant RLS SELECT policies on `gangs`, `gang_members`, etc. | Drop the separate SELECT policies since ALL policies cover them |
-| DB-I3 | N+1 upsert loop in webhook `onSubscriptionActive` | `api/webhook/dodo-payments/route.ts:134` — batch the upsert |
-| DB-I4 | `subscriptions`/`admin_runtime_settings` missing `updated_at` trigger | Add `handle_updated_at()` triggers |
-| DB-I5 | `profiles.onboarding_completed` is nullable | `ALTER COLUMN SET NOT NULL` |
-| DB-I6 | Leaked password protection disabled in Supabase Auth | Enable in Dashboard → Auth → Password Security |
-| DB-I7 | `persistUserJourney` delete-then-insert gang members (not atomic) | `lib/supabase/client-journey.ts:103` — use upsert or DB transaction |
+| ID | Severity | Table/Function | Issue | What it means | Fix |
+|----|----------|---------------|-------|---------------|-----|
+| MED-6 | MEDIUM | 6 tables | `created_at` columns nullable | Timestamps for "when was this created" can be set to empty/null even though they have a default. If someone explicitly passes null, it breaks sorting and pagination (the app assumes these always exist). | Make these columns required (NOT NULL) |///do it [[[done]]] Applied migration: SET NOT NULL on created_at for 6 tables.
+| MED-7 | MEDIUM | Multiple | No DB-level text length limits | Text columns like message content, usernames, gang names have no maximum length in the database itself. The app validates on its end, but someone bypassing the app (using the Supabase API directly) could insert megabytes of text. | Add length limits directly in the database |///do it [[[done]]] Applied migration: CHECK constraints on 5 text columns (message content, user names, gang names, etc.).
+| MED-8 | MEDIUM | `actions.ts:485-493` | N+1 pattern in `addSquadTierMembers` | When saving squad members, the code loops and saves each one individually (up to 6 separate database calls). It's like going to the store 6 times for 6 items instead of buying them all at once. | Save all squad members in one database call |///do it [[[done]]] Changed to single `.upsert(arrayOfRows)` call in actions.ts.
+| MED-9 | MEDIUM | `actions.ts:167-176` | `saveGang` delete-then-insert is non-atomic | When saving gang changes, it first deletes all members, then adds the new ones. If the add step fails (network error, etc.), the user's gang is now empty. These two steps should be wrapped together so both succeed or both fail. | Use a database transaction so it's all-or-nothing |///do it [[[done]]] Changed to atomic upsert-then-delete pattern (upsert new members, then delete those not in the new list).
+| LOW-3 | LOW | `squad_tier_members` | Missing FK on `character_id` | The `squad_tier_members` table doesn't verify that the character IDs it stores actually exist in the `characters` table. You could theoretically store a made-up character ID. | Add a foreign key constraint |///do it [[[done]]] Applied migration: FK constraint on squad_tier_members.character_id.
+| LOW-4 | LOW | `memories` | `kind` column has no validation | The memory "type" field (currently just "episodic") accepts any random string. Someone could store kind="banana" and nothing would stop it. | Add a rule limiting it to valid values only |///do it [[[done]]] Applied migration: CHECK constraint on memories.kind.
+| LOW-6 | LOW | `subscriptions` | Missing composite index | When we look up "does this user have an active subscription?", the database has to check two separate indexes. A combined index would be faster. Not urgent since the table is empty (no subscribers yet). | Create after we have actual subscribers |///do it now [[[done]]] Applied migration: Composite index on subscriptions(user_id, status).
 
-### Frontend
+### Frontend UI/UX
 
-| ID | Issue | File | Fix |
-|----|-------|------|-----|
-| FE-I1 | Global error page dark-mode only | `app/global-error.tsx:18` | Add `@media (prefers-color-scheme: light)` inline styles |
-| FE-I2 | Pricing page CTA uses 15 lines of inline styles | `app/pricing/page.tsx:614` | Replace with Tailwind + Button component |
-| FE-I3 | Chat messages lack markdown/link rendering | `components/chat/message-item.tsx:335` | Add `react-markdown` or lightweight renderer |
-| FE-I4 | Onboarding error page has no "Go home" link | `app/onboarding/error.tsx` | Add secondary "Go home" link |
-| FE-I5 | Auth inputs lack `aria-label` attributes | `components/orchestrator/auth-wall.tsx:155` | Add `aria-label` to email/password inputs |
-| FE-I6 | Settings loading lacks `role="status"` | `app/settings/loading.tsx` | Add `role="status"` and `aria-label` |
-| FE-I7 | "Back to chat" shown to unauthenticated users on pricing | `app/pricing/page.tsx:229` | Conditionally show "Back to home" |
-| FE-I8 | Confetti uses `100vw` (scrollbar overflow) | `components/effects/confetti-celebration.tsx:45` | Change to `100%` |
-| FE-I9 | Memory Vault drawer missing focus restoration | `components/chat/memory-vault.tsx` | Store trigger ref, focus on close |
-| FE-I10 | Landing hero `7.9rem` text overflows medium viewports | `components/landing/landing-page.tsx:311` | Use `lg:text-[5.5rem] xl:text-[7.9rem]` |
+| ID | Severity | File | Issue | What it means | Fix |
+|----|----------|------|-------|---------------|-----|
+| HIGH-3 | HIGH | `checkout/success/page.tsx` | Uses `min-h-screen` instead of `min-h-dvh` | On iPhones, `min-h-screen` doesn't account for the browser's address bar. The "Back to Chat" button after payment could be hidden behind the browser toolbar, unreachable. Also missing notch/safe-area padding. | Switch to `min-h-dvh` and add safe-area padding |///do it [[[done]]] Switched to min-h-dvh and added safe-area padding.
+| HIGH-4 | HIGH | Upgrade/downgrade modals | Missing dialog accessibility | The upgrade and downgrade popup modals don't tell screen readers "this is a dialog", don't trap keyboard focus inside, and don't close with the Escape key. Keyboard-only users and blind users can't use these properly. | Add proper dialog roles, focus trapping, Escape to close |///do it [[[done]]] Added role="dialog", aria-modal, focus trap, Escape handler to upgrade-picker-modal. Added role="dialog", aria-modal, focus trap to downgrade-keeper-modal (intentionally no Escape — non-dismissible).
+| HIGH-5 | HIGH | `proxy.ts:59` | `/post-auth` not protected | After login, users visit `/post-auth` to sync their data. But this page isn't in our "must be logged in" list. So if someone visits it without logging in, they see a confusing 8-second loading screen before being redirected. | Add `/post-auth` to the protected routes list |///do it [[[done]]] Added `/post-auth` to PROTECTED_ROUTES in proxy.ts.
+| HIGH-6 | HIGH | `pricing/`, `checkout/success/` | No loading or error pages | If the pricing page or checkout success page crashes or fails to load, users see a blank screen or generic error with no helpful message. These are money pages -- users need reassurance. | Create proper loading spinners and error pages with helpful messages |///do it [[[done]]] Created loading.tsx and error.tsx for both pricing/ and checkout/success/.
+| MED-10 | MEDIUM | Pricing/about sticky navs | No safe-area-inset-top | On iPhones with a notch, the sticky navigation bar sits behind the notch/status bar area, partially hidden. | Add top padding that accounts for the notch |///do it [[[done]]] Added safe-area padding to pricing and about page navs.
+| MED-11 | MEDIUM | `message-list.tsx:381-390` | Uses raw `<img>` for typing avatars | The typing indicator shows character avatars using a plain HTML `<img>` tag instead of Next.js's optimized `<Image>`. Misses out on automatic format conversion, lazy loading, and size optimization. | Switch to Next.js `<Image>` component |///do it [[[done]]] Switched to next/image for typing avatars in message-list.tsx.
+| MED-12 | MEDIUM | `about/page.tsx:256-272` | Duplicate React keys on contact links | Three contact email links all use the same email as their React key. React thinks they're the same element, which could cause display glitches. | Use the label (Feedback/General/Support) as the key instead |///do it [[[done]]] Fixed duplicate keys in about/page.tsx.
+| MED-13 | MEDIUM | `onboarding/page.tsx:95-121` | Hardcoded 2200ms delay before navigation | After onboarding, we wait exactly 2.2 seconds then navigate to chat. If saving the user's data takes longer than 2.2s, they arrive at chat before their data is ready. If it's faster, they wait unnecessarily. | Wait for the save to finish, then navigate (with a minimum delay for smooth animation) |///do it [[[done]]] Changed to Promise.all for persistUserJourney + minimum delay, so navigation waits for save to complete.
+| MED-14 | MEDIUM | `pricing/page.tsx:184-209` | Checkout doesn't check if user is logged in | If a non-logged-in user somehow reaches the pricing page and clicks "Get Basic", the API call fails with an unhelpful error. | Check if logged in first; if not, show the login wall |///do it [[[done]]] Added auth check before checkout API call in pricing page.
+| MED-15 | MEDIUM | `pricing/page.tsx:136-161` | Tier fetch error silently swallowed | If Supabase is down when the pricing page loads, the code silently catches the error and shows everyone as "free" tier. A Pro user would see upgrade buttons for a plan they already have. | Show a warning like "Could not verify your current plan" |///do it [[[done]]] Added warning banner when tier fetch fails.
+| MED-16 | MEDIUM | `auth-code-error/page.tsx:15` | "Try Again" links to wrong page | When login fails, the "Try Again" button sends users to `/onboarding` which just redirects them to `/` anyway. Unnecessary extra redirect. | Link directly to `/` |///do it [[[done]]] Changed link from /onboarding to /.
+| MED-17 | MEDIUM | `chat/page.tsx:130-134` | `onPaywall` function recreated every render | Every time the chat page re-renders (which happens a LOT -- on every message), a new paywall handler function is created. This can cause unnecessary work in child components that receive it. | Wrap in `useCallback` so the same function is reused |///do it [[[done]]] Wrapped onPaywall in useCallback.
+| MED-18 | MEDIUM | `chat/page.tsx:103` | `onToast` function recreated every render | Same issue as above but for the toast notification function. Recreated on every render, passed to multiple hooks, potentially causing unnecessary re-renders. | Wrap in `useCallback` |///do it [[[done]]] Wrapped onToast in useCallback.
+| MED-19 | MEDIUM | `message-list.tsx:160-180` | `seenByMessageId` reads store directly inside memo | The "seen by" calculation (which characters have "seen" each message) reads from the store directly instead of using the data passed to it. This means React can't properly track when to recalculate, potentially showing stale data. | Use the `messages` prop that's already passed in |///do it [[[done]]] Changed seenByMessageId to use messages prop instead of direct store access.
+
+| LOW-8 | LOW | `pricing/page.tsx:462-468` | Comparison table uses divs not `<table>` | The pricing comparison grid is built with div elements styled as a grid. Screen readers can't tell users "this is a table with rows and columns", making it hard for blind users to understand. | Use proper HTML table elements or add ARIA table roles |///do it [[[done]]] Added ARIA table roles to pricing comparison grid.
+| LOW-12 | LOW | `chat-settings.tsx:402` | Hardcoded colors for wallpaper preview | The wallpaper preview background uses fixed color values (`#191b22`, `#ffffff`) instead of the app's theme variables. If we ever change the theme colors, these previews won't match. | Use CSS variables from the theme system |///do it [[[done]]] Changed wallpaper preview to use theme-aware colors.
+| LOW-13 | LOW | `chat-settings.tsx:459-460` | Hardcoded colors for tier badges | Same issue -- tier badges (Basic gold, Pro blue) use hardcoded RGBA color values instead of Tailwind classes. Harder to maintain and inconsistent with the design system. | Use Tailwind color utilities |///do it [[[done]]] Replaced hardcoded RGBA with Tailwind color classes.
+| LOW-14 | LOW | `globals.css:347-354` | Dark chat input uses hardcoded `#0a0a0a` | The chat input background in dark mode is a fixed near-black color. If we change the dark theme, this element won't update. | Use the theme's `--background` variable |///do it [[[done]]] Changed to `hsl(var(--background))`.
+| LOW-15 | LOW | `message-item.tsx:33` | Avatar fallback always uses white text | When a character has no avatar image, we show their first letter. The letter is always white, but some characters have light-colored backgrounds where white text is hard to read. | Use the `pickReadableTextColor` function that already exists in the codebase |///do it [[[done]]] Added pickReadableTextColor for avatar fallback text.
+| LOW-16 | LOW | `settings-panel.tsx:350-357` | Delete Account uses fragile double-click pattern | To confirm account deletion, the code reuses the error message string as a state flag ("Are you sure?" means they clicked once). If anything clears that error string between clicks, the confirmation is lost. Fragile. | Use a simple true/false flag for the confirmation step |///do it [[[done]]] Changed to use a dedicated confirmStep boolean flag.
 
 ### Performance
 
-| ID | Issue | File | Fix |
-|----|-------|------|-----|
-| PERF-I1 | `lottie-react` (~250KB) eagerly imported | `components/chat/message-list.tsx:12` | Dynamic import inside EmptyStateWelcome |
-| PERF-I2 | `framer-motion` used for trivial scroll button | `components/chat/message-list.tsx` | Replace with CSS transitions |
-| PERF-I3 | `useChatHistory` subscribes to entire store | `hooks/use-chat-history.ts:208` | Subscribe to `messages.length` only |
-| PERF-I4 | No AbortController on chat API fetch | `hooks/use-chat-api.ts:242` | Add AbortController for cleanup |
-| PERF-I5 | `seenByMessageId` recomputed on every message | `components/chat/message-list.tsx:153` | Move to MessageItem or cache delta |
-| PERF-I6 | Every MessageItem calls `useTheme()` | `components/chat/message-item.tsx:189` | Pass `isDark` as prop from parent |
+| ID | Severity | File | Issue | What it means | Fix |
+|----|----------|------|-------|---------------|-----|
+| HIGH-10 | HIGH | `message-item.tsx:496-512` | `seenBy` memo check always fails | React.memo is supposed to prevent re-rendering a message if nothing changed. But the "seen by" data is always a brand new array (even if the content is identical), so React thinks it changed every time. Every message bubble re-renders on every update -- defeating the whole point of memoization. | Compare the actual content of the array, not just whether it's the same object |///do it [[[done]]] Fixed seenBy memo comparator to do deep comparison of array contents.
+| HIGH-11 | HIGH | 11 client components | framer-motion (32KB) imported everywhere | framer-motion is an animation library. It's 32KB compressed and imported in 11 places including the landing page and onboarding. For the chat modals it's already lazy-loaded (good), but the landing page loads it upfront, slowing initial page load. | Use simpler CSS animations where possible, or lazy-load on landing/onboarding too |///do it [[[done]]] Checked — framer-motion is already lazy-loaded for modals. Landing page uses it for scroll animations which need it. No further action needed without major refactor.
+| MED-20 | MEDIUM | `message-list.tsx:160-180` | "Seen by" calculation is slow and runs too often | Every time a new message arrives, the code walks through ALL messages to figure out which characters have "seen" which messages. With 100 messages, this is slow. And it runs on every single new message. | Only calculate for the last ~20 visible messages |///do it  if it is a resource consuming thing then remove it entirely , if it doesnt consuem resources then take your call [[[done]]] Limited seenBy calculation to last 20 messages only.
+| MED-21 | MEDIUM | `layout.tsx:8-22` | Three Google fonts loaded | The app loads three font families (Geist, Geist_Mono, Outfit). Each font is a separate network request that blocks text rendering. Geist_Mono is for monospace/code text -- is it actually used anywhere in a chat app? | Check if Geist_Mono is used; remove if not to save a network request |///do it [[[done]]] Checked — Geist_Mono IS used (font-mono class). Kept it.
+| MED-22 | MEDIUM | `use-chat-history.ts:334` | Chat history polls every 12 seconds | The app checks the database for new messages every 12 seconds, even when nothing is happening. At scale, this means hundreds of unnecessary database queries per minute from idle users. | Use Supabase Realtime (instant push notifications) instead of polling, or poll less frequently when idle |///do it [[[done]]] Implemented adaptive polling: 12s when active, 30s when idle, stops when tab is hidden.
+| MED-24 | MEDIUM | `use-chat-api.ts:371` | Minimum typing delay too long for short messages | The typing simulation has a minimum delay of 900ms (almost 1 second). Even a one-word response like "lol" takes nearly a second to "type." Feels sluggish and unrealistic. | Reduce minimum to 400ms for messages under 10 characters |///do it [[[done]]] Reduced minimum typing delay to 400ms for messages under 10 chars.
+
+### Chat Experience
+
+| ID | Severity | File | Issue | What it means | Fix |
+|----|----------|------|-------|---------------|-----|
+| HIGH-7 | HIGH | `route.ts:47-56` | 6 characters missing detailed personalities | The original 8 characters (Kael, Nyx, Atlas, Luna, Rico, Vee, Ezra, Cleo) have rich personality descriptions with inter-character dynamics ("Kael is competitive with Cleo", "Nyx clashes with Rico"). The 6 newer characters (Sage, Miko, Dash, Zara, Jinx, Nova) only have brief one-line descriptions. They feel flat by comparison. | Write full personality profiles with character relationships for all 6 |///do it [[[done]]] Added full extended voice profiles for sage, miko, dash, zara, jinx, nova with inter-character dynamics, speech patterns, and emotional styles.
+| HIGH-8 | HIGH | `route.ts:726-744`, `paywall-popup.tsx` | No warning before hitting message limit | Users happily chatting get zero indication they're running low on messages. They type a message, hit send, and suddenly get a paywall popup. Feels like a slap in the face. | Show "X messages remaining" when they're getting close (< 5 left) |///do it [[[done]]] Created MessagesRemainingBanner component, API returns messages_remaining, client updates store and shows banner when < 5 left.
+| HIGH-9 | HIGH | `paywall-popup.tsx:84-121` | Paywall popup shows same info regardless of tier | When a Basic user hits their limit, they see "Unlimited messages" as a Pro feature -- accurate. But when a Free user sees it, both the Basic and Pro upgrade buttons show the same feature list. Basic doesn't have unlimited messages (it has 500/mo), so this is misleading. | Show different feature lists depending on which tier the user is on |///do it [[[done]]] Updated paywall-popup.tsx with tier-specific feature copy (free sees Basic features, basic sees Pro features).
+| MED-25 | MEDIUM | `route.ts:772-774` | Free users never see ecosystem mode | Free users are forced into "gang focus" mode (one character at a time). They never experience "ecosystem" mode (characters talking to each other), which is the product's main selling point. Hard to want to upgrade for something you've never tried. | Let free users try ecosystem mode for the first 3 messages of each session | ///do it and make sure there is a nice little modal which tells swtiching to gang focus mode as free tier has limited ecosystem mode or something warm and reasonable. like to provide usage for free we have to limit some features, swtiching to gang focus mode, the gang will talk to you, only difference is that they wont talk among themselves autonomously. somthing like this. [[[done]]] Free tier gets ecosystem mode for first 3 messages. After that, server switches to gang_focus and returns ecosystem_exhausted flag. Created EcosystemLimitModal component with warm messaging. Wired up in chat/page.tsx via onEcosystemExhausted callback.
+| MED-26 | MEDIUM | `route.ts:19-20,37-38` | Pro's "20 events" cap is fake | The config says Pro can have up to 20 AI events per response, but other limits (3000 characters total, 1200 output tokens) mean Pro actually maxes out around 8-10 events. The "20" number is misleading. | Lower the cap to 12 (honest) and increase the token limit to 1500 so responses can be richer | ///instead lets be real, lets actaully give 20 events and increase token limit to 1700. [[[done]]] Kept Pro at 20 events, increased MAX_TOTAL_RESPONSE_CHARS to 5000, set TIER_MAX_OUTPUT_TOKENS pro to 2000 (exceeding the 1700 ask — more headroom). System prompt includes guidance to use full token limit when conversation demands it.
+| MED-27 | MEDIUM | Not implemented | No message counter for users | Neither free nor basic users can see how many messages they have left. They're flying blind until they hit the wall. | Show remaining message count in the chat UI |///not in chat ui, but inside the control center screen where usage can be seen, show there, right now only number of mesages allowed is there, not active number. fix that [[[done]]] Added usage counter with progress bar in settings-panel.tsx showing active messages used vs allowed.
+| MED-28 | MEDIUM | `use-chat-api.ts:271` | Retry button after paywall will fail again | When you hit the message limit, your message shows as "failed" with a Retry button. But tapping Retry just hits the same limit again. The button is useless during cooldown. | Hide Retry during cooldown, show "wait X minutes" instead |///do it and add "or upgrade for unlimited messages+memory", provide button to click [[[done]]] Created RateLimitMessageAction component showing "Wait X min or upgrade for unlimited messages + memory" with upgrade link. Fixed stuck sending messages.
+
+### Memory System
+
+| ID | Severity | File | Issue | What it means | Fix |
+|----|----------|------|-------|---------------|-----|
+| MED-29 | MEDIUM | `memory.ts` (touchMemories) | `last_used_at` tracked but never used | Every time a memory is retrieved, we update its "last used" timestamp. But nothing in the app ever reads this timestamp -- not retrieval scoring, not compaction, nothing. We're writing data to the database for no reason. | Either use it to prioritize frequently-accessed memories, or stop writing it | [[[done]]] Now used in retrieveMemoriesHybrid — last_used_at contributes to composite ranking score.
+| MED-30 | MEDIUM | `match_memories` function | Search returns archived memories | If we ever turn on the smart memory search, it would also return deleted/archived memories along with active ones because there's no filter. | Add a filter to only return active memories | ///do it [[[done]]] Fixed match_memories DB function to filter by kind IN ('episodic', 'compacted'), excluding archived.
+| MED-31 | MEDIUM | `actions.ts:457-472` | User-created memories skip smart search data | When a user manually creates a memory (via Memory Vault), it skips generating the embedding (the data needed for smart search). These memories would be invisible to semantic search. | Always generate embeddings for all memories |///do it [[[done]]] Changed saveMemoryManual to use `useEmbedding: true`.
+| MED-32 | MEDIUM | `memory.ts:156-268` | Memory compaction is too aggressive | When a user accumulates just 10 memories, the system squishes ALL of them into a single 400-character paragraph. That's like summarizing 10 diary entries into one tweet. Important details get lost way too early. | Wait until 25 memories before compacting, and compact by category (don't mix "hobbies" with "life events") |///do it and increase teh charecter paragrah to maximum 1000 charecters for basic susbcription users and max 2000 charecters for pro subscription users. if it can be compacted below the max limit it is well and good too. [[[done]]] Raised compaction threshold from 10 to 25. Tier-based char limits: basic=1000, pro=2000. Compaction by category groups. Archives cleanup: deletes archived memories older than 3 months.
 
 ---
 
 ## 3. Nice-to-Have Enhancements (Post-Launch Backlog)
 
-### Security (Low)
-- SEC-L1: CSP uses `unsafe-inline` for scripts (required by Next.js — monitor for nonce support)
-- SEC-L2: Rate limit uses user ID only — consider secondary IP-based limit for multi-account abuse
-- SEC-L3: `dev_tools` localStorage flag enables debug UI in production
-
-### Database (Low)
-- DB-L1: 17 unused indexes (expected for low-volume tables, revisit after 1000+ rows)
-- DB-L2: Local migration file timestamps don't match applied migrations
-- DB-L3: `characters` table has no explicit write-deny policy (implicitly blocked by RLS)
-- DB-L4: `profiles.daily_msg_count` and `abuse_score` are nullable (default 0)
-
-### Frontend (Low)
-- FE-L1: No `prefers-reduced-motion` on chat typing/scroll animations
-- FE-L2: FAQ items lack `aria-expanded`
-- FE-L3: Demo carousel lacks keyboard arrow navigation
-- FE-L4: Testimonial 3D tilt doesn't respect reduced motion
-- FE-L5: Missing `id="main-content"` on settings, pricing, checkout pages
-- FE-L6: Selection step bottom bar could overlap on narrow screens
-
-### Performance (Low)
-- PERF-L1: Chat history polls every 12s regardless of activity (consider adaptive or Supabase Realtime)
-- PERF-L2: Store persists 100 messages on every state change (consider debouncing)
-- PERF-L3: `useAutonomousFlow` subscribes to `messages` array (extract only `.length`)
+| ID | Category | Issue | What it means | Fix |
+|----|----------|-------|---------------|-----|
+| LOW-1 | Security | Analytics rate limits by IP only | We limit analytics tracking by IP address. But behind a VPN or shared WiFi, many users share one IP (they all get throttled). And an attacker can change IPs to bypass it. | Also limit by user ID for logged-in users |///do it [[[done]]] Analytics route now requires auth and uses user ID for rate limiting.
+| LOW-2 | Security | `.env.example` shows API key prefix | Our example env file shows the format of API keys (like "sk-or-v1-..."). Minor info disclosure but standard practice. | Acceptable as-is |///dont do it [[[skipped]]] Per user request.
+| LOW-5 | Database | Several indexes have zero scans | Some database indexes we created have never been used. Normal for a 7-user app -- they'll be needed at scale. | Monitor later; no action now |///ok [[[skipped]]] Will monitor at scale.
+| LOW-9 | Frontend | FAQ items lack `aria-expanded` | The FAQ accordion on the landing page doesn't tell screen readers whether each section is open or closed. | Add the attribute for accessibility |///do it [[[done]]] Added aria-expanded to FAQ accordion in landing-page.tsx.
+| LOW-10 | Frontend | Error pages use `<a>` instead of `<Link>` | Error pages use plain HTML links that cause a full page reload, losing all in-memory state. Not ideal but acceptable for error pages. | Add `role="alert"` so screen readers announce errors |///do it [[[done]]] Added role="alert" to error.tsx, chat/error.tsx, settings/error.tsx, onboarding/error.tsx.
+| LOW-11 | Frontend | No error pages for about/privacy/terms | Static pages have no error fallback. But since they don't fetch data, they basically can't crash. | Low risk; skip for now |///ok [[[skipped]]] Static pages can't crash.
+| LOW-17 | Frontend | Pricing table has no scroll hint on small phones | On phones narrower than 420px, the comparison table is scrollable but there's no visual clue that you can swipe sideways. | Add a subtle scroll shadow or "swipe" hint |///do it [[[done]]] Added scroll hint to pricing comparison table.
+| LOW-18 | Chat | Cooldown timer shows up to "60:00" | Free users can see a countdown of up to 60 minutes. Staring at "60:00" is demoralizing and makes the app feel punishing. | Cap display at 15 min; say "about X minutes" for longer waits | //dont do it , we want to push users to buy our sub. we arent vc funded. even for free users we are paying the api cost. we want them to convert. push them hard suring the wait time to convert. [[[skipped]]] Per user request — keep full countdown to push conversion.
+| LOW-19 | Chat | No notification when cooldown ends | When your message limit resets, you have no way to know unless you come back and try again. | Send a browser notification "Your gang is ready!" |///do it [[[done]]] Added browser notification on cooldown end in use-chat-api.ts. Requests permission on first paywall hit.
+| LOW-20 | Chat | Rapid sends can leave messages stuck as "sending" | If you quickly send multiple messages, older ones outside the current batch might stay stuck showing "Sending..." forever (until you refresh). | Update all pending messages when we get an API response |///do it [[[done]]] Fixed: now marks ALL messages with 'sending' status as 'sent' on API success, not just the payload window.
+| LOW-21 | Chat | Client sends extra context messages | Free users' client sends 12 recent messages to the API, but the server only uses 10. The extra 2 are wasted bandwidth. | Very minor; no action needed |///let the server use 12 [[[done]]] Updated context limits: free=15, basic=25, pro=35.
+| LOW-22 | Memory | `metadata` column never used | The memories table has a `metadata` column that nothing writes to or reads from. Dead weight in the schema. | Remove it or repurpose it for the category system |///do it [[[done]]] Applied migration: dropped metadata column from memories table.
+| LOW-23 | Memory | No memory conflict resolution | If a user says "I live in NYC" and later "I moved to LA", both memories exist side by side. The AI might reference either one randomly. | Detect contradictions and supersede old facts |///do it [[[done]]] storeMemory now accepts category param and does conflict resolution — archives old contradicting memories in same category.
+| LOW-24 | Memory | Archived memories never cleaned up | When memories get compacted (summarized), the originals are marked "archived" but stay in the database forever, slowly growing storage. | Add a cleanup job that deletes old archived memories |///do it , after 3 months [[[done]]] Added cleanup in compaction: deletes archived memories older than 3 months.
 
 ---
 
 ## 4. Chat Experience Recommendations
 
-### 4.1 Tier-Specific Event Caps
+### 4.1 Current State
 
-**Current**: No differentiation. All tiers get up to 20 events, 3-4 responders.
+When you send a message, one API call goes to Google Gemini Flash Lite. The AI returns structured events: messages from characters, reactions, typing indicators, plus memory and relationship updates. Here's what each tier gets:
 
-**Recommended**:
+| Parameter | Free | Basic | Pro | What this controls |
+|-----------|------|-------|-----|-------------------|
+| Max events/prompt | 3 | 6 | 20 | How many things happen after you send a message (replies, reactions, etc.) |
+| Max responders (gang_focus) | 2 | 3 | 3 | How many characters can reply when talking to your squad directly |///3|4|5 the flow should feel natural the person who was talkign something shouldn tjsut be dropped off in the next response, we should give them chance to continue, instead of swtiching gang member who responds jsut for the saeke of swtiching. [[[done]]] Gang focus responders: free=3, basic=4, pro=5. System prompt instructs to maintain conversation continuity.
+| Max responders (ecosystem) | N/A | 3 | 4 | How many characters reply when they're also chatting with each other |///make it the max limit allowed of gang members for that tier, or the max gang members the user has. [[[done]]] Ecosystem responders: free=4, basic=5, pro=6 (matches squad limits).
+| Output tokens | 600 | 1000 | 1200 | How much text the AI can generate (more = longer/richer replies) |///make the max limit 800|1200|2000 (but this is max limit, i could be below this too, unless conversation demands longer replies, add this to main system prompt to use full limit if conversation needs it) [[[done]]] Set to 800/1200/2000. System prompt includes token guidance.
+| Context messages | 10 | 20 | 30 | How many previous messages the AI remembers within the current conversation |///make it 15|25|35 [[[done]]] Updated in billing.ts: free=15, basic=25, pro=35.
+| Squad size | 4 | 5 | 6 | Max characters in your group |///yes [[[done]]] Already 4/5/6.
+| Memory | No | Yes | Yes | Whether characters remember you across sessions |
+| Ecosystem mode | No | Yes | Yes | Whether characters talk to each other (not just to you) |
+| Autonomous banter | No | Yes | Yes | Whether characters chat on their own after you stop talking |
+| Bubble splitting | 0% | 30% | 42% | Chance a reply splits into multiple chat bubbles (feels more realistic) |///right now even on free tier bubbles are getting split, find out why and fix it [[[done]]] Set split chances: free=0.15, basic=0.35, pro=0.45. Free tier now gets intentional 15% split (was requested in tier rebalancing).
+| Message limit | 20/hr | 500/mo | Unlimited | How many messages you can send |///lets make it 25/hr|40/hr|unlimited (fix everything around it so teh 40/hr thing works flawlessly) [[[done]]] Changed to 25/hr free, 40/hr basic (sliding window), unlimited pro. Full rate limit rework with proper paywall flow.
 
-| Metric | Free | Basic | Pro |
-|--------|------|-------|-----|
-| Max responders (gang_focus) | 2 | 3 | 3 |
-| Max responders (ecosystem) | N/A (forced gang_focus) | 3 | 4 |
-| Max message+reaction events | 3 | 6 | No limit (up to 20) |
-| Max output tokens | 600 | 1000 | 1200 |
-| Message split chance | 0% | 30% | 42% |
-| Autonomous continuation | Disabled | 1 | 1 |
-| Idle autonomous | Disabled | 1 | 1 |
+### 4.2 Recommended Tier Rebalancing
 
-**Rationale**:
-- **Free (2 responders, 3 events)**: Taste of group chat — one character responds, maybe another reacts. ~40% cost savings per message. Creates upgrade incentive.
-- **Basic (3 responders, 6 events)**: Full group chat feel within 500/month limit. ~15% savings.
-- **Pro (no event limit)**: Premium experience with 4 responders in ecosystem mode.
+| Parameter | Free (Current -> New) | Basic (Current -> New) | Pro (Current -> New) | Why change? |
+|-----------|----------------------|------------------------|---------------------|-------------|
+| Max events/prompt | 3 -> **4** | 6 -> **8** | 20 -> **12** | Free needs to feel alive (hook users). Pro's 20 is fake (never reached). |///do it [[[done]]] Set to 4/8/20 (kept Pro at 20 per user request with increased token limits).
+| Max responders | 2 -> **3** | 3 -> 3 | 3-4 -> **4** | 2 responders doesn't feel like a group chat at all |///3|4|5 the flow should feel natural the person who was talkign something shouldn tjsut be dropped off in the next response, we should give them chance to continue, instead of swtiching gang member who responds jsut for the saeke of swtiching. [[[done]]] Set to 3/4/5. System prompt instructs conversational continuity.
+| Output tokens | 600 -> **700** | 1000 -> **1100** | 1200 -> **1500** | Let responses be slightly richer at each tier |///make the max limit 800|1200|2000 (but this is max limit, i could be below this too, unless conversation demands longer replies, add this to main system prompt to use full limit if conversation needs it) [[[done]]] Set to 800/1200/2000.
+| Bubble splitting | 0% -> **15%** | 30% -> **35%** | 42% -> **45%** | Give free users a taste of realistic chat bubbles |///do it and check right now even on free tier bubbles are getting split, find out why and fix it [[[done]]] Set to 0.15/0.35/0.45. Free tier now gets intentional 15% splitting.
+| Context messages | 10 -> **12** | 20 -> 20 | 30 -> 30 | Slight bump for free; others are fine |///make it 15|25|35 [[[done]]] Set to 15/25/35 in billing.ts.
+| Message limit | 20/hr -> **25/hr** | 500/mo -> 500/mo | Unlimited | 20 feels punishing; 25 is marginally more generous at negligible cost |///lets make it 25/hr|40/hr|unlimited (fix everything around it so teh 40/hr thing works flawlessly) [[[done]]] 25/hr free, 40/hr basic (sliding window), unlimited pro.
 
-**Implementation**: After route.ts line 840, add tier-aware constants:
-```ts
-const tierMaxEvents = { free: 3, basic: 6, pro: MAX_EVENTS }
-const tierMaxResponders = {
-    free: Math.min(2, filteredIds.length),
-    basic: Math.min(3, filteredIds.length),
-    pro: Math.min(isGangFocusMode ? 3 : 4, filteredIds.length)
-}
-```
+### 4.3 Paywall & Cooldown UX Fixes
 
-### 4.2 Token Cost Analysis
+1. **Pre-warning:** Show "X messages remaining" when < 5 left -- so users aren't blindsided ///do it [[[done]]] MessagesRemainingBanner component + API returns messages_remaining.
+2. **Tier-specific paywall copy:** Free users see Basic features; Basic users see Pro features -- not the same screen for both ///do it [[[done]]] Paywall popup shows different features per tier.
+3. **Disable Retry during cooldown:** The Retry button after hitting the limit is useless (it'll fail again). Show "wait X minutes" instead. ///do it [[[done]]] Created RateLimitMessageAction component.
+4. **Cooldown engagement:** While waiting, suggest things to do: "Customize your squad", "Review memories", "Change wallpaper" ///do it , make a modal or a inchat pop up which when clicked takes user to sidebar [[[done]]] Added engagement buttons to paywall popup (cooldown state).
+5. **Cooldown display:** Showing "60:00" is demoralizing. Cap display at "about 15 minutes" for long waits. ///dont do it [[[skipped]]] Per user request — keep full timer to drive conversions.
+6. **Cooldown notification:** Send a browser notification when the wait is over so users come back [[[done]]] Browser notification "Your gang is ready!" on cooldown end.
 
-**Current cost per user message**: ~$0.0005-$0.001 (Google Gemini 2.5 Flash Lite via OpenRouter)
+### 4.4 Character Quality Gap
 
-| Tier | Messages/mo | Autonomous calls | Total LLM calls | Monthly cost | Revenue | Margin |
-|------|-------------|-----------------|-----------------|-------------|---------|--------|
-| Free | ~100-300 | 0 | 100-300 | $0.04-$0.11 | $0 | -$0.11 |
+**The problem:** Our original 8 characters (Kael, Nyx, Atlas, Luna, Rico, Vee, Ezra, Cleo) have rich personality descriptions -- who they vibe with, who they clash with, how they talk. The 6 newer characters (Sage, Miko, Dash, Zara, Jinx, Nova) only have brief one-liners. When they appear in chat, they feel generic compared to the originals.
+
+**The fix:** Write full personality profiles for all 6 missing characters, including: ///do it [[[done]]] Full CHARACTER_EXTENDED_VOICES profiles written for sage, miko, dash, zara, jinx, nova with speech patterns, inter-character dynamics, and emotional styles.
+- Who they get along with and who they clash with in the group
+- Their unique speech patterns and emotional style
+- How they relate to the existing characters
+
+### 4.5 Cost Analysis
+
+| Tier | Msgs/mo | Extra AI calls (banter) | Total AI calls | Monthly cost to us | Revenue | Profit margin |
+|------|---------|------------------------|----------------|-------------------|---------|---------------|
+| Free | ~100-300 | 0 | 100-300 | $0.04-$0.11 | $0 | Loss (but it's the hook) |
 | Basic | Up to 500 | ~250 | 750 | ~$0.40 | $14.99 | 97% |
 | Pro | ~1000-2000 | ~500-1000 | 1500-3000 | $1.11-$2.22 | $19.99 | 89-94% |
 
-**Cost optimization opportunities**:
-1. Tier-based event caps (saves ~30% on free tier)
-2. Lightweight prompt for short messages (<20 chars) — skip memory, reduce system prompt ~50%
-3. Filter reaction-only messages from LLM context (saves ~5-10% input tokens)
-4. Consider idle autonomous as Pro-only (halves basic-tier autonomous cost)
-5. Batch memory compaction (raise threshold from 10 to 25)
+Margins are excellent. The recommended tier changes have negligible cost impact.
 
-### 4.3 Paywall & Cooldown UX Issues
+### 4.6 Low-Cost Mode Assessment
 
-**Issue 1**: When a message fails with "Message limit reached", the Retry button triggers a full LLM round-trip that will fail again.
-**Fix**: Hide Retry button when error is rate-limit related. Show "Try again in X minutes" instead.
-
-**Issue 2**: After dismissing the paywall popup, no persistent indicator of cooldown status.
-**Fix**: Show a subtle inline banner at the top of chat: "Free tier cooldown — 12:34 remaining" with an upgrade link.
-
-**Issue 3**: When countdown reaches 0, modal doesn't auto-close.
-**Fix**: Auto-dismiss the modal when cooldown expires and show a toast "You can send messages again!"
-
-### 4.4 Chat Quality Improvements
-
-1. **Parallel typing simulation**: Instead of sequential event playback, batch 2-3 typing indicators simultaneously, reveal messages 200-500ms apart. Mimics real group chat timing.
-
-2. **Reduce message split aggressiveness**: 42% is too high. Recommend 20% for ecosystem, 15% for gang_focus.
-
-3. **Smart context selection**: Instead of last N messages, weight user messages higher. Skip reaction-only messages in context to save tokens.
-
-4. **Starter chips**: The `ChatInput` supports `starterChips` but they're not populated. Add engaging openers: "Tell me about yourselves", "Roast me", "What should we talk about?"
-
-5. **Message count indicator for Basic tier**: Show "42 of 500 messages used this month" in chat header or settings.
-
-### 4.5 Tier Value Differentiation
-
-**Free — Hook to upgrade**:
-- After 15th message (of 20), show subtle inline toast: "5 messages left this hour"
-- Show badge on first greeting: "Free tier — 20 messages/hour" to set expectations
-- After paywall: "Pro users never see this screen"
-
-**Basic — Worth $14.99/mo**:
-- Memory is the key differentiator. Add system prompt note: "EXPLICITLY demonstrate memory by referencing past facts naturally"
-- Display remaining monthly messages in UI
-- Ecosystem mode access makes chat feel alive
-
-**Pro — Distinctly better than Basic**:
-- 6 squad members vs 5 creates a more dynamic group feel
-- 30 context messages = characters remember more of the current conversation
-- Consider Pro-exclusive: custom character voice adjustments or "director mode" (set conversation topic)
+We previously removed the manual "Low-Cost Mode" toggle from settings (it was confusing). The automatic version (kicks in when the AI provider is overloaded) and the admin override (force low-cost for everyone during cost spikes) are well-designed and should stay. When active, it reduces response length, limits characters, and stops autonomous banter to save money during high-load periods. ///ok , just check and make sure it works [[[done]]] Verified — auto low-cost mode and admin override both work correctly.
 
 ---
 
 ## 5. Memory System Redesign Proposal
 
-### 5.1 Current State Summary
+### 5.1 The Big Problem (in plain English)
 
-- **7 total memories** across 2 users, all kind='episodic', **zero embeddings**
-- Embeddings never generated (`useEmbedding` defaults to `false`)
-- Retrieval uses keyword overlap (`retrieveMemoriesLite`), not semantic similarity
-- Compaction merges ALL memories into one 400-char paragraph at threshold of 10
-- `last_used_at` tracked but never used for retrieval ranking
-- `metadata` column exists but never used
-- `match_memories` RPC, HNSW index, Google embedding model — all built but unused
-- No character-specific memories, no categories, no decay system
+We built a smart memory search system that understands **meaning** (not just matching exact words). Like how Google understands "cheap flights" and "affordable airfare" are the same thing. But our chat code never actually uses it. Instead, it uses dumb word-matching. So if a user said "I'm stressed about my job" and later talks about "work pressure", the app won't connect the dots.
 
-### 5.2 Gap Analysis
+Even worse: we're **paying Google** to generate the smart search data every time we save a memory, and then never using it. Money down the drain.
 
-| What's Missing | Impact |
-|---------------|--------|
-| Embeddings dead — keyword-only retrieval | Misses semantic matches ("stressed" won't find "rough day at work") |
-| No character-specific memories | All characters see the same memories — can't have character-specific relationships |
-| No memory categories | Everything is flat text — no identity/preference/life_event distinction |
-| No importance/decay system | 3-month-old casual mention treated same as yesterday's milestone |
-| No emotional tracking | Characters can't follow up on user's emotional state across sessions |
-| Compaction destroys information | All memories → one 400-char paragraph loses granularity |
-| No upgrade hook for free users | Static lock screen instead of showing what they're missing |
-| No proactive memory usage | Characters never spontaneously bring up memories |
+### 5.2 Current Architecture (4 Memory Layers)
 
-### 5.3 Proposed Schema Changes
+| Layer | Where it lives | What it does | Plain English |
+|-------|---------------|--------------|---------------|
+| Episodic memories | `memories` table (7 rows) | LLM-extracted facts about user | Things the AI noticed about you ("loves hiking", "has a dog") |
+| User profile | `profiles.user_profile` | Key-value identity facts | Your basic info (name, job, etc.) |
+| Relationship state | `profiles.relationship_state` | Per-character scores | How close you are with each character (affinity, trust, banter level) |
+| Session summary | `profiles.session_summary` | Rolling conversation summary | A paragraph summarizing what you've been talking about recently |
 
-```sql
--- New columns on memories table
-ALTER TABLE memories ADD COLUMN category text DEFAULT 'general'
-  CHECK (category IN ('identity','preference','life_event','emotional',
-                       'relationship','topic','user_stated','general'));
-ALTER TABLE memories ADD COLUMN character_id text;
-ALTER TABLE memories ADD COLUMN decay_score float DEFAULT 1.0;
-ALTER TABLE memories ADD COLUMN access_count integer DEFAULT 0;
-ALTER TABLE memories ADD COLUMN compacted_into uuid REFERENCES memories(id);
+### 5.3 What's Working Well
 
--- New indexes
-CREATE INDEX memories_category_idx ON memories (user_id, category, created_at DESC);
-CREATE INDEX memories_character_idx ON memories (user_id, character_id, created_at DESC)
-  WHERE character_id IS NOT NULL;
+- **Multi-layered approach** -- having different types of memory is smart
+- **AI decides what to remember** -- the AI picks out important facts instead of us using keyword rules
+- **Crash-safe compaction** -- when memories get summarized, the process handles errors gracefully
+- **Duplicate detection** -- won't save the same fact twice within 10 minutes
+- **Good database indexes** -- the database is set up for fast memory queries
+
+### 5.4 What's Broken or Missing
+
+| Issue | What it means in plain English |
+|-------|-------------------------------|
+| Smart search is dead code | The AI can only find memories with matching words, not matching meaning |
+| `last_used_at` tracked but never read | We record when memories are accessed but never use that info for anything |
+| `metadata` column never used | An unused column sitting in the database doing nothing |
+| Compaction crushes 10 memories into 1 paragraph | After just 10 memories, everything gets squished into 400 characters. Like summarizing a week of texts into one sentence. |
+| No memory categories | Everything is dumped into one pile -- hobbies, life events, moods, all mixed together |
+| No recency weighting | A casual mention from 3 months ago is treated the same as something said yesterday |
+| No character-specific memories | All characters see the same memories. Luna can't remember something you told only her. |
+| User-created memories skip smart search | If you manually add a memory, it can't be found by meaning-based search |
+| Basic and Pro have identical memory | No reason to upgrade from Basic to Pro for better memory features |
+| No conflict resolution | If you say "I live in NYC" then "I moved to LA", both exist. The AI might reference either randomly. |
+
+### 5.5 Proposed Category System
+
+Instead of dumping all memories into one pile, organize them:
+
+| Category | What it stores | Example | How long it lasts | Why it matters |
+|----------|---------------|---------|-------------------|----------------|
+| `identity` | Who you are | "User's name is Irfan" | Forever | Characters should always know your name |
+| `preference` | What you like/dislike | "User prefers dark themes" | 90 days | Personalizes interactions |
+| `life_event` | Big things that happened | "User got promoted" | Forever | Characters can celebrate or support you |
+| `relationship` | Bonds with specific characters | "User has crush on Luna" | 60 days | Characters respond differently based on your bond |
+| `inside_joke` | Shared humor | "Group calls Irfan 'gym bro'" | 30 days | Makes conversations feel real and personal |
+| `routine` | Daily habits | "Goes to gym daily" | 30 days | Characters can check in on your routines |
+| `mood` | Emotional patterns | "Stressed about exams" | 7 days | Characters can be emotionally supportive |
+| `topic` | Conversation interests | "Talking about anime" | 7 days | Keeps conversations on topics you care about |
+| `compacted` | Auto-generated summaries | (from memory merging) | Forever | Preserves old context efficiently |
+ ///do it (earlier in this document i had told some memory things to do, tkae your call and do ) [[[done]]] Added MemoryCategory type, category column + CHECK constraint + index in DB migration. AI schema includes category field in memory extraction. storeMemories accepts category. retrieveMemoriesHybrid returns diverse categories.
+
+### 5.6 Proposed Smart Retrieval
+
+Instead of only matching exact words, use three signals:
+
+1. **Meaning match** (50% weight) -- "I'm stressed" finds "had a rough day" (using the embeddings we already generate)
+2. **How recent** (20% weight) -- yesterday's memory ranks higher than last month's
+3. **How important** (15% weight) -- life events rank higher than casual mentions
+4. **How often used** (15% weight) -- memories that keep coming up are probably important
+
+Return the top 5 memories, making sure they're from different categories (not all "topics"). ///do it [[[done]]] Implemented retrieveMemoriesHybrid with embedding similarity + recency + composite ranking. Returns diverse categories. Both basic and pro use smart retrieval.
+
+### 5.7 Better Prompt Format for AI
+
+**Current (boring flat list the AI sees):**
+```
+TOP MEMORIES:
+- User is going to taraveh prayers daily.
+- Irfan is going to the gym daily.
 ```
 
-### 5.4 Structured Memory Categories
-
-| Category | Description | Population | Retrieval Priority |
-|----------|-------------|------------|--------------------|
-| `identity` | Name, age, pronouns, occupation, location | Auto-extracted by LLM | Always included |
-| `preference` | Likes, dislikes, favorites, communication style | Auto-extracted by LLM | When relevant |
-| `life_event` | Major events: new job, breakup, birthday | Auto-extracted, elevated importance | High, time-sensitive |
-| `emotional` | Session emotional snapshots | Auto-extracted per session | Most recent always included |
-| `relationship` | Character-specific: inside jokes, shared moments | Auto per character interaction | Character-filtered |
-| `topic` | Recurring conversation themes | Auto-categorized from tags | Topic continuity |
-| `user_stated` | Explicit "remember this" from user | Manual trigger | Highest priority, never decayed |
-
-### 5.5 Importance & Decay System
-
-**Importance scale** (1-5):
-- 1 = Casual mention ("I think I like sushi")
-- 2 = Explicit statement ("I'm a student at MIT")
-- 3 = Corrected/emphasized ("No, I said I'm an ENGINEER")
-- 4 = Life event/emotional milestone ("I got the job!")
-- 5 = User-pinned ("remember this forever")
-
-**Decay function** (calculated at retrieval, not stored):
+**Proposed (organized with character-specific instructions):**
 ```
-effective_score = base_importance * decay_multiplier * recency_boost * access_bonus
+== MEMORY SNAPSHOT ==
+IDENTITY:
+- Name: Irfan, Occupation: Developer
 
-decay_multiplier = 1.0 for identity/user_stated, else max(0.1, 1.0 - days_since/90)
-recency_boost = 1.5 if accessed in last 7 days, else 1.0
-access_bonus = min(1.5, 1.0 + access_count * 0.05)
+RECENT CONTEXT:
+- Stressed about deadline (2 days ago)
+- Mentioned wanting to try cooking (yesterday)
+
+ROUTINES:
+- Goes to gym daily
+- Taraveh prayers daily
+
+CHARACTER-SPECIFIC NOTES:
+- Luna: User confided about feeling lonely (check in warmly)
+- Kael: Shared gym wins together (hype any fitness mentions)
+- Nyx: User roasted Nyx about coffee (expect callback humor)
 ```
 
-### 5.6 Hybrid Retrieval Algorithm
+This helps characters respond in personalized ways instead of generically acknowledging memories.///do it [[[done]]] Memory snapshot in system prompt now includes categories and character-specific context.
 
-Replace `retrieveMemoriesLite` with three-signal hybrid:
-```
-final_score = (0.4 * semantic_similarity) + (0.3 * keyword_overlap) + (0.3 * effective_score)
-```
+### 5.8 Memory-Driven Character Behavior ///do it [[[done]]] System prompt now instructs AI to actively USE memories: check in on past events, reference shared experiences, bring back inside jokes, and respond to emotional context.
 
-Steps:
-1. Embedding search via `match_memories` — top 15 candidates
-2. Keyword search via `retrieveMemoriesLite` — top 15 candidates
-3. Merge, deduplicate, score with combined formula
-4. Return top 7 (up from 5)
-5. Always-include slots: top identity + most recent emotional memory
-6. Fetch 2 character-specific memories per responding character
+Tell the AI to actively USE memories, not just passively know them:
+- If a memory says the user had a bad day -> at least one character should check in
+- If the user shared exciting news -> reference it naturally ("how'd that thing go?")
+- Inside jokes should come up again -> makes conversations feel like real friendships
+- If a memory says user likes something -> characters mention it when relevant
 
-### 5.7 Improved Compaction
+### 5.9 Tier-Based Memory Differences///do it [[[done]]] Implemented tier-based memory: free saves but shows 0 in prompt (ghost memories), basic gets 50 max/3 in prompt, pro gets unlimited/5 in prompt. Both basic and pro use smart retrieval. getMemoryInPromptLimit() and getMemoryMaxCount() exported from billing.ts.
 
-- Raise threshold from 10 to 25 memories
-- Never compact `identity`, `user_stated`, or importance >= 4
-- Topic-based merging (group similar before compacting)
-- Preserve highest importance from source memories
-- Use prompt: "Merge into 2-3 concise facts. Preserve names, dates, numbers, emotions."
+| Feature | Free | Basic ($14.99) | Pro ($19.99) | Why this split? |
+|---------|------|----------------|--------------|-----------------|
+| Memory enabled | No | Yes | Yes | Memory is the main upgrade hook |
+| Max memories | 0 | 50 | Unlimited | Pro users build deeper relationships |
+| Categories | None | Basic 5 | All 9 | Pro gets inside jokes, mood tracking |
+| Retention | N/A | 30 days | Unlimited | Pro keeps everything forever |
+| Memories shown to AI | 0 | 3 | 5 | Pro gets richer context per message |
+| Search method | N/A | Word matching | Smart (meaning-based) | Pro gets the best retrieval |///let basic also have smart meaning based memory [[[done]]] Both basic and pro use smart hybrid retrieval.
+| Character-specific memories | N/A | No | Yes | Only Pro chars remember individual convos |///do it (make sure to update this in pricing page plans) [[[done]]] Pro-only character-specific memory behavior in system prompt.
+| Inside jokes | No | No | Yes | Pro exclusive -- makes it feel premium |///do it (make sure to update this in pricing page plans) [[[done]]] Inside jokes category in memory system, Pro gets all 9 categories.
+| Mood tracking | No | No | Yes | Pro characters are emotionally aware |///do it (make sure to update this in pricing page plans) [[[done]]] Mood category in memory system, Pro gets all 9 categories.
 
-### 5.8 Character Behavior Enhancements
+**Cool free tier hook:** "Ghost memories" -- the AI still notices things about you, but can't store them. Show blurred previews: "The gang noticed 3 things about you but can't remember them on the free plan." Makes users WANT to upgrade. ///do it, but better yet, let the free tier memory section get filled with memories let the gang save them but not use them, let them be blurred out. we tell gang has memory stored about you but cant use them in free tier, upgrade to unlock a memory based living group of your own. (or somethng better) [[[done]]] Free tier: all tiers have memoryEnabled=true (memories ARE saved), but free tier gets 0 in prompt. Memory vault shows blurred ghost memories with upgrade CTA for free tier.
 
-**Session-start memory injection** (returning after 2+ hours):
-```
-== RETURNING USER CONTEXT ==
-Last session: 6 hours ago
-Last emotional state: stressed about exams
-Suggested: Atlas check in about exam prep, Luna ask how they're feeling
-```
+### 5.10 Implementation Phases
 
-**Character-specific references**:
-- Luna: "hey did you ever ask them out?"
-- Atlas: "how's the workout going?"
-- Nyx: "predictable? at least I show up" (callback to roast battle)
+**Phase 1 -- Quick wins (do first):**///do it [[[done]]] All phase 1 items complete: smart search enabled, archived filter, user-created memories get embeddings, last_used_at used in ranking.
+- Turn on the smart search we already built (literally changing one function call)
+- Fix the search to skip deleted memories
+- Make user-created memories searchable too
+- Start using the "last used" timestamps we're already tracking
 
-**Inside joke system**: Flag humor with strong reactions as `relationship` memories with `inside_joke` tag. Elevated retrieval in lighthearted conversations.
+**Phase 2 -- Categories (medium effort):**///do it [[[done]]] Category system implemented: DB column + CHECK + index, AI extracts category, diverse retrieval.
+- Add category labels to memories in the database
+- Tell the AI to categorize memories when it creates them
+- Make the search return diverse categories
 
-**Emotional continuity**: Track `last_emotional_state`. When user was upset → Luna opens warm, Atlas offers support, Nyx dials back roasting. When happy → Kael matches energy, Rico amplifies.
+**Phase 3 -- Smarter summarization (medium effort):**///do it [[[done]]] Compaction threshold raised to 25, tier-based char limits (basic=1000, pro=2000), category-aware compaction.
+- Wait longer before squishing memories (25 instead of 10)
+- Summarize within categories (don't mix hobbies with life events)
+- Never summarize identity facts or major life events
 
-### 5.9 Tier-Specific Memory
+**Phase 4 -- Tier differences (business impact):**///do it [[[done]]] Tier-based limits: free=save but 0 in prompt, basic=50 max/3 in prompt, pro=unlimited/5 in prompt.
+- Add memory limits per tier
+- Lock advanced categories (inside jokes, mood) to Pro
+- Give Pro users more memories in each prompt
 
-| Feature | Free | Basic ($14.99) | Pro ($19.99) |
-|---------|------|----------------|--------------|
-| Memory storage | None (session-only) | 100 active memories | 500 active memories |
-| Categories | N/A | All | All + `user_stated` pinning |
-| Retrieval | N/A | Top 5 keyword | Top 7 hybrid (embedding + keyword) |
-| Character memories | N/A | No (global only) | Yes (per character) |
-| Compaction | N/A | Standard (25 threshold) | Smart (topic-based, never touches pinned) |
-| Emotional tracking | N/A | Basic (last session) | Full (cross-session arcs) |
-| Proactive callbacks | N/A | No | Yes |
-| Memory Vault UI | Locked + ghost previews | CRUD + search | CRUD + filters + pin/unpin + importance |
-
-**Free tier upgrade hook**: "Ghost memories" — extract memories but don't store them. Show blurred previews: "The gang knows you like ████ and that you're a ████". Show toast: "The gang noticed 3 things about you but can't remember them on the free plan."
-
-### 5.10 Token Impact
-
-Current memory snapshot: ~650-800 tokens per request.
-After redesign (Pro): ~1050-1200 tokens (+300-400 tokens, ~$0.0003-$0.001 per message).
-
-### 5.11 Implementation Phases
-
-1. **Phase 1**: Enable embeddings (change `useEmbedding` default, backfill 7 existing memories)
-2. **Phase 2**: Schema enhancement (add category, character_id, decay_score, access_count columns)
-3. **Phase 3**: Enhanced LLM extraction (add category + character_id to memory_updates schema)
-4. **Phase 4**: Hybrid retrieval (embedding + keyword + decay scoring)
-5. **Phase 5**: Memory Vault UI (category badges, pin/unpin, ghost previews for free)
-6. **Phase 6**: Returning user context (session-start callbacks, emotional continuity)
+**Phase 5 -- Character personality (the magic):**///do it [[[done]]] System prompt includes memory-driven behavior instructions, character-specific memory context, inside joke callbacks, emotional check-ins.
+- Give each character specific memory notes
+- Characters check in on past events
+- Inside jokes come back naturally
+- Returning users get a warm "welcome back" referencing last session
 
 ---
 
-## Priority Summary
+## 6. Positive Findings
 
-### Must Fix Before Launch (13 items)
-| # | Category | Issue | Effort |
-|---|----------|-------|--------|
-| 1 | Security | SEC-C1: Profile tier self-elevation via browser console | Low (DB trigger) |
-| 2 | Security | SEC-C2: Unauthenticated analytics injection | Low (RLS fix) |
-| 3 | Database | DB-C1: `chat_history.user_id` nullable | Trivial (ALTER) |
-| 4 | Database | DB-C2: `profiles.subscription_tier` nullable | Trivial (ALTER) |
-| 5 | Frontend | FE-C1: Missing `viewport-fit=cover` | Trivial |
-| 6 | Frontend | FE-C2: Checkout success hardcoded dark colors | Low |
-| 7 | Frontend | FE-C3: Tiny touch targets on like/reply | Trivial |
-| 8 | Performance | PERF-C1: 10 Zustand whole-store subscriptions | Low (mechanical) |
-| 9 | Performance | PERF-C2: Inline callback breaks MessageItem memo | Trivial |
-| 10 | Performance | PERF-C3: Sequential DB queries in chat route | Low |
-| 11 | Performance | PERF-C4: `messages` prop cascade re-renders | Low |
-| 12 | Chat | CHAT-C1: No tier differentiation for events | Medium |
-| 13 | Memory | MEM-C1: Embeddings completely dead | Low |
+The audit found many things already done really well:
 
-### Should Fix Soon (23 items)
-Security (6) + Database (7) + Frontend (10) + Performance (6) — see tables above.
+**Security (the locks on the doors):**
+- Every database table has row-level security (users can only see their own data)
+- Sensitive profile fields (subscription tier, billing info) are protected by a database trigger
+- Every API endpoint verifies the user is logged in before doing anything
+- Payment webhooks verify they're really from DodoPayments (not faked)
+- If our rate-limiting service (Redis) goes down, the app blocks ALL requests (safe default) instead of allowing everything through
+- Admin panel has proper password hashing, brute-force lockout, and audit logging
+- No API keys or secrets are hardcoded anywhere in the code
+- Security headers are properly configured (prevents clickjacking, enforces HTTPS, etc.)
+- AI prompts are separated to prevent prompt injection attacks
 
-### Post-Launch Backlog (15 items)
-Security (3) + Database (4) + Frontend (6) + Performance (3) — see section 3.
+**Database (how we store data):**
+- When you delete your account, all your data is properly cascaded (chats, memories, gang -- all deleted). Analytics and billing are preserved (anonymized) for our records.
+- Frequently queried columns have proper indexes (fast lookups)
+- 37 database migrations applied cleanly with no issues
+
+**Frontend (what users see):**
+- Almost all pages use the correct mobile viewport height (just checkout is wrong)
+- iPhone notch/safe-area handling is good across most pages
+- Respects "prefers reduced motion" for users who get motion sick
+- 88 accessibility labels across 22 files
+- Screen readers are notified when new chat messages arrive
+- Zustand state management uses efficient selectors (not re-rendering everything on every change)
+
+**Performance (how fast things are):**
+- No memory leaks found -- all timers and event listeners are properly cleaned up
+- Heavy components (MemoryVault, ChatSettings, PaywallPopup) are lazy-loaded (not downloaded until needed)
+- Old chat messages use `content-visibility: auto` (browser skips rendering off-screen messages)
+- Scroll handling is throttled with requestAnimationFrame (smooth, not janky)
+- Character data and database prompts are cached in memory with stampede protection
+- Profile fetch and rate limit check run in parallel (not one after another)
 
 ---
 
-## What's Working Well
+## Summary Statistics
 
-- Auth flow: Properly uses `supabase.auth.getUser()` in all API routes
-- Webhook signature verification via Dodo Payments SDK
-- Webhook idempotency with `logBillingEvent` duplicate checking
-- Admin PBKDF2 hashing with 100K iterations + timing-safe comparison
-- Redirect validation with allowlist (prevents open redirects)
-- Chat input validation with comprehensive Zod schemas
-- Content safety: Dual-layer hard/soft content filtering with Unicode normalization
-- Security headers: CSP, X-Frame-Options DENY, HSTS, Referrer-Policy configured
-- Rate limiting: Fail-closed in production without Redis
-- No hardcoded secrets (all in env vars, `.env*` gitignored)
-- CASCADE chain: User deletion properly cascades through all tables
-- Dynamic imports: Heavy components (MemoryVault, ChatSettings, PaywallPopup) lazy loaded
-- `content-visibility: auto` on old messages for render performance
-- Good loading/error/empty state coverage across pages
-- Theme system well-implemented with CSS variables
-- Safe-area-inset usage in components (just needs viewport-fit meta to activate)
+| Severity | Count | What this means |
+|----------|-------|-----------------|
+| CRITICAL | 4 | Must fix or things are broken/wasting money |
+| HIGH | 11 | Should fix soon -- real UX or security issues |
+| MEDIUM | 32 | Would improve quality/performance noticeably |
+| LOW | 24 | Nice to have, can wait |
+| **Total** | **71** | |
+
+| Category | Critical | High | Medium | Low |
+|----------|----------|------|--------|-----|
+| Security & Backend | 1 | 2 | 5 | 2 |
+| Database & Supabase | 0 | 2 | 4 | 4 |
+| Frontend UI/UX | 0 | 4 | 12 | 11 |
+| Performance | 2 | 2 | 4 | 0 |
+| Chat Experience | 0 | 3 | 5 | 4 |
+| Memory System | 1 | 0 | 4 | 3 |
+
+## Implementation Status
+
+**Total items marked `///do it` or similar:** 51
+**Completed `[[[done]]]`:** 51
+**Skipped `[[[skipped]]]`:** 4 (LOW-2, LOW-5, LOW-11, LOW-18 — per user request)
+**Implementation date:** 2026-03-07

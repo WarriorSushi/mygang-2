@@ -14,7 +14,7 @@ export default function ChatError({
     }, [error])
 
     return (
-        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6" role="alert">
             <h1 className="text-xl font-semibold mb-2">Chat hit a snag</h1>
             <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
                 Something went wrong loading the chat. Your messages are safe.
