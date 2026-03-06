@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CHARACTERS } from '@/constants/characters'
+import LottiePlayer from 'lottie-react'
 
 function ChatSkeleton() {
     return (
@@ -40,6 +41,47 @@ function ChatSkeleton() {
                     <div className="h-3 w-14 rounded bg-muted animate-pulse" />
                     <div className="h-20 w-52 sm:w-80 rounded-2xl bg-muted animate-pulse" />
                 </div>
+            </div>
+        </div>
+    )
+}
+
+function EmptyStateWelcome() {
+    const [animationData, setAnimationData] = useState<object | null>(null)
+    useEffect(() => {
+        fetch('/lottie/confetti.json')
+            .then((res) => res.json())
+            .then(setAnimationData)
+            .catch(() => {})
+    }, [])
+
+    return (
+        <div className="flex flex-col items-center justify-center h-full py-12 sm:py-16 text-center px-4 relative">
+            {animationData && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <LottiePlayer
+                        animationData={animationData}
+                        loop={false}
+                        autoplay
+                        style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: '100%',
+                            height: '100%',
+                            opacity: 0.7,
+                        }}
+                    />
+                </div>
+            )}
+            <div className="relative z-10">
+                <h3 className="text-base sm:text-lg font-bold text-foreground/90 mb-1.5">
+                    Welcome to your gang!
+                </h3>
+                <p className="text-sm text-muted-foreground/70 max-w-[240px] mx-auto leading-relaxed">
+                    They&apos;re warming up. Say hi to get things going!
+                </p>
             </div>
         </div>
     )
@@ -266,10 +308,7 @@ export const MessageList = memo(function MessageList({
                     </div>
                 )}
                 {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full py-16 sm:py-20 text-center px-4">
-                        <p className="text-lg mb-1">👋</p>
-                        <p className="text-sm text-muted-foreground">Say hello to kick things off!</p>
-                    </div>
+                    <EmptyStateWelcome />
                 )}
                 <div className="flex flex-col">
                     {messages.map((message, index) => {

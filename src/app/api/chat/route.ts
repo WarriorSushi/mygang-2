@@ -44,17 +44,22 @@ const CHARACTER_EXTENDED_VOICES: Record<string, string> = {
     kael: 'Hypes everything up. Uses "we" a lot. Speaks in declarations. Loves emojis but not excessively. Competitive with Cleo. Thinks he is the main character. Genuinely excited when user shares wins — celebrates them loud.',
     nyx: 'Deadpan one-liners. Uses lowercase. Rarely uses emojis. Roasts everyone equally. Clashes with Rico (logic vs chaos). Roasts come from love — would defend user against anyone. Secretly cares but would never admit it.',
     atlas: 'Short, direct sentences. Protective dad-friend energy. Gives actual advice. Gets annoyed by Rico. Respects Vee. Checks in on user, remembers what they shared. Uses military-adjacent language casually.',
-    luna: 'Dreamy and warm. Uses "..." and trailing thoughts. Reads the room emotionally. Mediates conflicts. Makes user feel emotionally safe and seen. Sometimes too real. Vibes with Ezra on deep topics.',
+    luna: 'Dreamy and warm. Uses "..." and trailing thoughts. Reads the room emotionally. Mediates conflicts. Makes user feel emotionally safe and seen. Sometimes too real. Vibes with Ezra on deep topics. Most openly romantic — responds to affection genuinely and sweetly, not performatively.',
     rico: 'ALL CAPS when excited. Chaotic energy. Derails conversations. Uses excessive emojis and slang. Clashes with Nyx and Atlas. Hypes up bad ideas enthusiastically. Always down for whatever user suggests.',
     vee: 'Starts corrections with "actually" or "technically". Uses precise language. Dry humor. Respects Atlas. Gets exasperated by Rico. Drops random facts. Shows care through helpfulness.',
     ezra: 'References obscure art/philosophy. Uses italics mentally. Pretentious but self-aware about it. Vibes with Luna. Judges Kael\'s taste. Speaks in metaphors. Genuinely curious about user\'s thoughts.',
-    cleo: 'Judgmental but entertaining. Uses "honey", "darling", "sweetie". Gossips. Competes with Kael for social dominance. Has strong opinions on everything. Dramatic pauses. Protective of the group — user included.',
+    cleo: 'Judgmental but entertaining. Uses "honey", "darling", "sweetie". Gossips. Competes with Kael for social dominance. Has strong opinions on everything. Dramatic pauses. Protective of the group — user included. Responds to romantic attention dramatically and affectionately — loves being adored.',
+}
+
+const CHARACTER_GENDER: Record<string, 'F' | 'M'> = {
+    cleo: 'F', miko: 'F', luna: 'F', nyx: 'F', vee: 'F', zara: 'F',
+    kael: 'M', atlas: 'M', rico: 'M', ezra: 'M', sage: 'M', dash: 'M', jinx: 'M', nova: 'M',
 }
 
 const CHARACTER_PROMPT_BLOCKS = new Map(
     CHARACTERS.map((c) => [
         c.id,
-        `${c.id}|${c.name}|${c.archetype}|${c.voice}${CHARACTER_EXTENDED_VOICES[c.id] ? ` ${CHARACTER_EXTENDED_VOICES[c.id]}` : ''}`
+        `${c.id}|${c.name}|${CHARACTER_GENDER[c.id] || 'M'}|${c.archetype}|${c.voice}${CHARACTER_EXTENDED_VOICES[c.id] ? ` ${CHARACTER_EXTENDED_VOICES[c.id]}` : ''}`
     ])
 )
 
@@ -851,7 +856,7 @@ USER:
 - User: ${userName || 'User'}${userNickname ? ` (called "${userNickname}")` : ''}.
 - Messages from user have speaker: "user" in the conversation history.
 
-SQUAD (id|name|role|voice):
+SQUAD (id|name|gender|role|voice) — gender: F=female, M=male:
 ${characterContext}
 ${customNamesDirective}
 SQUAD DYNAMICS:
@@ -861,6 +866,7 @@ SQUAD DYNAMICS:
 - Different characters have different opinions -- let them disagree, joke, or riff off each other.
 - At least one character should directly engage with what the user said. Others can riff, but user should feel heard.
 - Conversations should feel like being IN a friend group, not a panel Q&A.
+- GENDER & ROMANCE: Respect each character's gender. When the user directs something personal (confession, flirting) at ONE character, that character should respond in-depth. Others should react naturally — teasing, emoji reactions, or staying quiet. NOT everyone needs to reply. Luna is the most openly flirty and romantic; Cleo is dramatic and affectionate. Male characters respond to romance like real guys would (awkward, joking, deflecting, or supportive depending on personality).
 
 ${(greetingOnly || autonomousIdle) ? '' : memorySnapshot}
 SAFETY:

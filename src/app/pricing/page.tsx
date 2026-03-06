@@ -489,6 +489,10 @@ export default function PricingPage() {
                 isolation: isolate;
                 border: none;
                 transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 20px -4px rgba(59, 130, 246, 0.25), 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+              }
+              :is(.dark) .btn-gradient-border {
+                box-shadow: 0 4px 24px -4px rgba(59, 130, 246, 0.3), 0 2px 8px -2px rgba(0, 0, 0, 0.4);
               }
               .btn-gradient-border::before {
                 content: '';
@@ -503,8 +507,20 @@ export default function PricingPage() {
                 mask-composite: exclude;
                 z-index: -1;
               }
-              .btn-gradient-border:hover { transform: scale(1.03); }
+              .btn-gradient-border:hover {
+                transform: scale(1.03);
+                box-shadow: 0 6px 28px -4px rgba(59, 130, 246, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.1);
+              }
+              :is(.dark) .btn-gradient-border:hover {
+                box-shadow: 0 6px 32px -4px rgba(59, 130, 246, 0.45), 0 4px 12px -2px rgba(0, 0, 0, 0.5);
+              }
 
+              .btn-gradient-border-pro {
+                box-shadow: 0 4px 24px -4px rgba(16, 185, 129, 0.3), 0 2px 10px -2px rgba(0, 0, 0, 0.08);
+              }
+              :is(.dark) .btn-gradient-border-pro {
+                box-shadow: 0 4px 28px -4px rgba(16, 185, 129, 0.35), 0 2px 10px -2px rgba(0, 0, 0, 0.4);
+              }
               .btn-gradient-border-pro::before {
                 padding: 2px;
                 background: conic-gradient(from var(--border-angle), #10b981 0%, #06b6d4 25%, #8b5cf6 50%, #ec4899 75%, #10b981 100%);
@@ -523,6 +539,9 @@ export default function PricingPage() {
               .btn-gradient-border-pro:hover {
                 transform: scale(1.04);
                 box-shadow: 0 0 40px -8px rgba(16,185,129,0.4), 0 0 20px -4px rgba(6,182,212,0.3);
+              }
+              :is(.dark) .btn-gradient-border-pro:hover {
+                box-shadow: 0 0 48px -8px rgba(16,185,129,0.5), 0 0 24px -4px rgba(6,182,212,0.4);
               }
             `}</style>
 

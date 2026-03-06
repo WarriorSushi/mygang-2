@@ -18,6 +18,7 @@ import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 import { InlineToast } from '@/components/chat/inline-toast'
 const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
 const PaywallPopup = dynamic(() => import('@/components/billing/paywall-popup').then((m) => m.PaywallPopup), { ssr: false })
+const ConfettiCelebration = dynamic(() => import('@/components/effects/confetti-celebration').then((m) => m.ConfettiCelebration), { ssr: false })
 
 // Custom hooks
 import { useChatHistory } from '@/hooks/use-chat-history'
@@ -26,14 +27,15 @@ import { useCapacityManager } from '@/hooks/use-capacity-manager'
 import { useAutonomousFlow } from '@/hooks/use-autonomous-flow'
 import { useChatApi } from '@/hooks/use-chat-api'
 
-const STARTER_CHIPS = [
-    "I'm bored, entertain me",
-    "I need advice about something",
-    "Roast me lol",
-    "Tell me something interesting",
-    "I had a rough day",
-    "Hype me up rn",
-]
+function getStarterChips(name: string) {
+    const label = name || 'everyone'
+    return [
+        `Hey! I'm ${label}, what's good?`,
+        "What's up guys?",
+        "Hype me up rn",
+        "Roast me lol",
+    ]
+}
 
 export default function ChatPage() {
     const {
@@ -76,6 +78,7 @@ export default function ChatPage() {
     const [paywallOpen, setPaywallOpen] = useState(false)
     const [paywallCooldown, setPaywallCooldown] = useState(0)
     const [paywallTier, setPaywallTier] = useState('free')
+    const [showConfetti, setShowConfetti] = useState(false)
 
     const captureRootRef = useRef<HTMLDivElement>(null)
     const resumeBannerRef = useRef(false)
@@ -206,6 +209,7 @@ export default function ChatPage() {
 
         const triggerCelebration = (plan: 'basic' | 'pro') => {
             purchaseCelebrationTriggeredRef.current = true
+            setShowConfetti(true)
             if (typeof window !== 'undefined') {
                 window.sessionStorage.removeItem('mygang_just_purchased')
             }
@@ -445,7 +449,7 @@ export default function ChatPage() {
                         online={isOnline}
                         replyingTo={replyingToDisplay}
                         onCancelReply={() => setReplyingTo(null)}
-                        starterChips={hasUserSentMessage ? [] : STARTER_CHIPS}
+                        starterChips={hasUserSentMessage ? [] : getStarterChips(userName || '')}
                     />
                 </div>
             </div>
@@ -468,6 +472,7 @@ export default function ChatPage() {
                 cooldownSeconds={paywallCooldown}
                 tier={paywallTier}
             />
+            <ConfettiCelebration trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
         </main>
     )
 }
