@@ -772,15 +772,6 @@ export async function POST(req: Request) {
                 // All tiers can extract/store memories (free tier saves but doesn't inject into prompt)
                 allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && !autonomousIdle && memoryEnabled
 
-                // MED-25: Free tier gets ecosystem mode for first 3 messages, then gang_focus
-                if (tier === 'free') {
-                    const userMsgCount = safeMessages.filter(m => m.speaker === 'user').length
-                    if (userMsgCount > 3) {
-                        chatMode = 'gang_focus'
-                    }
-                    // else: allow whatever chatMode was requested (ecosystem or gang_focus)
-                }
-
                 // Memory retrieval: all tiers save memories, but only basic+ get them in prompt
                 const memoryInPromptLimit = getMemoryInPromptLimit(tier)
                 if (memoryEnabled && lastUserMsg.trim() && !greetingOnly && !autonomousIdle && memoryInPromptLimit > 0) {
@@ -1254,14 +1245,9 @@ FLOW FLAGS:
             elapsedMs: Date.now() - requestStartedAt
         }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
 
-        // MED-25: Determine if free tier ecosystem mode is exhausted
-        const userMsgCountForEcosystem = safeMessages.filter(m => m.speaker === 'user').length
-        const ecosystemExhausted = tier === 'free' && userMsgCountForEcosystem > 3
-
         // Build response before persistence (non-blocking)
         const response = Response.json({
             ...object,
-            ...(ecosystemExhausted ? { ecosystem_exhausted: true } : {}),
             ...(messagesRemaining !== null ? { messages_remaining: messagesRemaining } : {}),
             usage: {
                 promptChars: llmPromptChars,

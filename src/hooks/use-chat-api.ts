@@ -28,7 +28,6 @@ type ChatApiResponse = {
     cooldown_seconds?: number
     tier?: string
     messages_remaining?: number
-    ecosystem_exhausted?: boolean
 }
 
 export type SendToApiArgs = {
@@ -75,8 +74,6 @@ interface UseChatApiArgs {
     setReplyingTo: (msg: Message | null) => void
     // Paywall callback
     onPaywall?: (cooldownSeconds: number, tier: string) => void
-    // Ecosystem exhausted callback (free tier switches from ecosystem to gang_focus)
-    onEcosystemExhausted?: () => void
 }
 
 export function useChatApi({
@@ -99,7 +96,6 @@ export function useChatApi({
     recordSuccessfulUserTurn,
     setReplyingTo,
     onPaywall,
-    onEcosystemExhausted,
 }: UseChatApiArgs) {
     const addMessage = useChatStore((s) => s.addMessage)
     const setMessages = useChatStore((s) => s.setMessages)
@@ -368,10 +364,6 @@ export function useChatApi({
             // Update messages remaining in store for banner display
             if (data.messages_remaining !== undefined) {
                 useChatStore.getState().setMessagesRemaining(data.messages_remaining)
-            }
-            // Show ecosystem limit modal for free tier when ecosystem mode is exhausted
-            if (data.ecosystem_exhausted && onEcosystemExhausted) {
-                onEcosystemExhausted()
             }
             // Mark ALL user messages still stuck in 'sending' as 'sent', not just the payload window
             const allSendingIds = useChatStore.getState().messages
