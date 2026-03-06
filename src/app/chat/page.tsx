@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
-import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
@@ -393,7 +392,6 @@ export default function ChatPage() {
 
     return (
         <main id="main-content" className="flex flex-col h-dvh bg-background text-foreground overflow-hidden relative isolate">
-            <BackgroundBlobs isMuted={typing.typingUsers.length > 0} className="absolute inset-0 z-0 pointer-events-none" />
             <div className="chat-wallpaper-layer" data-wallpaper={chatWallpaper} aria-hidden="true" />
 
             <div ref={captureRootRef} className="flex-1 flex flex-col w-full relative min-h-0 z-10">
