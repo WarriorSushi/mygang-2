@@ -299,16 +299,14 @@
   opacity: 0.12;
 }
 
-/* ── Desktop dark mode chat chrome ── */
-@media (min-width: 640px) {
-  .dark .chat-input-desktop {
-    background: #0a0a0a;
-    border-color: rgba(255, 255, 255, 0.08);
-  }
-  .dark .chat-header-desktop {
-    background: #0a0a0a;
-    border-color: rgba(255, 255, 255, 0.08);
-  }
+/* ── Dark mode chat chrome (all devices) ── */
+.dark .chat-input-desktop {
+  background: #0a0a0a;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.dark .chat-header-desktop {
+  background: #0a0a0a;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .content-auto {

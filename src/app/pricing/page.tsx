@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: 'Why is Pro so cheap right now?',
-    a: 'We\'re running a launch special to thank early adopters. The regular price will be $99/mo once we exit the launch period. Lock in the $19.99/mo price now.',
+    a: 'We\'re offering a special launch price to thank early adopters. Prices may increase as we add more features, so now is the best time to get in.',
   },
 ]
 
@@ -377,7 +377,7 @@ export default function PricingPage() {
                   Save 80%
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground mt-2 mb-8">Lock in forever at launch price</p>
+              <p className="text-sm text-muted-foreground mt-2 mb-8">Early adopter launch price</p>
 
               <ul className="space-y-3.5 mb-8 flex-1">
                 {[

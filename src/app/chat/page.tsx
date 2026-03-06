@@ -435,7 +435,7 @@ export default function ChatPage() {
                     </div>
                 </div>
 
-                <div className="shrink-0 px-0 pb-0 sm:px-4 sm:pb-4 border-t border-border/30 sm:border-t-0 bg-card/95 sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-none">
+                <div className="shrink-0 px-4 pb-4">
                     {!isOnline && (
                         <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-200">
                             Offline mode - reconnect to send messages
