@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'
 import { deleteAccount, deleteAllMessages, deleteAllMemories, signOut } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
 import { useChatStore } from '@/stores/chat-store'
-import { Crown, Zap, Brain, Infinity, ArrowRight, Check } from 'lucide-react'
+import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle } from 'lucide-react'
 
 interface SettingsPanelProps {
     username: string | null
@@ -148,15 +149,64 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     const [deleteEmail, setDeleteEmail] = useState('')
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+
+    // Delete Chat modal state
+    const [chatModalOpen, setChatModalOpen] = useState(false)
     const [isDeletingChat, setIsDeletingChat] = useState(false)
-    const [isDeletingMemories, setIsDeletingMemories] = useState(false)
     const [chatDeleteMsg, setChatDeleteMsg] = useState<string | null>(null)
+
+    // Delete Memories modal state
+    const [memoryModalOpen, setMemoryModalOpen] = useState(false)
+    const [isDeletingMemories, setIsDeletingMemories] = useState(false)
     const [memoryDeleteMsg, setMemoryDeleteMsg] = useState<string | null>(null)
 
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setThemeChoice(nextTheme)
         setTheme(nextTheme)
         import('@/app/auth/actions').then(m => m.updateUserSettings({ theme: nextTheme }))
+    }
+
+    const handleDeleteAllChat = async () => {
+        setIsDeletingChat(true)
+        setChatDeleteMsg(null)
+        try {
+            const result = await deleteAllMessages()
+            if (!result.ok) {
+                setChatDeleteMsg(result.error || 'Failed to delete.')
+                return
+            }
+            const store = useChatStore.getState()
+            store.clearChat()
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('mygang:timeline-cleared'))
+            }
+            setChatDeleteMsg('All chat deleted successfully.')
+            trackEvent('delete_all_chat', { metadata: { source: 'settings_page' } })
+            setTimeout(() => setChatModalOpen(false), 1200)
+        } catch {
+            setChatDeleteMsg('Something went wrong.')
+        } finally {
+            setIsDeletingChat(false)
+        }
+    }
+
+    const handleDeleteAllMemories = async () => {
+        setIsDeletingMemories(true)
+        setMemoryDeleteMsg(null)
+        try {
+            const result = await deleteAllMemories()
+            if (!result.ok) {
+                setMemoryDeleteMsg(result.error || 'Failed to delete.')
+                return
+            }
+            setMemoryDeleteMsg('All memories deleted successfully.')
+            trackEvent('delete_all_memories', { metadata: { source: 'settings_page' } })
+            setTimeout(() => setMemoryModalOpen(false), 1200)
+        } catch {
+            setMemoryDeleteMsg('Something went wrong.')
+        } finally {
+            setIsDeletingMemories(false)
+        }
     }
 
     const tier = usage.subscriptionTier || 'free'
@@ -220,37 +270,15 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         <Button
                             variant="outline"
                             className="rounded-full text-[10px] uppercase tracking-widest border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0"
-                            disabled={isDeletingChat}
-                            onClick={async () => {
-                                if (!confirm("Delete ALL your chat messages? This cannot be undone.")) return
-                                setIsDeletingChat(true)
+                            onClick={() => {
                                 setChatDeleteMsg(null)
-                                try {
-                                    const result = await deleteAllMessages()
-                                    if (!result.ok) {
-                                        setChatDeleteMsg(result.error || 'Failed to delete.')
-                                        return
-                                    }
-                                    const store = useChatStore.getState()
-                                    store.clearChat()
-                                    if (typeof window !== 'undefined') {
-                                        window.dispatchEvent(new CustomEvent('mygang:timeline-cleared'))
-                                    }
-                                    setChatDeleteMsg('All chat deleted.')
-                                    trackEvent('delete_all_chat', { metadata: { source: 'settings_page' } })
-                                } catch {
-                                    setChatDeleteMsg('Something went wrong.')
-                                } finally {
-                                    setIsDeletingChat(false)
-                                }
+                                setChatModalOpen(true)
                             }}
                         >
-                            {isDeletingChat ? 'Deleting...' : 'Delete All Chat'}
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Delete All Chat
                         </Button>
                     </div>
-                    {chatDeleteMsg && (
-                        <p className={`text-[11px] ${chatDeleteMsg.includes('deleted') ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>{chatDeleteMsg}</p>
-                    )}
 
                     <div className="h-px bg-border/40" />
 
@@ -265,32 +293,15 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         <Button
                             variant="outline"
                             className="rounded-full text-[10px] uppercase tracking-widest border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0"
-                            disabled={isDeletingMemories}
-                            onClick={async () => {
-                                if (!confirm("Delete ALL your memories? Your gang will forget everything about you. This cannot be undone.")) return
-                                setIsDeletingMemories(true)
+                            onClick={() => {
                                 setMemoryDeleteMsg(null)
-                                try {
-                                    const result = await deleteAllMemories()
-                                    if (!result.ok) {
-                                        setMemoryDeleteMsg(result.error || 'Failed to delete.')
-                                        return
-                                    }
-                                    setMemoryDeleteMsg('All memories deleted.')
-                                    trackEvent('delete_all_memories', { metadata: { source: 'settings_page' } })
-                                } catch {
-                                    setMemoryDeleteMsg('Something went wrong.')
-                                } finally {
-                                    setIsDeletingMemories(false)
-                                }
+                                setMemoryModalOpen(true)
                             }}
                         >
-                            {isDeletingMemories ? 'Deleting...' : 'Delete All Memories'}
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Delete All Memories
                         </Button>
                     </div>
-                    {memoryDeleteMsg && (
-                        <p className={`text-[11px] ${memoryDeleteMsg.includes('deleted') ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>{memoryDeleteMsg}</p>
-                    )}
                 </div>
             </section>
 
@@ -364,6 +375,80 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     </Button>
                 </div>
             </section>
+
+            {/* Delete All Chat Confirmation Modal */}
+            <Dialog open={chatModalOpen} onOpenChange={setChatModalOpen}>
+                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[1.5rem]">
+                    <DialogHeader className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+                            <AlertTriangle className="w-6 h-6 text-destructive" />
+                        </div>
+                        <DialogTitle className="text-lg font-black text-center">
+                            Delete all chat messages?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-sm text-muted-foreground leading-relaxed">
+                            This will permanently delete your entire chat history with your gang. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {chatDeleteMsg && (
+                        <p className={`text-sm text-center font-medium ${chatDeleteMsg.includes('successfully') ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                            {chatDeleteMsg}
+                        </p>
+                    )}
+                    <DialogFooter className="flex-col gap-2 sm:flex-col">
+                        <Button
+                            variant="destructive"
+                            className="w-full rounded-xl font-bold"
+                            disabled={isDeletingChat || chatDeleteMsg?.includes('successfully')}
+                            onClick={handleDeleteAllChat}
+                        >
+                            {isDeletingChat ? 'Deleting...' : 'Yes, delete all chat'}
+                        </Button>
+                        <DialogClose asChild>
+                            <Button variant="outline" className="w-full rounded-xl">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete All Memories Confirmation Modal */}
+            <Dialog open={memoryModalOpen} onOpenChange={setMemoryModalOpen}>
+                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[1.5rem]">
+                    <DialogHeader className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+                            <Brain className="w-6 h-6 text-destructive" />
+                        </div>
+                        <DialogTitle className="text-lg font-black text-center">
+                            Delete all memories?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-sm text-muted-foreground leading-relaxed">
+                            Your gang will forget everything they&apos;ve learned about you — your preferences, inside jokes, everything. This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {memoryDeleteMsg && (
+                        <p className={`text-sm text-center font-medium ${memoryDeleteMsg.includes('successfully') ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                            {memoryDeleteMsg}
+                        </p>
+                    )}
+                    <DialogFooter className="flex-col gap-2 sm:flex-col">
+                        <Button
+                            variant="destructive"
+                            className="w-full rounded-xl font-bold"
+                            disabled={isDeletingMemories || memoryDeleteMsg?.includes('successfully')}
+                            onClick={handleDeleteAllMemories}
+                        >
+                            {isDeletingMemories ? 'Deleting...' : 'Yes, delete all memories'}
+                        </Button>
+                        <DialogClose asChild>
+                            <Button variant="outline" className="w-full rounded-xl">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
