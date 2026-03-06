@@ -46,6 +46,8 @@ interface ChatState {
     showPersonaRoles: boolean
     customCharacterNames: Record<string, string>
     squadConflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null
+    pendingUpgrade: { newTier: 'basic' | 'pro'; newSlots: number } | null
+    pendingDowngrade: { newLimit: number; autoRemovableIds: string[] } | null
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
@@ -61,6 +63,8 @@ interface ChatState {
     setShowPersonaRoles: (showPersonaRoles: boolean) => void
     setCustomCharacterNames: (names: Record<string, string>) => void
     setSquadConflict: (conflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null) => void
+    setPendingUpgrade: (upgrade: { newTier: 'basic' | 'pro'; newSlots: number } | null) => void
+    setPendingDowngrade: (downgrade: { newLimit: number; autoRemovableIds: string[] } | null) => void
     clearChat: () => void
 }
 
@@ -88,6 +92,8 @@ export const useChatStore = create<ChatState>()(
             showPersonaRoles: true,
             customCharacterNames: {},
             squadConflict: null,
+            pendingUpgrade: null,
+            pendingDowngrade: null,
             setMessages: (messages) => {
                 const seen = new Set<string>()
                 const deduped: Message[] = []
@@ -125,6 +131,8 @@ export const useChatStore = create<ChatState>()(
             setShowPersonaRoles: (showPersonaRoles) => set({ showPersonaRoles }),
             setCustomCharacterNames: (customCharacterNames) => set({ customCharacterNames }),
             setSquadConflict: (squadConflict) => set({ squadConflict }),
+            setPendingUpgrade: (pendingUpgrade) => set({ pendingUpgrade }),
+            setPendingDowngrade: (pendingDowngrade) => set({ pendingDowngrade }),
             clearChat: () => {
                 _messageIdSet.clear()
                 return set({ messages: [] })

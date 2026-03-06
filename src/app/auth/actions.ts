@@ -7,6 +7,7 @@ import { headers } from 'next/headers'
 import { z } from 'zod'
 import { CHARACTERS } from '@/constants/characters'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
+import { getTierFromProfile, getSquadLimit } from '@/lib/billing'
 
 type ChatHistoryPageRow = {
     id: string
@@ -22,7 +23,7 @@ const validCharacterIds = CHARACTERS.map(c => c.id)
 
 const usernameSchema = z.string().trim().min(1).max(50)
 const memoryContentSchema = z.string().trim().min(1).max(2000)
-const characterIdsSchema = z.array(z.string()).min(1).max(8).refine(
+const characterIdsSchema = z.array(z.string()).min(1).max(6).refine(
     ids => ids.every(id => validCharacterIds.includes(id)),
     'Invalid character ID'
 )
@@ -30,7 +31,7 @@ const userSettingsSchema = z.object({
     theme: z.enum(['light', 'dark', 'system']).optional(),
     chat_mode: z.enum(['ecosystem', 'gang_focus']).optional(),
     low_cost_mode: z.boolean().optional(),
-    preferred_squad: z.array(z.string()).max(8).optional(),
+    preferred_squad: z.array(z.string()).max(6).optional(),
     chat_wallpaper: z.string().max(50).optional(),
     custom_character_names: z.record(z.string().max(30)).optional(),
 }).strict()
@@ -139,6 +140,17 @@ export async function saveGang(characterIds: string[]) {
 
     const parsed = characterIdsSchema.safeParse(characterIds)
     if (!parsed.success) return
+
+    // Enforce tier-based squad limit
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', user.id)
+        .single()
+
+    const tier = getTierFromProfile(profile?.subscription_tier ?? null)
+    const limit = getSquadLimit(tier)
+    if (parsed.data.length > limit) return
 
     // 1. Ensure a gang exists for the user
     const { data: gang, error: gangError } = await supabase
@@ -439,4 +451,76 @@ export async function saveMemoryManual(content: string) {
         importance: 2,
         useEmbedding: false
     })
+}
+
+// ── Squad Tier Member Tracking ──
+// Note: squad_tier_members table is not yet in generated types — use type assertion
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const squadTierTable = (supabase: Awaited<ReturnType<typeof createClient>>) =>
+    (supabase as any).from('squad_tier_members')
+
+export async function addSquadTierMembers(characterIds: string[], tier: 'basic' | 'pro') {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    for (const id of characterIds) {
+        await squadTierTable(supabase).upsert({
+            user_id: user.id,
+            character_id: id,
+            added_at_tier: tier,
+            is_active: true,
+            deactivated_at: null,
+        }, { onConflict: 'user_id,character_id' })
+    }
+}
+
+export async function deactivateSquadTierMembers(characterIds: string[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await squadTierTable(supabase)
+        .update({ is_active: false, deactivated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .in('character_id', characterIds)
+}
+
+export async function getRestorableMembers() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    const { data } = await squadTierTable(supabase)
+        .select('character_id, added_at_tier, deactivated_at')
+        .eq('user_id', user.id)
+        .eq('is_active', false)
+        .order('deactivated_at', { ascending: false })
+
+    return data ?? []
+}
+
+export async function restoreSquadTierMembers(characterIds: string[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await squadTierTable(supabase)
+        .update({ is_active: true, deactivated_at: null })
+        .eq('user_id', user.id)
+        .in('character_id', characterIds)
+}
+
+export async function getAutoRemovableMembers() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    const { data } = await squadTierTable(supabase)
+        .select('character_id, added_at_tier')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+    return data ?? []
 }

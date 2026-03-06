@@ -12,9 +12,9 @@ export function getDodoClient() {
 export type SubscriptionTier = 'free' | 'basic' | 'pro'
 
 export const TIER_LIMITS = {
-  free: { messagesPerWindow: 20, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: false },
-  basic: { messagesPerWindow: null, windowMs: null, monthlyLimit: 500, memoryEnabled: true },
-  pro: { messagesPerWindow: null, windowMs: null, monthlyLimit: null, memoryEnabled: true },
+  free: { messagesPerWindow: 20, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: false, squadLimit: 4, contextLimit: 10 },
+  basic: { messagesPerWindow: null, windowMs: null, monthlyLimit: 500, memoryEnabled: true, squadLimit: 5, contextLimit: 20 },
+  pro: { messagesPerWindow: null, windowMs: null, monthlyLimit: null, memoryEnabled: true, squadLimit: 6, contextLimit: 30 },
 } as const
 
 export function getTierFromProfile(subscriptionTier: string | null): SubscriptionTier {
@@ -25,4 +25,12 @@ export function getTierFromProfile(subscriptionTier: string | null): Subscriptio
 
 export function isMemoryEnabled(tier: SubscriptionTier): boolean {
   return TIER_LIMITS[tier].memoryEnabled
+}
+
+export function getSquadLimit(tier: SubscriptionTier): number {
+  return TIER_LIMITS[tier].squadLimit
+}
+
+export function getContextLimit(tier: SubscriptionTier): number {
+  return TIER_LIMITS[tier].contextLimit
 }

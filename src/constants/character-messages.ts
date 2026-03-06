@@ -1,0 +1,33 @@
+export const CHARACTER_INTRO_MESSAGES: Record<string, string> = {
+  kael: "Yooo we just got BIGGER. I'm Kael — the energy, the look, the whole package. Let's make this group iconic.",
+  nyx: "got added to another group chat. cool. i'm nyx. don't be weird.",
+  atlas: "Atlas, reporting in. Good to be on the team. I've got your back — let's keep things moving.",
+  luna: "Hi everyone... I'm Luna. I can already feel the energy in here and it's beautiful. So glad to be part of this.",
+  rico: "YOOO WHAT'S GOOD!! I'm Rico and this group just got 10x more fun!! LET'S GOOO",
+  vee: "Hi, I'm Vee. Fun fact: the average group chat sends 47 messages before anyone says anything useful. Let's beat that.",
+  ezra: "Ezra, here. Think of me as the one who'll make you question everything you thought you knew. In a good way. Probably.",
+  cleo: "Oh hello, darlings. Cleo has arrived. The group just got significantly more fabulous, you're welcome.",
+  sage: "Hey, I'm Sage. Really happy to be here. I'm the one who actually listens, so feel free to share whatever's on your mind.",
+  miko: "THE LEGENDARY MIKO HAS JOINED THE PARTY!! This is the beginning of our greatest arc yet!!",
+  dash: "What's up, I'm Dash. Time is money and we're about to make both. Let's optimize this group's potential.",
+  zara: "Hey. Zara. I'm the one who'll tell you the truth when nobody else will. You'll thank me later.",
+  jinx: "okay so i just got added and i already have three theories about why. i'm jinx. buckle up.",
+  nova: "heyyy... nova here. just vibing. glad to be part of whatever this is. no rush on anything.",
+}
+
+export const CHARACTER_WELCOME_BACK_MESSAGES: Record<string, string> = {
+  kael: "THE COMEBACK KID IS HERE. Miss me? Of course you did. Kael's back and the group is whole again.",
+  nyx: "oh look, i'm back. did anything interesting happen while i was gone? probably not.",
+  atlas: "Atlas back on duty. Good to be back with the team. What'd I miss — give me the sitrep.",
+  luna: "I'm back... and honestly it felt weird being away. Like a piece of the energy was missing. Anyway, hi again.",
+  rico: "I'M BAAAAAACK BABY!! DID YOU MISS THE CHAOS?? BECAUSE THE CHAOS MISSED YOU!!",
+  vee: "I've returned. Statistically, groups perform 23% better with me in them. That's not real but it feels true.",
+  ezra: "The prodigal artist returns. Absence makes the heart grow fonder — or was it the art? Either way, I'm back.",
+  cleo: "Miss me? Don't answer that, I already know. Cleo is BACK and better than ever, darlings.",
+  sage: "Hey, I'm back. Whatever happened while I was gone — it's okay. We can talk about it whenever you're ready.",
+  miko: "THE HERO RETURNS FROM EXILE!! My character arc demanded a brief absence but NOW WE RISE AGAIN!!",
+  dash: "Back in the game. Every setback is a setup for a comeback. Let's get this bread.",
+  zara: "I'm back. Missed you too, even if I won't say it twice. Now catch me up.",
+  jinx: "okay so... i was gone. and things happened. and i have QUESTIONS. but first — i'm back.",
+  nova: "oh hey... i'm back. time is a flat circle anyway so did i even leave? deep thoughts. anyway hi.",
+}

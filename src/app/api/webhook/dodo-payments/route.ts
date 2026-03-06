@@ -1,5 +1,6 @@
 import { Webhooks } from '@dodopayments/nextjs'
 import { createClient } from '@supabase/supabase-js'
+import { TIER_LIMITS } from '@/lib/billing'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,6 +65,56 @@ export const POST = Webhooks({
         const plan = planFromProductId(productId)
         await upsertSubscription(subscriptionId, userId, productId, plan, 'active')
         await updateProfileTier(userId, plan)
+
+        // Restore previously removed squad members if slots available
+        const newLimit = TIER_LIMITS[plan as keyof typeof TIER_LIMITS]?.squadLimit ?? 4
+        const { data: currentGang } = await supabase
+            .from('gang_members')
+            .select('character_id, gangs!inner(user_id)')
+            .eq('gangs.user_id', userId)
+        const currentCount = currentGang?.length ?? 0
+        const slotsAvailable = newLimit - currentCount
+
+        if (slotsAvailable > 0) {
+            const { data: restorable } = await supabase
+                .from('squad_tier_members')
+                .select('character_id')
+                .eq('user_id', userId)
+                .eq('is_active', false)
+                .order('deactivated_at', { ascending: false })
+                .limit(slotsAvailable)
+
+            if (restorable?.length) {
+                const restoreIds = restorable.map(r => r.character_id)
+
+                // Re-activate in squad_tier_members
+                await supabase
+                    .from('squad_tier_members')
+                    .update({ is_active: true, deactivated_at: null })
+                    .eq('user_id', userId)
+                    .in('character_id', restoreIds)
+
+                // Add back to gang_members
+                const { data: gang } = await supabase
+                    .from('gangs')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .single()
+                if (gang) {
+                    await supabase.from('gang_members').insert(
+                        restoreIds.map(id => ({ gang_id: gang.id, character_id: id }))
+                    )
+                }
+
+                // Update preferred_squad and set welcome-back flag
+                const allIds = [...(currentGang?.map(g => g.character_id) ?? []), ...restoreIds]
+                await supabase.from('profiles').update({
+                    preferred_squad: allIds,
+                    restored_members_pending: restoreIds,
+                }).eq('id', userId)
+            }
+        }
+
         // Set celebration flag so AI friends congratulate user on next chat
         await supabase.from('profiles').update({ purchase_celebration_pending: true }).eq('id', userId)
         await logBillingEvent(userId, 'subscription.active', data.webhook_id as string ?? null, data)
@@ -103,6 +154,8 @@ export const POST = Webhooks({
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
         await updateProfileTier(userId, 'free')
+        // Flag for client to show downgrade keeper modal on next load
+        await supabase.from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
         await logBillingEvent(userId, 'subscription.cancelled', null, data)
     },
 
@@ -122,6 +175,8 @@ export const POST = Webhooks({
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
         await updateProfileTier(userId, 'free')
+        // Flag for client to show downgrade keeper modal on next load
+        await supabase.from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
         await logBillingEvent(userId, 'subscription.expired', null, data)
     },
 

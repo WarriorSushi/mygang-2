@@ -5,7 +5,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
-import { getTierFromProfile, isMemoryEnabled } from '@/lib/billing'
+import { getTierFromProfile, isMemoryEnabled, getContextLimit } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
@@ -423,8 +423,8 @@ const requestSchema = z.object({
         reaction: z.string().optional(),
         replyToId: z.string().max(128).optional(),
     })).max(40),
-    activeGangIds: z.array(z.string().min(1).max(32)).max(4).optional(),
-    activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(4).optional(),
+    activeGangIds: z.array(z.string().min(1).max(32)).max(6).optional(),
+    activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(6).optional(),
     userName: z.string().nullable().optional(),
     userNickname: z.string().nullable().optional(),
     isFirstMessage: z.boolean().optional(),
@@ -941,10 +941,11 @@ FLOW FLAGS:
 - If idle_autonomous is YES, keep short (1-3 messages), then hand back to user, and set should_continue FALSE.
 `
 
-        // Prepare conversation for LLM with IDs
+        // Prepare conversation for LLM with IDs — tier-based context depth
+        const tierContextLimit = getContextLimit(getTierFromProfile(profileRow?.subscription_tier ?? null))
         const HISTORY_LIMIT = lowCostMode
             ? (autonomousIdle ? LOW_COST_IDLE_HISTORY_LIMIT : LOW_COST_HISTORY_LIMIT)
-            : (autonomousIdle ? LLM_IDLE_HISTORY_LIMIT : LLM_HISTORY_LIMIT)
+            : (autonomousIdle ? Math.min(tierContextLimit, LLM_IDLE_HISTORY_LIMIT) : tierContextLimit)
         const historyForLLM = safeMessages.slice(-HISTORY_LIMIT).map(m => ({
             id: m.id,
             speaker: m.speaker,

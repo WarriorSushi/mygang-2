@@ -13,6 +13,8 @@ export type JourneyProfile = {
     onboarding_completed: boolean | null
     custom_character_names: Record<string, string> | null
     subscription_tier: 'free' | 'basic' | 'pro' | null
+    pending_squad_downgrade: boolean | null
+    restored_members_pending: string[] | null
 }
 
 type GangRow = { id: string }
@@ -21,7 +23,7 @@ type GangMemberRow = { character_id: string | null }
 export async function fetchJourneyState(supabase: SupabaseClient, userId: string) {
     const { data: profile } = await supabase
         .from('profiles')
-        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier')
+        .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier, pending_squad_downgrade, restored_members_pending')
         .eq('id', userId)
         .single<JourneyProfile>()
 
@@ -43,13 +45,13 @@ export async function fetchJourneyState(supabase: SupabaseClient, userId: string
             .filter((id): id is string => typeof id === 'string')
     }
 
-    if (gangIds.length < 2 && Array.isArray(profile?.preferred_squad) && profile.preferred_squad.length >= 2 && profile.preferred_squad.length <= 4) {
+    if (gangIds.length < 2 && Array.isArray(profile?.preferred_squad) && profile.preferred_squad.length >= 2 && profile.preferred_squad.length <= 6) {
         gangIds = profile.preferred_squad
     }
 
     return {
         profile: profile || null,
-        gangIds: gangIds.slice(0, 4)
+        gangIds: gangIds.slice(0, 6)
     }
 }
 
@@ -74,7 +76,7 @@ export async function persistUserJourney(
     if (typeof payload.onboardingCompleted === 'boolean') {
         profileUpdate.onboarding_completed = payload.onboardingCompleted
     }
-    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 4) {
+    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 6) {
         profileUpdate.preferred_squad = payload.gangIds
     }
 
@@ -85,7 +87,7 @@ export async function persistUserJourney(
             .eq('id', userId)
     }
 
-    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 4) {
+    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 6) {
         const { data: gang } = await supabase
             .from('gangs')
             .upsert({ user_id: userId }, { onConflict: 'user_id' })

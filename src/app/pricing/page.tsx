@@ -27,16 +27,16 @@ interface Feature {
 }
 
 const features: Feature[] = [
+  { text: 'Gang members in chat', free: 'Up to 4', basic: 'Up to 5', pro: 'Up to 6' },
   { text: 'Messages per month', free: '~20/hr', basic: '500/mo', pro: 'Unlimited' },
-  { text: 'Gang members in chat', free: 'Up to 4', basic: 'Up to 4', pro: 'Up to 4' },
+  { text: 'Chat memory', free: 'Standard', basic: 'Improved longer memory', pro: 'Solid large memory' },
   { text: 'Hourly cooldowns', free: '60 min when capped', basic: 'None', pro: 'None' },
-  { text: 'Memory — gang remembers you', free: false, basic: true, pro: true },
   { text: 'Priority response speed', free: false, basic: false, pro: true },
+  { text: 'Ecosystem chat mode', free: false, basic: true, pro: true },
   { text: 'Chat wallpapers', free: false, basic: true, pro: true },
   { text: 'Custom character nicknames', free: false, basic: true, pro: true },
-  { text: 'Ecosystem chat mode', free: false, basic: true, pro: true },
-  { text: 'Dark & light themes', free: true, basic: true, pro: true },
   { text: 'Memory vault access', free: false, basic: true, pro: true },
+  { text: 'Dark & light themes', free: true, basic: true, pro: true },
   { text: 'Pro badge in chat', free: false, basic: false, pro: true },
 ]
 
@@ -46,8 +46,8 @@ const faqs = [
     a: 'Yes, absolutely. Cancel with one click from your account settings. No contracts, no hidden fees, no guilt trips. Your subscription stays active until the end of your billing period.',
   },
   {
-    q: 'What happens to my messages if I downgrade?',
-    a: 'Your chat history stays exactly where it is. You never lose messages. If you downgrade from a plan with memory, your gang will stop forming new memories but everything already saved remains.',
+    q: 'What happens to my gang if I downgrade?',
+    a: "Your chat history stays exactly where it is — you never lose messages. If your squad is larger than your new plan allows, you'll get to choose which members to keep. If you re-subscribe later, your removed members come right back.",
   },
   {
     q: 'What does "memory" actually mean?',
@@ -270,8 +270,9 @@ export default function PricingPage() {
 
               <ul className="space-y-3.5 mb-8 flex-1">
                 {[
+                  { text: 'Up to 4 gang members', icon: Users },
                   { text: '20 messages per hour', icon: MessageCircle },
-                  { text: 'Pick up to 4 gang members', icon: Users },
+                  { text: 'Standard memory', icon: Brain },
                   { text: 'Gang Focus chat mode', icon: Volume2 },
                   { text: 'Dark & light themes', icon: Palette },
                 ].map((f) => (
@@ -311,8 +312,9 @@ export default function PricingPage() {
 
               <ul className="space-y-3.5 mb-8 flex-1">
                 {[
+                  { text: 'Up to 5 gang members', icon: Users, highlight: true },
                   { text: '500 messages per month', icon: MessageCircle },
-                  { text: 'Memory — they know you', icon: Brain, highlight: true },
+                  { text: 'Improved longer memory', icon: Brain, highlight: true },
                   { text: 'Ecosystem mode — real group chat', icon: Sparkles, highlight: true },
                   { text: 'Zero hourly cooldowns', icon: Clock },
                   { text: 'Wallpapers & custom nicknames', icon: Palette },
@@ -381,10 +383,10 @@ export default function PricingPage() {
 
               <ul className="space-y-3.5 mb-8 flex-1">
                 {[
+                  { text: 'Up to 6 gang members', icon: Users, highlight: true },
                   { text: 'Unlimited messages — no caps', icon: Infinity, highlight: true },
-                  { text: 'Full memory — they know everything', icon: Brain, highlight: true },
+                  { text: 'Solid large memory', icon: Brain, highlight: true },
                   { text: 'Priority response speed', icon: Gauge, highlight: true },
-                  { text: 'Ecosystem mode — real group chat', icon: Sparkles, highlight: true },
                   { text: 'Pro badge in chat', icon: Crown },
                   { text: 'Early access to new features', icon: BellRing },
                   { text: 'Everything in Basic', icon: Layers },

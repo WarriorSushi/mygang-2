@@ -7,6 +7,8 @@ import { CHARACTERS } from '@/constants/characters'
 import { useTheme } from 'next-themes'
 import type { Session } from '@supabase/supabase-js'
 import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-journey'
+import { getSquadLimit, type SubscriptionTier } from '@/lib/billing'
+import { CHARACTER_WELCOME_BACK_MESSAGES } from '@/constants/character-messages'
 
 export function AuthManager() {
     const {
@@ -21,7 +23,10 @@ export function AuthManager() {
         setChatWallpaper,
         setSquadConflict,
         setCustomCharacterNames,
-        setSubscriptionTier
+        setSubscriptionTier,
+        setPendingUpgrade,
+        setPendingDowngrade,
+        addMessage,
     } = useChatStore()
     const supabase = useMemo(() => createClient(), [])
     const hadSessionRef = useRef(false)
@@ -64,9 +69,11 @@ export function AuthManager() {
                 const localIds = localGang.map((c) => c.id)
                 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
                 const profile = remote.profile
-                const remoteIds = savedIds.length >= 2 && savedIds.length <= 4 ? savedIds : null
+                const remoteTier = (profile?.subscription_tier || 'free') as SubscriptionTier
+                const maxSquad = getSquadLimit(remoteTier)
+                const remoteIds = savedIds.length >= 2 && savedIds.length <= maxSquad ? savedIds : null
 
-                const hasLocalGang = localIds.length >= 2 && localIds.length <= 4
+                const hasLocalGang = localIds.length >= 2 && localIds.length <= maxSquad
                 const hasRemoteGang = remoteIds && remoteIds.length >= 2
                 const remoteSquad = hasRemoteGang ? CHARACTERS.filter(c => remoteIds!.includes(c.id)) : []
                 const remoteName = profile?.username || null
@@ -147,7 +154,77 @@ export function AuthManager() {
                     setCustomCharacterNames(profile.custom_character_names)
                 }
                 if (profile?.subscription_tier) {
-                    setSubscriptionTier(profile.subscription_tier)
+                    const previousTier = useChatStore.getState().subscriptionTier
+                    const newTier = profile.subscription_tier as SubscriptionTier
+                    setSubscriptionTier(newTier)
+
+                    // Detect tier transitions for squad changes
+                    if (initialSyncDoneRef.current && newTier !== previousTier) {
+                        const oldLimit = getSquadLimit(previousTier as SubscriptionTier)
+                        const newLimit = getSquadLimit(newTier)
+                        const currentSquadSize = useChatStore.getState().activeGang.length
+
+                        if (newLimit > oldLimit && currentSquadSize < newLimit && currentSquadSize >= 2) {
+                            // UPGRADE — show picker for new slots
+                            setPendingUpgrade({
+                                newTier: newTier as 'basic' | 'pro',
+                                newSlots: newLimit - currentSquadSize,
+                            })
+                        } else if (newLimit < oldLimit && currentSquadSize > newLimit) {
+                            // DOWNGRADE — fetch auto-removable members and show keeper
+                            const { data: autoRemovable } = await (supabase as any)
+                                .from('squad_tier_members')
+                                .select('character_id')
+                                .eq('user_id', session.user.id)
+                                .eq('is_active', true)
+                                .order('created_at', { ascending: false })
+                                .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+
+                            setPendingDowngrade({
+                                newLimit,
+                                autoRemovableIds: autoRemovable?.map(r => r.character_id) ?? [],
+                            })
+                        }
+                    }
+
+                    // Handle pending downgrade flag from webhook
+                    if (profile?.pending_squad_downgrade) {
+                        const currentSquadSize = useChatStore.getState().activeGang.length
+                        const newLimit = getSquadLimit(profile.subscription_tier as SubscriptionTier)
+                        if (currentSquadSize > newLimit) {
+                            const { data: autoRemovable } = await (supabase as any)
+                                .from('squad_tier_members')
+                                .select('character_id')
+                                .eq('user_id', session.user.id)
+                                .eq('is_active', true)
+                                .order('created_at', { ascending: false })
+                                .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+
+                            setPendingDowngrade({
+                                newLimit,
+                                autoRemovableIds: autoRemovable?.map(r => r.character_id) ?? [],
+                            })
+                        }
+                        // Clear the flag
+                        await supabase.from('profiles').update({ pending_squad_downgrade: false } as any).eq('id', session.user.id)
+                    }
+
+                    // Handle restored members (welcome-back messages)
+                    if (profile?.restored_members_pending?.length) {
+                        for (const charId of profile.restored_members_pending) {
+                            const msg = CHARACTER_WELCOME_BACK_MESSAGES[charId]
+                            if (msg) {
+                                addMessage({
+                                    id: `wb-${charId}-${Date.now()}`,
+                                    speaker: charId,
+                                    content: msg,
+                                    created_at: new Date().toISOString(),
+                                })
+                            }
+                        }
+                        // Clear the flag
+                        await supabase.from('profiles').update({ restored_members_pending: [] } as any).eq('id', session.user.id)
+                    }
                 }
             } catch (err) {
                 console.error('Auth sync error:', err)
@@ -175,7 +252,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsHydrated, setLowCostMode, setSquadConflict, setSubscriptionTier, setTheme, setUserId, setUserName, setUserNickname, supabase])
+    }, [addMessage, clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsHydrated, setLowCostMode, setPendingDowngrade, setPendingUpgrade, setSquadConflict, setSubscriptionTier, setTheme, setUserId, setUserName, setUserNickname, supabase])
 
     return null
 }

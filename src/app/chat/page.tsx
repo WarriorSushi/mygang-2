@@ -7,6 +7,8 @@ import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
+import { saveGang, deactivateSquadTierMembers } from '@/app/auth/actions'
+import { CHARACTERS } from '@/constants/characters'
 
 // Modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -19,6 +21,8 @@ import { InlineToast } from '@/components/chat/inline-toast'
 const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
 const PaywallPopup = dynamic(() => import('@/components/billing/paywall-popup').then((m) => m.PaywallPopup), { ssr: false })
 const ConfettiCelebration = dynamic(() => import('@/components/effects/confetti-celebration').then((m) => m.ConfettiCelebration), { ssr: false })
+const UpgradePickerModal = dynamic(() => import('@/components/squad/upgrade-picker-modal').then((m) => m.UpgradePickerModal), { ssr: false })
+const DowngradeKeeperModal = dynamic(() => import('@/components/squad/downgrade-keeper-modal').then((m) => m.DowngradeKeeperModal), { ssr: false })
 
 // Custom hooks
 import { useChatHistory } from '@/hooks/use-chat-history'
@@ -51,6 +55,11 @@ export default function ChatPage() {
         subscriptionTier,
         squadConflict,
         setSquadConflict,
+        pendingUpgrade,
+        setPendingUpgrade,
+        pendingDowngrade,
+        setPendingDowngrade,
+        setActiveGang,
     } = useChatStore(useShallow((s) => ({
         messages: s.messages,
         activeGang: s.activeGang,
@@ -64,6 +73,11 @@ export default function ChatPage() {
         subscriptionTier: s.subscriptionTier,
         squadConflict: s.squadConflict,
         setSquadConflict: s.setSquadConflict,
+        pendingUpgrade: s.pendingUpgrade,
+        setPendingUpgrade: s.setPendingUpgrade,
+        pendingDowngrade: s.pendingDowngrade,
+        setPendingDowngrade: s.setPendingDowngrade,
+        setActiveGang: s.setActiveGang,
     })))
 
     const hasUserSentMessage = useMemo(() => messages.some((m) => m.speaker === 'user'), [messages])
@@ -466,6 +480,41 @@ export default function ChatPage() {
                 conflict={squadConflict}
                 onResolve={() => setSquadConflict(null)}
             />
+            {pendingUpgrade && (
+                <UpgradePickerModal
+                    currentSquadIds={activeGang.map(c => c.id)}
+                    newSlots={pendingUpgrade.newSlots}
+                    newTier={pendingUpgrade.newTier}
+                    onComplete={(addedIds) => {
+                        const newChars = CHARACTERS.filter(c => addedIds.includes(c.id))
+                        setActiveGang([...activeGang, ...newChars])
+                        setPendingUpgrade(null)
+                    }}
+                    onDismiss={() => setPendingUpgrade(null)}
+                />
+            )}
+            {pendingDowngrade && (
+                <DowngradeKeeperModal
+                    currentSquad={activeGang}
+                    maxKeep={pendingDowngrade.newLimit}
+                    autoRemovableIds={pendingDowngrade.autoRemovableIds}
+                    onConfirm={async (keepIds) => {
+                        const removedIds = activeGang.filter(c => !keepIds.includes(c.id)).map(c => c.id)
+                        await saveGang(keepIds)
+                        await deactivateSquadTierMembers(removedIds)
+                        setActiveGang(activeGang.filter(c => keepIds.includes(c.id)))
+                        setPendingDowngrade(null)
+                    }}
+                    onAutoRemove={async () => {
+                        const removeIds = pendingDowngrade.autoRemovableIds
+                        const keepIds = activeGang.filter(c => !removeIds.includes(c.id)).map(c => c.id)
+                        await saveGang(keepIds)
+                        await deactivateSquadTierMembers(removeIds)
+                        setActiveGang(activeGang.filter(c => !removeIds.includes(c.id)))
+                        setPendingDowngrade(null)
+                    }}
+                />
+            )}
             <PaywallPopup
                 open={paywallOpen}
                 onOpenChange={setPaywallOpen}

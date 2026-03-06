@@ -12,9 +12,10 @@ interface SelectionStepProps {
     selectedIds: string[]
     toggleCharacter: (id: string) => void
     onNext: () => void
+    maxMembers?: number
 }
 
-export function SelectionStep({ selectedIds, toggleCharacter, onNext }: SelectionStepProps) {
+export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers = 4 }: SelectionStepProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null)
 
     const selectedChars = CHARACTERS.filter(c => selectedIds.includes(c.id))
@@ -39,7 +40,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
             <div className="text-center pt-6 sm:pt-10 pb-4 sm:pb-6 px-2">
                 <h2 className="text-2xl sm:text-4xl font-black tracking-tight">Pick your gang</h2>
                 <p className="text-muted-foreground text-sm sm:text-base mt-2">
-                    Choose 2–4 friends for your gang.
+                    Choose 2–{maxMembers} friends for your gang.
                 </p>
             </div>
 
@@ -49,7 +50,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                     {CHARACTERS.map((char) => {
                         const isSelected = selectedIds.includes(char.id)
                         const isExpanded = expandedId === char.id
-                        const isMaxed = selectedIds.length >= 4 && !isSelected
+                        const isMaxed = selectedIds.length >= maxMembers && !isSelected
 
                         return (
                             <motion.div
@@ -225,7 +226,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext }: Selectio
                                     </button>
                                 ))}
                                 {selectedIds.length === 0 && (
-                                    <span className="text-xs text-muted-foreground/50 pl-1">Pick 2–4</span>
+                                    <span className="text-xs text-muted-foreground/50 pl-1">Pick 2–{maxMembers}</span>
                                 )}
                             </div>
                             {selectedIds.length > 0 && selectedIds.length < 2 && (
