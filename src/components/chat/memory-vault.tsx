@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Brain, Trash2, Edit3, Check, Search, Loader2 } from 'lucide-react'
+import { X, Brain, Trash2, Edit3, Check, Search, Loader2, Lock, Sparkles } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/holographic/glass-card'
 import { getMemoriesPage, deleteMemory, updateMemory } from '@/app/auth/actions'
@@ -17,9 +18,11 @@ interface Memory {
 interface MemoryVaultProps {
     isOpen: boolean
     onClose: () => void
+    tier?: 'free' | 'basic' | 'pro'
 }
 
-export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
+export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps) {
+    const isFree = tier === 'free'
     const [memories, setMemories] = useState<Memory[]>([])
     const [loading, setLoading] = useState(true)
     const [loadingMore, setLoadingMore] = useState(false)
@@ -112,12 +115,12 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
         if (isOpen) {
             setCursor(null)
             setHasMore(false)
-            loadMemories({ reset: true, before: null })
+            if (!isFree) loadMemories({ reset: true, before: null })
         } else {
             setEditingId(null)
             setPendingDeleteId(null)
         }
-    }, [isOpen, loadMemories])
+    }, [isOpen, isFree, loadMemories])
 
     const handleDeleteConfirm = async () => {
         if (!pendingDeleteId) return
@@ -204,6 +207,33 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                             </Button>
                         </div>
 
+                        {isFree ? (
+                        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-5">
+                            <div className="relative">
+                                <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border/40 flex items-center justify-center">
+                                    <Brain className="text-muted-foreground/40" size={28} />
+                                </div>
+                                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-background border border-border/50 flex items-center justify-center">
+                                    <Lock className="text-muted-foreground/60" size={13} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-sm font-semibold text-foreground/90">Memories are a paid feature</h3>
+                                <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
+                                    The gang can&apos;t remember your conversations on the free plan. Upgrade so they never forget what matters to you.
+                                </p>
+                            </div>
+                            <Link
+                                href="/pricing"
+                                onClick={onClose}
+                                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-[1.03] active:scale-[0.98]"
+                            >
+                                <Sparkles size={15} className="opacity-80 group-hover:opacity-100 transition-opacity" />
+                                <span>Unlock Memories — 80% off</span>
+                            </Link>
+                            <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Limited time offer</p>
+                        </div>
+                        ) : (<>
                         {/* Search */}
                         <div className="p-4 px-6 pb-2">
                             <div className="relative">
@@ -317,13 +347,16 @@ export function MemoryVault({ isOpen, onClose }: MemoryVaultProps) {
                                 </>
                             )}
                         </div>
+                        </>)}
 
+                        {!isFree && (
                         <div className="p-4 sm:p-6 border-t border-border/50 bg-muted/30 dark:bg-black/20">
                             <p className="text-[10px] text-center text-muted-foreground uppercase leading-relaxed font-medium">
                                 Memories shape how the gang interacts with you.<br />
                                 Changes take effect immediately.
                             </p>
                         </div>
+                        )}
                     </motion.div>
                 </div>
             )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState } from 'react'
+import { memo, useState, useCallback } from 'react'
 import { Character, Message } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -189,6 +189,7 @@ function MessageItemComponent({
     const { theme, resolvedTheme } = useTheme()
     const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
     const [liked, setLiked] = useState(false)
+    const [showAvatar, setShowAvatar] = useState(false)
     const canShowActions = !isReaction && message.speaker !== 'system'
 
     const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -258,12 +259,15 @@ function MessageItemComponent({
             {/* Avatar + Name row */}
             {!isUser && !isContinued && (
                 <div className="flex items-center gap-2 mb-1 ml-0.5">
-                    <div
-                        className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center ring-[1.5px] ring-background"
+                    <button
+                        type="button"
+                        aria-label={`View ${character?.name || message.speaker}'s avatar`}
+                        className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center ring-[1.5px] ring-background cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all active:scale-95"
                         style={{ backgroundColor: character?.color || '#555' }}
+                        onClick={() => character?.avatar && setShowAvatar(true)}
                     >
                         <MessageAvatar character={character} speaker={message.speaker} />
-                    </div>
+                    </button>
                     <span
                         className="text-[12px] font-semibold tracking-wide"
                         style={{ color: toRgbString(personaNameRgb) }}
@@ -351,10 +355,7 @@ function MessageItemComponent({
                             type="button"
                             aria-label={liked ? 'Unlike message' : 'Like message'}
                             className="p-0.5 transition-colors"
-                            onClick={() => {
-                                setLiked((prev) => !prev)
-                                onLike?.(message)
-                            }}
+                            onClick={() => setLiked((prev) => !prev)}
                         >
                             <Heart
                                 className={cn(
@@ -427,6 +428,50 @@ function MessageItemComponent({
                             Seen by {seenBy.join(', ')}
                         </span>
                     )}
+                </div>
+            )}
+
+            {/* Avatar lightbox */}
+            {showAvatar && character?.avatar && (
+                <div
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
+                    onClick={() => setShowAvatar(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${character.name}'s avatar`}
+                >
+                    <div
+                        className="relative flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div
+                            className="w-56 h-56 sm:w-72 sm:h-72 rounded-2xl overflow-hidden shadow-2xl"
+                            style={{ outline: `2px solid ${character.color || '#555'}`, outlineOffset: '2px' }}
+                        >
+                            <Image
+                                src={character.avatar}
+                                alt={character.name}
+                                width={288}
+                                height={288}
+                                className="w-full h-full object-cover"
+                                sizes="288px"
+                                priority
+                            />
+                        </div>
+                        <div className="text-center">
+                            <p className="text-white font-semibold text-base">{character.name}</p>
+                            {(character.roleLabel || character.archetype) && (
+                                <p className="text-white/60 text-xs">{character.roleLabel || character.archetype}</p>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowAvatar(false)}
+                            className="mt-1 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 text-xs transition-colors"
+                        >
+                            Close
+                        </button>
+                    </div>
                 </div>
             )}
 

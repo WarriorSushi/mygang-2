@@ -454,7 +454,7 @@ export default function ChatPage() {
 
             <InlineToast message={toastMessage} onClose={() => setToastMessage(null)} />
 
-            <MemoryVault isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} />
+            <MemoryVault isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} tier={subscriptionTier} />
             <ChatSettings
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
