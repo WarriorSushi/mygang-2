@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { deleteAccount, signOut, updateUserSettings } from '@/app/auth/actions'
-import { Switch } from '@/components/ui/switch'
+import { deleteAccount, deleteAllMessages, deleteAllMemories, signOut } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
 import { useChatStore } from '@/stores/chat-store'
 import { Crown, Zap, Brain, Infinity, ArrowRight, Check } from 'lucide-react'
@@ -15,12 +14,8 @@ interface SettingsPanelProps {
     email: string | null
     initialSettings: {
         theme: 'light' | 'dark'
-        lowCostMode: boolean
     }
     usage: {
-        dailyCount: number
-        dailyLimit: number
-        lastReset: string | null
         subscriptionTier: string | null
     }
 }
@@ -28,7 +23,6 @@ interface SettingsPanelProps {
 function UpgradeCard({ tier }: { tier: string | null }) {
     const isPro = tier === 'pro'
     const isBasic = tier === 'basic'
-    const isFree = !tier || tier === 'free'
 
     if (isPro) {
         return (
@@ -86,16 +80,13 @@ function UpgradeCard({ tier }: { tier: string | null }) {
         )
     }
 
-    // Free tier — this is the enticing upgrade card
+    // Free tier — enticing upgrade card
     return (
         <section className="relative rounded-3xl border border-primary/20 overflow-hidden">
-            {/* Gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/5 to-transparent" />
-            {/* Subtle animated gradient bar at top */}
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient" />
 
             <div className="relative p-6">
-                {/* Badge */}
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/15 border border-accent/20 text-[10px] font-bold uppercase tracking-widest text-accent mb-4">
                     <span className="relative flex h-1.5 w-1.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
@@ -111,7 +102,6 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                     You&apos;re on the free tier (20 msgs/hr, no memory). Your gang wants to remember you.
                 </p>
 
-                {/* Feature pills */}
                 <div className="mt-4 flex flex-col gap-2">
                     {[
                         { icon: <Infinity className="w-3 h-3" />, text: 'Unlimited messages' },
@@ -127,7 +117,6 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                     ))}
                 </div>
 
-                {/* Price + CTA */}
                 <div className="mt-5 flex flex-col sm:flex-row sm:items-end gap-4">
                     <div>
                         <div className="flex items-baseline gap-1.5">
@@ -156,24 +145,22 @@ function UpgradeCard({ tier }: { tier: string | null }) {
 export function SettingsPanel({ username, email, initialSettings, usage }: SettingsPanelProps) {
     const { setTheme } = useTheme()
     const [themeChoice, setThemeChoice] = useState<'light' | 'dark'>(initialSettings.theme)
-    const [lowCostMode, setLowCostMode] = useState<boolean>(initialSettings.lowCostMode)
     const [deleteEmail, setDeleteEmail] = useState('')
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isDeletingChat, setIsDeletingChat] = useState(false)
+    const [isDeletingMemories, setIsDeletingMemories] = useState(false)
+    const [chatDeleteMsg, setChatDeleteMsg] = useState<string | null>(null)
+    const [memoryDeleteMsg, setMemoryDeleteMsg] = useState<string | null>(null)
+
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setThemeChoice(nextTheme)
         setTheme(nextTheme)
-        updateUserSettings({ theme: nextTheme })
+        import('@/app/auth/actions').then(m => m.updateUserSettings({ theme: nextTheme }))
     }
 
-    const handleLowCostModeToggle = (next: boolean) => {
-        setLowCostMode(next)
-        useChatStore.getState().setLowCostMode(next)
-        updateUserSettings({ low_cost_mode: next })
-        trackEvent(next ? 'low_cost_mode_enabled' : 'low_cost_mode_disabled', {
-            metadata: { source: 'settings_page' }
-        })
-    }
+    const tier = usage.subscriptionTier || 'free'
+    const tierLabel = tier === 'pro' ? 'Unlimited messages' : tier === 'basic' ? '500 messages/month' : '20 messages per hour'
 
     return (
         <div className="space-y-6">
@@ -202,48 +189,108 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 </div>
             </section>
 
-            {/* Plan & Upgrade — placed high for visibility */}
+            {/* Plan & Upgrade */}
             <UpgradeCard tier={usage.subscriptionTier} />
 
             {/* Usage */}
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Usage</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Your Plan</div>
                 <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-2xl font-black tabular-nums">{usage.dailyCount}</span>
-                    <span className="text-sm text-muted-foreground">/ {usage.dailyLimit} messages today</span>
+                    <span className="text-lg font-bold">{tierLabel}</span>
                 </div>
-                {/* Progress bar */}
-                <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
-                        style={{ width: `${Math.min(100, (usage.dailyCount / usage.dailyLimit) * 100)}%` }}
-                    />
-                </div>
-                <div className="mt-2 flex items-center justify-between">
+                <div className="mt-1.5">
                     <span className="text-[10px] text-muted-foreground capitalize">
-                        {usage.subscriptionTier || 'free'} tier
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                        {usage.lastReset ? `Resets: ${new Date(usage.lastReset).toLocaleString()}` : ''}
+                        {tier} tier
                     </span>
                 </div>
             </section>
 
-            {/* Preferences */}
+            {/* Data Management */}
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preferences</div>
-                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div className="text-sm font-semibold">Low-Cost Mode</div>
-                        <div className="text-[11px] text-muted-foreground">
-                            Fewer AI calls and smaller context to save quota.
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Data Management</div>
+                <div className="mt-4 flex flex-col gap-3">
+                    {/* Delete All Chat */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold">Delete All Chat</div>
+                            <div className="text-[11px] text-muted-foreground">
+                                Permanently deletes your entire chat history.
+                            </div>
                         </div>
+                        <Button
+                            variant="outline"
+                            className="rounded-full text-[10px] uppercase tracking-widest border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0"
+                            disabled={isDeletingChat}
+                            onClick={async () => {
+                                if (!confirm("Delete ALL your chat messages? This cannot be undone.")) return
+                                setIsDeletingChat(true)
+                                setChatDeleteMsg(null)
+                                try {
+                                    const result = await deleteAllMessages()
+                                    if (!result.ok) {
+                                        setChatDeleteMsg(result.error || 'Failed to delete.')
+                                        return
+                                    }
+                                    const store = useChatStore.getState()
+                                    store.clearChat()
+                                    if (typeof window !== 'undefined') {
+                                        window.dispatchEvent(new CustomEvent('mygang:timeline-cleared'))
+                                    }
+                                    setChatDeleteMsg('All chat deleted.')
+                                    trackEvent('delete_all_chat', { metadata: { source: 'settings_page' } })
+                                } catch {
+                                    setChatDeleteMsg('Something went wrong.')
+                                } finally {
+                                    setIsDeletingChat(false)
+                                }
+                            }}
+                        >
+                            {isDeletingChat ? 'Deleting...' : 'Delete All Chat'}
+                        </Button>
                     </div>
-                    <Switch
-                        checked={lowCostMode}
-                        onCheckedChange={handleLowCostModeToggle}
-                        aria-label="Toggle low-cost mode"
-                    />
+                    {chatDeleteMsg && (
+                        <p className={`text-[11px] ${chatDeleteMsg.includes('deleted') ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>{chatDeleteMsg}</p>
+                    )}
+
+                    <div className="h-px bg-border/40" />
+
+                    {/* Delete All Memories */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold">Delete All Memories</div>
+                            <div className="text-[11px] text-muted-foreground">
+                                Permanently deletes everything your gang remembers about you.
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="rounded-full text-[10px] uppercase tracking-widest border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0"
+                            disabled={isDeletingMemories}
+                            onClick={async () => {
+                                if (!confirm("Delete ALL your memories? Your gang will forget everything about you. This cannot be undone.")) return
+                                setIsDeletingMemories(true)
+                                setMemoryDeleteMsg(null)
+                                try {
+                                    const result = await deleteAllMemories()
+                                    if (!result.ok) {
+                                        setMemoryDeleteMsg(result.error || 'Failed to delete.')
+                                        return
+                                    }
+                                    setMemoryDeleteMsg('All memories deleted.')
+                                    trackEvent('delete_all_memories', { metadata: { source: 'settings_page' } })
+                                } catch {
+                                    setMemoryDeleteMsg('Something went wrong.')
+                                } finally {
+                                    setIsDeletingMemories(false)
+                                }
+                            }}
+                        >
+                            {isDeletingMemories ? 'Deleting...' : 'Delete All Memories'}
+                        </Button>
+                    </div>
+                    {memoryDeleteMsg && (
+                        <p className={`text-[11px] ${memoryDeleteMsg.includes('deleted') ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>{memoryDeleteMsg}</p>
+                    )}
                 </div>
             </section>
 

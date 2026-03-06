@@ -13,11 +13,9 @@ export default async function SettingsPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('username, theme, low_cost_mode, subscription_tier, daily_msg_count, last_msg_reset')
+        .select('username, theme, subscription_tier')
         .eq('id', user.id)
         .single()
-
-    const dailyLimit = profile?.subscription_tier === 'pro' ? 300 : 80
 
     return (
         <main className="min-h-dvh bg-background text-foreground px-4 sm:px-6 lg:px-10 py-10 pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-[calc(env(safe-area-inset-bottom)+2.5rem)]">
@@ -40,12 +38,8 @@ export default async function SettingsPage() {
                     email={user.email ?? null}
                     initialSettings={{
                         theme: (profile?.theme as 'light' | 'dark') || 'dark',
-                        lowCostMode: !!profile?.low_cost_mode,
                     }}
                     usage={{
-                        dailyCount: profile?.daily_msg_count ?? 0,
-                        dailyLimit,
-                        lastReset: profile?.last_msg_reset ?? null,
                         subscriptionTier: profile?.subscription_tier ?? 'free'
                     }}
                 />

@@ -436,6 +436,24 @@ export async function deleteAllMessages() {
     return { ok: true as const }
 }
 
+export async function deleteAllMemories() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { ok: false, error: 'Not authenticated.' }
+
+    const { error } = await supabase
+        .from('memories')
+        .delete()
+        .eq('user_id', user.id)
+
+    if (error) {
+        console.error('Error deleting all memories:', error)
+        return { ok: false, error: 'Could not delete memories right now.' }
+    }
+
+    return { ok: true as const }
+}
+
 export async function saveMemoryManual(content: string) {
     const { storeMemory } = await import('@/lib/ai/memory')
     const supabase = await createClient()
