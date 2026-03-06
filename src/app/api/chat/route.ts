@@ -1146,6 +1146,18 @@ FLOW FLAGS:
             object.should_continue = false
         }
 
+        // Fallback: if AI returned zero usable events, inject a retry nudge
+        if (!object?.events?.length || object.events.length === 0) {
+            const fallbackSpeaker = filteredIds[Math.floor(Math.random() * filteredIds.length)]
+            object.events = [{
+                type: 'message',
+                character: fallbackSpeaker,
+                content: 'Hmm, my brain glitched for a sec. Say that again?',
+                delay: 300,
+            }]
+            object.should_continue = false
+        }
+
         // Sometimes break one long message into two short back-to-back bubbles for realism.
         if (object?.events?.length) {
             const splitChance = isGangFocusMode ? 0.34 : 0.42

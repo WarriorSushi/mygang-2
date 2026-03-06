@@ -23,7 +23,6 @@
 
 | # | Severity | Finding | Location |
 |---|----------|---------|----------|
-| 1 | HIGH | **No streaming.** Chat responses wait for full completion before displaying. This creates perceived latency, especially for longer responses. Streaming would significantly improve UX. | `src/app/api/chat/route.ts` |
 | 2 | MEDIUM | **Autonomous flow** can trigger unprompted AI messages. While this is a feature, there's a risk of runaway loops if multiple autonomous triggers fire simultaneously. The `isGeneratingRef` guard should prevent this, but edge cases with network delays could slip through. | `src/hooks/use-autonomous-flow.ts` |
 | 3 | MEDIUM | **Low-cost mode fallback** switches to a cheaper model when capacity is hit. The quality difference should be communicated more clearly to users. Currently shows a small amber dot in header. | `src/hooks/use-capacity-manager.ts` |
 | 4 | MEDIUM | **Purchase celebration** triggers an autonomous API call after purchase. If the celebration call fails, it silently logs and doesn't retry. Users might miss the celebration. | `src/app/chat/page.tsx:208-249` |

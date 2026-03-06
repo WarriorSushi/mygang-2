@@ -217,6 +217,18 @@ export function useChatHistory({
     const historySyncInFlightRef = useRef(false)
     const lastHistorySyncAtRef = useRef(0)
 
+    // Reset bootstrap when userId changes (e.g. logout → new login)
+    const prevUserIdRef = useRef<string | null>(userId)
+    useEffect(() => {
+        if (prevUserIdRef.current !== userId) {
+            prevUserIdRef.current = userId
+            setHistoryBootstrapDone(false)
+            setHistoryCursor(null)
+            setHasMoreHistory(false)
+            setHistoryStatus('unknown')
+        }
+    }, [userId])
+
     // Quick-set status when conditions are known early
     useEffect(() => {
         if (!isHydrated) return
