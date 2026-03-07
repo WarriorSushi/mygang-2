@@ -21,3 +21,8 @@
 - Failed on March 7, 2026: farewell message `gn bye` produced a short sendoff but then duplicated the same goodbye pair again via idle autonomous follow-up.
 - Observed on March 7, 2026: landing page still emits `404` for `/favicon.ico`.
 - Observed on March 7, 2026: mobile comparison remains side by side, but the production layout still felt visually clipped enough to warrant a tighter mobile grid.
+- Verified on March 7, 2026: the linked Supabase project now includes `20260307120000_purchase_celebration_pending_tier.sql` and `20260307154000_fix_profile_guard_for_billing.sql`.
+- Verified on March 7, 2026: direct service-role writes to `profiles.dodo_customer_id`, `profiles.subscription_tier`, and `profiles.purchase_celebration_pending` now persist instead of being silently reverted by the profile guard trigger.
+- Verified on March 7, 2026: authenticated user-side clearing of `purchase_celebration_pending` back to `null` works, so the congratulation flow can remain one-time.
+- Verified on March 7, 2026: `test1@test.com` is reconciled to Pro in the production database and is ready for a fresh browser validation pass.
+- Failed on March 7, 2026 after the DB repair: production chat still rendered `FREE` in the header/settings even though the app's own `profiles` fetch returned `subscription_tier = 'pro'`. A local auth-sync patch is prepared but was not yet included in the live production build during that validation pass.

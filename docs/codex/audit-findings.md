@@ -7,13 +7,16 @@
 - The root cause is twofold:
   - `activate` expected `subscription.customer_id` at the top level, but Dodo returns the customer under `subscription.customer.customer_id`.
   - The live profile for `test1@test.com` still had `dodo_customer_id = null`, so neither activation nor webhook lookup could map the paid subscription back to the user reliably.
-- The linked Supabase project is still on the older boolean `purchase_celebration_pending` schema in production, so the runtime needs temporary compatibility until the migration is applied.
+- The linked Supabase project was still on the older boolean `purchase_celebration_pending` schema in production until March 7, 2026, when `20260307120000_purchase_celebration_pending_tier.sql` was applied directly to the linked project.
+- A second production-only blocker existed in `protect_sensitive_profile_columns()`: it used `current_setting('request.jwt.claim.role', true)` instead of Supabase's normal role resolver, so service-role billing writes were being silently reverted on `profiles`. The linked project now has `20260307154000_fix_profile_guard_for_billing.sql`, which switches the guard to `auth.role()`-based detection with safe fallbacks and allows users to clear only their own `purchase_celebration_pending` flag.
 
 ### Billing findings now addressed in code
 - `checkout/success` previously showed a success state even when `/api/checkout/activate` failed or returned a non-activated subscription.
 - Local plan copy previously disagreed with limiter logic. The app enforced hourly limits (`25/hr` free, `40/hr` basic) while multiple UI surfaces still advertised `20/hr` or `500/mo`.
 - Billing drift had no built-in reconciliation pass.
-- Checkout now refuses to continue if it cannot persist `dodo_customer_id`, activation now reads nested Dodo customer data and can backfill `dodo_customer_id` from the authenticated email match, and both activation/webhook writes now tolerate the old boolean celebration column until the remote migration is applied.
+- Checkout now refuses to continue if it cannot persist `dodo_customer_id`, activation now reads nested Dodo customer data and can backfill `dodo_customer_id` from the authenticated email match, and both activation/webhook writes tolerate the old boolean celebration column during the compatibility window.
+- The paid production test account `test1@test.com` has now been reconciled manually: `dodo_customer_id` is populated, `subscription_tier = 'pro'`, `subscriptions.id = 'sub_0NZyPAQ1MdBWCKqm5vuz2'` is present with `status = 'active'`, and `purchase_celebration_pending = 'pro'` is restored so the repaired congratulation flow can be verified in-browser.
+- A follow-up production validation on March 7, 2026 found a separate client sync bug: the live app's `profiles` request returned `subscription_tier = 'pro'`, but chat UI still rendered the account as Free. The local fix is in `AuthManager`, which now applies profile-driven tier/customization state atomically instead of relying on a chain of independent setters.
 
 ### Chat reliability findings now addressed in code
 - AI events were persisted to `chat_history` before the client confirmed they were actually rendered.

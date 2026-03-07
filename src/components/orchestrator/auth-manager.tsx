@@ -7,22 +7,16 @@ import { CHARACTERS } from '@/constants/characters'
 import { useTheme } from 'next-themes'
 import type { Session } from '@supabase/supabase-js'
 import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-journey'
-import { getSquadLimit, type SubscriptionTier } from '@/lib/billing'
+import { getSquadLimit, getTierFromProfile, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTER_WELCOME_BACK_MESSAGES } from '@/constants/character-messages'
 
 export function AuthManager() {
     const setUserId = useChatStore((s) => s.setUserId)
     const setActiveGang = useChatStore((s) => s.setActiveGang)
     const setUserName = useChatStore((s) => s.setUserName)
-    const setUserNickname = useChatStore((s) => s.setUserNickname)
     const clearChat = useChatStore((s) => s.clearChat)
     const setIsHydrated = useChatStore((s) => s.setIsHydrated)
-    const setChatMode = useChatStore((s) => s.setChatMode)
-    const setLowCostMode = useChatStore((s) => s.setLowCostMode)
-    const setChatWallpaper = useChatStore((s) => s.setChatWallpaper)
     const setSquadConflict = useChatStore((s) => s.setSquadConflict)
-    const setCustomCharacterNames = useChatStore((s) => s.setCustomCharacterNames)
-    const setSubscriptionTier = useChatStore((s) => s.setSubscriptionTier)
     const setPendingUpgrade = useChatStore((s) => s.setPendingUpgrade)
     const setPendingDowngrade = useChatStore((s) => s.setPendingDowngrade)
     const addMessage = useChatStore((s) => s.addMessage)
@@ -33,14 +27,40 @@ export function AuthManager() {
 
     useEffect(() => {
         const clearAuthState = () => {
-            setUserId(null)
-            setActiveGang([])
+            useChatStore.setState({
+                userId: null,
+                activeGang: [],
+                userName: null,
+                userNickname: null,
+                subscriptionTier: 'free',
+                chatMode: 'gang_focus',
+                lowCostMode: false,
+                chatWallpaper: 'default',
+                customCharacterNames: {},
+                squadConflict: null,
+                pendingUpgrade: null,
+                pendingDowngrade: null,
+                messagesRemaining: null,
+                cooldownSeconds: null,
+            })
             clearChat()
-            setUserName(null)
-            setUserNickname(null)
-            setSquadConflict(null)
-            setLowCostMode(false)
             hadSessionRef.current = false
+        }
+
+        const syncProfileState = (profile: Awaited<ReturnType<typeof fetchJourneyState>>['profile']) => {
+            if (!profile) return
+
+            const nextTier = getTierFromProfile(profile.subscription_tier ?? null)
+            useChatStore.setState((state) => ({
+                ...state,
+                subscriptionTier: nextTier,
+                chatMode: profile.chat_mode ?? state.chatMode,
+                lowCostMode: typeof profile.low_cost_mode === 'boolean' ? profile.low_cost_mode : state.lowCostMode,
+                chatWallpaper: profile.chat_wallpaper ?? state.chatWallpaper,
+                customCharacterNames: profile.custom_character_names && typeof profile.custom_character_names === 'object'
+                    ? profile.custom_character_names
+                    : state.customCharacterNames,
+            }))
         }
 
         const syncSession = async (incomingSession?: Session | null) => {
@@ -67,7 +87,9 @@ export function AuthManager() {
                 const localIds = localGang.map((c) => c.id)
                 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
                 const profile = remote.profile
-                const remoteTier = (profile?.subscription_tier || 'free') as SubscriptionTier
+                syncProfileState(profile)
+
+                const remoteTier = getTierFromProfile(profile?.subscription_tier ?? null)
                 const maxSquad = getSquadLimit(remoteTier)
                 const remoteIds = savedIds.length >= 2 && savedIds.length <= maxSquad ? savedIds : null
 
@@ -132,12 +154,6 @@ export function AuthManager() {
                     }
                 }
 
-                if (profile?.chat_mode) {
-                    setChatMode(profile.chat_mode)
-                }
-                if (typeof profile?.low_cost_mode === 'boolean') {
-                    setLowCostMode(profile.low_cost_mode)
-                }
                 if (profile?.theme) {
                     const localTheme = typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null
                     // Respect an explicit local user choice and avoid server-driven theme flip-flop.
@@ -145,16 +161,9 @@ export function AuthManager() {
                         setTheme(profile.theme)
                     }
                 }
-                if (profile?.chat_wallpaper) {
-                    setChatWallpaper(profile.chat_wallpaper)
-                }
-                if (profile?.custom_character_names && typeof profile.custom_character_names === 'object') {
-                    setCustomCharacterNames(profile.custom_character_names)
-                }
                 if (profile?.subscription_tier) {
                     const previousTier = useChatStore.getState().subscriptionTier
-                    const newTier = profile.subscription_tier as SubscriptionTier
-                    setSubscriptionTier(newTier)
+                    const newTier = getTierFromProfile(profile.subscription_tier)
 
                     // Detect tier transitions for squad changes
                     if (initialSyncDoneRef.current && newTier !== previousTier) {
@@ -250,7 +259,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [addMessage, clearChat, setActiveGang, setChatMode, setChatWallpaper, setCustomCharacterNames, setIsHydrated, setLowCostMode, setPendingDowngrade, setPendingUpgrade, setSquadConflict, setSubscriptionTier, setTheme, setUserId, setUserName, setUserNickname, supabase])
+    }, [addMessage, clearChat, setActiveGang, setIsHydrated, setPendingDowngrade, setPendingUpgrade, setSquadConflict, setTheme, setUserId, setUserName, supabase])
 
     return null
 }
