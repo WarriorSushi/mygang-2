@@ -93,7 +93,8 @@ export async function POST(req: Request) {
         return jsonResponse(429, { state: 'invalid', reason: 'rate_limited' })
     }
 
-    const body = await req.json()
+    let body: unknown
+    try { body = await req.json() } catch { return jsonResponse(400, { state: 'invalid', reason: 'malformed_json' }) }
     const parsed = activateSchema.safeParse(body)
     if (!parsed.success) {
         return jsonResponse(400, { state: 'invalid', reason: 'invalid_subscription_id' })

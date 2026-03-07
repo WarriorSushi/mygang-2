@@ -75,6 +75,8 @@ export function useAutonomousFlow({
     const greetingTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
     const triggerLocalGreetingRef = useRef<() => void>(() => { })
     const isMountedRef = useRef(true)
+    const totalAutoCallsRef = useRef(0)
+    const MAX_SESSION_AUTO_CALLS = 15
 
     const scheduleGreeting = (fn: () => void, delay: number) => {
         const timer = setTimeout(() => {
@@ -118,6 +120,8 @@ export function useAutonomousFlow({
             if (!lastMessage || lastMessage.speaker === 'user') return
             if (isGeneratingRef.current || pendingUserMessagesRef.current) return
 
+            if (totalAutoCallsRef.current >= MAX_SESSION_AUTO_CALLS) return
+            totalAutoCallsRef.current += 1
             idleAutoCountRef.current += 1
             sendToApiRef.current({
                 isIntro: false,
@@ -194,6 +198,8 @@ export function useAutonomousFlow({
         resumeAutonomousTriggeredRef.current = true
         const timer = setTimeout(() => {
             if (isGeneratingRef.current || pendingUserMessagesRef.current) return
+            if (totalAutoCallsRef.current >= MAX_SESSION_AUTO_CALLS) return
+            totalAutoCallsRef.current += 1
             sendToApiRef.current({
                 isIntro: false,
                 isAutonomous: true,

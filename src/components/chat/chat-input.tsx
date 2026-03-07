@@ -171,7 +171,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
                     disabled={!input.trim() || disabled}
                     data-testid="chat-send"
                     aria-label="Send message"
-                    className="shrink-0 self-center rounded-full w-10 h-10 mb-0 active:scale-95 transition-transform shadow-none"
+                    className="shrink-0 self-center rounded-full w-11 h-11 mb-0 active:scale-95 transition-transform shadow-none"
                 >
                     <ArrowRight size={18} />
                 </Button>

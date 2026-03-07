@@ -94,7 +94,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
 
                     <div className="flex flex-col items-center gap-5 py-4">
                         {/* Countdown */}
-                        <div className="text-center flex items-center gap-2.5">
+                        <div className="text-center flex items-center gap-2.5" aria-live="polite" aria-atomic="true">
                             <span className="text-sm text-muted-foreground/70">Ready in</span>
                             <span className="font-mono font-bold text-foreground text-3xl tabular-nums tracking-tight">
                                 {formatTimeLeft(secondsLeft)}
@@ -127,14 +127,13 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                                     className="w-full h-12 rounded-xl text-[15px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
                                 >
                                     <Link href="/pricing?upgrade=pro" className="flex items-center justify-center gap-2">
-                                        Get Pro — $19.99/mo
+                                        Get Pro — {getTierCopy('pro').priceLabel}
                                         <ArrowRight className="w-4 h-4" />
                                     </Link>
                                 </Button>
 
                                 <p className="text-xs text-muted-foreground/70 dark:text-muted-foreground/60 text-center">
-                                    <span className="line-through text-muted-foreground/60 dark:text-muted-foreground/40">$99/mo</span>{' '}
-                                    <span className="text-primary font-medium">80% off launch price</span>
+                                    <span className="text-primary font-medium">Launch price</span>
                                 </p>
 
                                 {/* Basic option for free users */}
@@ -144,7 +143,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                                     className="w-full h-10 rounded-xl text-[13px] font-semibold border-blue-600/35 dark:border-blue-500/25 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 transition-all"
                                 >
                                     <Link href="/pricing?upgrade=basic" className="flex items-center justify-center gap-2">
-                                        Or get Basic — $14.99/mo
+                                        Or get Basic — {getTierCopy('basic').priceLabel}
                                     </Link>
                                 </Button>
                             </>
@@ -168,14 +167,13 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                                     className="w-full h-12 rounded-xl text-[15px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
                                 >
                                     <Link href="/pricing?upgrade=pro" className="flex items-center justify-center gap-2">
-                                        Upgrade to Pro — $19.99/mo
+                                        Upgrade to Pro — {getTierCopy('pro').priceLabel}
                                         <ArrowRight className="w-4 h-4" />
                                     </Link>
                                 </Button>
 
                                 <p className="text-xs text-muted-foreground/70 dark:text-muted-foreground/60 text-center">
-                                    <span className="line-through text-muted-foreground/60 dark:text-muted-foreground/40">$99/mo</span>{' '}
-                                    <span className="text-primary font-medium">80% off launch price</span>
+                                    <span className="text-primary font-medium">Launch price</span>
                                 </p>
                             </>
                         )}

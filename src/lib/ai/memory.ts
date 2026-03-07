@@ -97,6 +97,7 @@ export async function storeMemory(
                         await supabase
                             .from('memories')
                             .update({ kind: 'archived' })
+                            .eq('user_id', userId)
                             .in('id', toArchive.map(m => m.id))
                     }
                 }
@@ -206,6 +207,7 @@ export async function storeMemories(
                         await supabase
                             .from('memories')
                             .update({ kind: 'archived' })
+                            .eq('user_id', userId)
                             .in('id', toArchiveIds)
                     }
                 }

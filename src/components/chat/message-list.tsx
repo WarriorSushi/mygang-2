@@ -13,7 +13,7 @@ import { useTheme } from 'next-themes'
 
 function ChatSkeleton() {
     return (
-        <div className="flex flex-col gap-4 px-4 py-6" aria-label="Loading messages">
+        <div className="flex flex-col gap-4 px-4 py-6" role="status" aria-label="Loading messages">
             {/* Incoming message skeleton */}
             <div className="flex items-start gap-3 max-w-[75%]">
                 <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
@@ -46,19 +46,45 @@ function ChatSkeleton() {
     )
 }
 
+// Module-level cache for Lottie assets (persists across mounts)
+let cachedAnimationData: object | null = null
+let cachedLottieComponent: ComponentType<any> | null = null
+let lottieLoadPromise: Promise<void> | null = null
+let animationLoadPromise: Promise<void> | null = null
+
 function EmptyStateWelcome() {
-    const [animationData, setAnimationData] = useState<object | null>(null)
-    const [LottiePlayer, setLottiePlayer] = useState<ComponentType<any> | null>(null)
+    const [animationData, setAnimationData] = useState<object | null>(cachedAnimationData)
+    const [LottiePlayer, setLottiePlayer] = useState<ComponentType<any> | null>(cachedLottieComponent)
 
     useEffect(() => {
-        fetch('/lottie/confetti.json')
-            .then((res) => res.json())
-            .then(setAnimationData)
-            .catch(() => {})
+        if (cachedAnimationData) {
+            setAnimationData(cachedAnimationData)
+            return
+        }
+        if (!animationLoadPromise) {
+            animationLoadPromise = fetch('/lottie/confetti.json')
+                .then((res) => res.json())
+                .then((data) => { cachedAnimationData = data })
+                .catch(() => {})
+        }
+        animationLoadPromise.then(() => {
+            if (cachedAnimationData) setAnimationData(cachedAnimationData)
+        })
     }, [])
 
     useEffect(() => {
-        import('lottie-react').then((mod) => setLottiePlayer(() => mod.default)).catch(() => {})
+        if (cachedLottieComponent) {
+            setLottiePlayer(() => cachedLottieComponent)
+            return
+        }
+        if (!lottieLoadPromise) {
+            lottieLoadPromise = import('lottie-react')
+                .then((mod) => { cachedLottieComponent = mod.default })
+                .catch(() => {})
+        }
+        lottieLoadPromise.then(() => {
+            if (cachedLottieComponent) setLottiePlayer(() => cachedLottieComponent)
+        })
     }, [])
 
     return (

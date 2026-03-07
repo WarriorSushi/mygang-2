@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { motion, useReducedMotion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
+import { LazyMotion, domAnimation, m, useReducedMotion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight,
   Users,
@@ -245,12 +245,13 @@ export function LandingPage() {
   }, [isHydrated, router])
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <div id="main-content" className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
 
       {/* ── Nav ── */}
       <nav className="px-4 sm:px-6 pb-4 sm:pb-6 pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-[calc(env(safe-area-inset-top)+1.5rem)] flex flex-wrap justify-between items-center gap-3 max-w-7xl mx-auto w-full z-10">
-        <motion.div
+        <m.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="text-2xl font-bold flex items-center gap-2"
@@ -259,9 +260,9 @@ export function LandingPage() {
           <span className="font-[family-name:var(--font-brand)] font-extrabold text-xl sm:text-3xl">
             MyGang<span className="text-primary">.ai</span>
           </span>
-        </motion.div>
+        </m.div>
 
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 sm:gap-3">
+        <m.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 sm:gap-3">
           <Button
             type="button"
             variant="ghost"
@@ -293,7 +294,7 @@ export function LandingPage() {
               Log in
             </Button>
           )}
-        </motion.div>
+        </m.div>
       </nav>
 
       {/* ── Main ── */}
@@ -302,7 +303,7 @@ export function LandingPage() {
         {/* ── Hero ── */}
         <section className="relative w-full px-6 sm:px-10 lg:px-14 pt-16 sm:pt-24 pb-20">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[800px] h-[600px] sm:h-[800px] bg-primary/5 blur-[140px] rounded-full -z-10 animate-pulse" />
-          <motion.div style={{ y: heroY, scale: heroScale }} className="max-w-6xl mx-auto">
+          <m.div style={{ y: heroY, scale: heroScale }} className="max-w-6xl mx-auto">
             <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-10 lg:gap-16">
               <div className="order-2 lg:order-1 text-center lg:text-left flex-1">
                 <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full border border-border/70 bg-card/70 text-xs sm:text-sm mb-8 backdrop-blur-md shadow-[0_10px_30px_-20px_rgba(15,23,42,0.7)]">
@@ -374,7 +375,7 @@ export function LandingPage() {
               </div>
 
               <div className="order-1 lg:order-2 flex-shrink-0">
-                <motion.div
+                <m.div
                   animate={prefersReducedMotion ? undefined : { rotate: 360 }}
                   transition={prefersReducedMotion ? undefined : { duration: 60, repeat: Infinity, ease: 'linear' }}
                   className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-[29rem] lg:h-[29rem]"
@@ -388,10 +389,10 @@ export function LandingPage() {
                     className="relative w-full h-full object-contain drop-shadow-2xl"
                     priority
                   />
-                </motion.div>
+                </m.div>
               </div>
             </div>
-          </motion.div>
+          </m.div>
         </section>
 
 
@@ -444,7 +445,7 @@ export function LandingPage() {
           {/* Steps - spacious numbered layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-16">
             {steps.map((step, i) => (
-              <motion.div
+              <m.div
                 key={step.title}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -465,7 +466,7 @@ export function LandingPage() {
                     <ChevronRight className="w-5 h-5 text-muted-foreground/30" />
                   </div>
                 )}
-              </motion.div>
+              </m.div>
             ))}
           </div>
 
@@ -492,7 +493,7 @@ export function LandingPage() {
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {whyRealFeatures.map((item, i) => (
-              <motion.div
+              <m.div
                 key={item.title}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -508,7 +509,7 @@ export function LandingPage() {
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold tracking-tight mb-2">{item.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.copy}</p>
-              </motion.div>
+              </m.div>
             ))}
           </div>
         </Section>
@@ -524,7 +525,7 @@ export function LandingPage() {
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {testimonials.map((item, i) => (
-              <motion.div
+              <m.div
                 key={item.name}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -532,7 +533,7 @@ export function LandingPage() {
                 transition={{ delay: i * 0.1, duration: 0.4 }}
               >
                 <Testimonial {...item} />
-              </motion.div>
+              </m.div>
             ))}
           </div>
         </Section>
@@ -548,7 +549,7 @@ export function LandingPage() {
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {faq.map((item, i) => (
-              <motion.details
+              <m.details
                 key={item.q}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -571,7 +572,7 @@ export function LandingPage() {
                   <ChevronRight className="w-4 h-4 text-muted-foreground/50 transition-transform group-open:rotate-90 shrink-0 ml-2" />
                 </summary>
                 <p className="text-sm text-muted-foreground leading-relaxed mt-2">{item.a}</p>
-              </motion.details>
+              </m.details>
             ))}
           </div>
         </Section>
@@ -579,7 +580,7 @@ export function LandingPage() {
         {/* ── Final CTA ── */}
         <SectionDivider />
         <section className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24 relative">
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -608,7 +609,7 @@ export function LandingPage() {
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             )}
-          </motion.div>
+          </m.div>
         </section>
       </main>
 
@@ -639,6 +640,7 @@ export function LandingPage() {
         }}
       />
     </div>
+    </LazyMotion>
   )
 }
 
@@ -779,7 +781,7 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
     >
       <div className="relative overflow-hidden">
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div
+          <m.div
             key={activeIndex}
             initial={{ opacity: 0, x: 60 }}
             animate={{ opacity: 1, x: 0 }}
@@ -787,7 +789,7 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
             transition={{ duration: 0.3, ease: 'easeInOut' }}
           >
             <LiveDemoCard thread={threads[activeIndex]} />
-          </motion.div>
+          </m.div>
         </AnimatePresence>
       </div>
 
@@ -798,7 +800,7 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
             goPrev()
             requestAnimationFrame(() => e.currentTarget.focus())
           }}
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          className="w-11 h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
           aria-label="Previous chat"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -810,7 +812,7 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
               key={i}
               ref={(el) => { dotRefs.current[i] = el }}
               onClick={() => goTo(i, dotRefs.current[i])}
-              className="p-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded-full"
+              className="p-3 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label={`Go to chat ${i + 1}`}
               aria-current={i === activeIndex ? 'true' : undefined}
             >
@@ -827,7 +829,7 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
             goNext()
             requestAnimationFrame(() => e.currentTarget.focus())
           }}
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+          className="w-11 h-11 rounded-full border border-border/70 bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
           aria-label="Next chat"
         >
           <ChevronRight className="w-5 h-5" />
@@ -864,7 +866,7 @@ function Section({ id, title, subtitle, glow, children }: {
       <section id={id} className="w-full px-6 sm:px-10 lg:px-14 py-16 sm:py-24 relative">
         {glow}
         <div className="max-w-6xl mx-auto relative">
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -873,7 +875,7 @@ function Section({ id, title, subtitle, glow, children }: {
           >
             <span className="text-xs font-semibold text-primary tracking-wide">{subtitle}</span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mt-2 tracking-tight">{title}</h2>
-          </motion.div>
+          </m.div>
           {children}
         </div>
       </section>

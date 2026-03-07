@@ -30,9 +30,7 @@ Copy everything below this line and paste it as your prompt in a fresh Claude Co
 4. Upgrade via pricing page -> DodoPayments checkout -> Tier activates
 5. Settings panel (Sheet sidebar) -> wallpaper, rename characters, manage subscription, delete account
 
-## What Was Already Done
 
-A previous audit (v3) fixed 51 items across security, database, frontend, performance, chat, and memory. Results are documented in `docs/plans/pre-production-audit-results.md`. That audit missed visual/rendering bugs (like `hsl()` wrapping oklch CSS variables causing transparent backgrounds). **Do NOT re-audit things already marked FIXED in that document.** Focus on finding what it missed.
 
 ## Available Tools
 
@@ -236,7 +234,7 @@ supabase/
 
 ## Output Format
 
-Create a new file: `docs/plans/full-launch-audit.md`
+Create a new file: `docs/plans/new01-full-launch-audit.md`
 
 Structure your findings as:
 

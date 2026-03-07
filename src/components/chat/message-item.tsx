@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useRef, useEffect } from 'react'
 import { Character, Message } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -204,7 +204,34 @@ function MessageItemComponent({
     const isReaction = !!message.reaction
     const [liked, setLiked] = useState(false)
     const [showAvatar, setShowAvatar] = useState(false)
+    const avatarTriggerRef = useRef<HTMLElement | null>(null)
+    const lightboxRef = useRef<HTMLDivElement>(null)
     const canShowActions = !isReaction && message.speaker !== 'system'
+
+    // A11Y-I2: Focus trap + focus restoration for avatar lightbox
+    useEffect(() => {
+        if (!showAvatar || !lightboxRef.current) return
+        const el = lightboxRef.current
+        const focusable = el.querySelectorAll<HTMLElement>('button, [tabindex="0"]')
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        first.focus()
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key !== 'Tab') return
+            if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last.focus() }
+            } else {
+                if (document.activeElement === last) { e.preventDefault(); first.focus() }
+            }
+        }
+        el.addEventListener('keydown', handleKeyDown)
+        return () => {
+            el.removeEventListener('keydown', handleKeyDown)
+            avatarTriggerRef.current?.focus()
+        }
+    }, [showAvatar])
 
     const timeLabel = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     const relativeTime = message.created_at ? formatRelativeTime(message.created_at) : null
@@ -275,6 +302,7 @@ function MessageItemComponent({
                 <div className="flex items-center gap-2 mb-1 ml-0.5">
                     <button
                         type="button"
+                        ref={(el) => { avatarTriggerRef.current = el }}
                         aria-label={`View ${character?.name || message.speaker}'s avatar`}
                         className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center ring-[1.5px] ring-background cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all active:scale-95"
                         style={{ backgroundColor: character?.color || '#555' }}
@@ -411,7 +439,7 @@ function MessageItemComponent({
 
             {/* Delivery status + Seen by (stable-height container) */}
             {isUser && !isReaction && (
-                <div className="mt-0.5 px-1 min-h-[16px]" aria-live="polite">
+                <div className="mt-0.5 px-1 min-h-[16px]">
                     {message.deliveryStatus && (
                         <span className={cn(
                             "text-[10px]",
@@ -448,11 +476,11 @@ function MessageItemComponent({
             {/* Avatar lightbox */}
             {showAvatar && character?.avatar && (
                 <div
+                    ref={lightboxRef}
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
                     onClick={() => setShowAvatar(false)}
                     onKeyDown={(e) => { if (e.key === 'Escape') setShowAvatar(false) }}
                     tabIndex={0}
-                    ref={(el) => el?.focus()}
                     role="dialog"
                     aria-modal="true"
                     aria-label={`${character.name}'s avatar`}

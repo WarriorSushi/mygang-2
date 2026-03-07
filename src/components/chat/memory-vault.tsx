@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Brain, Trash2, Edit3, Check, Search, Loader2, Lock, Sparkles } from 'lucide-react'
 import Link from 'next/link'
@@ -29,6 +29,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     const [hasMore, setHasMore] = useState(false)
     const [cursor, setCursor] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
+    const deferredSearch = useDeferredValue(searchQuery)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
@@ -129,7 +130,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         if (isOpen) {
             setCursor(null)
             setHasMore(false)
-            // Load memories for ALL tiers (free users see them blurred)
+            setSearchQuery('')
             loadMemories({ reset: true, before: null })
         } else {
             setEditingId(null)
@@ -178,9 +179,9 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     }
 
     const filteredMemories = useMemo(() => {
-        const query = searchQuery.toLowerCase()
+        const query = deferredSearch.toLowerCase()
         return memories.filter((m) => m.content.toLowerCase().includes(query))
-    }, [memories, searchQuery])
+    }, [memories, deferredSearch])
 
     return (
         <AnimatePresence>

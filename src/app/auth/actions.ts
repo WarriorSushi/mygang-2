@@ -32,9 +32,9 @@ const userSettingsSchema = z.object({
     theme: z.enum(['light', 'dark', 'system']).optional(),
     chat_mode: z.enum(['ecosystem', 'gang_focus']).optional(),
     low_cost_mode: z.boolean().optional(),
-    preferred_squad: z.array(z.string()).max(6).optional(),
+    preferred_squad: z.array(z.string()).max(6).refine(ids => !ids || ids.every(id => validCharacterIds.includes(id)), { message: 'Invalid character ID' }).optional(),
     chat_wallpaper: z.string().max(50).optional(),
-    custom_character_names: z.record(z.string().max(30)).optional(),
+    custom_character_names: z.record(z.string().max(30)).refine(v => !v || Object.keys(v).length <= 6, { message: 'Too many custom names' }).optional(),
 }).strict()
 
 async function getOrigin() {
@@ -358,6 +358,8 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
 
     if (!user) return { items: [], hasMore: false, nextBefore: null as string | null }
 
+    await rateLimit('get-memories:' + user.id, 30, 60_000)
+
     const limit = Math.min(Math.max(params?.limit ?? 30, 10), 80)
     let query = supabase
         .from('memories')
@@ -394,42 +396,29 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { items: [], hasMore: false, nextBefore: null as string | null }
 
+    await rateLimit('get-history:' + user.id, 30, 60_000)
+
     const limit = Math.min(Math.max(params?.limit ?? 40, 10), 120)
     const beforeCreatedAt = params?.before
         ? (params.before.includes('|') ? params.before.split('|')[0] : params.before)
         : null
-    const buildBaseQuery = (selectClause: string) => {
-        let query = supabase
-            .from('chat_history')
-            .select(selectClause)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .order('id', { ascending: false })
-            .limit(limit + 1)
-        if (beforeCreatedAt) {
-            query = query.lt('created_at', beforeCreatedAt)
-        }
-        return query
+    let query = supabase
+        .from('chat_history')
+        .select('id, speaker, content, created_at, reaction, reply_to_client_message_id, client_message_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(limit + 1)
+    if (beforeCreatedAt) {
+        query = query.lt('created_at', beforeCreatedAt)
     }
 
-    const withMetadataResult = await buildBaseQuery('id, speaker, content, created_at, reaction, reply_to_client_message_id, client_message_id')
-        .returns<ChatHistoryPageRow[]>()
+    const result = await query.returns<ChatHistoryPageRow[]>()
 
-    let rows: ChatHistoryPageRow[] = []
-    if (withMetadataResult.error && isMissingHistoryMetadataColumnsError(withMetadataResult.error)) {
-        const legacyResult = await buildBaseQuery('id, speaker, content, created_at')
-            .returns<ChatHistoryPageRow[]>()
-        if (legacyResult.error) {
-            console.error('Error fetching chat history page:', legacyResult.error)
-            return { items: [], hasMore: false, nextBefore: null as string | null }
-        }
-        rows = legacyResult.data ?? []
-    } else if (withMetadataResult.error) {
-        console.error('Error fetching chat history page:', withMetadataResult.error)
+    if (result.error) {
+        console.error('Error fetching chat history page:', result.error)
         return { items: [], hasMore: false, nextBefore: null as string | null }
-    } else {
-        rows = withMetadataResult.data ?? []
     }
+    const rows: ChatHistoryPageRow[] = result.data ?? []
     const hasMore = rows.length > limit
     const pageRows = (hasMore ? rows.slice(0, limit) : rows)
     const lastRow = pageRows[pageRows.length - 1]
@@ -458,8 +447,26 @@ export async function updateUserSettings(settings: { theme?: string; chat_mode?:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    try {
+        const rate = await rateLimit('update-settings:' + user.id, 20, 60_000)
+        if (!rate.success) return
+    } catch { return }
+
     const parsed = userSettingsSchema.safeParse(settings)
     if (!parsed.success) return
+
+    // SEC-C1: Enforce tier-based squad limit on preferred_squad
+    if (parsed.data.preferred_squad) {
+        if (!parsed.data.preferred_squad.every(id => validCharacterIds.includes(id))) return
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('subscription_tier')
+            .eq('id', user.id)
+            .single()
+        const tier = getTierFromProfile(profile?.subscription_tier ?? null)
+        const limit = getSquadLimit(tier)
+        if (parsed.data.preferred_squad.length > limit) return
+    }
 
     const { error } = await supabase
         .from('profiles')
@@ -481,15 +488,25 @@ export async function deleteAllMessages() {
         return { ok: false, error: 'Too many attempts. Please wait.' }
     }
 
-    const { error } = await supabase
-        .from('chat_history')
-        .delete()
-        .eq('user_id', user.id)
-
-    if (error) {
-        console.error('Error deleting chat history:', error)
-        return { ok: false, error: 'Could not delete chat history right now.' }
-    }
+    // Batched deletion to avoid statement timeouts on large histories
+    let deleted = 0
+    do {
+        const { data: batch } = await supabase
+            .from('chat_history')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(500)
+        if (!batch?.length) break
+        deleted = batch.length
+        const { error } = await supabase
+            .from('chat_history')
+            .delete()
+            .in('id', batch.map(r => r.id))
+        if (error) {
+            console.error('Error deleting chat history batch:', error)
+            return { ok: false, error: 'Could not delete chat history right now.' }
+        }
+    } while (deleted === 500)
 
     return { ok: true as const }
 }
@@ -506,15 +523,25 @@ export async function deleteAllMemories() {
         return { ok: false, error: 'Too many attempts. Please wait.' }
     }
 
-    const { error } = await supabase
-        .from('memories')
-        .delete()
-        .eq('user_id', user.id)
-
-    if (error) {
-        console.error('Error deleting all memories:', error)
-        return { ok: false, error: 'Could not delete memories right now.' }
-    }
+    // Batched deletion to avoid statement timeouts
+    let deleted = 0
+    do {
+        const { data: batch } = await supabase
+            .from('memories')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(500)
+        if (!batch?.length) break
+        deleted = batch.length
+        const { error } = await supabase
+            .from('memories')
+            .delete()
+            .in('id', batch.map(r => r.id))
+        if (error) {
+            console.error('Error deleting memories batch:', error)
+            return { ok: false, error: 'Could not delete memories right now.' }
+        }
+    } while (deleted === 500)
 
     return { ok: true as const }
 }
@@ -547,12 +574,29 @@ export async function saveMemoryManual(content: string) {
 const squadTierTable = (supabase: Awaited<ReturnType<typeof createClient>>) =>
     (supabase as any).from('squad_tier_members')
 
-export async function addSquadTierMembers(characterIds: string[], tier: 'basic' | 'pro') {
+export async function addSquadTierMembers(characterIds: string[], _tier?: 'basic' | 'pro') {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const rows = characterIds.map(id => ({
+    try {
+        const rate = await rateLimit('add-squad-tier:' + user.id, 10, 60_000)
+        if (!rate.success) return
+    } catch { return }
+
+    const parsed = characterIdsSchema.safeParse(characterIds)
+    if (!parsed.success) return
+
+    // Read actual tier from DB instead of trusting client
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', user.id)
+        .single()
+    const tier = getTierFromProfile(profile?.subscription_tier ?? null)
+    if (tier === 'free') return
+
+    const rows = parsed.data.map(id => ({
         user_id: user.id,
         character_id: id,
         added_at_tier: tier,
@@ -568,10 +612,18 @@ export async function deactivateSquadTierMembers(characterIds: string[]) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    const parsed = characterIdsSchema.safeParse(characterIds)
+    if (!parsed.success) return
+
+    try {
+        const rate = await rateLimit('squad-tier-action:' + user.id, 10, 60_000)
+        if (!rate.success) return
+    } catch { return }
+
     await squadTierTable(supabase)
         .update({ is_active: false, deactivated_at: new Date().toISOString() })
         .eq('user_id', user.id)
-        .in('character_id', characterIds)
+        .in('character_id', parsed.data)
 }
 
 export async function getRestorableMembers() {
@@ -593,10 +645,18 @@ export async function restoreSquadTierMembers(characterIds: string[]) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    const parsed = characterIdsSchema.safeParse(characterIds)
+    if (!parsed.success) return
+
+    try {
+        const rate = await rateLimit('squad-tier-action:' + user.id, 10, 60_000)
+        if (!rate.success) return
+    } catch { return }
+
     await squadTierTable(supabase)
         .update({ is_active: true, deactivated_at: null })
         .eq('user_id', user.id)
-        .in('character_id', characterIds)
+        .in('character_id', parsed.data)
 }
 
 export async function getAutoRemovableMembers() {

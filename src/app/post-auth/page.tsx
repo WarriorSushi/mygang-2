@@ -65,7 +65,12 @@ export default function PostAuthPage() {
         const tryResolve = async (userId: string) => {
             if (resolved || isCancelled) return
             resolved = true
-            await resolveJourney(userId)
+            try {
+                await resolveJourney(userId)
+            } catch (err) {
+                console.error('Failed to resolve journey:', err)
+                resolved = false
+            }
         }
 
         const attemptGetUser = () => {

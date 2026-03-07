@@ -596,6 +596,14 @@ export default function PricingPage() {
               :is(.dark) .btn-gradient-border-pro:hover {
                 box-shadow: 0 0 48px -8px rgba(16,185,129,0.5), 0 0 24px -4px rgba(6,182,212,0.4);
               }
+
+              @media (prefers-reduced-motion: reduce) {
+                .btn-gradient-border::before,
+                .btn-gradient-border-pro::before,
+                .btn-gradient-border-pro::after {
+                  animation: none !important;
+                }
+              }
             `}</style>
 
             <div className="flex flex-wrap items-center justify-center gap-10 sm:gap-16 text-muted-foreground/50">

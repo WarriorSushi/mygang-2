@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
         return Response.json({ error: 'Too many requests' }, { status: 429 })
     }
 
-    const body = await req.json()
+    let body: unknown
+    try { body = await req.json() } catch { return Response.json({ error: 'Invalid JSON' }, { status: 400 }) }
     const parsed = checkoutSchema.safeParse(body)
     if (!parsed.success) {
         return Response.json({ error: 'Invalid plan' }, { status: 400 })

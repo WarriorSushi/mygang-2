@@ -1431,47 +1431,44 @@ FLOW FLAGS:
             const dailyMsgIncrement = hasFreshUserTurn && lastUserMsg ? 1 : 0
             const abuseScoreIncrement = nextAbuseScore !== null ? (nextAbuseScore - (profileRow?.abuse_score ?? 0)) : 0
 
-            try {
-                // Use RPC for atomic counter increments + profile field updates
-                // The RPC also handles daily counter reset and last_active_at in one query
-                await supabase.rpc('increment_profile_counters', {
-                    p_user_id: user.id,
-                    p_daily_msg_increment: dailyMsgIncrement,
-                    p_abuse_score_increment: abuseScoreIncrement,
-                    p_session_summary: profileUpdates.session_summary || undefined,
-                    p_summary_turns: profileUpdates.summary_turns ?? undefined,
-                    p_user_profile: profileUpdates.user_profile || undefined,
-                    p_relationship_state: profileUpdates.relationship_state || undefined,
-                    p_last_active_at: nowIso,
-                })
-            } catch (err) {
-                console.error('Error updating profile state:', err instanceof Error ? err.message : 'Unknown error')
+            // PERF-I1: Run profile/memory branch and chat history branch in parallel
+            const profileMemoryBranch = async () => {
+                try {
+                    await supabase.rpc('increment_profile_counters', {
+                        p_user_id: user.id,
+                        p_daily_msg_increment: dailyMsgIncrement,
+                        p_abuse_score_increment: abuseScoreIncrement,
+                        p_session_summary: profileUpdates.session_summary || undefined,
+                        p_summary_turns: profileUpdates.summary_turns ?? undefined,
+                        p_user_profile: profileUpdates.user_profile || undefined,
+                        p_relationship_state: profileUpdates.relationship_state || undefined,
+                        p_last_active_at: nowIso,
+                    })
+                } catch (err) {
+                    console.error('Error updating profile state:', err instanceof Error ? err.message : 'Unknown error')
+                }
+
+                if (retrievedMemoryIds.length > 0) {
+                    await touchMemories(retrievedMemoryIds)
+                }
+
+                if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
+                    await storeMemories(
+                        user.id,
+                        object.memory_updates.episodic.map((m) => ({
+                            content: m.content,
+                            kind: 'episodic' as const,
+                            tags: m.tags || [],
+                            importance: m.importance || 1,
+                            category: m.category as MemoryCategory | undefined,
+                        })),
+                        tier
+                    )
+                    compactMemoriesIfNeeded(user.id, tier).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
+                }
             }
 
-            // CRIT-3: Touch memories in deferred block (was previously blocking)
-            if (retrievedMemoryIds.length > 0) {
-                await touchMemories(retrievedMemoryIds)
-            }
-
-            if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
-                // CRIT-4: Batch store all memories with a single duplicate check
-                await storeMemories(
-                    user.id,
-                    object.memory_updates.episodic.map((m) => ({
-                        content: m.content,
-                        kind: 'episodic' as const,
-                        tags: m.tags || [],
-                        importance: m.importance || 1,
-                        category: m.category as MemoryCategory | undefined,
-                    })),
-                    tier
-                )
-                // Fire-and-forget: compact memories if threshold exceeded (MED-32: pass tier)
-                compactMemoriesIfNeeded(user.id, tier).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
-            }
-
-
-            // 3. Persist chat history
+            const chatHistoryBranch = async () => {
             try {
                 // C11: Single upsert instead of select-then-insert waterfall
                 const { data: gang, error: gangError } = await supabase
@@ -1625,6 +1622,9 @@ FLOW FLAGS:
             } catch (err) {
                 console.error('Chat history persistence error:', err instanceof Error ? err.message : 'Unknown error')
             }
+            }
+
+            await Promise.all([profileMemoryBranch(), chatHistoryBranch()])
             }
             waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err instanceof Error ? err.message : 'Unknown error')))
         }

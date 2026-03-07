@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(pnpm tsc:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(npx supabase:*)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__apply_migration",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm next:*)",
+      "Bash(git add:*)"
     ]
   }
 }

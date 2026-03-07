@@ -28,6 +28,7 @@ export function UpgradePickerModal({
 }: UpgradePickerModalProps) {
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [saving, setSaving] = useState(false)
+    const [saveError, setSaveError] = useState<string | null>(null)
     const addMessage = useChatStore((s) => s.addMessage)
     const modalRef = useRef<HTMLDivElement>(null)
 
@@ -84,12 +85,14 @@ export function UpgradePickerModal({
     async function handleConfirm() {
         if (selectedIds.length === 0 || saving) return
         setSaving(true)
+        setSaveError(null)
 
         try {
             const updatedSquad = [...currentSquadIds, ...selectedIds]
             await saveGang(updatedSquad)
             await addSquadTierMembers(selectedIds, newTier)
 
+            // Only post intro messages AFTER both server calls succeed
             for (const id of selectedIds) {
                 const introText =
                     CHARACTER_INTRO_MESSAGES[id] ?? `Hey, I just joined the gang!`
@@ -102,7 +105,9 @@ export function UpgradePickerModal({
             }
 
             onComplete(selectedIds)
-        } catch {
+        } catch (err) {
+            console.error('Failed to add members:', err)
+            setSaveError('Could not add members. Please try again.')
             setSaving(false)
         }
     }
@@ -276,6 +281,9 @@ export function UpgradePickerModal({
 
                     {/* Bottom bar */}
                     <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 py-4">
+                        {saveError && (
+                            <p className="text-sm text-destructive text-center mb-3">{saveError}</p>
+                        )}
                         <div className="flex items-center justify-between gap-3">
                             {/* Selected count */}
                             <div className="flex items-center gap-2 min-w-0 flex-1">

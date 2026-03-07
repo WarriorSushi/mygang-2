@@ -224,6 +224,7 @@ export const POST = Webhooks({
         const data = payload.data as Record<string, unknown>
         const customerId = getWebhookCustomerId(data)
         const subscriptionId = data.subscription_id as string
+        const webhookId = data.webhook_id as string ?? null
         if (!customerId) {
             console.error('[webhook] Missing customer_id on subscription.cancelled payload')
             return
@@ -231,9 +232,12 @@ export const POST = Webhooks({
         const userId = await findUserByCustomerId(customerId)
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on cancellation, subscription_id=${subscriptionId}`)
-            await logBillingEvent(null, 'subscription.cancelled.orphaned', null, data)
+            await logBillingEvent(null, 'subscription.cancelled.orphaned', webhookId, data)
             return
         }
+
+        const isNew = await logBillingEvent(userId, 'subscription.cancelled', webhookId, data)
+        if (!isNew) return
 
         const { error } = await supabase.from('subscriptions').update({
             status: 'cancelled',
@@ -242,13 +246,13 @@ export const POST = Webhooks({
         if (error) console.error('[webhook] Cancellation update failed:', error)
         await updateProfileTier(userId, 'free')
         await supabase.from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
-        await logBillingEvent(userId, 'subscription.cancelled', null, data)
     },
 
     onSubscriptionExpired: async (payload) => {
         const data = payload.data as Record<string, unknown>
         const customerId = getWebhookCustomerId(data)
         const subscriptionId = data.subscription_id as string
+        const webhookId = data.webhook_id as string ?? null
         if (!customerId) {
             console.error('[webhook] Missing customer_id on subscription.expired payload')
             return
@@ -256,9 +260,12 @@ export const POST = Webhooks({
         const userId = await findUserByCustomerId(customerId)
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on expiration, subscription_id=${subscriptionId}`)
-            await logBillingEvent(null, 'subscription.expired.orphaned', null, data)
+            await logBillingEvent(null, 'subscription.expired.orphaned', webhookId, data)
             return
         }
+
+        const isNew = await logBillingEvent(userId, 'subscription.expired', webhookId, data)
+        if (!isNew) return
 
         const { error } = await supabase.from('subscriptions').update({
             status: 'expired',
@@ -267,20 +274,23 @@ export const POST = Webhooks({
         if (error) console.error('[webhook] Expiration update failed:', error)
         await updateProfileTier(userId, 'free')
         await supabase.from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
-        await logBillingEvent(userId, 'subscription.expired', null, data)
     },
 
     onPaymentSucceeded: async (payload) => {
         const data = payload.data as Record<string, unknown>
+        const webhookId = data.webhook_id as string ?? null
         const customerId = getWebhookCustomerId(data)
         const userId = customerId ? await findUserByCustomerId(customerId) : null
-        await logBillingEvent(userId, 'payment.succeeded', null, data)
+        const isNew = await logBillingEvent(userId, 'payment.succeeded', webhookId, data)
+        if (!isNew) return
     },
 
     onPaymentFailed: async (payload) => {
         const data = payload.data as Record<string, unknown>
+        const webhookId = data.webhook_id as string ?? null
         const customerId = getWebhookCustomerId(data)
         const userId = customerId ? await findUserByCustomerId(customerId) : null
-        await logBillingEvent(userId, 'payment.failed', null, data)
+        const isNew = await logBillingEvent(userId, 'payment.failed', webhookId, data)
+        if (!isNew) return
     },
 })

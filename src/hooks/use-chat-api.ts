@@ -156,9 +156,16 @@ export function useChatApi({
     const initialGreetingRef = useRef(false)
     const abortControllerRef = useRef<AbortController | null>(null)
 
-    // Cleanup: abort any in-flight fetch on unmount
+    // Cleanup: abort any in-flight fetch and clear timers on unmount
     useEffect(() => {
-        return () => { abortControllerRef.current?.abort() }
+        return () => {
+            abortControllerRef.current?.abort()
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+            if (typeof window !== 'undefined') {
+                const notifTimer = (window as unknown as Record<string, unknown>).__mygangCooldownNotif
+                if (notifTimer) clearTimeout(notifTimer as ReturnType<typeof setTimeout>)
+            }
+        }
     }, [])
 
     const updateUserDeliveryStatus = useCallback((
@@ -312,12 +319,15 @@ export function useChatApi({
                         Notification.requestPermission().catch(() => {})
                     }
                     if (cooldownSec > 0) {
+                        // Clear any existing cooldown notification timer
+                        const existingTimer = (window as unknown as Record<string, unknown>).__mygangCooldownNotif
+                        if (existingTimer) clearTimeout(existingTimer as ReturnType<typeof setTimeout>)
+
                         const notifTimer = setTimeout(() => {
                             if (Notification.permission === 'granted') {
                                 new Notification('MyGang', { body: 'Your gang is ready! Come back and chat.' })
                             }
                         }, cooldownSec * 1000)
-                        // Store cleanup ref (best-effort, will clear on page unload anyway)
                         ;(window as unknown as Record<string, unknown>).__mygangCooldownNotif = notifTimer
                     }
                 }
@@ -542,7 +552,8 @@ export function useChatApi({
                 isGeneratingRef.current = false
                 clearTypingUsers()
                 // Schedule one follow-up banter round 10s after last bubble, only for user-initiated messages
-                if (!isIntro && !isAutonomous && apiCallSucceeded && !effectiveLowCostModeForCall && chatMode === 'ecosystem') {
+                const currentLowCost = useChatStore.getState().lowCostMode || autoLowCostModeRef.current
+                if (!isIntro && !isAutonomous && apiCallSucceeded && !currentLowCost && chatMode === 'ecosystem') {
                     const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
                     const sourceMessage = sourceId
                         ? useChatStore.getState().messages.find((message) => message.id === sourceId && message.speaker === 'user')
@@ -643,6 +654,7 @@ export function useChatApi({
             return
         }
 
+        if (isGeneratingRef.current) return
         await sendToApi({ isIntro, isAutonomous })
     }
     handleSendRef.current = handleSend

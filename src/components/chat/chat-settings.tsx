@@ -298,6 +298,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
     const [renameInputs, setRenameInputs] = useState<Record<string, string>>({})
     const [renameSaved, setRenameSaved] = useState(false)
     const [dangerExpanded, setDangerExpanded] = useState(false)
+    const [deleteConfirmStep, setDeleteConfirmStep] = useState(false)
 
     const supabase = useMemo(() => createClient(), [])
 
@@ -347,6 +348,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
         setPanel('root')
         setDeleteEmailInput('')
         setDeleteEmailError(null)
+        setDeleteConfirmStep(false)
         setDangerExpanded(false)
         onClose()
     }
@@ -358,8 +360,10 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
             setDeleteEmailError('Type your exact signed-in email to confirm account deletion.')
             return
         }
-        const confirmed = confirm('Delete your account and all data? This cannot be undone.')
-        if (!confirmed) return
+        if (!deleteConfirmStep) {
+            setDeleteConfirmStep(true)
+            return
+        }
         setIsDeleting(true)
         try {
             await deleteAccount()
@@ -789,7 +793,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                             disabled={isDeleting || !accountEmail}
                                                             className="h-auto w-full justify-center rounded-xl border border-destructive/25 py-2.5 text-destructive/70 hover:bg-destructive hover:text-white hover:border-destructive disabled:opacity-40"
                                                         >
-                                                            <span className="text-[11px] font-medium">{isDeleting ? 'Deleting...' : 'Delete Account'}</span>
+                                                            <span className="text-[11px] font-medium">{isDeleting ? 'Deleting...' : deleteConfirmStep ? 'Tap again to confirm deletion' : 'Delete Account'}</span>
                                                         </Button>
                                                     </div>
                                                 </div>

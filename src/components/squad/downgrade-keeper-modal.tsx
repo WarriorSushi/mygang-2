@@ -20,8 +20,8 @@ interface DowngradeKeeperModalProps {
     currentSquad: SquadMember[]
     maxKeep: number
     autoRemovableIds: string[]
-    onConfirm: (keepIds: string[]) => void
-    onAutoRemove: () => void
+    onConfirm: (keepIds: string[]) => void | Promise<void>
+    onAutoRemove: () => void | Promise<void>
 }
 
 export function DowngradeKeeperModal({
@@ -86,7 +86,7 @@ export function DowngradeKeeperModal({
         if (!isReady) return
         setIsSaving(true)
         try {
-            onConfirm(Array.from(selectedIds))
+            await onConfirm(Array.from(selectedIds))
         } finally {
             setIsSaving(false)
         }
@@ -95,7 +95,7 @@ export function DowngradeKeeperModal({
     async function handleAutoRemove() {
         setIsSaving(true)
         try {
-            onAutoRemove()
+            await onAutoRemove()
         } finally {
             setIsSaving(false)
         }
@@ -169,6 +169,8 @@ export function DowngradeKeeperModal({
                                         type="button"
                                         onClick={() => toggleMember(member.id)}
                                         disabled={isSaving || isMaxed}
+                                        aria-pressed={isSelected}
+                                        aria-label={`${member.name}${member.archetype ? ` — ${member.archetype}` : ''}: ${isSelected ? 'selected' : 'not selected'}`}
                                         whileTap={{ scale: 0.97 }}
                                         className={cn(
                                             "relative rounded-2xl border overflow-hidden transition-all duration-300 group text-left",

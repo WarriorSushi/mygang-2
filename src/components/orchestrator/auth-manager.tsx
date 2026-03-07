@@ -23,6 +23,7 @@ export function AuthManager() {
     const supabase = useMemo(() => createClient(), [])
     const hadSessionRef = useRef(false)
     const initialSyncDoneRef = useRef(false)
+    const syncInFlightRef = useRef(false)
     const { setTheme } = useTheme()
 
     useEffect(() => {
@@ -70,6 +71,8 @@ export function AuthManager() {
         }
 
         const syncSession = async (incomingSession?: Session | null) => {
+            if (syncInFlightRef.current) return
+            syncInFlightRef.current = true
             try {
                 if (!initialSyncDoneRef.current) {
                     setIsHydrated(false)
@@ -185,17 +188,23 @@ export function AuthManager() {
                             })
                         } else if (newLimit < oldLimit && currentSquadSize > newLimit) {
                             // DOWNGRADE — fetch auto-removable members and show keeper
-                            const { data: autoRemovable } = await (supabase as any)
-                                .from('squad_tier_members')
-                                .select('character_id')
-                                .eq('user_id', session.user.id)
-                                .eq('is_active', true)
-                                .order('created_at', { ascending: false })
-                                .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+                            let autoRemovableIds: string[] = []
+                            try {
+                                const { data: autoRemovable } = await (supabase as any)
+                                    .from('squad_tier_members')
+                                    .select('character_id')
+                                    .eq('user_id', session.user.id)
+                                    .eq('is_active', true)
+                                    .order('created_at', { ascending: false })
+                                    .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+                                autoRemovableIds = autoRemovable?.map(r => r.character_id) ?? []
+                            } catch (err) {
+                                console.error('Failed to fetch auto-removable members:', err)
+                            }
 
                             setPendingDowngrade({
                                 newLimit,
-                                autoRemovableIds: autoRemovable?.map(r => r.character_id) ?? [],
+                                autoRemovableIds,
                             })
                         }
                     }
@@ -205,17 +214,23 @@ export function AuthManager() {
                         const currentSquadSize = useChatStore.getState().activeGang.length
                         const newLimit = getSquadLimit(profile.subscription_tier as SubscriptionTier)
                         if (currentSquadSize > newLimit) {
-                            const { data: autoRemovable } = await (supabase as any)
-                                .from('squad_tier_members')
-                                .select('character_id')
-                                .eq('user_id', session.user.id)
-                                .eq('is_active', true)
-                                .order('created_at', { ascending: false })
-                                .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+                            let autoRemovableIds: string[] = []
+                            try {
+                                const { data: autoRemovable } = await (supabase as any)
+                                    .from('squad_tier_members')
+                                    .select('character_id')
+                                    .eq('user_id', session.user.id)
+                                    .eq('is_active', true)
+                                    .order('created_at', { ascending: false })
+                                    .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+                                autoRemovableIds = autoRemovable?.map(r => r.character_id) ?? []
+                            } catch (err) {
+                                console.error('Failed to fetch auto-removable members:', err)
+                            }
 
                             setPendingDowngrade({
                                 newLimit,
-                                autoRemovableIds: autoRemovable?.map(r => r.character_id) ?? [],
+                                autoRemovableIds,
                             })
                         }
                         // Clear the flag
@@ -242,6 +257,7 @@ export function AuthManager() {
             } catch (err) {
                 console.error('Auth sync error:', err)
             } finally {
+                syncInFlightRef.current = false
                 setIsHydrated(true)
                 initialSyncDoneRef.current = true
             }

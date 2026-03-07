@@ -261,6 +261,7 @@ export default function ChatPage() {
             })
 
             const timer = setTimeout(() => {
+                if (api.isGeneratingRef.current) return
                 api.sendToApiRef.current({
                     isIntro: false,
                     isAutonomous: true,
@@ -277,6 +278,7 @@ export default function ChatPage() {
 
         // Fallback: check DB flag (handles tab closure before sessionStorage was read)
         let cancelled = false
+        let dbTimer: ReturnType<typeof setTimeout> | undefined
         import('@/lib/supabase/client').then(({ createClient }) => {
             const supabase = createClient()
             supabase.from('profiles')
@@ -293,10 +295,13 @@ export default function ChatPage() {
                             : data?.subscription_tier === 'pro'
                                 ? 'pro'
                                 : 'basic'
-                    triggerCelebration(plan)
+                    dbTimer = triggerCelebration(plan)
                 })
         })
-        return () => { cancelled = true }
+        return () => {
+            cancelled = true
+            if (dbTimer) clearTimeout(dbTimer)
+        }
     }, [isHydrated, userId, activeGang.length, api.isGeneratingRef, api.sendToApiRef])
 
     // ── Cleanup timers ──

@@ -55,10 +55,10 @@ export const metadata: Metadata = {
     siteName: "MyGang.ai",
     images: [
       {
-        url: "/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: "MyGang.ai"
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "MyGang.ai — Your Premium AI Group Chat"
       }
     ]
   },
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     title: "MyGang.ai | Your Premium AI Group Chat",
     description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
     creator: "@mygang_ai",
-    images: ["/icon-512.png"]
+    images: ["/og-image.png"]
   },
   icons: {
     icon: [
