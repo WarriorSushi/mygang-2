@@ -408,7 +408,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
 
     // Surface colors — inline to bypass Tailwind v4 arbitrary value bug
     const surface = {
-        bg: 'hsl(var(--background))',
+        bg: 'var(--background)',
         shadow: isDark
             ? '0 0 60px -10px rgba(0,0,0,0.8), -4px 0 20px -4px rgba(0,0,0,0.4)'
             : '0 0 60px -10px rgba(0,0,0,0.15), -4px 0 20px -4px rgba(0,0,0,0.08)',
