@@ -44,6 +44,10 @@ export function AuthManager() {
                 cooldownSeconds: null,
             })
             clearChat()
+            // UF-I8: Clear draft so next user doesn't see previous user's unsent message
+            if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('mygang-chat-draft')
+            }
             hadSessionRef.current = false
         }
 
@@ -51,10 +55,12 @@ export function AuthManager() {
             if (!profile) return
 
             const nextTier = getTierFromProfile(profile.subscription_tier ?? null)
+            // UF-I7: Force gang_focus if free tier (ecosystem is paid-only)
+            const safeChatMode = nextTier === 'free' ? 'gang_focus' : (profile.chat_mode ?? undefined)
             useChatStore.setState((state) => ({
                 ...state,
                 subscriptionTier: nextTier,
-                chatMode: profile.chat_mode ?? state.chatMode,
+                chatMode: safeChatMode ?? state.chatMode,
                 lowCostMode: typeof profile.low_cost_mode === 'boolean' ? profile.low_cost_mode : state.lowCostMode,
                 chatWallpaper: profile.chat_wallpaper ?? state.chatWallpaper,
                 customCharacterNames: profile.custom_character_names && typeof profile.custom_character_names === 'object'

@@ -64,6 +64,13 @@ export async function signInWithGoogle() {
 }
 
 export async function signInOrSignUpWithPassword(email: string, password: string) {
+    try {
+        const rate = await rateLimit('auth-login:' + email.toLowerCase().trim(), 10, 60_000)
+        if (!rate.success) return { ok: false, error: 'Too many attempts. Please wait a moment.' }
+    } catch {
+        return { ok: false, error: 'Too many attempts. Please wait a moment.' }
+    }
+
     const supabase = await createClient()
     const origin = await getOrigin()
 
@@ -147,6 +154,11 @@ export async function saveGang(characterIds: string[]) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return
+
+    try {
+        const rate = await rateLimit('save-gang:' + user.id, 10, 60_000)
+        if (!rate.success) return
+    } catch { return }
 
     const parsed = characterIdsSchema.safeParse(characterIds)
     if (!parsed.success) return
@@ -233,6 +245,11 @@ export async function saveUsername(username: string) {
 
     if (!user) return
 
+    try {
+        const rate = await rateLimit('save-username:' + user.id, 10, 60_000)
+        if (!rate.success) return
+    } catch { return }
+
     const parsed = usernameSchema.safeParse(username)
     if (!parsed.success) return
 
@@ -271,6 +288,11 @@ export async function deleteMemory(id: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    try {
+        const rate = await rateLimit('delete-memory:' + user.id, 20, 60_000)
+        if (!rate.success) return
+    } catch { return }
+
     const { error } = await supabase
         .from('memories')
         .delete()
@@ -288,6 +310,11 @@ export async function updateMemory(id: string, content: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    try {
+        const rate = await rateLimit('update-memory:' + user.id, 10, 60_000)
+        if (!rate.success) return
+    } catch { return }
 
     let embedding: number[] = []
     try {
@@ -447,6 +474,13 @@ export async function deleteAllMessages() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, error: 'Not authenticated.' }
 
+    try {
+        const rate = await rateLimit('delete-all-messages:' + user.id, 3, 60_000)
+        if (!rate.success) return { ok: false, error: 'Too many attempts. Please wait.' }
+    } catch {
+        return { ok: false, error: 'Too many attempts. Please wait.' }
+    }
+
     const { error } = await supabase
         .from('chat_history')
         .delete()
@@ -464,6 +498,13 @@ export async function deleteAllMemories() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, error: 'Not authenticated.' }
+
+    try {
+        const rate = await rateLimit('delete-all-memories:' + user.id, 3, 60_000)
+        if (!rate.success) return { ok: false, error: 'Too many attempts. Please wait.' }
+    } catch {
+        return { ok: false, error: 'Too many attempts. Please wait.' }
+    }
 
     const { error } = await supabase
         .from('memories')
@@ -483,6 +524,11 @@ export async function saveMemoryManual(content: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    try {
+        const rate = await rateLimit('save-memory:' + user.id, 10, 60_000)
+        if (!rate.success) return
+    } catch { return }
 
     const parsed = memoryContentSchema.safeParse(content)
     if (!parsed.success) return

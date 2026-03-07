@@ -376,7 +376,7 @@ export const MessageList = memo(function MessageList({
 
                 {/* Inline typing indicator */}
                 {typingUsers.length > 0 && (
-                    <div className="px-4 pt-2 pb-1">
+                    <div className="px-4 pt-2 pb-1" role="status" aria-label="Characters are typing">
                         <div className="flex items-center gap-2">
                             <div className="flex -space-x-1.5">
                                 {typingUsers.slice(0, 3).map((uid) => {

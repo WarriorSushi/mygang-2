@@ -74,13 +74,13 @@ function FeatureValue({ value }: { value: boolean | string }) {
   }
   if (value) {
     return (
-      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/15">
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/15" role="img" aria-label="Included">
         <Check className="w-4 h-4 text-emerald-400" />
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted/30 dark:bg-white/5">
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted/30 dark:bg-white/5" role="img" aria-label="Not included">
       <X className="w-4 h-4 text-muted-foreground/50 dark:text-muted-foreground/30" />
     </span>
   )

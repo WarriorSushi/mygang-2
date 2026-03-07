@@ -38,7 +38,7 @@ function Section({
 
 export default function TermsOfServicePage() {
   return (
-    <main className="min-h-dvh bg-background text-foreground px-4 sm:px-6 py-10 pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-[calc(env(safe-area-inset-bottom)+2.5rem)]">
+    <main id="main-content" className="min-h-dvh bg-background text-foreground px-4 sm:px-6 py-10 pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-[calc(env(safe-area-inset-bottom)+2.5rem)]">
       <div className="max-w-3xl mx-auto">
         {/* back link */}
         <Link

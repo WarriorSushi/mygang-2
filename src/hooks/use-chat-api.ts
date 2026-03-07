@@ -325,6 +325,16 @@ export function useChatApi({
             }
 
             if (!res.ok) {
+                // UF-I4: Detect expired session and prompt re-login
+                if (res.status === 401) {
+                    updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', 'Session expired')
+                    onToast('Your session has expired. Please sign in again.')
+                    setTimeout(() => {
+                        if (typeof window !== 'undefined') window.location.href = '/'
+                    }, 2000)
+                    return
+                }
+
                 trackEvent('chat_api_call', {
                     metadata: {
                         source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',

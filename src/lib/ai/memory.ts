@@ -278,25 +278,29 @@ export async function storeMemories(
             const rowsWithEmbeddings = withEmbeddings.filter(r => r.embedding !== null)
             if (rowsWithEmbeddings.length > 0 && existing && existing.length > 0) {
                 const semanticDupIds = new Set<number>()
-                for (let i = 0; i < rowsWithEmbeddings.length; i++) {
-                    const row = rowsWithEmbeddings[i]!
-                    try {
-                        const { data: similar } = await supabase.rpc('match_memories', {
-                            query_embedding: row.embedding,
-                            match_threshold: 0.9,
-                            match_count: 1,
-                            p_user_id: userId,
-                        })
-                        if (similar && similar.length > 0) {
-                            // Find index in withEmbeddings to mark for removal
-                            const idx = withEmbeddings.indexOf(row)
-                            if (idx >= 0) semanticDupIds.add(idx)
+                // PERF-I1: Parallel semantic dedup checks
+                const checks = await Promise.all(
+                    rowsWithEmbeddings.map(async (row) => {
+                        try {
+                            const { data: similar } = await supabase.rpc('match_memories', {
+                                query_embedding: row.embedding,
+                                match_threshold: 0.9,
+                                match_count: 1,
+                                p_user_id: userId,
+                            })
+                            return !!(similar && similar.length > 0)
+                        } catch (err) {
+                            console.error('Semantic dedup check error:', err)
+                            return false
                         }
-                    } catch (err) {
-                        // If semantic check fails, keep the memory
-                        console.error('Semantic dedup check error:', err)
+                    })
+                )
+                rowsWithEmbeddings.forEach((row, i) => {
+                    if (checks[i]) {
+                        const idx = withEmbeddings.indexOf(row)
+                        if (idx >= 0) semanticDupIds.add(idx)
                     }
-                }
+                })
                 if (semanticDupIds.size > 0) {
                     finalRows = withEmbeddings.filter((_, i) => !semanticDupIds.has(i))
                 }

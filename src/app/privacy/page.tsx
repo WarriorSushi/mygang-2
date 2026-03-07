@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="min-h-dvh bg-background text-foreground">
+    <main id="main-content" className="min-h-dvh bg-background text-foreground">
       {/* Header */}
       <div className="border-b border-border/50 bg-muted/20 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">

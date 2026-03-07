@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 import { useChatStore } from '@/stores/chat-store'
@@ -29,8 +29,10 @@ function SuccessContent() {
     const [status, setStatus] = useState<'activating' | 'pending' | 'success' | 'error'>('activating')
     const [resolvedPlan, setResolvedPlan] = useState<'basic' | 'pro' | null>(null)
     const [statusHint, setStatusHint] = useState('Just a moment while we power up your gang')
+    const cancelledRef = useRef(false)
 
     useEffect(() => {
+        cancelledRef.current = false
         const subscriptionId = searchParams.get('subscription_id')
         const expectedPlan = searchParams.get('plan')
         const normalizedPlan = expectedPlan === 'pro' || expectedPlan === 'basic'
@@ -38,13 +40,16 @@ function SuccessContent() {
             : null
 
         const finalizeActivation = (plan: 'basic' | 'pro') => {
+            if (cancelledRef.current) return
             setResolvedPlan(plan)
             useChatStore.getState().setSubscriptionTier(plan)
             if (typeof window !== 'undefined') {
                 window.sessionStorage.setItem('mygang_just_purchased', plan)
             }
             setStatus('success')
-            setTimeout(() => router.push('/chat'), 3000)
+            setTimeout(() => {
+                if (!cancelledRef.current) router.replace('/chat')
+            }, 3000)
         }
 
         const pollActivation = async () => {
@@ -57,7 +62,7 @@ function SuccessContent() {
                 return
             }
 
-            while (Date.now() - startedAt < timeoutMs) {
+            while (!cancelledRef.current && Date.now() - startedAt < timeoutMs) {
                 try {
                     if (subscriptionId) {
                         const res = await fetch('/api/checkout/activate', {
@@ -108,6 +113,7 @@ function SuccessContent() {
         } else {
             setStatus('error')
         }
+        return () => { cancelledRef.current = true }
     }, [searchParams, router])
 
     if (status === 'activating') {
@@ -145,7 +151,7 @@ function SuccessContent() {
                     <h1 className="text-2xl font-bold text-foreground">We&apos;re still checking your upgrade</h1>
                     <p className="text-muted-foreground">{statusHint}</p>
                     <button
-                        onClick={() => router.push('/chat')}
+                        onClick={() => router.replace('/chat')}
                         className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                     >
                         Go to Chat
@@ -167,7 +173,7 @@ function SuccessContent() {
                 </p>
                 <p className="text-muted-foreground/70 text-sm">Redirecting to chat in 3 seconds...</p>
                 <button
-                    onClick={() => router.push('/chat')}
+                    onClick={() => router.replace('/chat')}
                     className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 >
                     Go to Chat

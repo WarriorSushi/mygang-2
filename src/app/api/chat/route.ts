@@ -755,6 +755,20 @@ export async function POST(req: Request) {
 
         const profileTier = getTierFromProfile(profile?.subscription_tier ?? null)
 
+        // BILLING-C1: Ecosystem mode is Basic/Pro only
+        if (chatMode === 'ecosystem' && profileTier === 'free') {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: 'Ecosystem mode is available on Basic and Pro plans. Upgrade to unlock it!',
+                    delay: 200
+                }],
+                paywall: true,
+                tier: 'free'
+            }, { status: 403 })
+        }
+
         // P-C1: Parallelize global rate limit + tier-specific rate limit (both independent once we have tier)
         const rateKey = `chat:user:${user.id}`
         const rateLimitMax = 60

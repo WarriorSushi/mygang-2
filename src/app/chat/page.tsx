@@ -97,7 +97,13 @@ export default function ChatPage() {
     const [paywallCooldown, setPaywallCooldown] = useState(0)
     const [paywallTier, setPaywallTier] = useState('free')
     const [showConfetti, setShowConfetti] = useState(false)
-    const [cooldownUntil, setCooldownUntil] = useState(0)
+    const [cooldownUntil, setCooldownUntil] = useState(() => {
+        if (typeof window === 'undefined') return 0
+        const saved = window.sessionStorage.getItem('mygang-cooldown-until')
+        if (!saved) return 0
+        const ts = parseInt(saved, 10)
+        return ts > Date.now() ? ts : 0
+    })
     const [cooldownLabel, setCooldownLabel] = useState<string | null>(null)
 
     const captureRootRef = useRef<HTMLDivElement>(null)
@@ -113,7 +119,11 @@ export default function ChatPage() {
         setPaywallTier(tier)
         setPaywallOpen(true)
         if (cooldownSeconds > 0) {
-            setCooldownUntil(Date.now() + cooldownSeconds * 1000)
+            const until = Date.now() + cooldownSeconds * 1000
+            setCooldownUntil(until)
+            if (typeof window !== 'undefined') {
+                window.sessionStorage.setItem('mygang-cooldown-until', String(until))
+            }
         }
     }, [])
 
