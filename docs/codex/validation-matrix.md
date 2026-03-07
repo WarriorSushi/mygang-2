@@ -26,3 +26,5 @@
 - Verified on March 7, 2026: authenticated user-side clearing of `purchase_celebration_pending` back to `null` works, so the congratulation flow can remain one-time.
 - Verified on March 7, 2026: `test1@test.com` is reconciled to Pro in the production database and is ready for a fresh browser validation pass.
 - Failed on March 7, 2026 after the DB repair: production chat still rendered `FREE` in the header/settings even though the app's own `profiles` fetch returned `subscription_tier = 'pro'`. A local auth-sync patch is prepared but was not yet included in the live production build during that validation pass.
+- Verified on March 7, 2026 after `e6732c6` deployed: production chat now renders `PRO` in the header and settings for `test1@test.com`.
+- Verified on March 7, 2026 after `e6732c6` deployed: production chat sends an autonomous `/api/chat` request with `purchaseCelebration: "pro"` when `purchase_celebration_pending = 'pro'`, shows the congratulatory gang messages, and clears the DB flag back to `null`.

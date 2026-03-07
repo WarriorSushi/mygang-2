@@ -17,6 +17,7 @@
 - Checkout now refuses to continue if it cannot persist `dodo_customer_id`, activation now reads nested Dodo customer data and can backfill `dodo_customer_id` from the authenticated email match, and both activation/webhook writes tolerate the old boolean celebration column during the compatibility window.
 - The paid production test account `test1@test.com` has now been reconciled manually: `dodo_customer_id` is populated, `subscription_tier = 'pro'`, `subscriptions.id = 'sub_0NZyPAQ1MdBWCKqm5vuz2'` is present with `status = 'active'`, and `purchase_celebration_pending = 'pro'` is restored so the repaired congratulation flow can be verified in-browser.
 - A follow-up production validation on March 7, 2026 found a separate client sync bug: the live app's `profiles` request returned `subscription_tier = 'pro'`, but chat UI still rendered the account as Free. The local fix is in `AuthManager`, which now applies profile-driven tier/customization state atomically instead of relying on a chain of independent setters.
+- After `e6732c6` deployed on March 7, 2026, production chat for `test1@test.com` showed the Pro badge correctly, settings rendered the Pro plan card instead of the Free upsell, custom names (`Kai`, `Nox`) appeared in chat, and the celebratory autonomous turn fired with `purchaseCelebration: 'pro'` before clearing the DB flag back to `null`.
 
 ### Chat reliability findings now addressed in code
 - AI events were persisted to `chat_history` before the client confirmed they were actually rendered.
