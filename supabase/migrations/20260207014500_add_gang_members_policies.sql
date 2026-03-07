@@ -1,6 +1,5 @@
 -- Allow users to manage their own gang members (fix RLS insert/delete errors)
 DROP POLICY IF EXISTS "Users can manage their gang members" ON public.gang_members;
-
 CREATE POLICY "Users can manage their gang members" ON public.gang_members
 FOR ALL
 USING (

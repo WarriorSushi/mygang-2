@@ -3,12 +3,7 @@ DROP POLICY IF EXISTS "Users can insert their chat history" ON public.chat_histo
 CREATE POLICY "Users can insert their chat history" ON public.chat_history
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
--- 2. Add HNSW vector index on memories.embedding for fast similarity search
-CREATE INDEX IF NOT EXISTS memories_embedding_hnsw_idx
-  ON public.memories USING hnsw (embedding vector_cosine_ops)
-  WITH (m = 16, ef_construction = 64);
-
--- 3. Add composite index (user_id, kind, created_at) on memories
+-- 2. Add composite index (user_id, kind, created_at) on memories
 CREATE INDEX IF NOT EXISTS memories_user_kind_created_idx
   ON public.memories (user_id, kind, created_at DESC);
 
@@ -24,5 +19,6 @@ CREATE POLICY "Admin only via service role" ON public.admin_audit_log
   FOR ALL USING (false);
 
 -- 5. Add INSERT policy on profiles (currently only SELECT and UPDATE exist)
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
   FOR INSERT WITH CHECK (id = auth.uid());

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
 
 const MAX_EVENT_CONTENT = 700
@@ -49,6 +50,11 @@ export async function POST(req: Request) {
 
     if (!user) {
         return Response.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const rate = await rateLimit('chat-rendered:' + user.id, 30, 60_000)
+    if (!rate.success) {
+        return Response.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     const body = await req.json().catch(() => null)

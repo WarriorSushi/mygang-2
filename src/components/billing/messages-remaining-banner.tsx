@@ -12,10 +12,10 @@ export function MessagesRemainingBanner() {
         subscriptionTier: s.subscriptionTier,
     })))
 
-    // Only show for free/basic tiers when messages remaining is low (< 5)
+    // Only show for free/basic tiers when messages remaining is low (< 10)
     if (subscriptionTier === 'pro') return null
     if (messagesRemaining === null || messagesRemaining === undefined) return null
-    if (messagesRemaining >= 5) return null
+    if (messagesRemaining >= 10) return null
 
     const tierLabel = getTierCopy(subscriptionTier)
     const tierWindow = 'this hour'

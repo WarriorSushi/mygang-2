@@ -97,6 +97,8 @@ export default function ChatPage() {
     const [paywallCooldown, setPaywallCooldown] = useState(0)
     const [paywallTier, setPaywallTier] = useState('free')
     const [showConfetti, setShowConfetti] = useState(false)
+    const [cooldownUntil, setCooldownUntil] = useState(0)
+    const [cooldownLabel, setCooldownLabel] = useState<string | null>(null)
 
     const captureRootRef = useRef<HTMLDivElement>(null)
     const resumeBannerRef = useRef(false)
@@ -110,6 +112,9 @@ export default function ChatPage() {
         setPaywallCooldown(cooldownSeconds)
         setPaywallTier(tier)
         setPaywallOpen(true)
+        if (cooldownSeconds > 0) {
+            setCooldownUntil(Date.now() + cooldownSeconds * 1000)
+        }
     }, [])
 
     const openSettingsPanel = useCallback((panel: SettingsPanelTarget = 'root') => {
@@ -344,6 +349,28 @@ export default function ChatPage() {
         }
     }, [isHydrated, messages])
 
+    // ── Cooldown countdown ──
+    useEffect(() => {
+        if (cooldownUntil <= Date.now()) {
+            setCooldownLabel(null)
+            return
+        }
+        const tick = () => {
+            const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000))
+            if (remaining <= 0) {
+                setCooldownLabel(null)
+                setCooldownUntil(0)
+                return
+            }
+            const mins = Math.floor(remaining / 60)
+            const secs = remaining % 60
+            setCooldownLabel(`Resume in ${mins}:${secs.toString().padStart(2, '0')}`)
+        }
+        tick()
+        const interval = setInterval(tick, 1000)
+        return () => clearInterval(interval)
+    }, [cooldownUntil])
+
     // ── Toast auto-dismiss ──
     useEffect(() => {
         if (!toastMessage) return
@@ -488,11 +515,12 @@ export default function ChatPage() {
                     <MessagesRemainingBanner />
                     <ChatInput
                         onSend={api.handleSend}
-                        disabled={!isOnline}
+                        disabled={!isOnline || !!cooldownLabel}
                         online={isOnline}
                         replyingTo={replyingToDisplay}
                         onCancelReply={() => setReplyingTo(null)}
                         starterChips={hasUserSentMessage ? [] : getStarterChips(userName || '')}
+                        cooldownPlaceholder={cooldownLabel}
                     />
                 </div>
             </div>

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Lottie from 'lottie-react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+
+const Lottie = lazy(() => import('lottie-react'))
 
 interface ConfettiCelebrationProps {
     trigger: boolean
@@ -26,26 +27,28 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
 
     return (
         <div className="fixed inset-0 z-[300] pointer-events-none overflow-hidden">
-            <Lottie
-                animationData={animationData}
-                loop={false}
-                autoplay
-                onComplete={() => {
-                    setShow(false)
-                    setAnimationData(null)
-                    onComplete?.()
-                }}
-                style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '100vmax',
-                    height: '100vmax',
-                    minWidth: '100%',
-                    minHeight: '100vh',
-                }}
-            />
+            <Suspense fallback={null}>
+                <Lottie
+                    animationData={animationData}
+                    loop={false}
+                    autoplay
+                    onComplete={() => {
+                        setShow(false)
+                        setAnimationData(null)
+                        onComplete?.()
+                    }}
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '100vmax',
+                        height: '100vmax',
+                        minWidth: '100%',
+                        minHeight: '100vh',
+                    }}
+                />
+            </Suspense>
         </div>
     )
 }

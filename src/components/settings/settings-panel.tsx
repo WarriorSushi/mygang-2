@@ -46,7 +46,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                     </p>
                     <div className="mt-4 flex gap-2">
                         <Button asChild variant="outline" className="rounded-full text-[10px] uppercase tracking-widest">
-                            <Link href="/api/customer-portal">Manage Subscription</Link>
+                            <a href="/api/customer-portal">Manage Subscription</a>
                         </Button>
                     </div>
                 </div>
@@ -77,7 +77,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                             </Link>
                         </Button>
                         <Button asChild variant="outline" className="rounded-full text-[10px] uppercase tracking-widest">
-                            <Link href="/api/customer-portal">Manage</Link>
+                            <a href="/api/customer-portal">Manage</a>
                         </Button>
                     </div>
                 </div>
@@ -164,6 +164,9 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     const [memoryModalOpen, setMemoryModalOpen] = useState(false)
     const [isDeletingMemories, setIsDeletingMemories] = useState(false)
     const [memoryDeleteMsg, setMemoryDeleteMsg] = useState<string | null>(null)
+
+    // Sign Out loading state
+    const [isSigningOut, setIsSigningOut] = useState(false)
 
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setThemeChoice(nextTheme)
@@ -367,18 +370,24 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     <Button
                         variant="outline"
                         className="rounded-full text-[10px] uppercase tracking-widest"
+                        disabled={isSigningOut}
                         onClick={async () => {
-                            const store = useChatStore.getState()
-                            store.setUserId(null)
-                            store.setActiveGang([])
-                            store.clearChat()
-                            store.setUserName(null)
-                            store.setUserNickname(null)
-                            store.setCustomCharacterNames({})
-                            await signOut()
+                            setIsSigningOut(true)
+                            try {
+                                const store = useChatStore.getState()
+                                store.setUserId(null)
+                                store.setActiveGang([])
+                                store.clearChat()
+                                store.setUserName(null)
+                                store.setUserNickname(null)
+                                store.setCustomCharacterNames({})
+                                await signOut()
+                            } catch {
+                                setIsSigningOut(false)
+                            }
                         }}
                     >
-                        Sign Out
+                        {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                     </Button>
                 </div>
                 <div className="mt-4 space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
@@ -386,6 +395,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     <p className="text-[11px] text-destructive/80">Type your email to confirm account deletion. This cannot be undone.</p>
                     <input
                         type="email"
+                        aria-label="Confirm email for account deletion"
                         value={deleteEmail}
                         onChange={(e) => {
                             setDeleteEmail(e.target.value)

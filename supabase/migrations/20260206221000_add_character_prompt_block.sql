@@ -1,5 +1,4 @@
 ALTER TABLE public.characters ADD COLUMN IF NOT EXISTS prompt_block TEXT;
-
 UPDATE public.characters
 SET prompt_block = CONCAT(
   '- ID: "', id, '", ',

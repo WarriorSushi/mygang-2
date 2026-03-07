@@ -301,7 +301,7 @@ export function useChatApi({
 
             // Paywall detection: API signals the user hit their message limit
             if (data?.paywall === true) {
-                updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', 'Message limit reached')
+                updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', 'Cooldown active -- upgrade or wait')
                 const cooldownSec = data.cooldown_seconds ?? 300
                 if (onPaywall) {
                     onPaywall(cooldownSec, data.tier ?? 'free')
@@ -426,7 +426,7 @@ export function useChatApi({
                         queueTypingUser(event.character)
                         const eventContent = event.content || ''
                         const speedFactor = activeGang.find(c => c.id === event.character)?.typingSpeed || 1
-                        const typingTime = Math.max(eventContent.length < 10 ? 400 : 900, eventContent.length * 30 * speedFactor + Math.random() * 500)
+                        const typingTime = Math.min(3000, Math.max(eventContent.length < 10 ? 400 : 700, eventContent.length * 18 * speedFactor + Math.random() * 300))
                         await new Promise(r => setTimeout(r, typingTime))
 
                         if (pendingUserMessagesRef.current) break
@@ -493,6 +493,9 @@ export function useChatApi({
                 }
             }
 
+            // TODO: P-C3 — move AI persistence to server waitUntil
+            // Currently skipped: server doesn't know client-generated message_id/displayed_at timestamps.
+            // The rendered events are only known after the client sequencer runs (with typing delays).
             if (responseTurnId && renderedEventsForAck.length > 0) {
                 void persistRenderedEvents(responseTurnId, renderedEventsForAck)
             }

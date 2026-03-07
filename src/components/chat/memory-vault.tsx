@@ -29,6 +29,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     const [hasMore, setHasMore] = useState(false)
     const [cursor, setCursor] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
+    const [loadError, setLoadError] = useState<string | null>(null)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -96,6 +97,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         const before = options?.before ?? null
         if (reset) {
             setLoading(true)
+            setLoadError(null)
         } else {
             setLoadingMore(true)
         }
@@ -112,6 +114,8 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
             })
             setCursor(page.nextBefore)
             setHasMore(page.hasMore && (reset || appendedCount > 0))
+        } catch {
+            setLoadError('Could not load memories. Please try again.')
         } finally {
             if (reset) {
                 setLoading(false)
@@ -313,6 +317,18 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                 <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
                                     <Loader2 className="animate-spin" size={24} />
                                     <span className="text-xs font-medium uppercase tracking-tighter">Syncing Neural Links...</span>
+                                </div>
+                            ) : loadError ? (
+                                <div className="text-center py-12 space-y-3">
+                                    <p className="text-destructive text-sm font-medium">{loadError}</p>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => loadMemories({ reset: true, before: null })}
+                                        className="rounded-full text-[10px] uppercase tracking-widest"
+                                    >
+                                        Try Again
+                                    </Button>
                                 </div>
                             ) : filteredMemories.length === 0 ? (
                                 <div className="text-center py-12">

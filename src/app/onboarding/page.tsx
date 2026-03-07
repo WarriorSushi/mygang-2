@@ -70,7 +70,7 @@ export default function OnboardingPage() {
     // Bypass onboarding once squad exists locally
     useEffect(() => {
         if (isHydrated && activeGang.length >= 2) {
-            router.push('/chat')
+            router.replace('/chat')
         }
     }, [isHydrated, activeGang.length, router])
 

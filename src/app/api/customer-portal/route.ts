@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
 import { NextRequest, NextResponse } from 'next/server'
 import { CustomerPortal } from '@dodopayments/nextjs'
 
@@ -14,6 +15,11 @@ export async function GET(req: NextRequest) {
 
     if (!user) {
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const rate = await rateLimit('customer-portal:' + user.id, 10, 60_000)
+    if (!rate.success) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     const { data: profile } = await supabase

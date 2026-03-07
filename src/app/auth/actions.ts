@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { z } from 'zod'
@@ -93,7 +94,7 @@ export async function signInOrSignUpWithPassword(email: string, password: string
         const message = signUpAttempt.error.message || 'Unable to sign in or sign up.'
         const normalized = message.toLowerCase()
         if (normalized.includes('already registered') || normalized.includes('already exists')) {
-            return { ok: false, error: 'Incorrect password. Please try again.' }
+            return { ok: false, error: 'Invalid email or password.' }
         }
         return { ok: false, error: message }
     }
@@ -120,6 +121,15 @@ export async function deleteAccount() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false as const, error: 'Not authenticated' }
+
+    try {
+        const rate = await rateLimit('delete-account:' + user.id, 3, 60_000)
+        if (!rate.success) {
+            return { ok: false as const, error: 'Too many attempts. Please wait.' }
+        }
+    } catch {
+        return { ok: false as const, error: 'Too many attempts. Please wait.' }
+    }
 
     const admin = createAdminClient()
     const { error } = await admin.auth.admin.deleteUser(user.id)
@@ -183,7 +193,7 @@ export async function saveGang(characterIds: string[]) {
         .from('gang_members')
         .delete()
         .eq('gang_id', gang.id)
-        .not('character_id', 'in', `(${newCharacterIds.map(id => `"${id}"`).join(',')})`)
+        .not('character_id', 'in', `(${newCharacterIds.join(',')})`)
     if (deleteError) console.error('Error removing old gang members:', deleteError)
 
     const { error: settingsError } = await supabase
@@ -244,7 +254,9 @@ export async function getMemories() {
         .from('memories')
         .select('id, content, created_at')
         .eq('user_id', user.id)
+        .in('kind', ['episodic', 'compacted'])
         .order('created_at', { ascending: false })
+        .limit(200)
 
     if (error) {
         console.error('Error fetching memories:', error)
@@ -324,6 +336,7 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
         .from('memories')
         .select('id, content, created_at')
         .eq('user_id', user.id)
+        .in('kind', ['episodic', 'compacted'])
         .order('created_at', { ascending: false })
         .limit(limit + 1)
 

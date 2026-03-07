@@ -345,11 +345,11 @@
 
 /* ── Dark mode chat chrome (all devices) ── */
 .dark .chat-input-desktop {
-  background: hsl(var(--background));
+  background: var(--background);
   border-color: rgba(255, 255, 255, 0.08);
 }
 .dark .chat-header-desktop {
-  background: hsl(var(--background));
+  background: var(--background);
   border-color: rgba(255, 255, 255, 0.08);
 }
 

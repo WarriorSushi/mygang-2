@@ -1,7 +1,6 @@
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
 -- Profiles (extends auth.users)
 CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -14,7 +13,6 @@ CREATE TABLE public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Characters Table (Admin editable)
 CREATE TABLE public.characters (
   id TEXT PRIMARY KEY,
@@ -29,7 +27,6 @@ CREATE TABLE public.characters (
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Gangs
 CREATE TABLE public.gangs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -38,7 +35,6 @@ CREATE TABLE public.gangs (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id)
 );
-
 -- Gang Members (Links user's active 4 friends)
 CREATE TABLE public.gang_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,7 +44,6 @@ CREATE TABLE public.gang_members (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(gang_id, character_id)
 );
-
 -- Chat History
 CREATE TABLE public.chat_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,7 +54,6 @@ CREATE TABLE public.chat_history (
   is_guest BOOLEAN DEFAULT FALSE, -- To flag pre-auth messages
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Memories (Vector Table)
 CREATE TABLE public.memories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -69,33 +63,27 @@ CREATE TABLE public.memories (
   metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gangs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gang_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
-
 -- Policies
 CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-
 CREATE POLICY "Users can view their own gang" ON gangs FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can manage their own gang" ON gangs FOR ALL USING (auth.uid() = user_id);
-
 CREATE POLICY "Users can view their gang members" ON gang_members FOR SELECT 
 USING (EXISTS (SELECT 1 FROM gangs WHERE gangs.id = gang_members.gang_id AND gangs.user_id = auth.uid()));
-
 CREATE POLICY "Users can view their chat history" ON chat_history FOR SELECT 
-USING (user_id = auth.uid() OR is_guest = TRUE); -- Allowing guest view briefly
+USING (user_id = auth.uid() OR is_guest = TRUE);
+-- Allowing guest view briefly
 
 CREATE POLICY "Users can insert their chat history" ON chat_history FOR INSERT 
 WITH CHECK (user_id = auth.uid() OR is_guest = TRUE);
-
 CREATE POLICY "Users can managed their memories" ON memories FOR ALL 
 USING (user_id = auth.uid());
-
 -- Trigger to create profile after signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -105,11 +93,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
 -- Seed Characters
 INSERT INTO public.characters (id, name, vibe, color, voice_description, typing_style, sample_line, archetype, personality_prompt)
 VALUES 

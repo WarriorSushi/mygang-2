@@ -185,7 +185,7 @@ export default function PricingPage() {
 
   const handleCheckout = useCallback(async (plan: 'basic' | 'pro') => {
     if (!userId) {
-      setCheckoutError('Please sign in before upgrading.')
+      setCheckoutError('sign_in_required')
       return
     }
     setLoadingPlan(plan)
@@ -277,8 +277,17 @@ export default function PricingPage() {
 
         {/* Checkout error banner */}
         {checkoutError && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-xl text-sm shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
-            {checkoutError}
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-xl text-sm shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2 flex items-center gap-3">
+            {checkoutError === 'sign_in_required' ? (
+              <>
+                <span>Please sign in before upgrading.</span>
+                <Link href="/" className="underline font-bold whitespace-nowrap hover:text-white/80">
+                  Sign in
+                </Link>
+              </>
+            ) : (
+              checkoutError
+            )}
           </div>
         )}
 

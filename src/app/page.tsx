@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
-import { LandingPage } from '@/components/landing/landing-page'
+import dynamic from 'next/dynamic'
+
+const LandingPage = dynamic(() => import('@/components/landing/landing-page').then(mod => mod.LandingPage), { ssr: true })
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mygang.ai'
 

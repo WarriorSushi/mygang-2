@@ -17,17 +17,20 @@ interface ChatInputProps {
     replyingTo?: ReplyTarget | null
     onCancelReply?: () => void
     starterChips?: string[]
+    cooldownPlaceholder?: string | null
 }
 
 const DRAFT_STORAGE_KEY = 'mygang-chat-draft'
 const MAX_CHARS = 2000
 
-export const ChatInput = memo(function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply, starterChips = [] }: ChatInputProps) {
+export const ChatInput = memo(function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply, starterChips = [], cooldownPlaceholder }: ChatInputProps) {
     const [input, setInput] = useState('')
     const draftLoadedRef = useRef(false)
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const limitWarnedRef = useRef(false)
     const [limitNotice, setLimitNotice] = useState(false)
+    // P-I4: Debounce ref for localStorage draft saves
+    const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // Restore draft from localStorage after mount (avoids hydration mismatch)
     useEffect(() => {
@@ -37,12 +40,19 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
         if (saved) setInput(saved.slice(0, MAX_CHARS))
     }, [])
 
+    // P-I4: Debounce localStorage draft save (500ms)
     useEffect(() => {
         if (!draftLoadedRef.current) return
-        if (input.trim()) {
-            window.localStorage.setItem(DRAFT_STORAGE_KEY, input)
-        } else {
-            window.localStorage.removeItem(DRAFT_STORAGE_KEY)
+        if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current)
+        draftSaveTimerRef.current = setTimeout(() => {
+            if (input.trim()) {
+                window.localStorage.setItem(DRAFT_STORAGE_KEY, input)
+            } else {
+                window.localStorage.removeItem(DRAFT_STORAGE_KEY)
+            }
+        }, 500)
+        return () => {
+            if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current)
         }
     }, [input])
 
@@ -145,7 +155,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
                     aria-describedby={input.length > 1500 ? 'char-counter' : undefined}
                     enterKeyHint="send"
                     autoComplete="off"
-                    placeholder={online ? 'Send a message...' : 'You are offline. Reconnect to send.'}
+                    placeholder={cooldownPlaceholder || (online ? 'Send a message...' : 'You are offline. Reconnect to send.')}
                     // text-[16px] prevents iOS Safari auto-zoom on focus (inputs <16px trigger zoom)
                     className="flex-1 bg-transparent border-none outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 appearance-none resize-none px-1 py-2.5 text-[16px] md:text-[15px] leading-6 text-foreground placeholder:text-muted-foreground/80 max-h-32 min-h-[44px] scrollbar-hide"
                     rows={1}

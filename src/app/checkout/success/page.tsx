@@ -113,7 +113,7 @@ function SuccessContent() {
     if (status === 'activating') {
         return (
             <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-4" role="status" aria-label="Activating your plan">
                     <div className="text-4xl animate-pulse">⚡</div>
                     <h1 className="text-2xl font-bold text-foreground">Activating your plan...</h1>
                     <p className="text-muted-foreground">{statusHint}</p>
@@ -125,13 +125,13 @@ function SuccessContent() {
     if (status === 'pending') {
         return (
             <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-                <div className="text-center space-y-4 max-w-md px-6">
+                <div className="text-center space-y-4 max-w-md px-6" role="status" aria-label="Finishing upgrade">
                     <div className="text-4xl animate-pulse">⏳</div>
                     <h1 className="text-2xl font-bold text-foreground">
                         Finishing your {resolvedPlan ? resolvedPlan.toUpperCase() : 'new'} upgrade...
                     </h1>
                     <p className="text-muted-foreground">{statusHint}</p>
-                    <p className="text-xs text-muted-foreground/70">We’ll send you into chat as soon as your plan is confirmed.</p>
+                    <p className="text-xs text-muted-foreground/70">We'll send you into chat as soon as your plan is confirmed.</p>
                 </div>
             </div>
         )
@@ -140,7 +140,7 @@ function SuccessContent() {
     if (status === 'error') {
         return (
             <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-                <div className="text-center space-y-4 max-w-md px-6">
+                <div className="text-center space-y-4 max-w-md px-6" role="status" aria-label="Activation error">
                     <div className="text-4xl">😕</div>
                     <h1 className="text-2xl font-bold text-foreground">We&apos;re still checking your upgrade</h1>
                     <p className="text-muted-foreground">{statusHint}</p>
@@ -157,7 +157,7 @@ function SuccessContent() {
 
     return (
         <div className="flex min-h-dvh items-center justify-center bg-background pt-[calc(env(safe-area-inset-top)+2rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-4" role="status" aria-label="Upgrade successful">
                 <div className="text-6xl">🎉</div>
                 <h1 className="text-3xl font-bold text-foreground">Your gang is HYPED!</h1>
                 <p className="text-muted-foreground text-lg">

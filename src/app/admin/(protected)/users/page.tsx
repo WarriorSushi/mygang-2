@@ -101,16 +101,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                 .limit(5000)
             : Promise.resolve({ data: [], error: null } as { data: Array<{ user_id: string | null }>; error: null }),
         userIds.length > 0
-            ? Promise.all(
-                userIds.map(async (userId) => {
-                    const { count, error } = await admin
-                        .from('chat_history')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('user_id', userId)
-                    return { userId, count: count || 0, error }
-                })
-            )
-            : Promise.resolve([] as Array<{ userId: string; count: number; error: unknown }>),
+            ? admin
+                .from('chat_history')
+                .select('user_id')
+                .in('user_id', userIds)
+                .limit(10000)
+            : Promise.resolve({ data: [], error: null } as { data: Array<{ user_id: string | null }>; error: null }),
     ])
 
     const counts24hByUser = new Map<string, number>()
@@ -121,10 +117,11 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
     }
 
     const totalCountsByUser = new Map<string, number>()
-    let totalCountErrors = 0
-    for (const row of totalCountsResult) {
-        totalCountsByUser.set(row.userId, row.count)
-        if (row.error) totalCountErrors += 1
+    const totalCountErrors = totalCountsResult.error ? 1 : 0
+    for (const row of totalCountsResult.data || []) {
+        const uid = row.user_id
+        if (!uid) continue
+        totalCountsByUser.set(uid, (totalCountsByUser.get(uid) || 0) + 1)
     }
 
     const activeLowCostUsers = profiles.filter((profile) => !!profile.low_cost_mode).length

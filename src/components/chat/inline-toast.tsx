@@ -20,8 +20,8 @@ export function InlineToast({ message, onClose, severity = 'info' }: InlineToast
     if (!message) return null
 
     return (
-        <div className="fixed bottom-24 left-1/2 z-50 w-[90%] max-w-md -translate-x-1/2" role="alert" aria-live={severity === 'error' ? 'assertive' : 'polite'}>
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/70 px-4 py-3 text-[11px] text-foreground dark:text-white shadow-2xl backdrop-blur-xl">
+        <div className="fixed bottom-28 sm:bottom-24 left-1/2 z-50 w-[90%] max-w-md -translate-x-1/2" role="alert" aria-live={severity === 'error' ? 'assertive' : 'polite'}>
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 dark:border-white/10 bg-background/90 px-4 py-3 text-[11px] text-foreground dark:text-white shadow-2xl backdrop-blur-xl">
                 <span>{message}</span>
                 <Button
                     variant="ghost"

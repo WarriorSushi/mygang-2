@@ -1,8 +1,10 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 import type { Database } from '@/lib/database.types'
-import { getDodoClient, type SubscriptionTier } from '@/lib/billing'
+import { getDodoClient } from '@/lib/billing-server'
+import type { SubscriptionTier } from '@/lib/billing'
 
 const activateSchema = z.object({
     subscription_id: z.string().min(1).max(256),
@@ -84,6 +86,11 @@ export async function POST(req: Request) {
 
     if (!user) {
         return jsonResponse(401, { state: 'invalid', reason: 'auth_required' })
+    }
+
+    const rate = await rateLimit('checkout-activate:' + user.id, 20, 60_000)
+    if (!rate.success) {
+        return jsonResponse(429, { state: 'invalid', reason: 'rate_limited' })
     }
 
     const body = await req.json()

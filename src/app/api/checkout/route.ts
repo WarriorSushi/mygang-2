@@ -2,7 +2,8 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getDodoClient } from '@/lib/billing'
+import { rateLimit } from '@/lib/rate-limit'
+import { getDodoClient } from '@/lib/billing-server'
 
 const checkoutSchema = z.object({
     plan: z.enum(['basic', 'pro']),
@@ -20,6 +21,11 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
         return Response.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const rate = await rateLimit('checkout:' + user.id, 10, 60_000)
+    if (!rate.success) {
+        return Response.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     const body = await req.json()

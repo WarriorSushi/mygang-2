@@ -34,7 +34,7 @@ const MAX_PROFILE_LINES = 12
 const MAX_PROFILE_VALUE_CHARS = 120
 const ADMIN_SETTINGS_CACHE_MS = 20_000
 
-const TIER_MAX_EVENTS: Record<string, number> = { free: 4, basic: 8, pro: MAX_EVENTS }
+const TIER_MAX_EVENTS: Record<string, number> = { free: 6, basic: 8, pro: 12 }
 const TIER_MAX_OUTPUT_TOKENS: Record<string, number> = { free: 800, basic: 1200, pro: 2000 }
 const TIER_SPLIT_CHANCE: Record<string, number> = { free: 0.15, basic: 0.35, pro: 0.45 }
 
@@ -692,7 +692,7 @@ export async function POST(req: Request) {
         }
 
         const mockHeader = req.headers.get('x-mock-ai')
-        if (process.env.NODE_ENV !== 'production' && (mockHeader === '1' || mockHeader === 'true')) {
+        if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_MOCK_AI === 'true' && (mockHeader === '1' || mockHeader === 'true')) {
             return Response.json({
                 turn_id: serverTurnId,
                 events: [
@@ -746,17 +746,33 @@ export async function POST(req: Request) {
             }, { status: 400 })
         }
 
-        // Parallelize rate limit + profile fetch (both need user.id, independent of each other)
+        // Fetch profile first (needed to determine tier for rate limiting)
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score, custom_character_names')
+            .eq('id', user.id)
+            .single<ProfileStateRow>()
+
+        const profileTier = getTierFromProfile(profile?.subscription_tier ?? null)
+
+        // P-C1: Parallelize global rate limit + tier-specific rate limit (both independent once we have tier)
         const rateKey = `chat:user:${user.id}`
         const rateLimitMax = 60
-        const [rate, { data: profile }] = await Promise.all([
+        const tierWindowKey = profileTier === 'basic'
+            ? `chat:basic-window:${user.id}`
+            : `chat:free-window:${user.id}`
+        const tierWindowMax = profileTier === 'basic' ? 40 : 25
+
+        const rateLimitPromises: [Promise<{ success: boolean; remaining: number; reset: number }>, Promise<{ success: boolean; remaining: number; reset: number }> | null] = [
             rateLimit(rateKey, rateLimitMax, 60_000),
-            supabase
-                .from('profiles')
-                .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score, custom_character_names')
-                .eq('id', user.id)
-                .single<ProfileStateRow>(),
-        ])
+            hasFreshUserTurn && profileTier !== 'pro'
+                ? rateLimit(tierWindowKey, tierWindowMax, 60 * 60 * 1000)
+                : null,
+        ]
+
+        const [rate, tierRate] = await Promise.all(
+            rateLimitPromises.map(p => p ?? Promise.resolve(null))
+        ) as [{ success: boolean; remaining: number; reset: number }, { success: boolean; remaining: number; reset: number } | null]
 
         if (!rate.success) {
             return Response.json({
@@ -783,22 +799,19 @@ export async function POST(req: Request) {
 
         if (user) {
             try {
-                // Profile already fetched in parallel with rate limit above
+                // Profile already fetched above (before parallel rate limits)
 
                 profileRow = profile
 
                 // Tier-based message gating
-                tier = getTierFromProfile(profile?.subscription_tier ?? null)
+                tier = profileTier
                 const memoryEnabled = isMemoryEnabled(tier)
 
-                if (hasFreshUserTurn && tier !== 'pro') {
-                    if (tier === 'basic') {
-                        // Basic tier: 40 messages per 60-minute sliding window
-                        const basicWindowKey = `chat:basic-window:${user.id}`
-                        const basicWindow = await rateLimit(basicWindowKey, 40, 60 * 60 * 1000)
-                        messagesRemaining = basicWindow.remaining
-                        if (!basicWindow.success) {
-                            const cooldownSeconds = Math.max(1, Math.ceil((basicWindow.reset - Date.now()) / 1000))
+                if (tierRate !== null && hasFreshUserTurn && tier !== 'pro') {
+                    messagesRemaining = tierRate.remaining
+                    if (!tierRate.success) {
+                        const cooldownSeconds = Math.max(1, Math.ceil((tierRate.reset - Date.now()) / 1000))
+                        if (tier === 'basic') {
                             return Response.json({
                                 events: [{
                                     type: 'message',
@@ -811,14 +824,7 @@ export async function POST(req: Request) {
                                 tier: 'basic',
                                 should_continue: false
                             }, { status: 429 })
-                        }
-                    } else {
-                        // Free tier: 25 messages per 60-minute sliding window
-                        const freeWindowKey = `chat:free-window:${user.id}`
-                        const freeWindow = await rateLimit(freeWindowKey, 25, 60 * 60 * 1000)
-                        messagesRemaining = freeWindow.remaining
-                        if (!freeWindow.success) {
-                            const cooldownSeconds = Math.max(1, Math.ceil((freeWindow.reset - Date.now()) / 1000))
+                        } else {
                             return Response.json({
                                 events: [{
                                     type: 'message',
@@ -1443,7 +1449,8 @@ FLOW FLAGS:
                         tags: m.tags || [],
                         importance: m.importance || 1,
                         category: m.category as MemoryCategory | undefined,
-                    }))
+                    })),
+                    tier
                 )
                 // Fire-and-forget: compact memories if threshold exceeded (MED-32: pass tier)
                 compactMemoriesIfNeeded(user.id, tier).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))

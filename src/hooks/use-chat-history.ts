@@ -217,6 +217,8 @@ export function useChatHistory({
 
     const historySyncInFlightRef = useRef(false)
     const lastHistorySyncAtRef = useRef(0)
+    // P-I3: Debounce forced syncs (focus/visibility) with a 3-second dedup window
+    const lastForceSyncRef = useRef(0)
 
     // Reset bootstrap when userId changes (e.g. logout → new login)
     const prevUserIdRef = useRef<string | null>(userId)
@@ -365,10 +367,16 @@ export function useChatHistory({
         scheduleNext()
 
         const handleFocus = () => {
+            // P-I3: Skip if a forced sync happened less than 3 seconds ago
+            if (Date.now() - lastForceSyncRef.current < 3000) return
+            lastForceSyncRef.current = Date.now()
             void syncLatestHistory(true)
         }
         const handleVisibility = () => {
             if (document.visibilityState === 'visible') {
+                // P-I3: Skip if a forced sync happened less than 3 seconds ago
+                if (Date.now() - lastForceSyncRef.current < 3000) return
+                lastForceSyncRef.current = Date.now()
                 void syncLatestHistory(true)
                 // Restart adaptive polling when tab becomes visible again
                 if (!intervalId) scheduleNext()

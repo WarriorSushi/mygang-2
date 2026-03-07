@@ -26,7 +26,10 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mygang.ai";
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#eff3f8' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b0f17' },
+  ],
   viewportFit: 'cover',
 }
 
@@ -100,7 +103,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}
+        className={`${geistSans.variable} ${outfit.variable} antialiased`}
         suppressHydrationWarning
       >
         <a

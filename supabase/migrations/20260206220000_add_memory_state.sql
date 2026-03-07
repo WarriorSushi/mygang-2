@@ -8,7 +8,6 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS abuse_score INTEGER DEFAULT
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS theme TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS chat_mode TEXT DEFAULT 'ecosystem';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS preferred_squad TEXT[];
-
 -- Extend memories table for low-cost memory usage
 ALTER TABLE public.memories ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'episodic';
 ALTER TABLE public.memories ADD COLUMN IF NOT EXISTS tags TEXT[];

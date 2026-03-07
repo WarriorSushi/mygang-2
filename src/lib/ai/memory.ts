@@ -2,7 +2,7 @@ import { google } from '@ai-sdk/google'
 import { embed, generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 import { openRouterModel } from '@/lib/ai/openrouter'
-import type { SubscriptionTier } from '@/lib/billing'
+import { getMemoryMaxCount, getMemoryInPromptLimit, type SubscriptionTier } from '@/lib/billing'
 
 const embeddingModel = google.textEmbeddingModel('text-embedding-004')
 
@@ -67,24 +67,38 @@ export async function storeMemory(
             return
         }
 
-        // LOW-23: Memory conflict resolution — archive older memories in the same category
+        // LOW-23: Memory conflict resolution — only archive near-exact duplicates in the same category
         if (importance >= 2 && category) {
             try {
-                const { data: conflicting } = await supabase
+                const { data: sameCategory } = await supabase
                     .from('memories')
-                    .select('id')
+                    .select('id, content')
                     .eq('user_id', userId)
                     .eq('kind', kind)
                     .eq('category', category)
                     .neq('kind', 'archived')
                     .order('created_at', { ascending: false })
-                    .limit(10)
+                    .limit(20)
 
-                if (conflicting && conflicting.length > 0) {
-                    await supabase
-                        .from('memories')
-                        .update({ kind: 'archived' })
-                        .in('id', conflicting.map(m => m.id))
+                if (sameCategory && sameCategory.length > 0) {
+                    const newWords = new Set(normalizedContent.toLowerCase().split(/\s+/).filter(w => w.length > 2))
+                    const toArchive = sameCategory.filter(m => {
+                        if (!m.content) return false
+                        const existingNorm = m.content.trim().replace(/\s+/g, ' ')
+                        // Exact duplicate
+                        if (existingNorm === normalizedContent) return true
+                        // High word overlap (3+ shared meaningful words)
+                        const existingWords = existingNorm.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+                        const shared = existingWords.filter(w => newWords.has(w)).length
+                        return shared >= 3 && shared >= existingWords.length * 0.5
+                    })
+
+                    if (toArchive.length > 0) {
+                        await supabase
+                            .from('memories')
+                            .update({ kind: 'archived' })
+                            .in('id', toArchive.map(m => m.id))
+                    }
                 }
             } catch (conflictErr) {
                 console.error('Memory conflict resolution error:', conflictErr)
@@ -119,7 +133,8 @@ export async function storeMemories(
         tags?: string[]
         importance?: number
         category?: MemoryCategory
-    }>
+    }>,
+    tier: SubscriptionTier = 'basic'
 ) {
     if (!memories.length) return
     try {
@@ -132,18 +147,22 @@ export async function storeMemories(
             kind: m.kind || 'episodic',
         }))
 
-        // Single batch duplicate check: fetch recent memories for this user
-        const { data: existing } = await supabase
+        // P-I9: Single query for both duplicate check AND conflict resolution
+        const { data: existingRaw } = await supabase
             .from('memories')
-            .select('id, content, created_at, kind')
+            .select('id, content, created_at, kind, category')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(30)
+            .limit(50)
 
-        const existingNormalized = (existing || []).map(m => ({
+        const existing = (existingRaw || []) as unknown as Array<{ id: string; content: string; created_at: string; kind: string; category: string | null }>
+
+        const existingNormalized = existing.map(m => ({
+            id: m.id,
             content: m.content?.trim().replace(/\s+/g, ' ') || '',
             recent: m.created_at ? (Date.now() - new Date(m.created_at).getTime()) < 10 * 60 * 1000 : false,
             kind: m.kind,
+            category: m.category,
         }))
 
         // Filter out duplicates
@@ -155,39 +174,89 @@ export async function storeMemories(
 
         if (!nonDuplicates.length) return
 
-        // LOW-23: Batch conflict resolution for high-importance memories with categories
+        // LOW-23: Batch conflict resolution from the same result set (no extra query)
         const highImportanceWithCategory = nonDuplicates.filter(m => (m.importance ?? 1) >= 2 && m.category)
         if (highImportanceWithCategory.length > 0) {
-            const categories = [...new Set(highImportanceWithCategory.map(m => m.category!))]
             try {
-                const { data: conflicting } = await supabase
-                    .from('memories')
-                    .select('id')
-                    .eq('user_id', userId)
-                    .neq('kind', 'archived')
-                    .in('category', categories)
-                    .order('created_at', { ascending: false })
-                    .limit(50)
+                // Use existing rows that are not archived for conflict resolution
+                const nonArchivedWithCategory = existingNormalized.filter(m => m.kind !== 'archived' && m.category)
 
-                if (conflicting && conflicting.length > 0) {
-                    await supabase
-                        .from('memories')
-                        .update({ kind: 'archived' })
-                        .in('id', conflicting.map(m => m.id))
+                if (nonArchivedWithCategory.length > 0) {
+                    const toArchiveIds: string[] = []
+                    for (const newMem of highImportanceWithCategory) {
+                        const newWords = new Set(newMem.normalizedContent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2))
+                        for (const ex of nonArchivedWithCategory) {
+                            if (!ex.content || ex.category !== newMem.category) continue
+                            if (toArchiveIds.includes(ex.id)) continue
+                            // Exact duplicate
+                            if (ex.content === newMem.normalizedContent) {
+                                toArchiveIds.push(ex.id)
+                                continue
+                            }
+                            // High word overlap (3+ shared meaningful words)
+                            const existingWords = ex.content.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2)
+                            const shared = existingWords.filter((w: string) => newWords.has(w)).length
+                            if (shared >= 3 && shared >= existingWords.length * 0.5) {
+                                toArchiveIds.push(ex.id)
+                            }
+                        }
+                    }
+
+                    if (toArchiveIds.length > 0) {
+                        await supabase
+                            .from('memories')
+                            .update({ kind: 'archived' })
+                            .in('id', toArchiveIds)
+                    }
                 }
             } catch (conflictErr) {
                 console.error('Batch memory conflict resolution error:', conflictErr)
             }
         }
 
-        // Generate embeddings in parallel
+        // M-C3: Enforce memory count limits — delete oldest if at/over limit
+        const memoryMaxCount = getMemoryMaxCount(tier)
+        if (memoryMaxCount !== null) {
+            const { count: currentCount } = await supabase
+                .from('memories')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('kind', 'episodic')
+
+            if (currentCount !== null && currentCount + nonDuplicates.length > memoryMaxCount) {
+                const excess = (currentCount + nonDuplicates.length) - memoryMaxCount
+                if (excess > 0) {
+                    const { data: oldest } = await supabase
+                        .from('memories')
+                        .select('id')
+                        .eq('user_id', userId)
+                        .eq('kind', 'episodic')
+                        .order('created_at', { ascending: true })
+                        .limit(excess)
+
+                    if (oldest && oldest.length > 0) {
+                        await supabase
+                            .from('memories')
+                            .delete()
+                            .in('id', oldest.map(m => m.id))
+                    }
+                }
+            }
+        }
+
+        // M-I2: Skip embedding generation for free tier (memoryInPromptLimit === 0)
+        const skipEmbeddings = getMemoryInPromptLimit(tier) === 0
+
+        // Generate embeddings in parallel (skip for free tier to save API costs)
         const withEmbeddings = await Promise.all(
             nonDuplicates.map(async (mem) => {
                 let embedding: number[] | null = null
-                try {
-                    embedding = await generateEmbedding(mem.normalizedContent)
-                } catch (err) {
-                    console.error('Embedding error for memory:', err)
+                if (!skipEmbeddings) {
+                    try {
+                        embedding = await generateEmbedding(mem.normalizedContent)
+                    } catch (err) {
+                        console.error('Embedding error for memory:', err)
+                    }
                 }
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const row: any = {
@@ -203,7 +272,40 @@ export async function storeMemories(
             })
         )
 
-        const { error } = await supabase.from('memories').insert(withEmbeddings)
+        // M-I3: Semantic deduplication — skip memories with >0.9 embedding similarity to recent ones
+        let finalRows = withEmbeddings
+        if (!skipEmbeddings) {
+            const rowsWithEmbeddings = withEmbeddings.filter(r => r.embedding !== null)
+            if (rowsWithEmbeddings.length > 0 && existing && existing.length > 0) {
+                const semanticDupIds = new Set<number>()
+                for (let i = 0; i < rowsWithEmbeddings.length; i++) {
+                    const row = rowsWithEmbeddings[i]!
+                    try {
+                        const { data: similar } = await supabase.rpc('match_memories', {
+                            query_embedding: row.embedding,
+                            match_threshold: 0.9,
+                            match_count: 1,
+                            p_user_id: userId,
+                        })
+                        if (similar && similar.length > 0) {
+                            // Find index in withEmbeddings to mark for removal
+                            const idx = withEmbeddings.indexOf(row)
+                            if (idx >= 0) semanticDupIds.add(idx)
+                        }
+                    } catch (err) {
+                        // If semantic check fails, keep the memory
+                        console.error('Semantic dedup check error:', err)
+                    }
+                }
+                if (semanticDupIds.size > 0) {
+                    finalRows = withEmbeddings.filter((_, i) => !semanticDupIds.has(i))
+                }
+            }
+        }
+
+        if (!finalRows.length) return
+
+        const { error } = await supabase.from('memories').insert(finalRows)
         if (error) console.error('Error batch storing memories:', error)
     } catch (err) {
         console.error('Error in storeMemories batch:', err)
@@ -280,34 +382,39 @@ export async function retrieveMemoriesLite(userId: string, query: string, limit 
 export async function retrieveMemoriesHybrid(userId: string, query: string, limit = 5): Promise<StoredMemory[]> {
     const supabase = await createClient()
 
-    // 1. Embedding similarity search (top 10)
-    let embeddingResults: StoredMemory[] = []
-    try {
-        const embedding = await generateEmbedding(query)
-        const { data, error } = await supabase.rpc('match_memories', {
-            query_embedding: embedding as unknown as string,
-            match_threshold: 0.5,
-            match_count: 10,
-            p_user_id: userId,
-        })
-        if (!error && data) {
-            embeddingResults = data as StoredMemory[]
-        } else if (error) {
-            console.error('Hybrid retrieval embedding error:', error)
+    // P-C2: Run embedding search and recency fetch in parallel
+    const embeddingSearchPromise = (async (): Promise<StoredMemory[]> => {
+        try {
+            const embedding = await generateEmbedding(query)
+            const { data, error } = await supabase.rpc('match_memories', {
+                query_embedding: embedding as unknown as string,
+                match_threshold: 0.5,
+                match_count: 10,
+                p_user_id: userId,
+            })
+            if (!error && data) {
+                return data as StoredMemory[]
+            } else if (error) {
+                console.error('Hybrid retrieval embedding error:', error)
+            }
+        } catch (err) {
+            console.error('Hybrid retrieval embedding generation error:', err)
         }
-    } catch (err) {
-        console.error('Hybrid retrieval embedding generation error:', err)
-    }
+        return []
+    })()
 
-    // 2. Recency fetch (5 most recent)
-    // Note: category column may not exist in generated types yet, use type assertion
-    const { data: recentData, error: recentError } = await supabase
+    const recentQueryPromise = supabase
         .from('memories')
         .select('id, content, created_at, importance, tags, last_used_at')
         .eq('user_id', userId)
         .eq('kind', 'episodic')
         .order('created_at', { ascending: false })
         .limit(5)
+
+    const [embeddingResults, { data: recentData, error: recentError }] = await Promise.all([
+        embeddingSearchPromise,
+        recentQueryPromise,
+    ])
 
     if (recentError) {
         console.error('Hybrid retrieval recency error:', recentError)
@@ -433,16 +540,20 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
 
         // Atomically claim episodic memories by marking them as 'compacting'.
         // If another request already changed them, this returns 0 rows and we bail.
-        const { data: claimed, error: claimError } = await supabase
+        // Note: category column may not exist in generated types — use type assertion
+        type ClaimedMemory = { id: string; content: string; importance: number; tags: string[]; created_at: string; category: string | null }
+        const { data: claimedRaw, error: claimError } = await supabase
             .from('memories')
             .update({ kind: 'compacting' })
             .eq('user_id', userId)
             .eq('kind', 'episodic')
-            .select('id, content, importance, tags, created_at')
+            .select('id, content, importance, tags, created_at, category')
 
-        if (claimError || !claimed || claimed.length < COMPACTION_THRESHOLD) {
+        const claimed = (claimedRaw || []) as unknown as ClaimedMemory[]
+
+        if (claimError || claimed.length < COMPACTION_THRESHOLD) {
             // Another request won the lock or not enough memories — revert any we claimed
-            if (claimed && claimed.length > 0) {
+            if (claimed.length > 0) {
                 await supabase
                     .from('memories')
                     .update({ kind: 'episodic' })
@@ -457,48 +568,90 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
         const maxCompactedChars = TIER_COMPACTION_MAX_CHARS[tier] || TIER_COMPACTION_MAX_CHARS.basic!
 
         try {
-            // Build the memory list for LLM summarization
-            const memoryList = memories
-                .map((m, i) => `${i + 1}. ${m.content}`)
-                .join('\n')
+            // M-I1: Category-aware compaction — group memories by category, compact each separately
+            const categoryGroups = new Map<string, ClaimedMemory[]>()
+            for (const mem of memories) {
+                const cat = mem.category || 'uncategorized'
+                const group = categoryGroups.get(cat) || []
+                group.push(mem)
+                categoryGroups.set(cat, group)
+            }
 
-            const { text: summary } = await generateText({
-                model: openRouterModel,
-                prompt: `You are a memory compaction assistant. Below are ${memories.length} individual memory entries about a user. Summarize them into a concise paragraph (max ${maxCompactedChars} chars) that preserves all important personal facts, preferences, relationships, and key events. Drop redundant or trivial details. Output ONLY the summary, nothing else.\n\nMemories:\n${memoryList}`,
-                maxOutputTokens: Math.min(800, Math.ceil(maxCompactedChars / 2)),
-            })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const compactedInserts: any[] = []
+            const archivedIds: string[] = []
+            const skippedIds: string[] = [] // categories with <3 memories — revert to episodic
 
-            const compactedContent = summary.trim().slice(0, maxCompactedChars)
-            if (!compactedContent || compactedContent.length < 10) {
-                console.error('Memory compaction produced empty summary')
-                // Revert compacting back to episodic
+            for (const [category, groupMemories] of categoryGroups) {
+                // Skip compacting categories with fewer than 3 memories
+                if (groupMemories.length < 3) {
+                    skippedIds.push(...groupMemories.map(m => m.id))
+                    continue
+                }
+
+                const perCategoryMaxChars = Math.ceil(maxCompactedChars * (groupMemories.length / memories.length))
+                const memoryList = groupMemories
+                    .map((m, i) => `${i + 1}. ${m.content}`)
+                    .join('\n')
+
+                const { text: summary } = await generateText({
+                    model: openRouterModel,
+                    prompt: `You are a memory compaction assistant. Below are ${groupMemories.length} individual memory entries about a user in the "${category}" category. Summarize them into a concise paragraph (max ${perCategoryMaxChars} chars) that preserves all important personal facts, preferences, relationships, and key events. Drop redundant or trivial details. Output ONLY the summary, nothing else.\n\nMemories:\n${memoryList}`,
+                    maxOutputTokens: Math.min(800, Math.ceil(perCategoryMaxChars / 2)),
+                })
+
+                const compactedContent = summary.trim().slice(0, perCategoryMaxChars)
+                if (!compactedContent || compactedContent.length < 10) {
+                    // Revert this group back to episodic
+                    skippedIds.push(...groupMemories.map(m => m.id))
+                    continue
+                }
+
+                // Collect tags from this group
+                const groupTags = new Set<string>()
+                groupMemories.forEach((m) => {
+                    if (Array.isArray(m.tags)) m.tags.forEach((t: string) => groupTags.add(t))
+                })
+
+                // Generate embedding for the compacted summary
+                let compactedEmbedding: number[] | null = null
+                try {
+                    compactedEmbedding = await generateEmbedding(compactedContent)
+                } catch (embErr) {
+                    console.error('Error generating compacted memory embedding:', embErr)
+                }
+
+                archivedIds.push(...groupMemories.map(m => m.id))
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const insertRow: any = {
+                    user_id: userId,
+                    content: compactedContent,
+                    embedding: compactedEmbedding as unknown as string,
+                    kind: 'episodic',
+                    tags: Array.from(groupTags).slice(0, 10),
+                    importance: 3,
+                }
+                if (category !== 'uncategorized') insertRow.category = category
+                compactedInserts.push(insertRow)
+            }
+
+            // Revert skipped memories back to episodic
+            if (skippedIds.length > 0) {
                 await supabase
                     .from('memories')
                     .update({ kind: 'episodic' })
-                    .in('id', memoryIds)
+                    .in('id', skippedIds)
                     .eq('user_id', userId)
-                return
             }
 
-            // Collect all high-importance tags
-            const allTags = new Set<string>()
-            memories.forEach((m) => {
-                if (Array.isArray(m.tags)) m.tags.forEach((t: string) => allTags.add(t))
-            })
+            // If no categories were compacted (all had <3), bail
+            if (archivedIds.length === 0) return
 
-            // Generate embedding for the compacted summary
-            let compactedEmbedding: number[] | null = null
-            try {
-                compactedEmbedding = await generateEmbedding(compactedContent)
-            } catch (embErr) {
-                console.error('Error generating compacted memory embedding:', embErr)
-            }
-
-            // Archive originals (they are currently 'compacting')
+            // Archive originals that were compacted
             const { error: archiveError } = await supabase
                 .from('memories')
                 .update({ kind: 'archived' })
-                .in('id', memoryIds)
+                .in('id', archivedIds)
                 .eq('user_id', userId)
 
             if (archiveError) {
@@ -506,18 +659,12 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
                 return
             }
 
-            // Insert the compacted summary as a new episodic memory
-            const { error: insertError } = await supabase.from('memories').insert({
-                user_id: userId,
-                content: compactedContent,
-                embedding: compactedEmbedding as unknown as string,
-                kind: 'episodic',
-                tags: Array.from(allTags).slice(0, 10),
-                importance: 3,
-            })
-
-            if (insertError) {
-                console.error('Error inserting compacted memory:', insertError)
+            // Insert the compacted summaries
+            if (compactedInserts.length > 0) {
+                const { error: insertError } = await supabase.from('memories').insert(compactedInserts)
+                if (insertError) {
+                    console.error('Error inserting compacted memories:', insertError)
+                }
             }
 
             // LOW-24: Delete archived memories older than 3 months
