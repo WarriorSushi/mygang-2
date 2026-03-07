@@ -60,6 +60,10 @@ function withDeliveryError(errorMessage: string) {
     return trimmed.slice(0, MAX_DELIVERY_ERROR_CHARS)
 }
 
+function isFarewellLikeMessage(text: string) {
+    return /\b(goodnight|good night|gn|bye|goodbye|see ya|see you|ttyl|gotta go|later|nighty)\b/i.test(text)
+}
+
 async function persistRenderedEvents(turnId: string, events: RenderedChatEventPayload[]) {
     if (!turnId || events.length === 0) return
 
@@ -527,7 +531,12 @@ export function useChatApi({
                 // Schedule one follow-up banter round 10s after last bubble, only for user-initiated messages
                 if (!isIntro && !isAutonomous && apiCallSucceeded && !effectiveLowCostModeForCall && chatMode === 'ecosystem') {
                     const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
-                    if (sourceId) {
+                    const sourceMessage = sourceId
+                        ? useChatStore.getState().messages.find((message) => message.id === sourceId && message.speaker === 'user')
+                        : null
+                    const skipIdleFollowUp = !!sourceMessage?.content && isFarewellLikeMessage(sourceMessage.content)
+
+                    if (sourceId && !skipIdleFollowUp) {
                         scheduleIdleAutonomousRef.current(sourceId)
                     }
                 }

@@ -14,6 +14,10 @@
 ## Production
 - Use `www.mygang.ai`
 - Keep local testing off port `3000`
-- Create `test1@test.com` if absent before final production validation
-- Run one Dodo test-mode checkout
-- Confirm badge, limiter behavior, celebration, and console cleanliness
+- Verified on March 7, 2026: `test1@test.com` can log in to production.
+- Verified on March 7, 2026: Dodo test-mode Pro checkout reaches the external payment simulator and returns to `https://www.mygang.ai/checkout/success?...`.
+- Failed on March 7, 2026: production activation ended at “We’re still checking your upgrade,” and `POST /api/checkout/activate` returned `400`.
+- Failed on March 7, 2026: after successful payment, production still showed no Pro badge, no congratulatory celebration, and the profile remained `subscription_tier = free`.
+- Failed on March 7, 2026: farewell message `gn bye` produced a short sendoff but then duplicated the same goodbye pair again via idle autonomous follow-up.
+- Observed on March 7, 2026: landing page still emits `404` for `/favicon.ico`.
+- Observed on March 7, 2026: mobile comparison remains side by side, but the production layout still felt visually clipped enough to warrant a tighter mobile grid.

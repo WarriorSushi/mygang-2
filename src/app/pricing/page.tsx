@@ -476,12 +476,11 @@ export default function PricingPage() {
               Swipe sideways to compare every plan
             </p>
 
-            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto overscroll-x-contain relative">
-              <div className="min-w-[720px] pr-4" role="table" aria-label="Plan comparison">
+            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto overscroll-x-contain relative pb-2">
+              <div className="min-w-[640px] sm:min-w-[720px] pr-2 sm:pr-4" role="table" aria-label="Plan comparison">
               <div
                 role="row"
-                className="border-b border-border/20 bg-muted/5"
-                style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1fr 1fr' }}
+                className="grid grid-cols-[minmax(132px,1.35fr)_repeat(3,minmax(108px,1fr))] sm:grid-cols-[1.6fr_repeat(3,1fr)] border-b border-border/20 bg-muted/5"
               >
                 <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-muted-foreground">Feature</div>
                 <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-muted-foreground">Free</div>
@@ -493,8 +492,7 @@ export default function PricingPage() {
                 <div
                   key={f.text}
                   role="row"
-                  className={`border-b border-border/10 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/[0.03]'}`}
-                  style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1fr 1fr' }}
+                  className={`grid grid-cols-[minmax(132px,1.35fr)_repeat(3,minmax(108px,1fr))] sm:grid-cols-[1.6fr_repeat(3,1fr)] border-b border-border/10 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/[0.03]'}`}
                 >
                   <div role="cell" className="p-3 sm:p-6 text-[11px] sm:text-[15px] text-foreground/70">{f.text}</div>
                   <div role="cell" className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.free} /></div>
@@ -503,7 +501,7 @@ export default function PricingPage() {
                 </div>
               ))}
             </div>
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/90 to-transparent md:hidden" aria-hidden="true" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background via-background/85 to-transparent md:hidden" aria-hidden="true" />
             </div>
           </div>
         </section>

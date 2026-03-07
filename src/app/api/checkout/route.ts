@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getDodoClient } from '@/lib/billing'
 
 const checkoutSchema = z.object({
@@ -14,6 +15,7 @@ const PRODUCT_IDS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
     const supabase = await createClient()
+    const adminSupabase = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
         const dodo = getDodoClient()
 
         // Ensure user has a dodo_customer_id, or create one
-        const { data: profile } = await supabase
+        const { data: profile } = await adminSupabase
             .from('profiles')
             .select('dodo_customer_id')
             .eq('id', user.id)
@@ -57,24 +59,38 @@ export async function POST(req: NextRequest) {
             customerId = customer.customer_id
 
             // I3: Conditional update — only set if still null (prevents double-click race)
-            const { data: updated } = await supabase
+            const { data: updated, error: updateError } = await adminSupabase
                 .from('profiles')
                 .update({ dodo_customer_id: customerId })
                 .eq('id', user.id)
                 .is('dodo_customer_id', null)
                 .select('dodo_customer_id')
-                .single()
+                .maybeSingle()
+
+            if (updateError) {
+                console.error('[checkout] Failed to persist dodo_customer_id:', updateError)
+                return Response.json({ error: 'Failed to prepare billing profile' }, { status: 500 })
+            }
 
             // If another request already set it, use the existing one
-            if (!updated) {
-                const { data: existing } = await supabase
+            if (!updated?.dodo_customer_id) {
+                const { data: existing, error: existingError } = await adminSupabase
                     .from('profiles')
                     .select('dodo_customer_id')
                     .eq('id', user.id)
-                    .single()
-                if (existing?.dodo_customer_id) {
-                    customerId = existing.dodo_customer_id
+                    .maybeSingle()
+
+                if (existingError) {
+                    console.error('[checkout] Failed to re-read dodo_customer_id:', existingError)
+                    return Response.json({ error: 'Failed to prepare billing profile' }, { status: 500 })
                 }
+
+                if (!existing?.dodo_customer_id) {
+                    console.error('[checkout] Missing dodo_customer_id after customer creation')
+                    return Response.json({ error: 'Failed to prepare billing profile' }, { status: 500 })
+                }
+
+                customerId = existing.dodo_customer_id
             }
         }
 

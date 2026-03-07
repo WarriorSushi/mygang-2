@@ -1,8 +1,19 @@
 import { Webhooks } from '@dodopayments/nextjs'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { Database } from '@/lib/database.types'
 import { TIER_LIMITS } from '@/lib/billing'
 
 const supabase = createAdminClient()
+
+function getWebhookCustomerId(data: Record<string, unknown>) {
+    if (typeof data.customer_id === 'string' && data.customer_id) return data.customer_id
+    const nestedCustomer = data.customer
+    if (nestedCustomer && typeof nestedCustomer === 'object') {
+        const customerId = (nestedCustomer as Record<string, unknown>).customer_id
+        if (typeof customerId === 'string' && customerId) return customerId
+    }
+    return null
+}
 
 async function findUserByCustomerId(customerId: string) {
     const { data } = await supabase
@@ -29,6 +40,22 @@ async function upsertSubscription(subscriptionId: string, userId: string, produc
 async function updateProfileTier(userId: string, tier: string) {
     const { error } = await supabase.from('profiles').update({ subscription_tier: tier }).eq('id', userId)
     if (error) throw new Error(`updateProfileTier failed: ${error.message}`)
+}
+
+async function updatePurchaseCelebration(userId: string, plan: 'basic' | 'pro') {
+    const modernPayload = { purchase_celebration_pending: plan } satisfies Database['public']['Tables']['profiles']['Update']
+    const { error } = await supabase.from('profiles').update(modernPayload).eq('id', userId)
+    if (!error) return
+
+    const message = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+    const needsLegacyBooleanFallback = message.includes('boolean') || message.includes('invalid input syntax')
+    if (!needsLegacyBooleanFallback) {
+        throw new Error(`updatePurchaseCelebration failed: ${error.message}`)
+    }
+
+    const legacyPayload = { purchase_celebration_pending: true } as unknown as Database['public']['Tables']['profiles']['Update']
+    const { error: legacyError } = await supabase.from('profiles').update(legacyPayload).eq('id', userId)
+    if (legacyError) throw new Error(`updatePurchaseCelebration legacy fallback failed: ${legacyError.message}`)
 }
 
 async function logBillingEvent(userId: string | null, eventType: string, dodoEventId: string | null, payload: Record<string, unknown>): Promise<boolean> {
@@ -77,10 +104,15 @@ export const POST = Webhooks({
 
     onSubscriptionActive: async (payload) => {
         const data = payload.data as Record<string, unknown>
-        const customerId = data.customer_id as string
+        const customerId = getWebhookCustomerId(data)
         const subscriptionId = data.subscription_id as string
         const productId = data.product_id as string
         const webhookId = data.webhook_id as string ?? null
+
+        if (!customerId) {
+            console.error('[webhook] Missing customer_id on subscription.active payload')
+            return
+        }
 
         // C10: Idempotency
         const isNew = await logBillingEvent(null, 'subscription.active', webhookId, data)
@@ -157,15 +189,19 @@ export const POST = Webhooks({
         }
 
         // Set celebration flag so AI friends congratulate user on next chat
-        await supabase.from('profiles').update({ purchase_celebration_pending: plan }).eq('id', userId)
+        await updatePurchaseCelebration(userId, plan as 'basic' | 'pro')
     },
 
     onSubscriptionRenewed: async (payload) => {
         const data = payload.data as Record<string, unknown>
-        const customerId = data.customer_id as string
+        const customerId = getWebhookCustomerId(data)
         const subscriptionId = data.subscription_id as string
         // MED-4: Extract webhook_id for idempotency (same pattern as onSubscriptionActive)
         const webhookId = data.webhook_id as string ?? null
+        if (!customerId) {
+            console.error('[webhook] Missing customer_id on subscription.renewed payload')
+            return
+        }
         const userId = await findUserByCustomerId(customerId)
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on renewal, subscription_id=${subscriptionId}`)
@@ -186,8 +222,12 @@ export const POST = Webhooks({
 
     onSubscriptionCancelled: async (payload) => {
         const data = payload.data as Record<string, unknown>
-        const customerId = data.customer_id as string
+        const customerId = getWebhookCustomerId(data)
         const subscriptionId = data.subscription_id as string
+        if (!customerId) {
+            console.error('[webhook] Missing customer_id on subscription.cancelled payload')
+            return
+        }
         const userId = await findUserByCustomerId(customerId)
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on cancellation, subscription_id=${subscriptionId}`)
@@ -207,8 +247,12 @@ export const POST = Webhooks({
 
     onSubscriptionExpired: async (payload) => {
         const data = payload.data as Record<string, unknown>
-        const customerId = data.customer_id as string
+        const customerId = getWebhookCustomerId(data)
         const subscriptionId = data.subscription_id as string
+        if (!customerId) {
+            console.error('[webhook] Missing customer_id on subscription.expired payload')
+            return
+        }
         const userId = await findUserByCustomerId(customerId)
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on expiration, subscription_id=${subscriptionId}`)
@@ -228,15 +272,15 @@ export const POST = Webhooks({
 
     onPaymentSucceeded: async (payload) => {
         const data = payload.data as Record<string, unknown>
-        const customerId = data.customer_id as string
-        const userId = await findUserByCustomerId(customerId)
+        const customerId = getWebhookCustomerId(data)
+        const userId = customerId ? await findUserByCustomerId(customerId) : null
         await logBillingEvent(userId, 'payment.succeeded', null, data)
     },
 
     onPaymentFailed: async (payload) => {
         const data = payload.data as Record<string, unknown>
-        const customerId = data.customer_id as string
-        const userId = await findUserByCustomerId(customerId)
+        const customerId = getWebhookCustomerId(data)
+        const userId = customerId ? await findUserByCustomerId(customerId) : null
         await logBillingEvent(userId, 'payment.failed', null, data)
     },
 })

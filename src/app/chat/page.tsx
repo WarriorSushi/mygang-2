@@ -269,8 +269,15 @@ export default function ChatPage() {
                 .eq('id', userId)
                 .single()
                 .then(({ data }) => {
-                    if (cancelled || !data?.purchase_celebration_pending) return
-                    const plan = data.purchase_celebration_pending === 'pro' ? 'pro' : 'basic'
+                    const rawCelebration = data?.purchase_celebration_pending as string | boolean | null | undefined
+                    if (cancelled || !rawCelebration) return
+                    const plan = rawCelebration === 'pro'
+                        ? 'pro'
+                        : rawCelebration === 'basic'
+                            ? 'basic'
+                            : data?.subscription_tier === 'pro'
+                                ? 'pro'
+                                : 'basic'
                     triggerCelebration(plan)
                 })
         })

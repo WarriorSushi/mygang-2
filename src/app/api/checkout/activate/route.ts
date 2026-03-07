@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import type { Database } from '@/lib/database.types'
 import { getDodoClient, type SubscriptionTier } from '@/lib/billing'
 
 const activateSchema = z.object({
@@ -7,6 +9,13 @@ const activateSchema = z.object({
 })
 
 type ActivationState = 'activated' | 'pending' | 'invalid'
+type DodoCustomerRecord = {
+    customer_id?: string
+    email?: string | null
+}
+type DodoSubscriptionRecord = Record<string, unknown> & {
+    customer?: DodoCustomerRecord | null
+}
 
 function jsonResponse(
     status: number,
@@ -20,8 +29,57 @@ function jsonResponse(
     return Response.json(payload, { status })
 }
 
+function getSubscriptionCustomer(subscription: DodoSubscriptionRecord) {
+    const nestedCustomer = subscription.customer ?? null
+    const customerId = typeof subscription.customer_id === 'string' && subscription.customer_id
+        ? subscription.customer_id
+        : typeof nestedCustomer?.customer_id === 'string' && nestedCustomer.customer_id
+            ? nestedCustomer.customer_id
+            : null
+    const customerEmail = typeof nestedCustomer?.email === 'string' && nestedCustomer.email
+        ? nestedCustomer.email.trim().toLowerCase()
+        : null
+
+    return { customerId, customerEmail }
+}
+
+async function updateProfileSubscriptionState(
+    adminSupabase: ReturnType<typeof createAdminClient>,
+    userId: string,
+    plan: SubscriptionTier
+) {
+    const modernPayload = {
+        subscription_tier: plan,
+        purchase_celebration_pending: plan,
+    } satisfies Database['public']['Tables']['profiles']['Update']
+
+    const { error } = await adminSupabase
+        .from('profiles')
+        .update(modernPayload)
+        .eq('id', userId)
+
+    if (!error) return null
+
+    const message = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+    const needsLegacyBooleanFallback = message.includes('boolean') || message.includes('invalid input syntax')
+    if (!needsLegacyBooleanFallback) return error
+
+    const legacyPayload = {
+        subscription_tier: plan,
+        purchase_celebration_pending: true,
+    } as unknown as Database['public']['Tables']['profiles']['Update']
+
+    const { error: legacyError } = await adminSupabase
+        .from('profiles')
+        .update(legacyPayload)
+        .eq('id', userId)
+
+    return legacyError ?? null
+}
+
 export async function POST(req: Request) {
     const supabase = await createClient()
+    const adminSupabase = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -37,25 +95,49 @@ export async function POST(req: Request) {
 
     try {
         const dodo = getDodoClient()
-        const subscription = await dodo.subscriptions.retrieve(subscriptionId) as unknown as Record<string, unknown>
+        const subscription = await dodo.subscriptions.retrieve(subscriptionId) as unknown as DodoSubscriptionRecord
 
         if (!subscription) {
             return jsonResponse(404, { state: 'invalid', reason: 'subscription_not_found' })
         }
 
-        // C1: Always verify ownership — deny by default
-        const subCustomerId = subscription.customer_id as string | undefined
+        const { customerId: subCustomerId, customerEmail: subCustomerEmail } = getSubscriptionCustomer(subscription)
         if (!subCustomerId) {
             return jsonResponse(400, { state: 'invalid', reason: 'missing_customer' })
         }
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await adminSupabase
             .from('profiles')
             .select('dodo_customer_id')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.dodo_customer_id || profile.dodo_customer_id !== subCustomerId) {
+        if (profileError) {
+            console.error('[activate] Failed to load profile:', profileError)
+            return jsonResponse(500, { state: 'invalid', reason: 'profile_lookup_failed' })
+        }
+
+        let persistedCustomerId = profile?.dodo_customer_id ?? null
+        if (!persistedCustomerId) {
+            const normalizedUserEmail = user.email?.trim().toLowerCase() ?? null
+            if (!normalizedUserEmail || !subCustomerEmail || normalizedUserEmail !== subCustomerEmail) {
+                return jsonResponse(403, { state: 'invalid', reason: 'customer_mismatch' })
+            }
+
+            const { error: backfillError } = await adminSupabase
+                .from('profiles')
+                .update({ dodo_customer_id: subCustomerId })
+                .eq('id', user.id)
+
+            if (backfillError) {
+                console.error('[activate] Failed to backfill dodo_customer_id:', backfillError)
+                return jsonResponse(500, { state: 'invalid', reason: 'customer_backfill_failed' })
+            }
+
+            persistedCustomerId = subCustomerId
+        }
+
+        if (persistedCustomerId !== subCustomerId) {
             return jsonResponse(403, { state: 'invalid', reason: 'customer_mismatch' })
         }
 
@@ -81,20 +163,13 @@ export async function POST(req: Request) {
         }
 
         // C8: Check for errors on DB writes
-        const { error: tierError } = await supabase
-            .from('profiles')
-            .update({
-                subscription_tier: plan,
-                purchase_celebration_pending: plan,
-            })
-            .eq('id', user.id)
-
+        const tierError = await updateProfileSubscriptionState(adminSupabase, user.id, plan)
         if (tierError) {
             console.error('[activate] Tier update failed:', tierError)
             return jsonResponse(500, { state: 'invalid', reason: 'tier_update_failed' })
         }
 
-        const { error: subError } = await supabase.from('subscriptions').upsert({
+        const { error: subError } = await adminSupabase.from('subscriptions').upsert({
             id: subscriptionId,
             user_id: user.id,
             product_id: productId,
