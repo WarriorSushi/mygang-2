@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'
 import { deleteAccount, deleteAllMessages, deleteAllMemories, signOut } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
+import { getMessagesPerWindow, getTierCopy, getTierFromProfile } from '@/lib/billing'
 import { useChatStore } from '@/stores/chat-store'
 import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3 } from 'lucide-react'
 
@@ -22,8 +23,11 @@ interface SettingsPanelProps {
 }
 
 function UpgradeCard({ tier }: { tier: string | null }) {
-    const isPro = tier === 'pro'
-    const isBasic = tier === 'basic'
+    const normalizedTier = getTierFromProfile(tier)
+    const isPro = normalizedTier === 'pro'
+    const isBasic = normalizedTier === 'basic'
+    const basicCopy = getTierCopy('basic')
+    const freeCopy = getTierCopy('free')
 
     if (isPro) {
         return (
@@ -38,7 +42,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                     </div>
                     <p className="text-sm font-semibold mt-1">You&apos;re on the best plan.</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                        Unlimited messages, full memory, zero cooldowns.
+                        {getTierCopy('pro').usageDescription}
                     </p>
                     <div className="mt-4 flex gap-2">
                         <Button asChild variant="outline" className="rounded-full text-[10px] uppercase tracking-widest">
@@ -61,7 +65,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                         </div>
                         <div className="text-[10px] uppercase tracking-widest text-blue-500 dark:text-blue-400 font-bold">Basic Plan</div>
                     </div>
-                    <p className="text-sm font-semibold mt-1">500 messages/month + memory</p>
+                    <p className="text-sm font-semibold mt-1">{basicCopy.usageHeading}</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
                         Want unlimited? Upgrade to Pro.
                     </p>
@@ -100,7 +104,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                     Unlock the full gang experience
                 </h3>
                 <p className="text-[12px] text-muted-foreground mt-1.5 leading-relaxed max-w-sm">
-                    You&apos;re on the free tier (20 msgs/hr, no memory). Your gang wants to remember you.
+                    You&apos;re on the free tier ({freeCopy.shortMessagesLabel}, starter memory). Your gang wants to remember you.
                 </p>
 
                 <div className="mt-4 flex flex-col gap-2">
@@ -211,7 +215,10 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     }
 
     const tier = usage.subscriptionTier || 'free'
-    const tierLabel = tier === 'pro' ? 'Unlimited messages' : tier === 'basic' ? '500 messages/month' : '20 messages per hour'
+    const normalizedTier = getTierFromProfile(tier)
+    const tierCopy = getTierCopy(normalizedTier)
+    const tierLimit = getMessagesPerWindow(normalizedTier)
+    const tierLabel = tierCopy.usageHeading
     const messagesRemaining = useChatStore((s) => s.messagesRemaining)
 
     return (
@@ -255,22 +262,22 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                 </div>
                 <div className="mt-1.5">
                     <span className="text-[10px] text-muted-foreground capitalize">
-                        {tier} tier
+                        {normalizedTier} tier
                     </span>
                 </div>
                 {/* Active usage counter */}
-                {tier === 'pro' ? (
+                {normalizedTier === 'pro' ? (
                     <div className="mt-4 flex items-center gap-2">
                         <Infinity className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium text-foreground">Messages: Unlimited</span>
+                        <span className="text-sm font-medium text-foreground">Messages: {tierCopy.messagesLabel}</span>
                     </div>
                 ) : messagesRemaining !== null && messagesRemaining !== undefined ? (
                     <div className="mt-4 space-y-2">
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-foreground">
-                                {tier === 'free'
-                                    ? `${Math.max(0, 25 - messagesRemaining)} / 25 used this hour`
-                                    : `${Math.max(0, 40 - messagesRemaining)} / 40 used this hour`
+                                {tierLimit
+                                    ? `${Math.max(0, tierLimit - messagesRemaining)} / ${tierLimit} used this hour`
+                                    : tierCopy.messagesLabel
                                 }
                             </span>
                             <span className={`text-xs font-bold ${messagesRemaining <= 5 ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -287,7 +294,9 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                                             : 'bg-primary'
                                 }`}
                                 style={{
-                                    width: `${Math.min(100, ((tier === 'free' ? 25 : 40) - messagesRemaining) / (tier === 'free' ? 25 : 40) * 100)}%`
+                                    width: tierLimit
+                                        ? `${Math.min(100, ((tierLimit - messagesRemaining) / tierLimit) * 100)}%`
+                                        : '0%'
                                 }}
                             />
                         </div>

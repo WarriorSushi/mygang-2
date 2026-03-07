@@ -66,12 +66,14 @@ export async function persistUserJourney(
         username?: string
         gangIds?: string[]
         onboardingCompleted?: boolean
+        customCharacterNames?: Record<string, string>
     }
 ) {
     const profileUpdate: {
         username?: string
         preferred_squad?: string[]
         onboarding_completed?: boolean
+        custom_character_names?: Record<string, string>
     } = {}
 
     if (typeof payload.username === 'string' && payload.username.trim()) {
@@ -82,6 +84,9 @@ export async function persistUserJourney(
     }
     if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 6) {
         profileUpdate.preferred_squad = payload.gangIds
+    }
+    if (payload.customCharacterNames) {
+        profileUpdate.custom_character_names = payload.customCharacterNames
     }
 
     if (Object.keys(profileUpdate).length > 0) {

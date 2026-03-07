@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { cn } from '@/lib/utils'
 
 interface BackgroundBlobsProps {
@@ -23,7 +23,11 @@ function detectLowEndDevice() {
  * 3 large blobs with GPU-composited CSS keyframe animations.
  */
 export function BackgroundBlobs({ isMuted = false, className }: BackgroundBlobsProps) {
-    const [isLowEnd] = useState(detectLowEndDevice)
+    const isLowEnd = useSyncExternalStore(
+        () => () => { },
+        detectLowEndDevice,
+        () => false
+    )
     const disableMotion = useMemo(() => isMuted || isLowEnd, [isMuted, isLowEnd])
 
     return (

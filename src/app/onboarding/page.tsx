@@ -15,11 +15,12 @@ import { persistUserJourney } from '@/lib/supabase/client-journey'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { IdentityStep } from '@/components/onboarding/identity-step'
 import { SelectionStep } from '@/components/onboarding/selection-step'
+import { FriendsIntroStep } from '@/components/onboarding/friends-intro-step'
 import { LoadingStep } from '@/components/onboarding/loading-step'
 
-type Step = 'WELCOME' | 'IDENTITY' | 'SELECTION' | 'LOADING'
+type Step = 'WELCOME' | 'IDENTITY' | 'SELECTION' | 'INTRO' | 'LOADING'
 
-const PROGRESS_STEPS: Step[] = ['WELCOME', 'IDENTITY', 'SELECTION', 'LOADING']
+const PROGRESS_STEPS: Step[] = ['WELCOME', 'IDENTITY', 'SELECTION', 'INTRO', 'LOADING']
 
 function StepProgress({ current }: { current: Step }) {
     if (current === 'LOADING') return null
@@ -48,8 +49,10 @@ export default function OnboardingPage() {
     const [step, setStep] = useState<Step>('WELCOME')
     const [name, setName] = useState(() => useChatStore.getState().userName ?? '')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [customNames, setCustomNames] = useState<Record<string, string>>(() => useChatStore.getState().customCharacterNames ?? {})
     const setUserName = useChatStore((s) => s.setUserName)
     const setActiveGang = useChatStore((s) => s.setActiveGang)
+    const setCustomCharacterNames = useChatStore((s) => s.setCustomCharacterNames)
     const userId = useChatStore((s) => s.userId)
     const activeGang = useChatStore((s) => s.activeGang)
     const isHydrated = useChatStore((s) => s.isHydrated)
@@ -92,10 +95,36 @@ export default function OnboardingPage() {
         })
     }
 
-    const handleSelectionDone = async () => {
+    const normalizedCustomNames = useMemo(() => {
+        const next: Record<string, string> = {}
+        const selectedCharacters = CHARACTERS.filter((character) => selectedIds.includes(character.id))
+
+        selectedCharacters.forEach((character) => {
+            const trimmed = (customNames[character.id] || '').trim().slice(0, 30)
+            if (trimmed && trimmed !== character.name) {
+                next[character.id] = trimmed
+            }
+        })
+
+        return next
+    }, [customNames, selectedIds])
+
+    const handleSelectionDone = () => {
+        setStep('INTRO')
+    }
+
+    const handleIntroNameChange = (characterId: string, nextName: string) => {
+        setCustomNames((prev) => ({
+            ...prev,
+            [characterId]: nextName,
+        }))
+    }
+
+    const handleFinishOnboarding = async () => {
         const selectedCharacters = CHARACTERS.filter((c) => selectedIds.includes(c.id))
         setActiveGang(selectedCharacters)
         setUserName(name)
+        setCustomCharacterNames(normalizedCustomNames)
         setStep('LOADING')
 
         const session = ensureAnalyticsSession()
@@ -108,6 +137,7 @@ export default function OnboardingPage() {
                       username: name,
                       gangIds: selectedIds,
                       onboardingCompleted: true,
+                      customCharacterNames: normalizedCustomNames,
                   }).catch((err) => console.error('Failed to auto-save to cloud:', err))
                 : Promise.resolve(),
             new Promise((resolve) => setTimeout(resolve, 1500)),
@@ -129,10 +159,16 @@ export default function OnboardingPage() {
 
             <StepProgress current={step} />
 
-            {(step === 'IDENTITY' || step === 'SELECTION') && (
+            {(step === 'IDENTITY' || step === 'SELECTION' || step === 'INTRO') && (
                 <button
                     type="button"
-                    onClick={() => setStep(step === 'SELECTION' ? 'IDENTITY' : 'WELCOME')}
+                    onClick={() => setStep(
+                        step === 'INTRO'
+                            ? 'SELECTION'
+                            : step === 'SELECTION'
+                                ? 'IDENTITY'
+                                : 'WELCOME'
+                    )}
                     className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] left-4 z-20 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                     aria-label="Go back"
                 >
@@ -159,6 +195,16 @@ export default function OnboardingPage() {
                         selectedIds={selectedIds}
                         toggleCharacter={toggleCharacter}
                         onNext={handleSelectionDone}
+                    />
+                )}
+
+                {step === 'INTRO' && (
+                    <FriendsIntroStep
+                        selectedIds={selectedIds}
+                        customNames={customNames}
+                        onNameChange={handleIntroNameChange}
+                        onNext={handleFinishOnboarding}
+                        onSkip={handleFinishOnboarding}
                     />
                 )}
 

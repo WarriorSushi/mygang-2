@@ -363,7 +363,7 @@ export type Database = {
           onboarding_completed: boolean | null
           pending_squad_downgrade: boolean | null
           preferred_squad: string[] | null
-          purchase_celebration_pending: boolean | null
+          purchase_celebration_pending: string | null
           relationship_state: Json | null
           restored_members_pending: string[] | null
           session_summary: string | null
@@ -390,7 +390,7 @@ export type Database = {
           onboarding_completed?: boolean | null
           pending_squad_downgrade?: boolean | null
           preferred_squad?: string[] | null
-          purchase_celebration_pending?: boolean | null
+          purchase_celebration_pending?: string | null
           relationship_state?: Json | null
           restored_members_pending?: string[] | null
           session_summary?: string | null
@@ -417,7 +417,7 @@ export type Database = {
           onboarding_completed?: boolean | null
           pending_squad_downgrade?: boolean | null
           preferred_squad?: string[] | null
-          purchase_celebration_pending?: boolean | null
+          purchase_celebration_pending?: string | null
           relationship_state?: Json | null
           restored_members_pending?: string[] | null
           session_summary?: string | null

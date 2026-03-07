@@ -42,6 +42,8 @@ function getStarterChips(name: string) {
     ]
 }
 
+type SettingsPanelTarget = 'root' | 'wallpaper' | 'rename'
+
 export default function ChatPage() {
     const {
         messages,
@@ -85,6 +87,7 @@ export default function ChatPage() {
 
     const [isVaultOpen, setIsVaultOpen] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    const [settingsPanelTarget, setSettingsPanelTarget] = useState<SettingsPanelTarget>('root')
     const [showResumeBanner, setShowResumeBanner] = useState(false)
     const [resumeBannerText, setResumeBannerText] = useState('Resumed your last session')
     const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -109,6 +112,11 @@ export default function ChatPage() {
         setPaywallOpen(true)
     }, [])
 
+    const openSettingsPanel = useCallback((panel: SettingsPanelTarget = 'root') => {
+        setSettingsPanelTarget(panel)
+        setIsSettingsOpen(true)
+    }, [])
+
 
     // ── Hooks ──
 
@@ -118,7 +126,6 @@ export default function ChatPage() {
 
     const api = useChatApi({
         activeGang,
-        userId,
         userName,
         userNickname,
         chatMode,
@@ -235,7 +242,7 @@ export default function ChatPage() {
             // Clear DB flag
             import('@/lib/supabase/client').then(({ createClient }) => {
                 const supabase = createClient()
-                supabase.from('profiles').update({ purchase_celebration_pending: false }).eq('id', userId).then(() => {})
+                supabase.from('profiles').update({ purchase_celebration_pending: null }).eq('id', userId).then(() => {})
             })
 
             const timer = setTimeout(() => {
@@ -263,7 +270,7 @@ export default function ChatPage() {
                 .single()
                 .then(({ data }) => {
                     if (cancelled || !data?.purchase_celebration_pending) return
-                    const plan = (data.subscription_tier === 'pro' ? 'pro' : 'basic') as 'basic' | 'pro'
+                    const plan = data.purchase_celebration_pending === 'pro' ? 'pro' : 'basic'
                     triggerCelebration(plan)
                 })
         })
@@ -430,7 +437,7 @@ export default function ChatPage() {
                 <ChatHeader
                     activeGang={activeGang}
                     onOpenVault={() => setIsVaultOpen(true)}
-                    onOpenSettings={() => setIsSettingsOpen(true)}
+                    onOpenSettings={() => openSettingsPanel('root')}
                     onRefresh={() => history.syncLatestHistory(true)}
                     typingUsers={typing.typingUsers}
                     memoryActive={true}
@@ -488,8 +495,12 @@ export default function ChatPage() {
             <MemoryVault isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} tier={subscriptionTier} />
             <ChatSettings
                 isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
+                onClose={() => {
+                    setIsSettingsOpen(false)
+                    setSettingsPanelTarget('root')
+                }}
                 onTakeScreenshot={takeScreenshot}
+                initialPanel={settingsPanelTarget}
             />
             <SquadReconcile
                 conflict={squadConflict}
@@ -535,6 +546,9 @@ export default function ChatPage() {
                 onOpenChange={setPaywallOpen}
                 cooldownSeconds={paywallCooldown}
                 tier={paywallTier}
+                onOpenSettings={() => openSettingsPanel('rename')}
+                onOpenMemoryVault={() => setIsVaultOpen(true)}
+                onOpenWallpaper={() => openSettingsPanel('wallpaper')}
             />
             <ConfettiCelebration trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
         </main>

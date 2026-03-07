@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
-  ArrowLeft, Check, Zap, Crown, MessageCircle, Brain,
+  ArrowLeft, Check, Crown, MessageCircle, Brain,
   Infinity, Clock, Shield, Sparkles, ArrowRight, ChevronDown,
   CreditCard, RefreshCw, Users, Heart, Gauge,
   Palette, Volume2, BellRing, Layers, X
@@ -12,6 +12,7 @@ import { useChatStore } from '@/stores/chat-store'
 import { createClient } from '@/lib/supabase/client'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { motion, AnimatePresence } from 'framer-motion'
+import { TIER_LIMITS, getTierCopy } from '@/lib/billing'
 
 /* ══════════════════════════════════════════════════════
    TYPES & DATA
@@ -27,10 +28,10 @@ interface Feature {
 }
 
 const features: Feature[] = [
-  { text: 'Gang members in chat', free: 'Up to 4', basic: 'Up to 5', pro: 'Up to 6' },
-  { text: 'Messages per month', free: '~20/hr', basic: '500/mo', pro: 'Unlimited' },
-  { text: 'Chat memory', free: 'Standard', basic: 'Improved longer memory', pro: 'Solid large memory' },
-  { text: 'Hourly cooldowns', free: '60 min when capped', basic: 'None', pro: 'None' },
+  { text: 'Gang members in chat', free: `Up to ${TIER_LIMITS.free.squadLimit}`, basic: `Up to ${TIER_LIMITS.basic.squadLimit}`, pro: `Up to ${TIER_LIMITS.pro.squadLimit}` },
+  { text: 'Messages', free: getTierCopy('free').comparisonMessagesLabel, basic: getTierCopy('basic').comparisonMessagesLabel, pro: getTierCopy('pro').comparisonMessagesLabel },
+  { text: 'Chat memory', free: getTierCopy('free').memoryLabel, basic: getTierCopy('basic').memoryLabel, pro: getTierCopy('pro').memoryLabel },
+  { text: 'Cooldowns', free: getTierCopy('free').cooldownLabel, basic: getTierCopy('basic').cooldownLabel, pro: getTierCopy('pro').cooldownLabel },
   { text: 'Priority response speed', free: false, basic: false, pro: true },
   { text: 'Ecosystem chat mode', free: false, basic: true, pro: true },
   { text: 'Chat wallpapers', free: false, basic: true, pro: true },
@@ -227,6 +228,9 @@ export default function PricingPage() {
     (currentTier === 'pro' && tier !== 'pro') ||
     (currentTier === 'basic' && tier === 'free')
   )
+  const freeCopy = getTierCopy('free')
+  const basicCopy = getTierCopy('basic')
+  const proCopy = getTierCopy('pro')
 
   return (
     <div className="relative min-h-dvh bg-background text-foreground overflow-x-hidden selection:bg-primary/30">
@@ -304,9 +308,9 @@ export default function PricingPage() {
 
               <ul className="space-y-3.5 mb-8 flex-1">
                 {[
-                  { text: 'Up to 4 gang members', icon: Users },
-                  { text: '20 messages per hour', icon: MessageCircle },
-                  { text: 'Standard memory', icon: Brain },
+                  { text: `Up to ${TIER_LIMITS.free.squadLimit} gang members`, icon: Users },
+                  { text: freeCopy.messagesLabel, icon: MessageCircle },
+                  { text: freeCopy.memoryLabel, icon: Brain },
                   { text: 'Gang Focus chat mode', icon: Volume2 },
                   { text: 'Dark & light themes', icon: Palette },
                 ].map((f) => (
@@ -346,11 +350,11 @@ export default function PricingPage() {
 
               <ul className="space-y-3.5 mb-8 flex-1">
                 {[
-                  { text: 'Up to 5 gang members', icon: Users, highlight: true },
-                  { text: '500 messages per month', icon: MessageCircle },
-                  { text: 'Improved longer memory', icon: Brain, highlight: true },
+                  { text: `Up to ${TIER_LIMITS.basic.squadLimit} gang members`, icon: Users, highlight: true },
+                  { text: basicCopy.messagesLabel, icon: MessageCircle },
+                  { text: basicCopy.memoryLabel, icon: Brain, highlight: true },
                   { text: 'Ecosystem mode — real group chat', icon: Sparkles, highlight: true },
-                  { text: 'Zero hourly cooldowns', icon: Clock },
+                  { text: 'No hourly cooldowns', icon: Clock },
                   { text: 'Wallpapers & custom nicknames', icon: Palette },
                   { text: 'Memory vault access', icon: Brain },
                 ].map((f) => (
@@ -417,9 +421,9 @@ export default function PricingPage() {
 
               <ul className="space-y-3.5 mb-8 flex-1">
                 {[
-                  { text: 'Up to 6 gang members', icon: Users, highlight: true },
-                  { text: 'Unlimited messages — no caps', icon: Infinity, highlight: true },
-                  { text: 'Solid large memory', icon: Brain, highlight: true },
+                  { text: `Up to ${TIER_LIMITS.pro.squadLimit} gang members`, icon: Users, highlight: true },
+                  { text: `${proCopy.messagesLabel} — no caps`, icon: Infinity, highlight: true },
+                  { text: proCopy.memoryLabel, icon: Brain, highlight: true },
                   { text: 'Priority response speed', icon: Gauge, highlight: true },
                   { text: 'Pro badge in chat', icon: Crown },
                   { text: 'Early access to new features', icon: BellRing },
@@ -468,9 +472,12 @@ export default function PricingPage() {
               Compare plans side by side
             </h2>
 
-            {/* Comparison table — responsive grid */}
-            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto relative">
-              <div className="min-w-[420px]" role="table" aria-label="Plan comparison">
+            <p className="mb-4 text-center text-xs uppercase tracking-widest text-muted-foreground/60 md:hidden">
+              Swipe sideways to compare every plan
+            </p>
+
+            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto overscroll-x-contain relative">
+              <div className="min-w-[720px] pr-4" role="table" aria-label="Plan comparison">
               <div
                 role="row"
                 className="border-b border-border/20 bg-muted/5"
@@ -496,8 +503,7 @@ export default function PricingPage() {
                 </div>
               ))}
             </div>
-              {/* Scroll hint gradient — visible only on small screens */}
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent sm:hidden" aria-hidden="true" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background via-background/90 to-transparent md:hidden" aria-hidden="true" />
             </div>
           </div>
         </section>

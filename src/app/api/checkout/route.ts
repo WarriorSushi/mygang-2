@@ -78,12 +78,13 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const returnUrl = process.env.DODO_PAYMENTS_RETURN_URL!
+        const returnUrl = new URL(process.env.DODO_PAYMENTS_RETURN_URL!)
+        returnUrl.searchParams.set('plan', plan)
 
         const session = await dodo.checkoutSessions.create({
             product_cart: [{ product_id: productId, quantity: 1 }],
             customer: { customer_id: customerId },
-            return_url: returnUrl,
+            return_url: returnUrl.toString(),
         })
 
         return Response.json({ checkout_url: session.checkout_url })

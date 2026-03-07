@@ -48,4 +48,5 @@ nul
 *.png
 !public/**/*.png
 .playwright-mcp/
+.playwright-cli/
 /screenshots/

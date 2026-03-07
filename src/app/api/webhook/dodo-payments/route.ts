@@ -157,7 +157,7 @@ export const POST = Webhooks({
         }
 
         // Set celebration flag so AI friends congratulate user on next chat
-        await supabase.from('profiles').update({ purchase_celebration_pending: true }).eq('id', userId)
+        await supabase.from('profiles').update({ purchase_celebration_pending: plan }).eq('id', userId)
     },
 
     onSubscriptionRenewed: async (payload) => {

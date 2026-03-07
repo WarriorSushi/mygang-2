@@ -6,10 +6,10 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
-import { getTierFromProfile, isMemoryEnabled, getContextLimit, getSquadLimit, getMemoryInPromptLimit, type SubscriptionTier } from '@/lib/billing'
+import { getTierFromProfile, isMemoryEnabled, getContextLimit, getMemoryInPromptLimit, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
-import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, MAX_MESSAGE_ID_CHARS } from '@/lib/chat-utils'
+import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
 import type { Json } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { waitUntil } from '@vercel/functions'
@@ -22,7 +22,6 @@ const MAX_EVENTS = 20
 const MAX_DELAY_MS = 7000
 const LLM_MAX_OUTPUT_TOKENS = 2000
 const LLM_MAX_RETRIES = 2
-const LLM_HISTORY_LIMIT = 12
 const LLM_IDLE_HISTORY_LIMIT = 8
 const IDLE_MAX_OUTPUT_TOKENS = 600
 const LOW_COST_MAX_OUTPUT_TOKENS = 800
@@ -391,6 +390,88 @@ function maybeSplitAiMessages(
     return expanded.slice(0, MAX_EVENTS)
 }
 
+function trimMessageAtNaturalBreakpoint(content: string, maxChars: number) {
+    const normalized = content.replace(/\s+/g, ' ').trim()
+    if (normalized.length <= maxChars) return normalized
+
+    const punctuationIndex = Math.max(
+        normalized.lastIndexOf('. ', maxChars),
+        normalized.lastIndexOf('! ', maxChars),
+        normalized.lastIndexOf('? ', maxChars),
+        normalized.lastIndexOf(', ', maxChars)
+    )
+
+    const wordBreakIndex = normalized.lastIndexOf(' ', maxChars)
+    const cutIndex = punctuationIndex > Math.floor(maxChars * 0.55)
+        ? punctuationIndex + 1
+        : (wordBreakIndex > Math.floor(maxChars * 0.55) ? wordBreakIndex : maxChars)
+
+    const trimmed = normalized.slice(0, cutIndex).trim().replace(/[,\s-]+$/, '')
+    if (/[.!?]$/.test(trimmed)) return trimmed
+    return `${trimmed}...`
+}
+
+function isFarewellMessage(text: string) {
+    const value = text.toLowerCase().trim()
+    if (!value || value.length > 60) return false
+    return /^(gn|goodnight|good night|night|bye|byee+|gn bye|cya|see ya|talk later|ttyl|goodnight gang|bye gang)\b/.test(value)
+        || /\b(gn|goodnight|good night|bye|ttyl|talk later)\b/.test(value)
+}
+
+function shouldAllowLongReplies(text: string, softSafetyFlag: boolean) {
+    if (softSafetyFlag) return true
+    if (text.length > 180) return true
+    return /\b(explain|why|how|story|walk me through|help me|advice|serious|deep|sensitive|panic|anxious|depressed|grief|breakup|relationship|lonely|overwhelmed|trauma)\b/i.test(text)
+}
+
+function normalizeEventWritingStyle(
+    events: RouteResponseObject['events'],
+    options: {
+        allowLongReplies: boolean
+        farewellTurn: boolean
+    }
+): RouteResponseObject['events'] {
+    const normalized: RouteResponseObject['events'] = []
+    const maxBubbleChars = options.farewellTurn ? 90 : options.allowLongReplies ? 260 : 170
+
+    for (const event of events) {
+        if (event.type !== 'message' || !event.content) {
+            normalized.push(event)
+            continue
+        }
+
+        const content = event.content.replace(/\s+/g, ' ').trim()
+        if (content.length <= maxBubbleChars) {
+            normalized.push({ ...event, content })
+            continue
+        }
+
+        if (!options.allowLongReplies || options.farewellTurn) {
+            const split = !options.farewellTurn ? splitMessageForSecondBubble(content) : null
+            if (split) {
+                normalized.push({
+                    ...event,
+                    content: trimMessageAtNaturalBreakpoint(split[0], maxBubbleChars),
+                })
+                normalized.push({
+                    ...event,
+                    message_id: undefined,
+                    content: trimMessageAtNaturalBreakpoint(split[1], maxBubbleChars - 10),
+                    delay: Math.min(MAX_DELAY_MS, Math.max(180, (event.delay || 0) + 260)),
+                })
+                continue
+            }
+        }
+
+        normalized.push({
+            ...event,
+            content: trimMessageAtNaturalBreakpoint(content, maxBubbleChars),
+        })
+    }
+
+    return normalized.slice(0, MAX_EVENTS)
+}
+
 const responseSchema = z.object({
     events: z.array(z.object({
         type: z.enum(['message', 'reaction', 'status_update', 'nickname_update', 'typing_ghost']),
@@ -560,7 +641,7 @@ export async function POST(req: Request) {
             autonomousIdle = false,
             purchaseCelebration
         } = parsed.data
-        let chatMode = requestedChatMode
+        const chatMode = requestedChatMode
         const requestStartedAt = Date.now()
         const serverTurnId = createServerTurnId()
 
@@ -613,6 +694,7 @@ export async function POST(req: Request) {
         const mockHeader = req.headers.get('x-mock-ai')
         if (process.env.NODE_ENV !== 'production' && (mockHeader === '1' || mockHeader === 'true')) {
             return Response.json({
+                turn_id: serverTurnId,
                 events: [
                     {
                         type: 'message',
@@ -638,16 +720,17 @@ export async function POST(req: Request) {
 
         const userMessages = safeMessages.filter((m) => m.speaker === 'user')
         const lastUserMessage = userMessages[userMessages.length - 1]
-        const latestUserMessageId = lastUserMessage?.id
         const previousUserMessage = userMessages[userMessages.length - 2]
         const latestMessage = safeMessages[safeMessages.length - 1]
         const hasFreshUserTurn = latestMessage?.speaker === 'user'
         const lastUserMsg = lastUserMessage?.content || ''
-        const openFloorRequested = hasFreshUserTurn && hasOpenFloorIntent(lastUserMsg)
+        const farewellTurn = hasFreshUserTurn && isFarewellMessage(lastUserMsg)
         const lastUserMsgAt = lastUserMessage?.created_at ? new Date(lastUserMessage.created_at).getTime() : 0
         const inactiveMinutes = lastUserMsgAt ? (Date.now() - lastUserMsgAt) / (1000 * 60) : 0
         const isInactive = inactiveMinutes > 5
         const unsafeFlag = detectUnsafeContent(lastUserMsg)
+        const allowLongReplies = shouldAllowLongReplies(lastUserMsg, unsafeFlag.soft)
+        const openFloorRequested = hasFreshUserTurn && !farewellTurn && hasOpenFloorIntent(lastUserMsg)
         const abuseDelta = scoreAbuse(lastUserMsg, previousUserMessage?.content)
         const greetingOnly = isSimpleGreeting(lastUserMsg)
 
@@ -985,6 +1068,7 @@ PLANNING:
 
 FLOW FLAGS:
 - INACTIVE_USER: ${isInactive ? 'YES' : 'NO'} -> should_continue FALSE when YES.
+- FAREWELL_SIGNAL: ${farewellTurn ? 'YES' : 'NO'} -> when YES, send a short warm sendoff from 1-2 friends and end the turn.
 - OPEN_FLOOR_REQUESTED: ${openFloorRequested ? 'YES' : 'NO'}.
 - IDLE_AUTONOMOUS: ${autonomousIdle ? 'YES' : 'NO'}.
 - In gang_focus or low-cost mode, should_continue should be FALSE.
@@ -1013,7 +1097,6 @@ FLOW FLAGS:
         // Gemini uses implicit prompt caching automatically (prefix-match, no annotations needed).
         const conversationPayload = "RECENT CONVERSATION (with IDs):\n" + JSON.stringify(historyForLLM)
         const llmPromptChars = systemPrompt.length + conversationPayload.length
-        let modelSuccess = false
         let providerUsed: 'openrouter' | 'fallback' = 'fallback'
         const tierOutputTokens = TIER_MAX_OUTPUT_TOKENS[tier] ?? LLM_MAX_OUTPUT_TOKENS
         const llmMaxOutputTokens = autonomousIdle ? IDLE_MAX_OUTPUT_TOKENS : (lowCostMode ? Math.min(LOW_COST_MAX_OUTPUT_TOKENS, tierOutputTokens) : tierOutputTokens)
@@ -1030,7 +1113,6 @@ FLOW FLAGS:
                 maxRetries: LLM_MAX_RETRIES,
             })
             object = result.object
-            modelSuccess = true
             providerUsed = 'openrouter'
         } catch (err) {
             console.error('OpenRouter error:', err instanceof Error ? err.message : 'Unknown error')
@@ -1228,6 +1310,22 @@ FLOW FLAGS:
             const splitChance = TIER_SPLIT_CHANCE[tier] ?? (isGangFocusMode ? 0.34 : 0.42)
             object.events = maybeSplitAiMessages(object.events, splitChance)
         }
+        object.events = normalizeEventWritingStyle(object.events, { allowLongReplies, farewellTurn })
+
+        if (farewellTurn) {
+            let farewellCount = 0
+            object.events = object.events.filter((event) => {
+                if (event.type === 'typing_ghost' || event.type === 'status_update') return false
+                if (event.type === 'message' || event.type === 'reaction') {
+                    if (farewellCount >= 3) return false
+                    farewellCount += 1
+                    return true
+                }
+                return true
+            })
+            object.responders = (object.responders || []).slice(0, 2)
+            object.should_continue = false
+        }
         object.events = ensureEventMessageIds(object.events, serverTurnId)
 
         logChatRouteMetric(supabase, user?.id ?? null, {
@@ -1248,6 +1346,7 @@ FLOW FLAGS:
         // Build response before persistence (non-blocking)
         const response = Response.json({
             ...object,
+            turn_id: serverTurnId,
             ...(messagesRemaining !== null ? { messages_remaining: messagesRemaining } : {}),
             usage: {
                 promptChars: llmPromptChars,
@@ -1434,27 +1533,6 @@ FLOW FLAGS:
                         }
                     }
 
-                    if (object?.events?.length) {
-                        let eventTimeMs = Date.now()
-                        object.events.forEach((event) => {
-                            if (event.type === 'message' || event.type === 'reaction') {
-                                eventTimeMs += Math.max(1, Math.min(50, Math.round((event.delay || 0) / 35)))
-                                const eventContent = event.content || '\u{1F44D}'
-                                rows.push({
-                                    user_id: user.id,
-                                    gang_id: gang.id,
-                                    speaker: event.character,
-                                    content: eventContent,
-    
-                                    created_at: new Date(eventTimeMs).toISOString(),
-                                    client_message_id: sanitizeMessageId(event.message_id) || null,
-                                    reply_to_client_message_id: sanitizeMessageId(event.target_message_id) || null,
-                                    reaction: event.type === 'reaction' ? eventContent : null,
-                                })
-                            }
-                        })
-                    }
-
                     rows.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
                     const dedupedRows: ChatHistoryInsertRow[] = []
@@ -1554,4 +1632,3 @@ FLOW FLAGS:
         }, { status: 500 })
     }
 }
-

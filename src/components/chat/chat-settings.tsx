@@ -40,6 +40,7 @@ interface ChatSettingsProps {
     isOpen: boolean
     onClose: () => void
     onTakeScreenshot: () => Promise<void> | void
+    initialPanel?: SettingsPanel
 }
 
 function wallpaperPreviewClass(id: ChatWallpaper) {
@@ -253,7 +254,7 @@ function MenuRow({
    MAIN COMPONENT
    ════════════════════════════════════════════════════ */
 
-export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettingsProps) {
+export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel = 'root' }: ChatSettingsProps) {
     const {
         chatMode,
         setChatMode,
@@ -316,6 +317,14 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot }: ChatSettings
         loadUser()
         return () => { mounted = false }
     }, [isOpen, supabase])
+
+    useEffect(() => {
+        if (!isOpen) return
+        setPanel(initialPanel)
+        if (initialPanel === 'rename') {
+            setRenameInputs({ ...customCharacterNames })
+        }
+    }, [customCharacterNames, initialPanel, isOpen])
 
     const handleChatModeChange = (value: string) => {
         if (value !== 'gang_focus' && value !== 'ecosystem') return

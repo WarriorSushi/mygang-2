@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
 import { Clock, Infinity, Brain, Zap, ArrowRight, Check, Users, Sparkles, Palette } from 'lucide-react'
+import { getTierCopy } from '@/lib/billing'
 
 interface PaywallPopupProps {
     open: boolean
@@ -13,6 +14,7 @@ interface PaywallPopupProps {
     tier: string
     onOpenSettings?: () => void
     onOpenMemoryVault?: () => void
+    onOpenWallpaper?: () => void
 }
 
 function formatTimeLeft(totalSeconds: number): string {
@@ -24,28 +26,29 @@ function formatTimeLeft(totalSeconds: number): string {
 
 const FREE_TIER_FEATURES = {
     basic: [
-        { icon: Zap, text: '500 messages/month' },
-        { icon: Brain, text: 'Your gang remembers you' },
+        { icon: Zap, text: getTierCopy('basic').messagesLabel },
+        { icon: Brain, text: getTierCopy('basic').memoryLabel },
         { icon: Sparkles, text: 'Ecosystem mode' },
     ],
     pro: [
-        { icon: Infinity, text: 'Unlimited messages' },
-        { icon: Brain, text: 'Advanced memory' },
+        { icon: Infinity, text: getTierCopy('pro').messagesLabel },
+        { icon: Brain, text: getTierCopy('pro').memoryLabel },
         { icon: Users, text: '6 squad members' },
     ],
 }
 
 const BASIC_TIER_FEATURES = [
-    { icon: Infinity, text: 'Unlimited messages' },
+    { icon: Infinity, text: getTierCopy('pro').messagesLabel },
     { icon: Brain, text: 'Inside jokes & mood tracking' },
     { icon: Users, text: '6 squad members' },
     { icon: Sparkles, text: 'Character-specific memories' },
 ]
 
-export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpenSettings, onOpenMemoryVault }: PaywallPopupProps) {
+export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpenSettings, onOpenMemoryVault, onOpenWallpaper }: PaywallPopupProps) {
     const [secondsLeft, setSecondsLeft] = useState(cooldownSeconds)
     const isFree = tier === 'free'
     const isBasic = tier === 'basic'
+    const tierCopy = getTierCopy(tier === 'basic' ? 'basic' : tier === 'pro' ? 'pro' : 'free')
 
     // Reset countdown when cooldownSeconds changes or dialog opens
     useEffect(() => {
@@ -85,7 +88,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                             Cooldown active
                         </DialogTitle>
                         <DialogDescription className="text-center text-sm text-muted-foreground/80 leading-relaxed max-w-[340px]">
-                            You&apos;ve hit the {tier} tier limit. Your gang will be back soon.
+                            You&apos;ve hit the {tierCopy.label.toLowerCase()} tier limit. Your gang will be back soon.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -206,10 +209,10 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                                             Review your memories
                                         </button>
                                     )}
-                                    {onOpenSettings && (
+                                    {onOpenWallpaper && (
                                         <button
                                             type="button"
-                                            onClick={() => { handleClose(); onOpenSettings() }}
+                                            onClick={() => { handleClose(); onOpenWallpaper() }}
                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-muted/40 text-[11px] font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
                                         >
                                             <Palette className="w-3 h-3" />

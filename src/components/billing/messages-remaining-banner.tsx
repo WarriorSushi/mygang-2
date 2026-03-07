@@ -4,6 +4,7 @@ import { useChatStore } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
+import { getTierCopy } from '@/lib/billing'
 
 export function MessagesRemainingBanner() {
     const { messagesRemaining, subscriptionTier } = useChatStore(useShallow((s) => ({
@@ -16,7 +17,8 @@ export function MessagesRemainingBanner() {
     if (messagesRemaining === null || messagesRemaining === undefined) return null
     if (messagesRemaining >= 5) return null
 
-    const tierWindow = subscriptionTier === 'free' ? 'this hour' : 'this hour'
+    const tierLabel = getTierCopy(subscriptionTier)
+    const tierWindow = 'this hour'
     const urgencyColor = messagesRemaining <= 2
         ? 'border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400'
         : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
@@ -26,8 +28,8 @@ export function MessagesRemainingBanner() {
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[11px] font-medium flex-1">
                 {messagesRemaining === 0
-                    ? `No messages remaining ${tierWindow}`
-                    : `${messagesRemaining} message${messagesRemaining === 1 ? '' : 's'} remaining ${tierWindow}`
+                    ? `No messages remaining ${tierWindow} on ${tierLabel.label.toLowerCase()}`
+                    : `${messagesRemaining} message${messagesRemaining === 1 ? '' : 's'} remaining ${tierWindow} on ${tierLabel.label.toLowerCase()}`
                 }
             </span>
             <Link

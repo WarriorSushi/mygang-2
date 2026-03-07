@@ -28,6 +28,16 @@ type ChatApiResponse = {
     cooldown_seconds?: number
     tier?: string
     messages_remaining?: number
+    turn_id?: string
+}
+
+type RenderedChatEventPayload = {
+    message_id: string
+    speaker: string
+    content: string
+    displayed_at: string
+    reaction?: string | null
+    reply_to_message_id?: string
 }
 
 export type SendToApiArgs = {
@@ -50,9 +60,26 @@ function withDeliveryError(errorMessage: string) {
     return trimmed.slice(0, MAX_DELIVERY_ERROR_CHARS)
 }
 
+async function persistRenderedEvents(turnId: string, events: RenderedChatEventPayload[]) {
+    if (!turnId || events.length === 0) return
+
+    try {
+        await fetch('/api/chat/rendered', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                turn_id: turnId,
+                events,
+            }),
+            keepalive: true,
+        })
+    } catch (err) {
+        console.error('Failed to persist rendered events:', err)
+    }
+}
+
 interface UseChatApiArgs {
     activeGang: { id: string; name: string; typingSpeed?: number }[]
-    userId: string | null
     userName: string | null
     userNickname: string | null
     chatMode: 'gang_focus' | 'ecosystem'
@@ -78,7 +105,6 @@ interface UseChatApiArgs {
 
 export function useChatApi({
     activeGang,
-    userId,
     userName,
     userNickname,
     chatMode,
@@ -197,6 +223,8 @@ export function useChatApi({
 
         let apiCallSucceeded = false
         let pendingDeliveryIdsForCall: string[] = []
+        const renderedEventsForAck: RenderedChatEventPayload[] = []
+        let responseTurnId: string | null = null
         try {
             const currentMessages = useChatStore.getState().messages
             const sourceUserMessage = sourceUserMessageId
@@ -358,6 +386,7 @@ export function useChatApi({
                 throw new Error('Invalid response shape')
             }
             apiCallSucceeded = true
+            responseTurnId = data.turn_id ?? null
             if (data.usage) {
                 lastTokenUsageRef.current = data.usage
             }
@@ -398,29 +427,50 @@ export function useChatApi({
 
                         if (pendingUserMessagesRef.current) break
 
+                        const displayedAt = new Date().toISOString()
+                        const messageId = event.message_id || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
                         addMessage({
-                            id: event.message_id || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+                            id: messageId,
                             speaker: event.character,
                             content: eventContent,
-                            created_at: new Date().toISOString(),
+                            created_at: displayedAt,
                             replyToId: event.target_message_id
+                        })
+                        renderedEventsForAck.push({
+                            message_id: messageId,
+                            speaker: event.character,
+                            content: eventContent,
+                            displayed_at: displayedAt,
+                            reply_to_message_id: event.target_message_id,
                         })
                         if (isAutonomous || isIntro) silentTurnsRef.current++
                         removeTypingUser(event.character)
                         break
                     }
 
-                    case 'reaction':
+                    case 'reaction': {
+                        const displayedAt = new Date().toISOString()
+                        const reactionContent = event.content || '\u{1F44D}'
+                        const messageId = event.message_id || `ai-react-${Date.now()}`
                         addMessage({
-                            id: event.message_id || `ai-react-${Date.now()}`,
+                            id: messageId,
                             speaker: event.character,
-                            content: event.content || '\u{1F44D}',
-                            created_at: new Date().toISOString(),
-                            reaction: event.content || '\u{1F44D}',
+                            content: reactionContent,
+                            created_at: displayedAt,
+                            reaction: reactionContent,
                             replyToId: event.target_message_id
+                        })
+                        renderedEventsForAck.push({
+                            message_id: messageId,
+                            speaker: event.character,
+                            content: reactionContent,
+                            displayed_at: displayedAt,
+                            reaction: reactionContent,
+                            reply_to_message_id: event.target_message_id,
                         })
                         if (isAutonomous || isIntro) silentTurnsRef.current++
                         break
+                    }
 
                     case 'status_update':
                         setCharacterStatus(event.character, normalizeActivityStatus(event.content))
@@ -437,6 +487,10 @@ export function useChatApi({
                         removeTypingUser(event.character)
                         break
                 }
+            }
+
+            if (responseTurnId && renderedEventsForAck.length > 0) {
+                void persistRenderedEvents(responseTurnId, renderedEventsForAck)
             }
 
             // == AUTONOMOUS CONTINUATION CHECK ==
@@ -542,6 +596,7 @@ export function useChatApi({
 
         if (isGeneratingRef.current) {
             pendingUserMessagesRef.current = true
+            abortControllerRef.current?.abort()
             return true
         }
 
