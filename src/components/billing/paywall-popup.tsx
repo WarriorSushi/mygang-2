@@ -187,7 +187,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                                     <div className="flex-1 h-px bg-border/40" />
                                 </div>
                                 <div className="flex flex-wrap gap-2 w-full justify-center">
-                                    {onOpenSettings && (
+                                    {onOpenSettings && !isFree && (
                                         <button
                                             type="button"
                                             onClick={() => { handleClose(); onOpenSettings() }}
