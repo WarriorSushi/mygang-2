@@ -197,7 +197,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                                             Customize your squad
                                         </button>
                                     )}
-                                    {onOpenMemoryVault && (
+                                    {onOpenMemoryVault && !isFree && (
                                         <button
                                             type="button"
                                             onClick={() => { handleClose(); onOpenMemoryVault() }}
@@ -207,7 +207,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                                             Review your memories
                                         </button>
                                     )}
-                                    {onOpenWallpaper && (
+                                    {onOpenWallpaper && !isFree && (
                                         <button
                                             type="button"
                                             onClick={() => { handleClose(); onOpenWallpaper() }}
