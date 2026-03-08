@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Character, Message } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -473,8 +474,8 @@ function MessageItemComponent({
                 </div>
             )}
 
-            {/* Avatar lightbox */}
-            {showAvatar && character?.avatar && (
+            {/* Avatar lightbox — portaled to body to escape stacking context from animate-msg-appear */}
+            {showAvatar && character?.avatar && createPortal(
                 <div
                     ref={lightboxRef}
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
@@ -517,7 +518,8 @@ function MessageItemComponent({
                             Close
                         </button>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
         </div>
