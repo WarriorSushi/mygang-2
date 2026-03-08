@@ -236,6 +236,8 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
             store.setUserName(null)
             store.setUserNickname(null)
             store.setCustomCharacterNames({})
+            store.setNewMemoryCount(0)
+            store.setTotalMemoryCount(0)
             trackEvent('start_fresh', { metadata: { source: 'settings_page' } })
             window.location.href = '/onboarding'
         } catch {

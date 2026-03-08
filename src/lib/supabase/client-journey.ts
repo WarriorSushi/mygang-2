@@ -106,15 +106,11 @@ export async function persistUserJourney(
         if (!gang?.id) return
 
         const memberIds = payload.gangIds
-        // Upsert desired members first (safe — no data loss if this succeeds but next step fails)
-        await supabase.from('gang_members').upsert(
-            memberIds.map((character_id) => ({ gang_id: gang.id, character_id })),
-            { onConflict: 'gang_id,character_id' }
-        )
-        // Remove members no longer in the squad
+        // Delete all existing members, then insert fresh — avoids 409 upsert conflicts
         await supabase.from('gang_members')
             .delete()
             .eq('gang_id', gang.id)
-            .not('character_id', 'in', `(${memberIds.join(',')})`)
+        await supabase.from('gang_members')
+            .insert(memberIds.map((character_id) => ({ gang_id: gang.id, character_id })))
     }
 }

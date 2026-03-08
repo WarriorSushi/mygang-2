@@ -558,15 +558,62 @@ export async function resetOnboarding() {
         return { ok: false, error: 'Too many attempts. Please wait.' }
     }
 
-    // Delete chat history
-    const chatResult = await deleteAllMessages()
-    if (!chatResult.ok) return { ok: false, error: chatResult.error || 'Failed to delete chat.' }
+    // Use a SINGLE supabase client for all operations to avoid session propagation issues
+    // when delegating to sub-functions that create their own clients.
 
-    // Delete memories
-    const memoryResult = await deleteAllMemories()
-    if (!memoryResult.ok) return { ok: false, error: memoryResult.error || 'Failed to delete memories.' }
+    // 1. Delete chat history (batched)
+    let chatDeleted = 0
+    do {
+        const { data: batch } = await supabase
+            .from('chat_history')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(500)
+        if (!batch?.length) break
+        chatDeleted = batch.length
+        const { error } = await supabase
+            .from('chat_history')
+            .delete()
+            .in('id', batch.map(r => r.id))
+        if (error) {
+            console.error('Error deleting chat history in resetOnboarding:', error)
+            return { ok: false, error: 'Failed to delete chat history.' }
+        }
+    } while (chatDeleted === 500)
 
-    // Reset onboarding fields (does NOT touch subscription_tier, daily_msg_count, abuse_score)
+    // 2. Delete memories (batched)
+    let memDeleted = 0
+    do {
+        const { data: batch } = await supabase
+            .from('memories')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(500)
+        if (!batch?.length) break
+        memDeleted = batch.length
+        const { error } = await supabase
+            .from('memories')
+            .delete()
+            .in('id', batch.map(r => r.id))
+        if (error) {
+            console.error('Error deleting memories in resetOnboarding:', error)
+            return { ok: false, error: 'Failed to delete memories.' }
+        }
+    } while (memDeleted === 500)
+
+    // 3. Delete gang members
+    const { data: gang } = await supabase
+        .from('gangs')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+    if (gang?.id) {
+        const { error: gmError } = await supabase.from('gang_members').delete().eq('gang_id', gang.id)
+        if (gmError) console.error('Error deleting gang members in resetOnboarding:', gmError)
+    }
+
+    // 4. Reset onboarding fields (does NOT touch subscription_tier, daily_msg_count, abuse_score)
     const { error } = await supabase
         .from('profiles')
         .update({
@@ -582,15 +629,19 @@ export async function resetOnboarding() {
         return { ok: false, error: 'Failed to reset profile.' }
     }
 
-    // Delete gang members
-    const { data: gang } = await supabase
-        .from('gangs')
-        .select('id')
+    // 5. Verify deletions actually worked
+    const { count: remainingMem } = await supabase
+        .from('memories')
+        .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .maybeSingle()
+    const { count: remainingChat } = await supabase
+        .from('chat_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
 
-    if (gang?.id) {
-        await supabase.from('gang_members').delete().eq('gang_id', gang.id)
+    if ((remainingMem ?? 0) > 0 || (remainingChat ?? 0) > 0) {
+        console.error('resetOnboarding: verification failed — memories:', remainingMem, 'chat:', remainingChat)
+        return { ok: false, error: 'Reset incomplete. Please try again.' }
     }
 
     return { ok: true as const }
