@@ -79,6 +79,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
 
     const newMemoryCount = useChatStore((s) => s.newMemoryCount)
     const totalMemoryCount = useChatStore((s) => s.totalMemoryCount)
+    const showUpgradeTour = useChatStore((s) => s.showUpgradeTour)
     const isFreeUser = subscriptionTier === 'free'
     // Free tier: show total (never clears, acts as upgrade nudge)
     // Paid tier: show new unseen (clears on vault open)
@@ -277,9 +278,12 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     onClick={onOpenSettings}
                     title="Gang Settings"
                     aria-label="Open settings"
-                    className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
+                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
                 >
                     <Settings2 size={18} />
+                    {showUpgradeTour && (
+                        <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-background animate-pulse" />
+                    )}
                 </Button>
             </div>
         </header>

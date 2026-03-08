@@ -9,7 +9,7 @@ import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, s
 import { trackEvent } from '@/lib/analytics'
 import { getMessagesPerWindow, getTierCopy, getTierFromProfile } from '@/lib/billing'
 import { useChatStore } from '@/stores/chat-store'
-import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw } from 'lucide-react'
+import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw, Sparkles, Globe, Palette, PenLine, X } from 'lucide-react'
 
 interface SettingsPanelProps {
     username: string | null
@@ -253,9 +253,53 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     const tierLimit = getMessagesPerWindow(normalizedTier)
     const tierLabel = tierCopy.usageHeading
     const messagesRemaining = useChatStore((s) => s.messagesRemaining)
+    const showUpgradeTour = useChatStore((s) => s.showUpgradeTour)
+
+    const upgradeTourFeatures = [
+        { icon: Globe, label: 'Ecosystem Mode', desc: 'All characters jump into the chat' },
+        { icon: Palette, label: 'Chat Wallpapers', desc: 'Personalize your chat background' },
+        { icon: PenLine, label: 'Custom Nicknames', desc: 'Rename your squad members' },
+        { icon: Brain, label: 'Memory Vault', desc: 'View & edit what your gang remembers' },
+    ]
 
     return (
         <div className="space-y-6">
+            {/* Upgrade tour card */}
+            {showUpgradeTour && normalizedTier !== 'free' && (
+                <section className="relative rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-primary/5 to-transparent p-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <button
+                        type="button"
+                        onClick={() => useChatStore.getState().setShowUpgradeTour(false)}
+                        className="absolute top-3 right-3 p-1 rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+                        aria-label="Dismiss"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-4 h-4 text-emerald-500" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">New features unlocked</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        {upgradeTourFeatures.map((f) => (
+                            <div key={f.label} className="flex items-start gap-2 rounded-xl bg-background/50 p-2.5">
+                                <f.icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-[11px] font-semibold text-foreground leading-tight">{f.label}</p>
+                                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{f.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => useChatStore.getState().setShowUpgradeTour(false)}
+                        className="mt-3 w-full py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold transition-colors"
+                    >
+                        Got it!
+                    </button>
+                </section>
+            )}
+
             {/* Account */}
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Account</div>

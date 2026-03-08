@@ -52,6 +52,7 @@ interface ChatState {
     pendingDowngrade: { newLimit: number; autoRemovableIds: string[] } | null
     newMemoryCount: number
     totalMemoryCount: number
+    showUpgradeTour: boolean
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
@@ -74,6 +75,7 @@ interface ChatState {
     setNewMemoryCount: (count: number) => void
     incrementNewMemoryCount: (count: number) => void
     setTotalMemoryCount: (count: number) => void
+    setShowUpgradeTour: (show: boolean) => void
     clearChat: () => void
 }
 
@@ -107,6 +109,7 @@ export const useChatStore = create<ChatState>()(
             pendingDowngrade: null,
             newMemoryCount: 0,
             totalMemoryCount: 0,
+            showUpgradeTour: false,
             setMessages: (messages) => {
                 const seen = new Set<string>()
                 const deduped: Message[] = []
@@ -132,11 +135,17 @@ export const useChatStore = create<ChatState>()(
             setActiveGang: (gang) => set({ activeGang: gang }),
             setUserName: (name) => set({ userName: name }),
             setUserId: (userId) => set({ userId }),
-            setSubscriptionTier: (subscriptionTier) => set((state) => ({
-                subscriptionTier,
-                // Reset memory badge counts on tier change to prevent stale values
-                ...(subscriptionTier !== state.subscriptionTier ? { newMemoryCount: 0, totalMemoryCount: 0 } : {}),
-            })),
+            setSubscriptionTier: (subscriptionTier) => set((state) => {
+                const tierChanged = subscriptionTier !== state.subscriptionTier
+                const upgraded = tierChanged && state.subscriptionTier === 'free' && subscriptionTier !== 'free'
+                return {
+                    subscriptionTier,
+                    // Reset memory badge counts on tier change to prevent stale values
+                    ...(tierChanged ? { newMemoryCount: 0, totalMemoryCount: 0 } : {}),
+                    // Show upgrade tour when moving from free to paid
+                    ...(upgraded ? { showUpgradeTour: true } : {}),
+                }
+            }),
             setUserNickname: (nickname) => set({ userNickname: nickname }),
             setCharacterStatus: (characterId, status) => set((state) => ({
                 characterStatuses: { ...state.characterStatuses, [characterId]: status }
@@ -155,6 +164,7 @@ export const useChatStore = create<ChatState>()(
             setNewMemoryCount: (newMemoryCount) => set({ newMemoryCount }),
             incrementNewMemoryCount: (count) => set((state) => ({ newMemoryCount: state.newMemoryCount + count })),
             setTotalMemoryCount: (totalMemoryCount) => set({ totalMemoryCount }),
+            setShowUpgradeTour: (showUpgradeTour) => set({ showUpgradeTour }),
             clearChat: () => {
                 _messageIdSet.clear()
                 return set({ messages: [] })
@@ -175,7 +185,8 @@ export const useChatStore = create<ChatState>()(
                 customCharacterNames: state.customCharacterNames,
                 newMemoryCount: state.newMemoryCount,
                 totalMemoryCount: state.totalMemoryCount,
-                messagesRemaining: state.messagesRemaining
+                messagesRemaining: state.messagesRemaining,
+                showUpgradeTour: state.showUpgradeTour
             }),
             onRehydrateStorage: () => (state) => {
                 if (state?.messages) {
