@@ -50,7 +50,7 @@ interface ChatState {
     squadConflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null
     pendingUpgrade: { newTier: 'basic' | 'pro'; newSlots: number } | null
     pendingDowngrade: { newLimit: number; autoRemovableIds: string[] } | null
-    hasNewMemory: boolean
+    newMemoryCount: number
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
@@ -70,7 +70,8 @@ interface ChatState {
     setMessagesRemaining: (remaining: number | null) => void
     setCooldownSeconds: (seconds: number | null) => void
     setPendingDowngrade: (downgrade: { newLimit: number; autoRemovableIds: string[] } | null) => void
-    setHasNewMemory: (hasNew: boolean) => void
+    setNewMemoryCount: (count: number) => void
+    incrementNewMemoryCount: (count: number) => void
     clearChat: () => void
 }
 
@@ -102,7 +103,7 @@ export const useChatStore = create<ChatState>()(
             squadConflict: null,
             pendingUpgrade: null,
             pendingDowngrade: null,
-            hasNewMemory: false,
+            newMemoryCount: 0,
             setMessages: (messages) => {
                 const seen = new Set<string>()
                 const deduped: Message[] = []
@@ -144,7 +145,8 @@ export const useChatStore = create<ChatState>()(
             setMessagesRemaining: (messagesRemaining) => set({ messagesRemaining }),
             setCooldownSeconds: (cooldownSeconds) => set({ cooldownSeconds }),
             setPendingDowngrade: (pendingDowngrade) => set({ pendingDowngrade }),
-            setHasNewMemory: (hasNewMemory) => set({ hasNewMemory }),
+            setNewMemoryCount: (newMemoryCount) => set({ newMemoryCount }),
+            incrementNewMemoryCount: (count) => set((state) => ({ newMemoryCount: state.newMemoryCount + count })),
             clearChat: () => {
                 _messageIdSet.clear()
                 return set({ messages: [] })
@@ -162,7 +164,8 @@ export const useChatStore = create<ChatState>()(
                 lowCostMode: state.lowCostMode,
                 chatWallpaper: state.chatWallpaper,
                 showPersonaRoles: state.showPersonaRoles,
-                customCharacterNames: state.customCharacterNames
+                customCharacterNames: state.customCharacterNames,
+                newMemoryCount: state.newMemoryCount
             }),
             onRehydrateStorage: () => (state) => {
                 if (state?.messages) {

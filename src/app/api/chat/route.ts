@@ -1367,12 +1367,12 @@ FLOW FLAGS:
         }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
 
         // Build response before persistence (non-blocking)
-        const memoriesSaved = !!(hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length)
+        const memoriesSavedCount = (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) || 0
         const response = Response.json({
             ...object,
             turn_id: serverTurnId,
             ...(messagesRemaining !== null ? { messages_remaining: messagesRemaining } : {}),
-            ...(memoriesSaved ? { memories_saved: true } : {}),
+            ...(memoriesSavedCount > 0 ? { memories_saved_count: memoriesSavedCount } : {}),
             usage: {
                 promptChars: llmPromptChars,
                 responseChars: JSON.stringify(object.events).length,

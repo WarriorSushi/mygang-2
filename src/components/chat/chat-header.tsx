@@ -77,7 +77,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const showCapacityInfo = autoLowCostActive && showAutoLowCostInfo
     const capacityInfoRef = useRef<HTMLDivElement>(null)
 
-    const hasNewMemory = useChatStore((s) => s.hasNewMemory)
+    const newMemoryCount = useChatStore((s) => s.newMemoryCount)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const devToolsEnabled = process.env.NODE_ENV === 'development'
 
@@ -229,7 +229,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                        useChatStore.getState().setHasNewMemory(false)
+                        useChatStore.getState().setNewMemoryCount(0)
                         onOpenVault()
                     }}
                     title="Memory Vault"
@@ -237,8 +237,10 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
                 >
                     <Brain size={18} />
-                    {hasNewMemory && (
-                        <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse" />
+                    {newMemoryCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold ring-2 ring-background px-1">
+                            {newMemoryCount > 99 ? '99+' : newMemoryCount}
+                        </span>
                     )}
                 </Button>
                 <Button
