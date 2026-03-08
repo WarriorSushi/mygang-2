@@ -170,7 +170,8 @@ export const useChatStore = create<ChatState>()(
                 showPersonaRoles: state.showPersonaRoles,
                 customCharacterNames: state.customCharacterNames,
                 newMemoryCount: state.newMemoryCount,
-                totalMemoryCount: state.totalMemoryCount
+                totalMemoryCount: state.totalMemoryCount,
+                messagesRemaining: state.messagesRemaining
             }),
             onRehydrateStorage: () => (state) => {
                 if (state?.messages) {
