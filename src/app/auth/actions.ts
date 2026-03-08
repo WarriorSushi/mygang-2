@@ -546,6 +546,56 @@ export async function deleteAllMemories() {
     return { ok: true as const }
 }
 
+export async function resetOnboarding() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { ok: false, error: 'Not authenticated.' }
+
+    try {
+        const rate = await rateLimit('reset-onboarding:' + user.id, 2, 60_000)
+        if (!rate.success) return { ok: false, error: 'Too many attempts. Please wait.' }
+    } catch {
+        return { ok: false, error: 'Too many attempts. Please wait.' }
+    }
+
+    // Delete chat history
+    const chatResult = await deleteAllMessages()
+    if (!chatResult.ok) return { ok: false, error: chatResult.error || 'Failed to delete chat.' }
+
+    // Delete memories
+    const memoryResult = await deleteAllMemories()
+    if (!memoryResult.ok) return { ok: false, error: memoryResult.error || 'Failed to delete memories.' }
+
+    // Reset onboarding fields (does NOT touch subscription_tier, daily_msg_count, abuse_score)
+    const { error } = await supabase
+        .from('profiles')
+        .update({
+            onboarding_completed: false,
+            preferred_squad: null,
+            username: null,
+            custom_character_names: null,
+        })
+        .eq('id', user.id)
+
+    if (error) {
+        console.error('Error resetting onboarding:', error)
+        return { ok: false, error: 'Failed to reset profile.' }
+    }
+
+    // Delete gang members
+    const { data: gang } = await supabase
+        .from('gangs')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+    if (gang?.id) {
+        await supabase.from('gang_members').delete().eq('gang_id', gang.id)
+    }
+
+    return { ok: true as const }
+}
+
 export async function saveMemoryManual(content: string) {
     const { storeMemory } = await import('@/lib/ai/memory')
     const supabase = await createClient()
