@@ -84,6 +84,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     // Paid tier: show new unseen (clears on vault open)
     const memoryBadgeCount = isFreeUser ? totalMemoryCount : newMemoryCount
     const [isRefreshing, setIsRefreshing] = useState(false)
+    const [showRefreshed, setShowRefreshed] = useState(false)
     const devToolsEnabled = process.env.NODE_ENV === 'development'
 
     useEffect(() => {
@@ -211,24 +212,33 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     </div>
                 )}
                 {onRefresh && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={async () => {
-                            if (isRefreshing) return
-                            setIsRefreshing(true)
-                            try {
-                                await onRefresh()
-                            } finally {
-                                setIsRefreshing(false)
-                            }
-                        }}
-                        title="Refresh chat"
-                        aria-label="Refresh chat"
-                        className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
-                    >
-                        <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-                    </Button>
+                    <div className="relative">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => {
+                                if (isRefreshing) return
+                                setIsRefreshing(true)
+                                try {
+                                    await onRefresh()
+                                    setShowRefreshed(true)
+                                    setTimeout(() => setShowRefreshed(false), 1500)
+                                } finally {
+                                    setIsRefreshing(false)
+                                }
+                            }}
+                            title="Refresh chat"
+                            aria-label="Refresh chat"
+                            className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
+                        >
+                            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                        </Button>
+                        {showRefreshed && (
+                            <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium text-emerald-500 whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
+                                Refreshed
+                            </span>
+                        )}
+                    </div>
                 )}
                 <Button
                     variant="ghost"
