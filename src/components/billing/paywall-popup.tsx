@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
-import { Clock, Infinity, Brain, Zap, ArrowRight, Check, Users, Sparkles, Palette } from 'lucide-react'
+import { Clock, Infinity, Brain, Zap, ArrowRight, Check, Users, Sparkles, Palette, MessageCircle } from 'lucide-react'
 import { getTierCopy } from '@/lib/billing'
 
 interface PaywallPopupProps {
@@ -57,6 +57,12 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
         }
     }, [cooldownSeconds, open])
 
+    // Track initial cooldown for "try now" threshold
+    const [initialCooldown, setInitialCooldown] = useState(cooldownSeconds)
+    useEffect(() => {
+        if (open && cooldownSeconds > 0) setInitialCooldown(cooldownSeconds)
+    }, [cooldownSeconds, open])
+
     // Countdown timer -- M17: removed secondsLeft from deps to prevent interval restart loop
     useEffect(() => {
         if (!open) return
@@ -71,6 +77,18 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
         }, 1000)
         return () => clearInterval(interval)
     }, [open])
+
+    // Auto-dismiss when countdown reaches 0
+    useEffect(() => {
+        if (open && secondsLeft === 0) {
+            const timer = setTimeout(() => onOpenChange(false), 1500)
+            return () => clearTimeout(timer)
+        }
+    }, [open, secondsLeft, onOpenChange])
+
+    // Show "try now" after 30% of cooldown elapsed (sliding window frees slots gradually)
+    const elapsed = initialCooldown - secondsLeft
+    const showTryNow = secondsLeft > 0 && elapsed >= Math.max(60, initialCooldown * 0.3)
 
     const handleClose = () => onOpenChange(false)
 
@@ -94,12 +112,31 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
 
                     <div className="flex flex-col items-center gap-5 py-4">
                         {/* Countdown */}
-                        <div className="text-center flex items-center gap-2.5" aria-live="polite" aria-atomic="true">
-                            <span className="text-sm text-muted-foreground/70">Ready in</span>
-                            <span className="font-mono font-bold text-foreground text-3xl tabular-nums tracking-tight">
-                                {formatTimeLeft(secondsLeft)}
-                            </span>
+                        <div className="text-center flex flex-col items-center gap-1" aria-live="polite" aria-atomic="true">
+                            <div className="flex items-center gap-2.5">
+                                <span className="text-sm text-muted-foreground/70">{secondsLeft === 0 ? 'Ready!' : 'Fully resets in'}</span>
+                                {secondsLeft > 0 && (
+                                    <span className="font-mono font-bold text-foreground text-3xl tabular-nums tracking-tight">
+                                        {formatTimeLeft(secondsLeft)}
+                                    </span>
+                                )}
+                            </div>
+                            {secondsLeft > 0 && (
+                                <p className="text-[11px] text-muted-foreground/60">Messages come back gradually — some may be available sooner</p>
+                            )}
                         </div>
+
+                        {/* Try now button — appears after some time has passed */}
+                        {showTryNow && (
+                            <Button
+                                variant="outline"
+                                className="rounded-full text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary/10"
+                                onClick={handleClose}
+                            >
+                                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                                Try sending a message
+                            </Button>
+                        )}
 
                         {/* Divider */}
                         <div className="flex items-center gap-3 w-full">
