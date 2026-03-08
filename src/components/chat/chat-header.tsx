@@ -78,6 +78,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const capacityInfoRef = useRef<HTMLDivElement>(null)
 
     const newMemoryCount = useChatStore((s) => s.newMemoryCount)
+    const totalMemoryCount = useChatStore((s) => s.totalMemoryCount)
+    const isFreeUser = subscriptionTier === 'free'
+    // Free tier: show total (never clears, acts as upgrade nudge)
+    // Paid tier: show new unseen (clears on vault open)
+    const memoryBadgeCount = isFreeUser ? totalMemoryCount : newMemoryCount
     const [isRefreshing, setIsRefreshing] = useState(false)
     const devToolsEnabled = process.env.NODE_ENV === 'development'
 
@@ -229,7 +234,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                        useChatStore.getState().setNewMemoryCount(0)
+                        if (subscriptionTier !== 'free') useChatStore.getState().setNewMemoryCount(0)
                         onOpenVault()
                     }}
                     title="Memory Vault"
@@ -237,9 +242,9 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
                 >
                     <Brain size={18} />
-                    {newMemoryCount > 0 && (
+                    {memoryBadgeCount > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold ring-2 ring-background px-1">
-                            {newMemoryCount > 99 ? '99+' : newMemoryCount}
+                            {memoryBadgeCount > 99 ? '99+' : memoryBadgeCount}
                         </span>
                     )}
                 </Button>

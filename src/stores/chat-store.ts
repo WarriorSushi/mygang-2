@@ -51,6 +51,7 @@ interface ChatState {
     pendingUpgrade: { newTier: 'basic' | 'pro'; newSlots: number } | null
     pendingDowngrade: { newLimit: number; autoRemovableIds: string[] } | null
     newMemoryCount: number
+    totalMemoryCount: number
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
@@ -72,6 +73,7 @@ interface ChatState {
     setPendingDowngrade: (downgrade: { newLimit: number; autoRemovableIds: string[] } | null) => void
     setNewMemoryCount: (count: number) => void
     incrementNewMemoryCount: (count: number) => void
+    setTotalMemoryCount: (count: number) => void
     clearChat: () => void
 }
 
@@ -104,6 +106,7 @@ export const useChatStore = create<ChatState>()(
             pendingUpgrade: null,
             pendingDowngrade: null,
             newMemoryCount: 0,
+            totalMemoryCount: 0,
             setMessages: (messages) => {
                 const seen = new Set<string>()
                 const deduped: Message[] = []
@@ -147,6 +150,7 @@ export const useChatStore = create<ChatState>()(
             setPendingDowngrade: (pendingDowngrade) => set({ pendingDowngrade }),
             setNewMemoryCount: (newMemoryCount) => set({ newMemoryCount }),
             incrementNewMemoryCount: (count) => set((state) => ({ newMemoryCount: state.newMemoryCount + count })),
+            setTotalMemoryCount: (totalMemoryCount) => set({ totalMemoryCount }),
             clearChat: () => {
                 _messageIdSet.clear()
                 return set({ messages: [] })
@@ -165,7 +169,8 @@ export const useChatStore = create<ChatState>()(
                 chatWallpaper: state.chatWallpaper,
                 showPersonaRoles: state.showPersonaRoles,
                 customCharacterNames: state.customCharacterNames,
-                newMemoryCount: state.newMemoryCount
+                newMemoryCount: state.newMemoryCount,
+                totalMemoryCount: state.totalMemoryCount
             }),
             onRehydrateStorage: () => (state) => {
                 if (state?.messages) {

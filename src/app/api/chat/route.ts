@@ -1368,11 +1368,24 @@ FLOW FLAGS:
 
         // Build response before persistence (non-blocking)
         const memoriesSavedCount = (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) || 0
+
+        // Fetch total memory count for free tier badge (cheap count query)
+        let totalMemoryCount: number | null = null
+        if (user && tier === 'free' && hasFreshUserTurn) {
+            const { count } = await supabase
+                .from('memories')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .in('kind', ['episodic', 'compacted'])
+            totalMemoryCount = (count ?? 0) + memoriesSavedCount
+        }
+
         const response = Response.json({
             ...object,
             turn_id: serverTurnId,
             ...(messagesRemaining !== null ? { messages_remaining: messagesRemaining } : {}),
             ...(memoriesSavedCount > 0 ? { memories_saved_count: memoriesSavedCount } : {}),
+            ...(totalMemoryCount !== null ? { total_memory_count: totalMemoryCount } : {}),
             usage: {
                 promptChars: llmPromptChars,
                 responseChars: JSON.stringify(object.events).length,
