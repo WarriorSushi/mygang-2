@@ -19,7 +19,7 @@ export function WelcomeStep({ onNext, onLogin }: WelcomeStepProps) {
             exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
             className="text-center max-w-2xl"
         >
-            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent pb-1 leading-tight">
                 Your gang just arrived.
             </h1>
             <p className="text-base sm:text-xl text-muted-foreground mb-8">
