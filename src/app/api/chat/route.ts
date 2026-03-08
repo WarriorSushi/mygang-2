@@ -1377,7 +1377,7 @@ FLOW FLAGS:
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', user.id)
                 .in('kind', ['episodic', 'compacted'])
-            totalMemoryCount = (count ?? 0) + memoriesSavedCount
+            totalMemoryCount = count ?? 0
         }
 
         const response = Response.json({
