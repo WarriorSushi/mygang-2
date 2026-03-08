@@ -15,6 +15,15 @@ function getWebhookCustomerId(data: Record<string, unknown>) {
     return null
 }
 
+function getWebhookCustomerEmail(data: Record<string, unknown>): string | null {
+    const nestedCustomer = data.customer
+    if (nestedCustomer && typeof nestedCustomer === 'object') {
+        const email = (nestedCustomer as Record<string, unknown>).email
+        if (typeof email === 'string' && email) return email.trim().toLowerCase()
+    }
+    return null
+}
+
 async function findUserByCustomerId(customerId: string) {
     const { data } = await supabase
         .from('profiles')
@@ -22,6 +31,33 @@ async function findUserByCustomerId(customerId: string) {
         .eq('dodo_customer_id', customerId)
         .single()
     return data?.id ?? null
+}
+
+async function findUserByEmailFallback(email: string, customerId: string): Promise<string | null> {
+    const normalizedEmail = email.trim().toLowerCase()
+    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    if (listError || !users?.length) return null
+
+    const matchedUser = users.find(u => u.email?.trim().toLowerCase() === normalizedEmail)
+    if (!matchedUser) return null
+
+    const userId = matchedUser.id
+
+    // Backfill the dodo_customer_id so future webhooks work directly
+    const { error } = await supabase
+        .from('profiles')
+        .update({ dodo_customer_id: customerId })
+        .eq('id', userId)
+        .is('dodo_customer_id', null)
+
+    if (error) {
+        console.warn(`[webhook] Failed to backfill dodo_customer_id for user ${userId}:`, error.message)
+        // Still return the user — activation is more important than backfill
+    } else {
+        console.log(`[webhook] Backfilled dodo_customer_id=${customerId} for user ${userId} via email fallback`)
+    }
+
+    return userId
 }
 
 async function upsertSubscription(subscriptionId: string, userId: string, productId: string, plan: string, status: string, periodEnd?: string) {
@@ -118,7 +154,17 @@ export const POST = Webhooks({
         const isNew = await logBillingEvent(null, 'subscription.active', webhookId, data)
         if (!isNew) return
 
-        const userId = await findUserByCustomerId(customerId)
+        let userId = await findUserByCustomerId(customerId)
+
+        // Fallback: look up user by email if customer_id not found in profiles
+        if (!userId) {
+            const customerEmail = getWebhookCustomerEmail(data)
+            if (customerEmail) {
+                console.log(`[webhook] customer_id=${customerId} not found, trying email fallback: ${customerEmail}`)
+                userId = await findUserByEmailFallback(customerEmail, customerId)
+            }
+        }
+
         if (!userId) {
             console.error(`[webhook] CRITICAL: No user found for customer_id=${customerId}, subscription_id=${subscriptionId}. User paid but activation was lost.`)
             await supabase.from('billing_events').insert({
@@ -202,7 +248,11 @@ export const POST = Webhooks({
             console.error('[webhook] Missing customer_id on subscription.renewed payload')
             return
         }
-        const userId = await findUserByCustomerId(customerId)
+        let userId = await findUserByCustomerId(customerId)
+        if (!userId) {
+            const customerEmail = getWebhookCustomerEmail(data)
+            if (customerEmail) userId = await findUserByEmailFallback(customerEmail, customerId)
+        }
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on renewal, subscription_id=${subscriptionId}`)
             await logBillingEvent(null, 'subscription.renewed.orphaned', webhookId, data)
@@ -229,7 +279,11 @@ export const POST = Webhooks({
             console.error('[webhook] Missing customer_id on subscription.cancelled payload')
             return
         }
-        const userId = await findUserByCustomerId(customerId)
+        let userId = await findUserByCustomerId(customerId)
+        if (!userId) {
+            const customerEmail = getWebhookCustomerEmail(data)
+            if (customerEmail) userId = await findUserByEmailFallback(customerEmail, customerId)
+        }
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on cancellation, subscription_id=${subscriptionId}`)
             await logBillingEvent(null, 'subscription.cancelled.orphaned', webhookId, data)
@@ -257,7 +311,11 @@ export const POST = Webhooks({
             console.error('[webhook] Missing customer_id on subscription.expired payload')
             return
         }
-        const userId = await findUserByCustomerId(customerId)
+        let userId = await findUserByCustomerId(customerId)
+        if (!userId) {
+            const customerEmail = getWebhookCustomerEmail(data)
+            if (customerEmail) userId = await findUserByEmailFallback(customerEmail, customerId)
+        }
         if (!userId) {
             console.error(`[webhook] No user found for customer_id=${customerId} on expiration, subscription_id=${subscriptionId}`)
             await logBillingEvent(null, 'subscription.expired.orphaned', webhookId, data)
