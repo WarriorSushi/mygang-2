@@ -481,36 +481,57 @@ export default function PricingPage() {
               Compare plans side by side
             </h2>
 
-            <p className="mb-4 text-center text-xs uppercase tracking-widest text-muted-foreground/60 md:hidden">
-              Swipe sideways to compare every plan
-            </p>
-
-            <div className="rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm overflow-x-auto overscroll-x-contain relative pb-2">
-              <div className="min-w-[640px] sm:min-w-[720px] pr-2 sm:pr-4" role="table" aria-label="Plan comparison">
-              <div
-                role="row"
-                className="grid grid-cols-[minmax(132px,1.35fr)_repeat(3,minmax(108px,1fr))] sm:grid-cols-[1.6fr_repeat(3,1fr)] border-b border-border/20 bg-muted/5"
-              >
-                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-muted-foreground">Feature</div>
-                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-muted-foreground">Free</div>
-                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-blue-400">Basic</div>
-                <div role="columnheader" className="p-3 sm:p-6 text-[11px] sm:text-[15px] font-semibold text-center text-primary">Pro</div>
+            {/* ── Desktop table (md+) ── */}
+            <div className="hidden md:block rounded-3xl border border-border/30 bg-card/30 backdrop-blur-sm">
+              <div role="table" aria-label="Plan comparison">
+                <div
+                  role="row"
+                  className="grid grid-cols-[1.6fr_repeat(3,1fr)] border-b border-border/20 bg-muted/5"
+                >
+                  <div role="columnheader" className="p-6 text-[15px] font-semibold text-muted-foreground">Feature</div>
+                  <div role="columnheader" className="p-6 text-[15px] font-semibold text-center text-muted-foreground">Free</div>
+                  <div role="columnheader" className="p-6 text-[15px] font-semibold text-center text-blue-400">Basic</div>
+                  <div role="columnheader" className="p-6 text-[15px] font-semibold text-center text-primary">Pro</div>
+                </div>
+                {features.map((f, i) => (
+                  <div
+                    key={f.text}
+                    role="row"
+                    className={`grid grid-cols-[1.6fr_repeat(3,1fr)] border-b border-border/10 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/[0.03]'}`}
+                  >
+                    <div role="cell" className="p-6 text-[15px] text-foreground/70">{f.text}</div>
+                    <div role="cell" className="p-6 flex justify-center items-center"><FeatureValue value={f.free} /></div>
+                    <div role="cell" className="p-6 flex justify-center items-center"><FeatureValue value={f.basic} /></div>
+                    <div role="cell" className="p-6 flex justify-center items-center"><FeatureValue value={f.pro} /></div>
+                  </div>
+                ))}
               </div>
+            </div>
 
+            {/* ── Mobile stacked cards (< md) ── */}
+            <div className="md:hidden space-y-3">
               {features.map((f, i) => (
                 <div
                   key={f.text}
-                  role="row"
-                  className={`grid grid-cols-[minmax(132px,1.35fr)_repeat(3,minmax(108px,1fr))] sm:grid-cols-[1.6fr_repeat(3,1fr)] border-b border-border/10 last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/[0.03]'}`}
+                  className={`rounded-2xl border border-border/20 p-4 ${i % 2 === 0 ? 'bg-card/30' : 'bg-muted/[0.04]'}`}
                 >
-                  <div role="cell" className="p-3 sm:p-6 text-[11px] sm:text-[15px] text-foreground/70">{f.text}</div>
-                  <div role="cell" className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.free} /></div>
-                  <div role="cell" className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.basic} /></div>
-                  <div role="cell" className="p-3 sm:p-6 flex justify-center items-center"><FeatureValue value={f.pro} /></div>
+                  <p className="text-[13px] font-medium text-foreground/80 mb-3">{f.text}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Free</span>
+                      <FeatureValue value={f.free} />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400/80">Basic</span>
+                      <FeatureValue value={f.basic} />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/80">Pro</span>
+                      <FeatureValue value={f.pro} />
+                    </div>
+                  </div>
                 </div>
               ))}
-            </div>
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background via-background/85 to-transparent md:hidden" aria-hidden="true" />
             </div>
           </div>
         </section>
