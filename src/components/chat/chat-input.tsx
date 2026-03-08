@@ -31,6 +31,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
     const [limitNotice, setLimitNotice] = useState(false)
     // P-I4: Debounce ref for localStorage draft saves
     const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const sendThrottleRef = useRef(false)
 
     // Restore draft from localStorage after mount (avoids hydration mismatch)
     useEffect(() => {
@@ -66,7 +67,9 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
 
     const handleSubmit = (e?: React.FormEvent) => {
         e?.preventDefault()
-        if (input.trim() && !disabled) {
+        if (input.trim() && !disabled && !sendThrottleRef.current) {
+            sendThrottleRef.current = true
+            setTimeout(() => { sendThrottleRef.current = false }, 800)
             onSend(input, { replyToId: replyingTo?.id })
             setInput('')
             onCancelReply?.()
@@ -131,7 +134,12 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
                         <button
                             key={chip}
                             type="button"
-                            onClick={() => onSend(chip)}
+                            onClick={() => {
+                                if (sendThrottleRef.current) return
+                                sendThrottleRef.current = true
+                                setTimeout(() => { sendThrottleRef.current = false }, 800)
+                                onSend(chip)
+                            }}
                             className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium border border-border/50 bg-card/80 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                         >
                             {chip}

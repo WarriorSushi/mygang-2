@@ -8,7 +8,9 @@
       "mcp__plugin_supabase_supabase__apply_migration",
       "Bash(npx tsc:*)",
       "Bash(pnpm next:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

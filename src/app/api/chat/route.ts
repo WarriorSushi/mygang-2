@@ -723,6 +723,9 @@ export async function POST(req: Request) {
         const previousUserMessage = userMessages[userMessages.length - 2]
         const latestMessage = safeMessages[safeMessages.length - 1]
         const hasFreshUserTurn = latestMessage?.speaker === 'user'
+        const freshUserMessageCount = hasFreshUserTurn
+            ? userMessages.filter((m) => m.id && m.id.startsWith('user-')).length
+            : 0
         const lastUserMsg = lastUserMessage?.content || ''
         const farewellTurn = hasFreshUserTurn && isFarewellMessage(lastUserMsg)
         const lastUserMsgAt = lastUserMessage?.created_at ? new Date(lastUserMessage.created_at).getTime() : 0
@@ -1428,7 +1431,7 @@ FLOW FLAGS:
                 profileUpdates.summary_turns = summaryTurns + 1
             }
             // Calculate increments for atomic update (avoids race conditions)
-            const dailyMsgIncrement = hasFreshUserTurn && lastUserMsg ? 1 : 0
+            const dailyMsgIncrement = freshUserMessageCount
             const abuseScoreIncrement = nextAbuseScore !== null ? (nextAbuseScore - (profileRow?.abuse_score ?? 0)) : 0
 
             // PERF-I1: Run profile/memory branch and chat history branch in parallel
