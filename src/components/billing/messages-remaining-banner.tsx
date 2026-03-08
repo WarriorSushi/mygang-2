@@ -24,7 +24,7 @@ export function MessagesRemainingBanner() {
         : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
 
     return (
-        <div role="status" aria-live="polite" className={`mx-3 sm:mx-0 mb-2 rounded-xl border px-3 py-2 flex items-center gap-2 ${urgencyColor}`}>
+        <div role="status" aria-live="polite" className={`mx-3 sm:mx-auto mb-2 rounded-xl border px-3 py-2 flex items-center gap-2 max-w-3xl w-full ${urgencyColor}`}>
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[11px] font-medium flex-1">
                 {messagesRemaining === 0
