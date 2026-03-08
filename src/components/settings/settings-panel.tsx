@@ -5,11 +5,11 @@ import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'
-import { deleteAccount, deleteAllMessages, deleteAllMemories, signOut } from '@/app/auth/actions'
+import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, signOut } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
 import { getMessagesPerWindow, getTierCopy, getTierFromProfile } from '@/lib/billing'
 import { useChatStore } from '@/stores/chat-store'
-import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3 } from 'lucide-react'
+import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw } from 'lucide-react'
 
 interface SettingsPanelProps {
     username: string | null
@@ -168,6 +168,10 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     // Sign Out loading state
     const [isSigningOut, setIsSigningOut] = useState(false)
 
+    const [freshModalOpen, setFreshModalOpen] = useState(false)
+    const [isResetting, setIsResetting] = useState(false)
+    const [freshMsg, setFreshMsg] = useState<string | null>(null)
+
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setThemeChoice(nextTheme)
         setTheme(nextTheme)
@@ -214,6 +218,30 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
             setMemoryDeleteMsg('Something went wrong.')
         } finally {
             setIsDeletingMemories(false)
+        }
+    }
+
+    const handleStartFresh = async () => {
+        setIsResetting(true)
+        setFreshMsg(null)
+        try {
+            const result = await resetOnboarding()
+            if (!result.ok) {
+                setFreshMsg(result.error || 'Failed to reset.')
+                return
+            }
+            const store = useChatStore.getState()
+            store.clearChat()
+            store.setActiveGang([])
+            store.setUserName(null)
+            store.setUserNickname(null)
+            store.setCustomCharacterNames({})
+            trackEvent('start_fresh', { metadata: { source: 'settings_page' } })
+            window.location.href = '/onboarding'
+        } catch {
+            setFreshMsg('Something went wrong.')
+        } finally {
+            setIsResetting(false)
         }
     }
 
@@ -358,6 +386,29 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         >
                             <Trash2 className="w-3 h-3 mr-1" />
                             Delete All Memories
+                        </Button>
+                    </div>
+
+                    <div className="h-px bg-border/40" />
+
+                    {/* Start Fresh */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold">Start Fresh</div>
+                            <div className="text-[11px] text-muted-foreground">
+                                Wipes chat, memories, and squad — then restarts onboarding. Your subscription stays.
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="rounded-full text-[10px] uppercase tracking-widest border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() => {
+                                setFreshMsg(null)
+                                setFreshModalOpen(true)
+                            }}
+                        >
+                            <RotateCcw className="w-3 h-3 mr-1" />
+                            Start Fresh
                         </Button>
                     </div>
                 </div>
@@ -510,6 +561,43 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                             onClick={handleDeleteAllMemories}
                         >
                             {isDeletingMemories ? 'Deleting...' : 'Yes, delete all memories'}
+                        </Button>
+                        <DialogClose asChild>
+                            <Button variant="outline" className="w-full rounded-xl">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Start Fresh Confirmation Modal */}
+            <Dialog open={freshModalOpen} onOpenChange={setFreshModalOpen}>
+                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[1.5rem]">
+                    <DialogHeader className="flex flex-col items-center gap-3">
+                        <div className="p-3 rounded-full bg-destructive/10">
+                            <RotateCcw className="w-6 h-6 text-destructive" />
+                        </div>
+                        <DialogTitle className="text-lg font-black text-center">
+                            Start completely fresh?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-sm text-muted-foreground leading-relaxed">
+                            This will delete all your chat history, memories, and squad — then take you back to onboarding to set up a new gang. Your subscription and billing stay untouched.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {freshMsg && (
+                        <p className={`text-sm text-center font-medium ${freshMsg.includes('successfully') ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                            {freshMsg}
+                        </p>
+                    )}
+                    <DialogFooter className="flex-col gap-2 sm:flex-col">
+                        <Button
+                            variant="destructive"
+                            className="w-full rounded-xl font-bold"
+                            disabled={isResetting}
+                            onClick={handleStartFresh}
+                        >
+                            {isResetting ? 'Resetting...' : 'Yes, start fresh'}
                         </Button>
                         <DialogClose asChild>
                             <Button variant="outline" className="w-full rounded-xl">
