@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
 import { Clock, Infinity, Brain, Zap, ArrowRight, Check, Users, Sparkles, Palette, MessageCircle } from 'lucide-react'
-import { getTierCopy } from '@/lib/billing'
+import { getTierCopy, getMessagesPerWindow, getTierFromProfile } from '@/lib/billing'
 
 interface PaywallPopupProps {
     open: boolean
@@ -86,9 +86,20 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
         }
     }, [open, secondsLeft, onOpenChange])
 
-    // Show "try now" after 30% of cooldown elapsed (sliding window frees slots gradually)
+    // Progress bar calculations
+    const normalizedTier = getTierFromProfile(tier)
+    const totalMessages = getMessagesPerWindow(normalizedTier) ?? 25
     const elapsed = initialCooldown - secondsLeft
-    const showTryNow = secondsLeft > 0 && elapsed >= Math.max(60, initialCooldown * 0.3)
+    const progress = initialCooldown > 0 ? Math.min(1, elapsed / initialCooldown) : 0
+    const estimatedAvailable = Math.floor(progress * totalMessages)
+    const showTryNow = secondsLeft > 0 && estimatedAvailable >= 5
+
+    // Checkpoints at every 5 messages
+    const checkpointInterval = 5
+    const checkpoints = Array.from(
+        { length: Math.floor(totalMessages / checkpointInterval) },
+        (_, i) => (i + 1) * checkpointInterval
+    )
 
     const handleClose = () => onOpenChange(false)
 
@@ -111,22 +122,64 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
                     </DialogHeader>
 
                     <div className="flex flex-col items-center gap-5 py-4">
-                        {/* Countdown */}
-                        <div className="text-center flex flex-col items-center gap-1" aria-live="polite" aria-atomic="true">
-                            <div className="flex items-center gap-2.5">
-                                <span className="text-sm text-muted-foreground/70">{secondsLeft === 0 ? 'Ready!' : 'Fully resets in'}</span>
-                                {secondsLeft > 0 && (
-                                    <span className="font-mono font-bold text-foreground text-3xl tabular-nums tracking-tight">
-                                        {formatTimeLeft(secondsLeft)}
-                                    </span>
-                                )}
-                            </div>
-                            {secondsLeft > 0 && (
-                                <p className="text-[11px] text-muted-foreground/60">Messages come back gradually — some may be available sooner</p>
+                        {/* Message refill progress bar */}
+                        <div className="w-full flex flex-col gap-3" aria-live="polite" aria-atomic="true">
+                            {secondsLeft === 0 ? (
+                                <div className="text-center">
+                                    <span className="text-lg font-bold text-primary">All messages restored!</span>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Available count */}
+                                    <div className="text-center">
+                                        <span className="font-mono font-bold text-foreground text-2xl tabular-nums">
+                                            ~{estimatedAvailable}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground/70 ml-1.5">
+                                            of {totalMessages} messages available
+                                        </span>
+                                    </div>
+
+                                    {/* Progress bar with checkpoints */}
+                                    <div className="relative w-full">
+                                        {/* Bar track */}
+                                        <div className="w-full h-3 rounded-full bg-muted/60 overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-1000 ease-linear"
+                                                style={{ width: `${progress * 100}%` }}
+                                            />
+                                        </div>
+                                        {/* Checkpoint markers */}
+                                        <div className="relative w-full mt-1.5 h-4">
+                                            {checkpoints.map((cp) => {
+                                                const pct = (cp / totalMessages) * 100
+                                                const reached = estimatedAvailable >= cp
+                                                return (
+                                                    <div
+                                                        key={cp}
+                                                        className="absolute -translate-x-1/2 flex flex-col items-center"
+                                                        style={{ left: `${pct}%` }}
+                                                    >
+                                                        <span className={`text-[9px] font-bold tabular-nums ${reached ? 'text-primary' : 'text-muted-foreground/40'}`}>
+                                                            {cp}
+                                                        </span>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Time remaining */}
+                                    <div className="text-center">
+                                        <span className="text-[11px] text-muted-foreground/60">
+                                            Full reset in {formatTimeLeft(secondsLeft)}
+                                        </span>
+                                    </div>
+                                </>
                             )}
                         </div>
 
-                        {/* Try now button — appears after some time has passed */}
+                        {/* Try now button — appears when ~5 messages should be available */}
                         {showTryNow && (
                             <Button
                                 variant="outline"
