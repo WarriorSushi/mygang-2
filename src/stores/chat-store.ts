@@ -50,6 +50,7 @@ interface ChatState {
     squadConflict: { local: Character[]; remote: Character[]; localName?: string | null; remoteName?: string | null } | null
     pendingUpgrade: { newTier: 'basic' | 'pro'; newSlots: number } | null
     pendingDowngrade: { newLimit: number; autoRemovableIds: string[] } | null
+    hasNewMemory: boolean
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
@@ -69,6 +70,7 @@ interface ChatState {
     setMessagesRemaining: (remaining: number | null) => void
     setCooldownSeconds: (seconds: number | null) => void
     setPendingDowngrade: (downgrade: { newLimit: number; autoRemovableIds: string[] } | null) => void
+    setHasNewMemory: (hasNew: boolean) => void
     clearChat: () => void
 }
 
@@ -100,6 +102,7 @@ export const useChatStore = create<ChatState>()(
             squadConflict: null,
             pendingUpgrade: null,
             pendingDowngrade: null,
+            hasNewMemory: false,
             setMessages: (messages) => {
                 const seen = new Set<string>()
                 const deduped: Message[] = []
@@ -141,6 +144,7 @@ export const useChatStore = create<ChatState>()(
             setMessagesRemaining: (messagesRemaining) => set({ messagesRemaining }),
             setCooldownSeconds: (cooldownSeconds) => set({ cooldownSeconds }),
             setPendingDowngrade: (pendingDowngrade) => set({ pendingDowngrade }),
+            setHasNewMemory: (hasNewMemory) => set({ hasNewMemory }),
             clearChat: () => {
                 _messageIdSet.clear()
                 return set({ messages: [] })

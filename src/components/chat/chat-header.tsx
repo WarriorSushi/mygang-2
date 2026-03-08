@@ -4,7 +4,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sun, Moon, Brain, Settings2, Info, RefreshCw, Crown, Zap } from 'lucide-react'
-import { Character } from '@/stores/chat-store'
+import { Character, useChatStore } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
 import Image from 'next/image'
@@ -77,6 +77,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const showCapacityInfo = autoLowCostActive && showAutoLowCostInfo
     const capacityInfoRef = useRef<HTMLDivElement>(null)
 
+    const hasNewMemory = useChatStore((s) => s.hasNewMemory)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const devToolsEnabled = process.env.NODE_ENV === 'development'
 
@@ -227,12 +228,18 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 <Button
                     variant="ghost"
                     size="icon"
-                    onClick={onOpenVault}
+                    onClick={() => {
+                        useChatStore.getState().setHasNewMemory(false)
+                        onOpenVault()
+                    }}
                     title="Memory Vault"
                     aria-label="Manage AI memories"
-                    className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
+                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
                 >
                     <Brain size={18} />
+                    {hasNewMemory && (
+                        <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse" />
+                    )}
                 </Button>
                 <Button
                     variant="ghost"

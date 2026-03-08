@@ -28,6 +28,7 @@ type ChatApiResponse = {
     cooldown_seconds?: number
     tier?: string
     messages_remaining?: number
+    memories_saved?: boolean
     turn_id?: string
 }
 
@@ -417,6 +418,10 @@ export function useChatApi({
             // Update messages remaining in store for banner display
             if (data.messages_remaining !== undefined) {
                 useChatStore.getState().setMessagesRemaining(data.messages_remaining)
+            }
+            // Flag new memory saved for notification badge
+            if (data.memories_saved) {
+                useChatStore.getState().setHasNewMemory(true)
             }
             // Mark ALL user messages still stuck in 'sending' as 'sent', not just the payload window
             const allSendingIds = useChatStore.getState().messages
