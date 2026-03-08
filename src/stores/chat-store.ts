@@ -132,7 +132,11 @@ export const useChatStore = create<ChatState>()(
             setActiveGang: (gang) => set({ activeGang: gang }),
             setUserName: (name) => set({ userName: name }),
             setUserId: (userId) => set({ userId }),
-            setSubscriptionTier: (subscriptionTier) => set({ subscriptionTier }),
+            setSubscriptionTier: (subscriptionTier) => set((state) => ({
+                subscriptionTier,
+                // Reset memory badge counts on tier change to prevent stale values
+                ...(subscriptionTier !== state.subscriptionTier ? { newMemoryCount: 0, totalMemoryCount: 0 } : {}),
+            })),
             setUserNickname: (nickname) => set({ userNickname: nickname }),
             setCharacterStatus: (characterId, status) => set((state) => ({
                 characterStatuses: { ...state.characterStatuses, [characterId]: status }
