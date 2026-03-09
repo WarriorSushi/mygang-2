@@ -1067,12 +1067,15 @@ ${allowMemoryUpdates || shouldUpdateSummary ? `MEMORY/RELATIONSHIP:
 - SUMMARY_UPDATE_ALLOWED: ${shouldUpdateSummary ? 'YES' : 'NO'}.
 - Relationship deltas must stay in [-3, +3] and be meaningful.
 ${allowMemoryUpdates ? `- MEMORY EXTRACTION RULES (CRITICAL):
+  - ONLY store memories about the USER — what they said, shared, feel, prefer, or revealed about themselves.
+  - NEVER store what AI characters said, did, asked, or how they reacted. Character responses are ephemeral, not memories.
   - ALWAYS extract episodic memories when the user shares personal facts, preferences, or identity info.
   - Examples of what MUST be stored: name, age, occupation, role, location, relationships, hobbies, likes/dislikes, opinions, goals, anything the user says about themselves.
+  - BAD examples (NEVER store these): "Dash encouraged user's ambition", "Cleo was excited about user's goal", "Vee asked about industries" — these describe AI behavior, not user facts.
   - Store as concise, third-person facts. E.g. user says "I'm the developer who built you" -> episodic: "User is the developer who built this app/gang"
   - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
   - If the user corrects a previous fact, store the correction with importance >= 2.
-  - When in doubt, STORE IT. It's better to store too much than to forget what the user told you.
+  - When in doubt about USER facts, STORE IT. But never store what characters did or said.
   - importance: 1 = casual mention, 2 = explicitly stated fact, 3 = corrected/emphasized fact.
   - CATEGORY: Tag each episodic memory with a category:
     identity = name, age, occupation, role, identity facts
