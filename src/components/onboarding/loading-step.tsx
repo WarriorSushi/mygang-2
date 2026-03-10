@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -34,7 +34,7 @@ export function LoadingStep() {
     }, [prefersReducedMotion])
 
     return (
-        <motion.div
+        <m.div
             key="loading"
             initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -56,6 +56,6 @@ export function LoadingStep() {
                     {status}
                 </p>
             </div>
-        </motion.div>
+        </m.div>
     )
 }

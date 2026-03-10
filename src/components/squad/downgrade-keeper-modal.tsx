@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Check, HeartCrack, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -102,8 +102,9 @@ export function DowngradeKeeperModal({
     }
 
     return (
+        <LazyMotion features={domAnimation}>
         <AnimatePresence>
-            <motion.div
+            <m.div
                 ref={modalRef}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -117,7 +118,7 @@ export function DowngradeKeeperModal({
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
 
                 {/* Modal */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -164,7 +165,7 @@ export function DowngradeKeeperModal({
                                 const isMaxed = selectedCount >= maxKeep && !isSelected
 
                                 return (
-                                    <motion.button
+                                    <m.button
                                         key={member.id}
                                         type="button"
                                         onClick={() => toggleMember(member.id)}
@@ -185,14 +186,14 @@ export function DowngradeKeeperModal({
                                         {/* Selection checkmark */}
                                         <AnimatePresence>
                                             {isSelected && (
-                                                <motion.div
+                                                <m.div
                                                     initial={{ scale: 0, opacity: 0 }}
                                                     animate={{ scale: 1, opacity: 1 }}
                                                     exit={{ scale: 0, opacity: 0 }}
                                                     className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground rounded-full p-1 shadow-md"
                                                 >
                                                     <Check className="w-3 h-3 stroke-[3]" />
-                                                </motion.div>
+                                                </m.div>
                                             )}
                                         </AnimatePresence>
 
@@ -242,7 +243,7 @@ export function DowngradeKeeperModal({
                                                 )}
                                             </div>
                                         </div>
-                                    </motion.button>
+                                    </m.button>
                                 )
                             })}
                         </div>
@@ -250,7 +251,7 @@ export function DowngradeKeeperModal({
                         {/* Removed preview */}
                         <AnimatePresence>
                             {selectedCount > 0 && removedMembers.length > 0 && (
-                                <motion.div
+                                <m.div
                                     initial={{ height: 0, opacity: 0 }}
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
@@ -275,7 +276,7 @@ export function DowngradeKeeperModal({
                                             We&apos;re sorry to see them go, but your chat history stays safe.
                                         </p>
                                     </div>
-                                </motion.div>
+                                </m.div>
                             )}
                         </AnimatePresence>
 
@@ -321,8 +322,9 @@ export function DowngradeKeeperModal({
                             )}
                         </div>
                     </div>
-                </motion.div>
-            </motion.div>
+                </m.div>
+            </m.div>
         </AnimatePresence>
+        </LazyMotion>
     )
 }

@@ -7,7 +7,10 @@ import {
     setUserSubscriptionTier,
 } from '@/app/admin/actions'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Gauge, Shield, DatabaseZap, AlertTriangle, UsersRound } from 'lucide-react'
+import { Gauge, Shield, DatabaseZap, AlertTriangle, UsersRound, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { DeleteChatHistoryButton } from './delete-chat-history-button'
+
+const PAGE_SIZE = 20
 
 type AdminUsersPageProps = {
     searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -31,6 +34,12 @@ function formatNumber(value: number | null) {
 function formatTime(value: string | null) {
     if (!value) return 'Unknown'
     return new Date(value).toLocaleString()
+}
+
+function sanitizeSearch(raw: string | undefined | string[]): string {
+    const value = Array.isArray(raw) ? raw[0] : raw || ''
+    // Strip anything that isn't alphanumeric, space, dash, underscore, or @
+    return (value ?? '').replace(/[^a-zA-Z0-9 _@\-]/g, '').trim().slice(0, 100)
 }
 
 function getNotice(errorCode: string | null, messageCode: string | null) {
@@ -79,16 +88,33 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
     const messageCode = Array.isArray(messageCodeRaw) ? messageCodeRaw[0] : messageCodeRaw || null
     const notice = getNotice(errorCode, messageCode)
 
+    // Parse pagination and search params
+    const pageRaw = Array.isArray(params.page) ? params.page[0] : params.page
+    const currentPage = Math.max(1, parseInt(pageRaw || '1', 10) || 1)
+    const search = sanitizeSearch(params.search)
+    const offset = (currentPage - 1) * PAGE_SIZE
+
     const since = new Date()
     since.setHours(since.getHours() - 24)
     const since24h = since.toISOString()
 
-    const { data: profileRows, error: profilesError } = await admin
+    // Build the profiles query with optional search
+    let profilesQuery = admin
         .from('profiles')
-        .select('id, username, subscription_tier, daily_msg_count, last_msg_reset, low_cost_mode, created_at, last_active_at')
+        .select('id, username, subscription_tier, daily_msg_count, last_msg_reset, low_cost_mode, created_at, last_active_at', { count: 'exact' })
+
+    if (search) {
+        // Search by username (ILIKE) or exact user ID prefix
+        profilesQuery = profilesQuery.or(`username.ilike.%${search}%,id.ilike.${search}%`)
+    }
+
+    const { data: profileRows, error: profilesError, count: totalCount } = await profilesQuery
         .order('last_active_at', { ascending: false })
-        .limit(40)
+        .range(offset, offset + PAGE_SIZE - 1)
+
     const profiles = (profileRows || []) as ProfileRow[]
+    const total = totalCount ?? 0
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
     const userIds = profiles.map((profile) => profile.id)
 
     const [recentRowsResult, totalCountsResult] = await Promise.all([
@@ -142,6 +168,34 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                 </div>
             </div>
 
+            {/* Search */}
+            <form method="GET" action="/admin/users" className="flex items-center gap-2">
+                <div className="relative flex-1 max-w-md">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300/60" />
+                    <input
+                        type="text"
+                        name="search"
+                        defaultValue={search}
+                        placeholder="Search by username or user ID..."
+                        className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-300/50 focus:border-cyan-300/40 focus:outline-none focus:ring-1 focus:ring-cyan-300/20"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition-colors hover:bg-cyan-400/16"
+                >
+                    Search
+                </button>
+                {search && (
+                    <a
+                        href="/admin/users"
+                        className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-white/[0.08]"
+                    >
+                        Clear
+                    </a>
+                )}
+            </form>
+
             {notice && (
                 <div className={`rounded-2xl border px-3 py-2 text-xs ${notice.tone === 'error'
                     ? 'border-destructive/40 bg-destructive/10 text-destructive'
@@ -160,8 +214,8 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Loaded Users</p>
-                    <p className="mt-1 text-2xl font-black text-slate-100">{formatNumber(profiles.length)}</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Total Users{search ? ' (filtered)' : ''}</p>
+                    <p className="mt-1 text-2xl font-black text-slate-100">{formatNumber(total)}</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                     <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Pro Users</p>
@@ -242,7 +296,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             <div className="grid grid-cols-1 gap-3">
                 {profiles.length === 0 && (
                     <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300/85">
-                        No users found.
+                        {search ? <>No users match &quot;{search}&quot;.</> : 'No users found.'}
                     </div>
                 )}
                 {profiles.map((profile) => {
@@ -251,7 +305,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                     const lowCostEnabled = !!profile.low_cost_mode
                     const dailyCount = profile.daily_msg_count || 0
                     const recent24h = counts24hByUser.get(profile.id) || 0
-                    const totalCount = totalCountsByUser.get(profile.id) || 0
+                    const totalMsgCount = totalCountsByUser.get(profile.id) || 0
                     return (
                         <article key={profile.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -273,7 +327,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                         </div>
                                         <div className="rounded-lg border border-white/10 bg-white/[0.02] px-2 py-1.5">
                                             <p className="text-[10px] uppercase tracking-[0.14em] text-slate-300/70">Messages Total</p>
-                                            <p className="mt-0.5 font-semibold text-slate-100">{formatNumber(totalCount)}</p>
+                                            <p className="mt-0.5 font-semibold text-slate-100">{formatNumber(totalMsgCount)}</p>
                                         </div>
                                     </div>
                                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-300/80">
@@ -325,22 +379,48 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                             Reset Daily Usage
                                         </button>
                                     </form>
-                                    <form action={clearUserChatHistory} onSubmit={(e) => { if (!confirm('Delete all chat history for this user? This cannot be undone.')) e.preventDefault() }}>
-                                        <input type="hidden" name="returnTo" value="/admin/users" />
-                                        <input type="hidden" name="userId" value={profile.id} />
-                                        <button
-                                            type="submit"
-                                            className="w-full rounded-xl border border-rose-300/30 bg-rose-500/12 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-100 transition-colors hover:bg-rose-500/20"
-                                        >
-                                            Delete Chat History
-                                        </button>
-                                    </form>
+                                    <DeleteChatHistoryButton userId={profile.id} action={clearUserChatHistory} />
                                 </div>
                             </div>
                         </article>
                     )
                 })}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                    <p className="text-xs text-slate-300/80">
+                        Page {currentPage} of {totalPages} ({formatNumber(total)} total users)
+                    </p>
+                    <div className="flex items-center gap-2">
+                        {currentPage > 1 ? (
+                            <a
+                                href={`/admin/users?page=${currentPage - 1}${search ? `&search=${encodeURIComponent(search)}` : ''}`}
+                                className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-white/[0.08]"
+                            >
+                                <ChevronLeft size={12} /> Prev
+                            </a>
+                        ) : (
+                            <span className="flex items-center gap-1 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300/40">
+                                <ChevronLeft size={12} /> Prev
+                            </span>
+                        )}
+                        {currentPage < totalPages ? (
+                            <a
+                                href={`/admin/users?page=${currentPage + 1}${search ? `&search=${encodeURIComponent(search)}` : ''}`}
+                                className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-white/[0.08]"
+                            >
+                                Next <ChevronRight size={12} />
+                            </a>
+                        ) : (
+                            <span className="flex items-center gap-1 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300/40">
+                                Next <ChevronRight size={12} />
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
         </section>
     )
 }

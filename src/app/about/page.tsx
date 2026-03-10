@@ -16,7 +16,7 @@ function SpinningLogo({ size = 40 }: { size?: number }) {
   return (
     <div className="animate-spin" style={{ animationDuration: '12s' }}>
       <Image
-        src="/logo.png"
+        src="/logo.webp"
         alt="MyGang"
         width={size}
         height={size}

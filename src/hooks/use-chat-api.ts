@@ -235,6 +235,7 @@ export function useChatApi({
         }
 
         let apiCallSucceeded = false
+        let continuationTriggered = false
         let pendingDeliveryIdsForCall: string[] = []
         const renderedEventsForAck: RenderedChatEventPayload[] = []
         let responseTurnId: string | null = null
@@ -535,6 +536,7 @@ export function useChatApi({
             const autonomousAllowed = Date.now() >= autonomousBackoffUntilRef.current
             if (!effectiveLowCostModeForCall && autonomousAllowed && !isAutonomous && chatMode === 'ecosystem' && openFloorIntent && !pendingUserMessagesRef.current && burstCountRef.current < 1) {
                 burstCountRef.current += 1
+                continuationTriggered = true
                 await new Promise((r) => setTimeout(r, 1200))
                 isGeneratingRef.current = false
                 const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
@@ -563,7 +565,7 @@ export function useChatApi({
                 clearTypingUsers()
                 // Schedule one follow-up banter round 10s after last bubble, only for user-initiated messages
                 const currentLowCost = useChatStore.getState().lowCostMode || autoLowCostModeRef.current
-                if (!isIntro && !isAutonomous && apiCallSucceeded && !currentLowCost && chatMode === 'ecosystem') {
+                if (!isIntro && !isAutonomous && apiCallSucceeded && !currentLowCost && chatMode === 'ecosystem' && !continuationTriggered) {
                     const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
                     const sourceMessage = sourceId
                         ? useChatStore.getState().messages.find((message) => message.id === sourceId && message.speaker === 'user')

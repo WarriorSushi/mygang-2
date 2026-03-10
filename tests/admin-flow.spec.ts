@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const ADMIN_EMAIL = process.env.ADMIN_PANEL_EMAIL || 'drsyedirfan93@gmail.com'
+const ADMIN_EMAIL = process.env.ADMIN_PANEL_EMAIL || 'admin@test.com'
 const ADMIN_TEST_PASSWORD = process.env.ADMIN_TEST_PASSWORD || ''
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PANEL_PASSWORD_HASH || ''
 

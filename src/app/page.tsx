@@ -20,7 +20,7 @@ const structuredData = {
       '@id': `${siteUrl}/#organization`,
       name: 'MyGang.ai',
       url: siteUrl,
-      logo: `${siteUrl}/logo.png`,
+      logo: `${siteUrl}/logo.webp`,
       contactPoint: {
         '@type': 'ContactPoint',
         email: 'pashaseenainc@gmail.com',

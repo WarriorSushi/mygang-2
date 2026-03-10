@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
           <div className="flex items-center gap-2">
             <div className="animate-spin-slow">
               <Image
-                src="/logo.png"
+                src="/logo.webp"
                 alt="MyGang.ai"
                 width={28}
                 height={28}
@@ -49,10 +49,10 @@ export default function PrivacyPolicyPage() {
             Privacy Policy
           </h1>
           <p className="text-muted-foreground text-sm">
-            Last Updated: February 18, 2026
+            Last Updated: March 10, 2026
           </p>
           <p className="text-muted-foreground text-sm mt-1">
-            Effective Date: February 18, 2026
+            Effective Date: March 10, 2026
           </p>
         </header>
 
@@ -354,6 +354,12 @@ export default function PrivacyPolicyPage() {
                 sign in via Google OAuth, certain account information is shared
                 between Google and the Service as part of the authentication
                 process.
+              </li>
+              <li>
+                <strong>Dodo Payments:</strong> Our payment processor. Processes
+                payment card data, UPI identifiers, and billing information
+                necessary to complete transactions. Data is handled according to
+                Dodo Payments&rsquo; privacy policy.
               </li>
               <li>
                 <strong>Legal Requirements:</strong> We may disclose your
@@ -803,10 +809,173 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          {/* 16. Changes to This Policy */}
+          {/* 16. DPDPA */}
+          <Section
+            id="dpdpa"
+            title="16. Your Rights Under the Digital Personal Data Protection Act, 2023 (DPDPA, India)"
+          >
+            <p>
+              If you are located in India, you have certain rights under the
+              Digital Personal Data Protection Act, 2023 (&ldquo;DPDPA&rdquo;).
+              This section outlines how we comply with the DPDPA.
+            </p>
+
+            <SubSection title="16.1 Lawful Basis for Processing">
+              <p>
+                We process your personal data based on your explicit consent
+                provided at sign-up. By creating an account and using the
+                Service, you provide informed consent for the collection and
+                processing of your personal data as described in this Privacy
+                Policy.
+              </p>
+            </SubSection>
+
+            <SubSection title="16.2 Data We Process">
+              <p>We process the following categories of personal data:</p>
+              <ul className="list-disc pl-6 space-y-1.5 mt-3">
+                <li>
+                  <strong>Account Information:</strong> Email address, username,
+                  display name, and authentication credentials.
+                </li>
+                <li>
+                  <strong>Chat Messages:</strong> Text messages you send within
+                  the Service.
+                </li>
+                <li>
+                  <strong>AI-Generated Memories:</strong> Contextual memories
+                  derived from your conversations to personalize the Service.
+                </li>
+                <li>
+                  <strong>Device Information:</strong> Browser type, operating
+                  system, IP address, and other technical data collected
+                  automatically.
+                </li>
+                <li>
+                  <strong>Billing Information:</strong> Payment and subscription
+                  data processed through our payment processor (Dodo Payments).
+                </li>
+              </ul>
+            </SubSection>
+
+            <SubSection title="16.3 Purpose of Processing">
+              <p>
+                Your personal data is processed for the following purposes:
+                providing the AI chat service, personalizing your experience
+                through memories and preferences, managing your account and
+                billing, and ensuring the security and integrity of the Service.
+              </p>
+            </SubSection>
+
+            <SubSection title="16.4 Your Rights">
+              <ul className="list-disc pl-6 space-y-1.5 mt-3">
+                <li>
+                  <strong>Right to Access:</strong> You may request access to
+                  your personal data that we hold. Contact us to receive a
+                  summary of the data associated with your account.
+                </li>
+                <li>
+                  <strong>Right to Correction:</strong> You may request
+                  correction of any inaccurate or incomplete personal data we
+                  hold about you.
+                </li>
+                <li>
+                  <strong>Right to Erasure:</strong> You can delete all your
+                  data through Settings in the Application. This includes chat
+                  history, memories, and account data. You may also request
+                  deletion by contacting us.
+                </li>
+                <li>
+                  <strong>Right to Nominate:</strong> You may nominate another
+                  person to exercise your rights under the DPDPA in the event of
+                  your death or incapacity.
+                </li>
+                <li>
+                  <strong>Right to Grievance Redressal:</strong> You have the
+                  right to file a complaint with our Grievance Officer (see
+                  details below) regarding any issues with the processing of
+                  your personal data.
+                </li>
+              </ul>
+            </SubSection>
+
+            <SubSection title="16.5 Data Retention">
+              <p>
+                We retain your personal data for the duration of your account
+                plus 90 days for backup purposes. After account deletion, all
+                personal data is permanently purged from our systems, including
+                backup copies, within 90 days.
+              </p>
+            </SubSection>
+
+            <SubSection title="16.6 Consent Withdrawal">
+              <p>
+                You may withdraw your consent at any time by deleting your
+                account through the Settings page in the Application. Upon
+                withdrawal of consent, we will cease processing your personal
+                data and delete it in accordance with our retention policy.
+                Please note that withdrawal of consent does not affect the
+                lawfulness of processing carried out prior to withdrawal.
+              </p>
+            </SubSection>
+
+            <SubSection title="16.7 Grievance Officer">
+              <div className="mt-4 rounded-2xl border border-border/50 bg-muted/40 p-6 space-y-3">
+                <p>
+                  <strong>Grievance Officer</strong>
+                </p>
+                <p>
+                  <strong>Name:</strong> Syed Irfan
+                </p>
+                <p>
+                  <strong>Email:</strong>{" "}
+                  <a
+                    href="mailto:drsyedirfan93@gmail.com"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    drsyedirfan93@gmail.com
+                  </a>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  We will acknowledge your complaint within 48 hours and resolve
+                  it within 15 days of receipt.
+                </p>
+              </div>
+            </SubSection>
+
+            <p className="text-sm text-muted-foreground mt-4">
+              This notice is provided in English.
+            </p>
+          </Section>
+
+          {/* 17. Data Breach Notification */}
+          <Section
+            id="data-breach-notification"
+            title="17. Data Breach Notification"
+          >
+            <p>
+              In the event of a personal data breach:
+            </p>
+            <ul className="list-disc pl-6 space-y-1.5 mt-3">
+              <li>
+                We will notify the Data Protection Board of India as required
+                under the DPDPA.
+              </li>
+              <li>
+                Affected users will be notified via email within 72 hours of
+                becoming aware of the breach.
+              </li>
+              <li>
+                Notifications will include: the nature of the breach, the data
+                affected, steps we have taken, and remedial actions available to
+                you.
+              </li>
+            </ul>
+          </Section>
+
+          {/* 18. Changes to This Policy */}
           <Section
             id="changes-to-policy"
-            title="16. Changes to This Privacy Policy"
+            title="18. Changes to This Privacy Policy"
           >
             <p>
               We reserve the right to update or modify this Privacy Policy at
@@ -835,10 +1004,10 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          {/* 17. Third-Party Links */}
+          {/* 19. Third-Party Links */}
           <Section
             id="third-party-links"
-            title="17. Third-Party Links and Services"
+            title="19. Third-Party Links and Services"
           >
             <p>
               The Service may contain links to third-party websites, services,
@@ -851,10 +1020,10 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          {/* 18. Do Not Track */}
+          {/* 20. Do Not Track */}
           <Section
             id="do-not-track"
-            title="18. Do Not Track Signals"
+            title="20. Do Not Track Signals"
           >
             <p>
               Some browsers transmit &ldquo;Do Not Track&rdquo; (DNT) signals
@@ -865,8 +1034,8 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          {/* 19. Governing Law */}
-          <Section id="governing-law" title="19. Governing Law">
+          {/* 21. Governing Law */}
+          <Section id="governing-law" title="21. Governing Law">
             <p>
               This Privacy Policy and any disputes arising out of or related to
               it or the Service shall be governed by and construed in
@@ -879,8 +1048,8 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          {/* 20. Severability */}
-          <Section id="severability" title="20. Severability">
+          {/* 22. Severability */}
+          <Section id="severability" title="22. Severability">
             <p>
               If any provision of this Privacy Policy is held to be invalid,
               illegal, or unenforceable by a court of competent jurisdiction,
@@ -890,8 +1059,8 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          {/* 21. Contact */}
-          <Section id="contact" title="21. Contact Information">
+          {/* 23. Contact */}
+          <Section id="contact" title="23. Contact Information">
             <p>
               If you have any questions, concerns, or requests regarding this
               Privacy Policy or our data practices, please contact us:

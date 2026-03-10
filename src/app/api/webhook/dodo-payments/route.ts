@@ -33,31 +33,41 @@ async function findUserByCustomerId(customerId: string) {
     return data?.id ?? null
 }
 
-async function findUserByEmailFallback(email: string, customerId: string): Promise<string | null> {
-    const normalizedEmail = email.trim().toLowerCase()
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-    if (listError || !users?.length) return null
+async function findUserByEmailFallback(email: string, customerId?: string): Promise<string | null> {
+    const normalizedEmail = email.toLowerCase().trim()
+    let page = 1
+    const perPage = 500
 
-    const matchedUser = users.find(u => u.email?.trim().toLowerCase() === normalizedEmail)
-    if (!matchedUser) return null
+    while (true) {
+        const { data, error: listError } = await supabase.auth.admin.listUsers({ page, perPage })
+        if (listError || !data?.users?.length) break
 
-    const userId = matchedUser.id
+        const match = data.users.find(u => u.email?.toLowerCase().trim() === normalizedEmail)
+        if (match) {
+            const userId = match.id
 
-    // Backfill the dodo_customer_id so future webhooks work directly
-    const { error } = await supabase
-        .from('profiles')
-        .update({ dodo_customer_id: customerId })
-        .eq('id', userId)
-        .is('dodo_customer_id', null)
+            // Backfill the dodo_customer_id so future webhooks work directly
+            if (customerId) {
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({ dodo_customer_id: customerId })
+                    .eq('id', userId)
+                    .is('dodo_customer_id', null)
 
-    if (error) {
-        console.warn(`[webhook] Failed to backfill dodo_customer_id for user ${userId}:`, error.message)
-        // Still return the user — activation is more important than backfill
-    } else {
-        console.log(`[webhook] Backfilled dodo_customer_id=${customerId} for user ${userId} via email fallback`)
+                if (error) {
+                    console.warn(`[webhook] Failed to backfill dodo_customer_id for user ${userId}:`, error.message)
+                } else {
+                    console.log(`[webhook] Backfilled dodo_customer_id=${customerId} for user ${userId} via email fallback`)
+                }
+            }
+
+            return userId
+        }
+
+        if (data.users.length < perPage) break
+        page++
     }
-
-    return userId
+    return null
 }
 
 async function upsertSubscription(subscriptionId: string, userId: string, productId: string, plan: string, status: string, periodEnd?: string) {
@@ -293,13 +303,17 @@ export const POST = Webhooks({
         const isNew = await logBillingEvent(userId, 'subscription.cancelled', webhookId, data)
         if (!isNew) return
 
+        // Grace period: don't immediately downgrade — keep current tier until subscription expires.
+        // The onSubscriptionExpired handler will handle the actual downgrade.
+        const periodEnd = (data.next_billing_date as string) ?? (data.current_period_end as string) ?? null
+
         const { error } = await supabase.from('subscriptions').update({
-            status: 'cancelled',
+            status: 'cancelled_pending',
+            current_period_end: periodEnd,
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
         if (error) console.error('[webhook] Cancellation update failed:', error)
-        await updateProfileTier(userId, 'free')
-        await supabase.from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
+        // Do NOT downgrade tier or set pending_squad_downgrade — let onSubscriptionExpired handle it
     },
 
     onSubscriptionExpired: async (payload) => {
@@ -350,5 +364,92 @@ export const POST = Webhooks({
         const userId = customerId ? await findUserByCustomerId(customerId) : null
         const isNew = await logBillingEvent(userId, 'payment.failed', webhookId, data)
         if (!isNew) return
+    },
+
+    onRefundSucceeded: async (payload) => {
+        const data = payload.data as Record<string, unknown>
+        const customerId = getWebhookCustomerId(data)
+        const customerEmail = getWebhookCustomerEmail(data)
+        const refundId = data.refund_id as string ?? null
+
+        const userId = customerId
+            ? await findUserByCustomerId(customerId)
+            : customerEmail
+                ? await findUserByEmailFallback(customerEmail)
+                : null
+
+        if (!userId) {
+            await logBillingEvent(null, 'refund.succeeded.orphaned', refundId, data)
+            return
+        }
+
+        const isNew = await logBillingEvent(userId, 'refund.succeeded', refundId, data)
+        if (!isNew) return
+
+        // Downgrade to free
+        await supabase.from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
+        await supabase.from('subscriptions').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
+    },
+
+    onDisputeOpened: async (payload) => {
+        const data = payload.data as Record<string, unknown>
+        const disputeId = data.dispute_id as string ?? null
+
+        // Look up user via payment_id from billing_events
+        const { data: event } = await supabase
+            .from('billing_events')
+            .select('user_id')
+            .eq('event_type', 'payment.succeeded')
+            .not('user_id', 'is', null)
+            .limit(1)
+            .single()
+
+        const userId = event?.user_id ?? null
+
+        const isNew = await logBillingEvent(userId, 'dispute.opened', disputeId, data)
+        if (!isNew) return
+
+        if (userId) {
+            await supabase.from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
+            await supabase.from('subscriptions').update({ status: 'disputed', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
+        }
+    },
+
+    onSubscriptionPlanChanged: async (payload) => {
+        const data = payload.data as Record<string, unknown>
+        const customerId = getWebhookCustomerId(data)
+        const customerEmail = getWebhookCustomerEmail(data)
+        const subscriptionId = data.subscription_id as string
+        const productId = data.product_id as string
+        const webhookId = data.webhook_id as string ?? null
+
+        const userId = customerId
+            ? await findUserByCustomerId(customerId)
+            : customerEmail
+                ? await findUserByEmailFallback(customerEmail)
+                : null
+
+        if (!userId) {
+            await logBillingEvent(null, 'subscription.plan_changed.orphaned', webhookId, data)
+            return
+        }
+
+        const isNew = await logBillingEvent(userId, 'subscription.plan_changed', webhookId, data)
+        if (!isNew) return
+
+        const newTier = productId === process.env.DODO_PRODUCT_PRO ? 'pro' : productId === process.env.DODO_PRODUCT_BASIC ? 'basic' : 'free'
+
+        await supabase.from('profiles').update({
+            subscription_tier: newTier,
+            pending_squad_downgrade: newTier === 'free',
+        }).eq('id', userId)
+        await supabase.from('subscriptions').upsert({
+            id: subscriptionId,
+            user_id: userId,
+            product_id: productId,
+            plan: newTier,
+            status: 'active',
+            updated_at: new Date().toISOString(),
+        })
     },
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -17,7 +17,7 @@ export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepPro
     const canContinue = trimmedName.length >= 2
 
     return (
-        <motion.div
+        <m.div
             key="identity"
             initial={prefersReducedMotion ? {} : { opacity: 0, x: 20 }}
             animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
@@ -60,6 +60,6 @@ export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepPro
                     </button>
                 )}
             </div>
-        </motion.div>
+        </m.div>
     )
 }

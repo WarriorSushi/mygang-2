@@ -9,6 +9,7 @@ import Image from 'next/image'
 import { signInOrSignUpWithPassword, signInWithGoogle } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 interface AuthWallProps {
     isOpen: boolean
@@ -34,6 +35,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [showEmailForm, setShowEmailForm] = useState(false)
+    const [agreedToTerms, setAgreedToTerms] = useState(false)
     useEffect(() => {
         if (isOpen) {
             trackEvent('auth_wall_shown', { metadata: { source: 'auth_wall' } })
@@ -100,7 +102,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
                             <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-[2.5rem] bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
                                 <div className="animate-spin" style={{ animationDuration: '12s' }}>
-                                    <Image src="/logo.png" alt="MyGang" width={72} height={72} className="object-contain" priority />
+                                    <Image src="/logo.webp" alt="MyGang" width={72} height={72} className="object-contain" priority />
                                 </div>
                             </div>
                         </div>
@@ -113,11 +115,27 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                     </DialogHeader>
 
                     <div className="grid gap-4 py-4">
+                        {/* Terms & Privacy consent */}
+                        <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+                            <input
+                                type="checkbox"
+                                checked={agreedToTerms}
+                                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-border/60 accent-primary cursor-pointer shrink-0"
+                            />
+                            <span className="text-xs text-muted-foreground/70 leading-relaxed group-hover:text-muted-foreground/90 transition-colors">
+                                I agree to the{' '}
+                                <Link href="/terms" className="underline text-primary/80 hover:text-primary" target="_blank">Terms of Service</Link>
+                                {' '}and{' '}
+                                <Link href="/privacy" className="underline text-primary/80 hover:text-primary" target="_blank">Privacy Policy</Link>
+                            </span>
+                        </label>
+
                         {/* Google Sign-In Button */}
                         <Button
                             type="button"
                             onClick={handleGoogleSignIn}
-                            disabled={isGoogleLoading || isLoading}
+                            disabled={isGoogleLoading || isLoading || !agreedToTerms}
                             className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 dark:bg-muted/60 dark:hover:bg-muted/80 dark:text-foreground dark:border-border/60 transition-all active:scale-[0.98] shadow-sm"
                         >
                             {isGoogleLoading ? (
@@ -183,7 +201,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                     <Button
                                         type="submit"
                                         variant="outline"
-                                        disabled={isLoading || isGoogleLoading}
+                                        disabled={isLoading || isGoogleLoading || !agreedToTerms}
                                         className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-border/50 bg-muted/40 hover:bg-muted/60 transition-all active:scale-[0.98]"
                                     >
                                         {isLoading ? (

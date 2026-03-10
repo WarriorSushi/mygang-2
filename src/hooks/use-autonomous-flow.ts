@@ -149,8 +149,13 @@ export function useAutonomousFlow({
                 if (hasUserMessage) return
                 queueTypingUser(char.id)
                 pulseStatus(char.id, pickStatusFor(char.id), 1600)
-                const line = (pickRandom(CHARACTER_GREETINGS[char.id] || [`Hey ${nameLabel}, what should we talk about?`]) || `Hey ${nameLabel}, what should we talk about?`)
+                const customNames = useChatStore.getState().customCharacterNames || {}
+                let line = (pickRandom(CHARACTER_GREETINGS[char.id] || [`Hey ${nameLabel}, what should we talk about?`]) || `Hey ${nameLabel}, what should we talk about?`)
                     .replace('{name}', nameLabel)
+                // Replace original character name with custom name if user renamed the character
+                if (customNames[char.id] && char.name && customNames[char.id] !== char.name) {
+                    line = line.replace(new RegExp(char.name, 'gi'), customNames[char.id])
+                }
 
                 scheduleGreeting(() => {
                     removeTypingUser(char.id)

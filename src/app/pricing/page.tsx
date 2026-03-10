@@ -11,7 +11,7 @@ import {
 import { useChatStore } from '@/stores/chat-store'
 import { createClient } from '@/lib/supabase/client'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { TIER_LIMITS, getTierCopy } from '@/lib/billing'
 
 /* ══════════════════════════════════════════════════════
@@ -101,7 +101,7 @@ function FAQItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
       </button>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -111,7 +111,7 @@ function FAQItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
             <p className="pb-6 text-[15px] leading-relaxed text-muted-foreground/70 max-w-2xl">
               {a}
             </p>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
@@ -233,6 +233,7 @@ export default function PricingPage() {
   const proCopy = getTierCopy('pro')
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="relative min-h-dvh bg-background text-foreground overflow-x-hidden selection:bg-primary/30">
       <BackgroundBlobs />
 
@@ -254,7 +255,7 @@ export default function PricingPage() {
 
         {/* ══════════ HERO ══════════ */}
         <section className="pt-16 sm:pt-24 pb-4 text-center px-5 sm:px-8">
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -272,7 +273,7 @@ export default function PricingPage() {
             <p className="mt-6 text-base sm:text-lg text-muted-foreground/70 max-w-xl mx-auto leading-relaxed">
               From casual hangs to unlimited chaos. Pick the plan that matches how hard you go.
             </p>
-          </motion.div>
+          </m.div>
         </section>
 
         {/* Checkout error banner */}
@@ -305,7 +306,7 @@ export default function PricingPage() {
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-start">
 
             {/* ── FREE ── */}
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
@@ -341,10 +342,10 @@ export default function PricingPage() {
                   Free forever
                 </div>
               )}
-            </motion.div>
+            </m.div>
 
             {/* ── BASIC ── */}
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
@@ -400,10 +401,10 @@ export default function PricingPage() {
                   )}
                 </button>
               )}
-            </motion.div>
+            </m.div>
 
             {/* ── PRO (highlighted) ── */}
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
@@ -470,7 +471,7 @@ export default function PricingPage() {
                   )}
                 </button>
               )}
-            </motion.div>
+            </m.div>
           </div>
         </section>
 
@@ -714,5 +715,6 @@ export default function PricingPage() {
 
       </main>
     </div>
+    </LazyMotion>
   )
 }

@@ -256,7 +256,7 @@ export function LandingPage() {
           animate={{ opacity: 1, x: 0 }}
           className="text-2xl font-bold flex items-center gap-2"
         >
-          <Image src="/logo.png" alt="MyGang" width={40} height={40} className="object-contain" priority />
+          <Image src="/logo.webp" alt="MyGang" width={40} height={40} className="object-contain" priority />
           <span className="font-[family-name:var(--font-brand)] font-extrabold text-xl sm:text-3xl">
             MyGang<span className="text-primary">.ai</span>
           </span>
@@ -382,7 +382,7 @@ export function LandingPage() {
                 >
                   <div className="absolute inset-0 rounded-full bg-primary/15 blur-3xl" />
                   <Image
-                    src="/logo.png"
+                    src="/logo.webp"
                     alt="MyGang logo"
                     width={464}
                     height={464}

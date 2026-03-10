@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { CHARACTERS } from '@/constants/characters'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { useChatStore } from '@/stores/chat-store'
@@ -177,41 +177,43 @@ export default function OnboardingPage() {
                 </button>
             )}
 
-            <AnimatePresence mode="wait" initial={false}>
-                {step === 'WELCOME' && (
-                    <WelcomeStep onNext={() => setStep('IDENTITY')} />
-                )}
+            <LazyMotion features={domAnimation}>
+                <AnimatePresence mode="wait" initial={false}>
+                    {step === 'WELCOME' && (
+                        <WelcomeStep onNext={() => setStep('IDENTITY')} />
+                    )}
 
-                {step === 'IDENTITY' && (
-                    <IdentityStep
-                        name={name}
-                        setName={setName}
-                        onNext={() => setStep('SELECTION')}
-                    />
-                )}
+                    {step === 'IDENTITY' && (
+                        <IdentityStep
+                            name={name}
+                            setName={setName}
+                            onNext={() => setStep('SELECTION')}
+                        />
+                    )}
 
-                {step === 'SELECTION' && (
-                    <SelectionStep
-                        selectedIds={selectedIds}
-                        toggleCharacter={toggleCharacter}
-                        onNext={handleSelectionDone}
-                    />
-                )}
+                    {step === 'SELECTION' && (
+                        <SelectionStep
+                            selectedIds={selectedIds}
+                            toggleCharacter={toggleCharacter}
+                            onNext={handleSelectionDone}
+                        />
+                    )}
 
-                {step === 'INTRO' && (
-                    <FriendsIntroStep
-                        selectedIds={selectedIds}
-                        customNames={customNames}
-                        onNameChange={handleIntroNameChange}
-                        onNext={handleFinishOnboarding}
-                        onSkip={handleFinishOnboarding}
-                    />
-                )}
+                    {step === 'INTRO' && (
+                        <FriendsIntroStep
+                            selectedIds={selectedIds}
+                            customNames={customNames}
+                            onNameChange={handleIntroNameChange}
+                            onNext={handleFinishOnboarding}
+                            onSkip={handleFinishOnboarding}
+                        />
+                    )}
 
-                {step === 'LOADING' && (
-                    <LoadingStep />
-                )}
-            </AnimatePresence>
+                    {step === 'LOADING' && (
+                        <LoadingStep />
+                    )}
+                </AnimatePresence>
+            </LazyMotion>
 
         </main>
     )

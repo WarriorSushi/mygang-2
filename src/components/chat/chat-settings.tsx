@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { CHAT_WALLPAPERS, type ChatWallpaper } from '@/constants/wallpapers'
 import { createClient } from '@/lib/supabase/client'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 
 type SettingsPanel = 'root' | 'wallpaper' | 'rename'
 
@@ -421,6 +421,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
     }
 
     return (
+        <LazyMotion features={domAnimation}>
         <Sheet open={isOpen} onOpenChange={handleClose}>
             <SheetContent
                 side="right"
@@ -499,7 +500,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                 panel === 'root' ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0 pointer-events-none'
                             )}
                         >
-                            <motion.div
+                            <m.div
                                 key="root"
                                 variants={containerVariants}
                                 initial="hidden"
@@ -507,16 +508,16 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                 className="px-5 sm:px-7 py-5 sm:py-6 space-y-5"
                             >
                                 {/* Upgrade / Plan */}
-                                <motion.div variants={itemVariants}>
+                                <m.div variants={itemVariants}>
                                     {subscriptionTier === 'pro' ? (
                                         <ProStatusCard onClose={onClose} isDark={isDark} />
                                     ) : (
                                         <UpgradeJewel tier={subscriptionTier} onClose={onClose} isDark={isDark} />
                                     )}
-                                </motion.div>
+                                </m.div>
 
                                 {/* Chat Mode */}
-                                <motion.div variants={itemVariants}>
+                                <m.div variants={itemVariants}>
                                     <SectionCard isDark={isDark}>
                                         <SectionLabel>Chat Mode</SectionLabel>
                                         <div
@@ -574,10 +575,10 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                             </p>
                                         )}
                                     </SectionCard>
-                                </motion.div>
+                                </m.div>
 
                                 {/* Preferences */}
-                                <motion.div variants={itemVariants}>
+                                <m.div variants={itemVariants}>
                                     <SectionCard isDark={isDark}>
                                         <SectionLabel>Preferences</SectionLabel>
                                         <div className="space-y-0">
@@ -606,10 +607,10 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                             </div>
                                         </div>
                                     </SectionCard>
-                                </motion.div>
+                                </m.div>
 
                                 {/* Personalize */}
-                                <motion.div variants={itemVariants}>
+                                <m.div variants={itemVariants}>
                                     <SectionCard isDark={isDark} className="!px-2 !py-2">
                                         <div className="px-3 pt-3 pb-1">
                                             <SectionLabel>Personalize</SectionLabel>
@@ -679,10 +680,10 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                             </MenuRow>
                                         </div>
                                     </SectionCard>
-                                </motion.div>
+                                </m.div>
 
                                 {/* Account */}
-                                <motion.div variants={itemVariants}>
+                                <m.div variants={itemVariants}>
                                     <SectionCard isDark={isDark} className="!px-2 !py-2">
                                         <div className="px-3 pt-3 pb-1">
                                             <SectionLabel>Account</SectionLabel>
@@ -717,10 +718,10 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                             </MenuRow>
                                         </div>
                                     </SectionCard>
-                                </motion.div>
+                                </m.div>
 
                                 {/* Danger Zone */}
-                                <motion.div variants={itemVariants}>
+                                <m.div variants={itemVariants}>
                                     <button
                                         type="button"
                                         onClick={() => setDangerExpanded(!dangerExpanded)}
@@ -734,7 +735,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
 
                                     <AnimatePresence>
                                         {dangerExpanded && (
-                                            <motion.div
+                                            <m.div
                                                 initial={{ height: 0, opacity: 0 }}
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 exit={{ height: 0, opacity: 0 }}
@@ -797,13 +798,13 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                         </Button>
                                                     </div>
                                                 </div>
-                                            </motion.div>
+                                            </m.div>
                                         )}
                                     </AnimatePresence>
-                                </motion.div>
+                                </m.div>
 
                                 <div className="pt-2" />
-                            </motion.div>
+                            </m.div>
                         </div>
 
                         {/* WALLPAPER PANEL */}
@@ -910,5 +911,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                 </div>
             </SheetContent>
         </Sheet>
+        </LazyMotion>
     )
 }

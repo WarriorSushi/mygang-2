@@ -58,7 +58,15 @@ async function verifyAdminToken(token: string): Promise<boolean> {
 
 const PROTECTED_ROUTES = ['/chat', '/onboarding', '/settings', '/checkout/success', '/post-auth']
 
+// Public content pages that should NEVER redirect to auth, even during hydration
+const PUBLIC_ROUTES = ['/about', '/terms', '/privacy', '/refund', '/pricing']
+
+function isPublicContentPath(pathname: string) {
+    return PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'))
+}
+
 function isProtectedPath(pathname: string) {
+    if (isPublicContentPath(pathname)) return false
     return PROTECTED_ROUTES.some(route => pathname.startsWith(route))
 }
 

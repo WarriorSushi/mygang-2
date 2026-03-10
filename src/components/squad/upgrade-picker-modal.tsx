@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { CHARACTERS } from '@/constants/characters'
 import { CHARACTER_INTRO_MESSAGES } from '@/constants/character-messages'
@@ -113,8 +113,9 @@ export function UpgradePickerModal({
     }
 
     return (
+        <LazyMotion features={domAnimation}>
         <AnimatePresence>
-            <motion.div
+            <m.div
                 ref={modalRef}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -125,7 +126,7 @@ export function UpgradePickerModal({
                 aria-labelledby="upgrade-picker-title"
             >
                 {/* Backdrop */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -134,7 +135,7 @@ export function UpgradePickerModal({
                 />
 
                 {/* Modal */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -153,14 +154,14 @@ export function UpgradePickerModal({
 
                     {/* Header */}
                     <div className="text-center pt-8 pb-4 px-6">
-                        <motion.div
+                        <m.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             transition={{ delay: 0.2, type: 'spring', bounce: 0.5 }}
                             className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 mb-4"
                         >
                             <Sparkles className="w-6 h-6 text-primary" />
-                        </motion.div>
+                        </m.div>
                         <h2 id="upgrade-picker-title" className="text-2xl sm:text-3xl font-black tracking-tight">
                             Your gang just got bigger!
                         </h2>
@@ -177,7 +178,7 @@ export function UpgradePickerModal({
                                 const isDisabled = isMaxed && !isSelected
 
                                 return (
-                                    <motion.div
+                                    <m.div
                                         key={char.id}
                                         layout
                                         onClick={() => {
@@ -205,14 +206,14 @@ export function UpgradePickerModal({
                                         {/* Selection checkmark */}
                                         <AnimatePresence>
                                             {isSelected && (
-                                                <motion.div
+                                                <m.div
                                                     initial={{ scale: 0, opacity: 0 }}
                                                     animate={{ scale: 1, opacity: 1 }}
                                                     exit={{ scale: 0, opacity: 0 }}
                                                     className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground rounded-full p-1 shadow-md"
                                                 >
                                                     <Check className="w-3 h-3 stroke-[3]" />
-                                                </motion.div>
+                                                </m.div>
                                             )}
                                         </AnimatePresence>
 
@@ -273,7 +274,7 @@ export function UpgradePickerModal({
                                                 &quot;{char.sample}&quot;
                                             </p>
                                         </div>
-                                    </motion.div>
+                                    </m.div>
                                 )
                             })}
                         </div>
@@ -357,8 +358,9 @@ export function UpgradePickerModal({
                             </div>
                         </div>
                     </div>
-                </motion.div>
-            </motion.div>
+                </m.div>
+            </m.div>
         </AnimatePresence>
+        </LazyMotion>
     )
 }

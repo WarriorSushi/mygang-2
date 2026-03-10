@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
 
@@ -12,7 +12,7 @@ interface WelcomeStepProps {
 export function WelcomeStep({ onNext, onLogin }: WelcomeStepProps) {
     const prefersReducedMotion = useReducedMotion()
     return (
-        <motion.div
+        <m.div
             key="welcome"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -40,6 +40,6 @@ export function WelcomeStep({ onNext, onLogin }: WelcomeStepProps) {
                     </button>
                 )}
             </div>
-        </motion.div>
+        </m.div>
     )
 }

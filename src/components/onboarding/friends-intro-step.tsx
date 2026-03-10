@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import Image from 'next/image'
 import { Sparkles, PenLine, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,7 @@ export function FriendsIntroStep({
     const selectedCharacters = CHARACTERS.filter((character) => selectedIds.includes(character.id))
 
     return (
-        <motion.div
+        <m.div
             key="friends-intro"
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -129,6 +129,6 @@ export function FriendsIntroStep({
                     </Button>
                 </div>
             </div>
-        </motion.div>
+        </m.div>
     )
 }

@@ -68,11 +68,16 @@ export async function rateLimit(
       _ratelimitCache.set(cacheKey, ratelimit)
     }
 
-    const result = await ratelimit.limit(key)
-    return {
-      success: result.success,
-      remaining: result.remaining,
-      reset: result.reset
+    try {
+      const result = await ratelimit.limit(key)
+      return {
+        success: result.success,
+        remaining: result.remaining,
+        reset: result.reset
+      }
+    } catch (error) {
+      console.error('Rate limit Redis error:', error)
+      return { success: false, remaining: 0, reset: 0 }
     }
   }
 

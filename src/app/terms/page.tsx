@@ -53,7 +53,7 @@ export default function TermsOfServicePage() {
           <div className="flex items-center gap-4 mb-4">
             <div className="animate-spin [animation-duration:12s]">
               <Image
-                src="/logo.png"
+                src="/logo.webp"
                 alt="MyGang.ai logo"
                 width={48}
                 height={48}
@@ -71,7 +71,7 @@ export default function TermsOfServicePage() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            <strong>Last Updated:</strong> February 18, 2026
+            <strong>Last Updated:</strong> March 10, 2026
           </p>
         </header>
 
@@ -118,21 +118,19 @@ export default function TermsOfServicePage() {
           {/* -------------------------------------------------- */}
           <Section id="eligibility" number={2} title="Eligibility">
             <p>
-              You must be at least <strong className="text-foreground">13 years of age</strong> to
-              use this Service. If you are between 13 and 18 years of age (or the
-              age of legal majority in your jurisdiction), you may only use the
-              Service with the consent and supervision of a parent or legal
-              guardian who agrees to be bound by these Terms.
+              You must be at least <strong className="text-foreground">18 years of age</strong> to
+              use this Service. The Service is intended solely for users who are
+              18 years of age or older. By using the Service, you represent and
+              warrant that you are at least 18 years old and have the legal
+              capacity to enter into this Agreement.
             </p>
             <p>
-              By using the Service, you represent and warrant that you meet the
-              applicable age requirements and have the legal capacity to enter
-              into this Agreement. If you are using the Service on behalf of an
+              If you are using the Service on behalf of an
               organization, you represent that you have the authority to bind
               that organization to these Terms.
             </p>
             <p>
-              We reserve the right to request proof of age or parental consent at
+              We reserve the right to request proof of age at
               any time and to suspend or terminate accounts that do not comply
               with this section.
             </p>
@@ -664,15 +662,13 @@ export default function TermsOfServicePage() {
             <p>
               These Terms and any dispute arising out of or relating to them
               shall be governed by and construed in accordance with the laws of
-              the jurisdiction in which Altcorp is incorporated or maintains its
-              principal place of business, without regard to its conflict of
-              law provisions.
+              India, without regard to its conflict of law provisions.
             </p>
             <p>
               You agree that any legal action or proceeding relating to these
-              Terms shall be brought exclusively in the courts located in the
-              jurisdiction referenced above, and you consent to the personal
-              jurisdiction of such courts.
+              Terms shall be brought exclusively in the courts in Hyderabad,
+              Telangana, India, and you consent to the personal jurisdiction of
+              such courts.
             </p>
           </Section>
 
@@ -900,6 +896,68 @@ export default function TermsOfServicePage() {
                 </a>
               </p>
             </div>
+          </Section>
+
+          {/* -------------------------------------------------- */}
+          {/* 23 */}
+          {/* -------------------------------------------------- */}
+          <Section
+            id="payment-terms"
+            number={23}
+            title="Payment and Subscription Terms"
+          >
+            <p>
+              MyGang.ai offers the following subscription plans:
+            </p>
+            <ul className="list-disc list-inside space-y-2 pl-2">
+              <li>
+                <strong className="text-foreground">Free</strong> &mdash; $0/month
+              </li>
+              <li>
+                <strong className="text-foreground">Basic</strong> &mdash; $14.99/month (USD)
+              </li>
+              <li>
+                <strong className="text-foreground">Pro</strong> &mdash; $19.99/month (USD)
+              </li>
+            </ul>
+            <p>
+              All paid subscriptions are billed on a monthly basis and will
+              automatically renew at the end of each billing period until you
+              cancel. Payment is processed through our third-party payment
+              processor,{" "}
+              <strong className="text-foreground">Dodo Payments</strong>. By
+              subscribing, you authorize Dodo Payments to charge your selected
+              payment method on a recurring basis.
+            </p>
+            <p>
+              GST and other applicable taxes may apply to your subscription
+              charges depending on your jurisdiction. Taxes will be calculated
+              and displayed at checkout.
+            </p>
+            <p>
+              If a payment fails or is declined, your access to paid features
+              may be restricted or downgraded until the payment issue is
+              resolved.
+            </p>
+            <p>
+              We reserve the right to change subscription pricing at any time.
+              If we change prices, we will provide at least{" "}
+              <strong className="text-foreground">30 days&apos; advance notice</strong>{" "}
+              via email before the new pricing takes effect. Your continued use
+              of a paid subscription after a price change constitutes your
+              acceptance of the new pricing.
+            </p>
+            <p>
+              You may cancel your subscription at any time. Cancellation takes
+              effect at the end of your current billing period &mdash; you will
+              retain access to paid features until then. No prorated refunds
+              are issued for partial billing periods. For more details, please
+              see our{" "}
+              <Link href="/refund" className="underline text-foreground hover:text-foreground/80">
+                Refund Policy
+              </Link>
+              .
+            </p>
           </Section>
 
           {/* -------------------------------------------------- */}

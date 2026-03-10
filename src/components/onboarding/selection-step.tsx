@@ -1,7 +1,7 @@
 'use client'
 
 import { type KeyboardEvent, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { CHARACTERS } from '@/constants/characters'
 import { Check, ChevronRight, X } from 'lucide-react'
@@ -29,7 +29,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
     }
 
     return (
-        <motion.div
+        <m.div
             key="selection"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -53,7 +53,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
                         const isMaxed = selectedIds.length >= maxMembers && !isSelected
 
                         return (
-                            <motion.div
+                            <m.div
                                 key={char.id}
                                 layout
                                 data-testid={`character-${char.id}`}
@@ -77,14 +77,14 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
                                 {/* Selection checkmark */}
                                 <AnimatePresence>
                                     {isSelected && (
-                                        <motion.div
+                                        <m.div
                                             initial={{ scale: 0, opacity: 0 }}
                                             animate={{ scale: 1, opacity: 1 }}
                                             exit={{ scale: 0, opacity: 0 }}
                                             className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground rounded-full p-1 shadow-md"
                                         >
                                             <Check className="w-3 h-3 stroke-[3]" />
-                                        </motion.div>
+                                        </m.div>
                                     )}
                                 </AnimatePresence>
 
@@ -153,7 +153,7 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
 
                                     <AnimatePresence>
                                         {isExpanded && (
-                                            <motion.div
+                                            <m.div
                                                 initial={{ height: 0, opacity: 0 }}
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 exit={{ height: 0, opacity: 0 }}
@@ -182,11 +182,11 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
                                                         </div>
                                                     )}
                                                 </div>
-                                            </motion.div>
+                                            </m.div>
                                         )}
                                     </AnimatePresence>
                                 </div>
-                            </motion.div>
+                            </m.div>
                         )
                     })}
                 </div>
@@ -249,6 +249,6 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
                     </div>
                 </div>
             </div>
-        </motion.div>
+        </m.div>
     )
 }

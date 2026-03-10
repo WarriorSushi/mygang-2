@@ -24,6 +24,7 @@
 
 # misc
 .DS_Store
+Thumbs.db
 *.pem
 
 # debug
@@ -42,11 +43,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-nul
 
 # debug screenshots & temp images
 *.png
 !public/**/*.png
+# IDE configs
+.idea/
+.vscode/
+
+# Supabase temp
+.supabase-push-temp/
+
+# Playwright & debug
 .playwright-mcp/
 .playwright-cli/
 /screenshots/
+
+# Claude worktrees
+.claude/worktrees/

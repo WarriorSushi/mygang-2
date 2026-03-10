@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Sun, Moon, Brain, Settings2, Info, RefreshCw, Crown, Zap } from 'lucide-react'
+import { Sun, Moon, Brain, Settings2, Info, RefreshCw, Crown, Zap, Globe } from 'lucide-react'
 import { Character, useChatStore } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
@@ -26,6 +26,7 @@ interface ChatHeaderProps {
     autoLowCostActive?: boolean
     tokenUsage?: TokenUsage | null
     subscriptionTier?: 'free' | 'basic' | 'pro'
+    chatMode?: 'gang_focus' | 'ecosystem'
 }
 
 function formatChars(n: number): string {
@@ -68,7 +69,7 @@ function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
     )
 }
 
-export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, onRefresh, typingUsers = [], memoryActive = false, autoLowCostActive = false, tokenUsage, subscriptionTier = 'free' }: ChatHeaderProps) {
+export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, onOpenSettings, onRefresh, typingUsers = [], memoryActive = false, autoLowCostActive = false, tokenUsage, subscriptionTier = 'free', chatMode = 'gang_focus' }: ChatHeaderProps) {
     const { theme, resolvedTheme, setTheme } = useTheme()
     const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
@@ -165,6 +166,12 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                             <>
                                 {activeGang.length} online
                                 {memoryActive && <span> &middot; Memory active</span>}
+                                {chatMode === 'ecosystem' && (
+                                    <span className="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded-md bg-violet-600/10 dark:bg-violet-500/15 border border-violet-600/30 dark:border-violet-500/25 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400">
+                                        <Globe className="w-2.5 h-2.5" />
+                                        Ecosystem
+                                    </span>
+                                )}
                             </>
                         )}
                         {subscriptionTier === 'pro' && (
@@ -196,7 +203,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                             aria-haspopup="dialog"
                             aria-expanded={showCapacityInfo}
                             aria-controls="capacity-mode-info"
-                            className="rounded-full text-amber-500/90 hover:text-amber-500 hover:bg-amber-500/10 size-8 sm:size-8"
+                            className="rounded-full text-amber-500/90 hover:text-amber-500 hover:bg-amber-500/10 size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
                         >
                             <Info size={13} />
                         </Button>
@@ -230,7 +237,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                             }}
                             title="Refresh chat"
                             aria-label="Refresh chat"
-                            className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
+                            className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
                         >
                             <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
                         </Button>
@@ -250,7 +257,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     }}
                     title="Memory Vault"
                     aria-label="Manage AI memories"
-                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
+                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
                 >
                     <Brain size={18} />
                     {memoryBadgeCount > 0 && (
@@ -262,7 +269,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full text-muted-foreground/70 hover:text-foreground transition-colors size-9 sm:size-10 lg:size-9"
+                    className="rounded-full text-muted-foreground/70 hover:text-foreground transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
                     aria-label="Toggle theme"
                     onClick={() => {
                         setTheme(nextTheme)
@@ -278,7 +285,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     onClick={onOpenSettings}
                     title="Gang Settings"
                     aria-label="Open settings"
-                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9"
+                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
                 >
                     <Settings2 size={18} />
                     {showUpgradeTour && (
