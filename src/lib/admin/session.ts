@@ -174,15 +174,15 @@ export async function revokeAllAdminSessions() {
         const redis = await getRedis()
         if (!redis) return
 
-        let cursor = 0
+        let cursor = '0'
         do {
-            const result = await redis.scan(cursor, { match: `${ADMIN_SESSION_REDIS_PREFIX}*`, count: 100 })
+            const result: [string, string[]] = await redis.scan(cursor, { match: `${ADMIN_SESSION_REDIS_PREFIX}*`, count: 100 })
             cursor = result[0]
             const keys = result[1] as string[]
             if (keys.length > 0) {
                 await redis.del(...keys)
             }
-        } while (cursor !== 0)
+        } while (cursor !== '0')
     } catch (error) {
         console.error('[admin-session] Failed to revoke all sessions:', error)
     }
