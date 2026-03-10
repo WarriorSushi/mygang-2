@@ -112,10 +112,6 @@ The codebase is **production-ready with targeted fixes needed**. Previous audits
 - **Source:** Product Review
 - **Fix:** Add squad management UI in chat-settings or settings page.
 
-### M12. Pricing Not Linked From Landing Page
-- **Source:** Product Review
-- **Fix:** Add "Pricing" to landing page nav/footer.
-
 ---
 
 ## LOW — Nice to Have
@@ -165,7 +161,7 @@ C1, H1, H2, H3, H5
 H4, M1, M2, M4, M5, M7, M10
 
 **Phase 3 — Nice to have (first month):**
-M3, M6, M8, M9, M11, M12, L1-L16
+M3, M6, M8, M9, M11, L1-L16
 
 **Phase 4 — Ongoing (when touching related code):**
 R1-R8
