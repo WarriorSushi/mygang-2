@@ -387,6 +387,15 @@ export default function ChatPage() {
         return () => clearInterval(interval)
     }, [cooldownUntil])
 
+    // H5 FIX: Clear cooldown when subscription tier changes (user just upgraded)
+    useEffect(() => {
+        setCooldownUntil(0)
+        setCooldownLabel(null)
+        if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem('mygang-cooldown-until')
+        }
+    }, [subscriptionTier])
+
     // ── Toast auto-dismiss ──
     useEffect(() => {
         if (!toastMessage) return

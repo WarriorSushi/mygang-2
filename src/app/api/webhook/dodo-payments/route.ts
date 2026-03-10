@@ -3,7 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database } from '@/lib/database.types'
 import { TIER_LIMITS } from '@/lib/billing'
 
-const supabase = createAdminClient()
+// M2 FIX: Lazy init to avoid module-scope crash on missing env vars
+function getAdminClient() {
+    return createAdminClient()
+}
 
 function getWebhookCustomerId(data: Record<string, unknown>) {
     if (typeof data.customer_id === 'string' && data.customer_id) return data.customer_id
@@ -25,7 +28,7 @@ function getWebhookCustomerEmail(data: Record<string, unknown>): string | null {
 }
 
 async function findUserByCustomerId(customerId: string) {
-    const { data } = await supabase
+    const { data } = await getAdminClient()
         .from('profiles')
         .select('id')
         .eq('dodo_customer_id', customerId)
@@ -39,7 +42,7 @@ async function findUserByEmailFallback(email: string, customerId?: string): Prom
     const perPage = 500
 
     while (true) {
-        const { data, error: listError } = await supabase.auth.admin.listUsers({ page, perPage })
+        const { data, error: listError } = await getAdminClient().auth.admin.listUsers({ page, perPage })
         if (listError || !data?.users?.length) break
 
         const match = data.users.find(u => u.email?.toLowerCase().trim() === normalizedEmail)
@@ -48,7 +51,7 @@ async function findUserByEmailFallback(email: string, customerId?: string): Prom
 
             // Backfill the dodo_customer_id so future webhooks work directly
             if (customerId) {
-                const { error } = await supabase
+                const { error } = await getAdminClient()
                     .from('profiles')
                     .update({ dodo_customer_id: customerId })
                     .eq('id', userId)
@@ -71,7 +74,7 @@ async function findUserByEmailFallback(email: string, customerId?: string): Prom
 }
 
 async function upsertSubscription(subscriptionId: string, userId: string, productId: string, plan: string, status: string, periodEnd?: string) {
-    const { error } = await supabase.from('subscriptions').upsert({
+    const { error } = await getAdminClient().from('subscriptions').upsert({
         id: subscriptionId,
         user_id: userId,
         product_id: productId,
@@ -84,13 +87,13 @@ async function upsertSubscription(subscriptionId: string, userId: string, produc
 }
 
 async function updateProfileTier(userId: string, tier: string) {
-    const { error } = await supabase.from('profiles').update({ subscription_tier: tier }).eq('id', userId)
+    const { error } = await getAdminClient().from('profiles').update({ subscription_tier: tier }).eq('id', userId)
     if (error) throw new Error(`updateProfileTier failed: ${error.message}`)
 }
 
 async function updatePurchaseCelebration(userId: string, plan: 'basic' | 'pro') {
     const modernPayload = { purchase_celebration_pending: plan } satisfies Database['public']['Tables']['profiles']['Update']
-    const { error } = await supabase.from('profiles').update(modernPayload).eq('id', userId)
+    const { error } = await getAdminClient().from('profiles').update(modernPayload).eq('id', userId)
     if (!error) return
 
     const message = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
@@ -100,7 +103,7 @@ async function updatePurchaseCelebration(userId: string, plan: 'basic' | 'pro') 
     }
 
     const legacyPayload = { purchase_celebration_pending: true } as unknown as Database['public']['Tables']['profiles']['Update']
-    const { error: legacyError } = await supabase.from('profiles').update(legacyPayload).eq('id', userId)
+    const { error: legacyError } = await getAdminClient().from('profiles').update(legacyPayload).eq('id', userId)
     if (legacyError) throw new Error(`updatePurchaseCelebration legacy fallback failed: ${legacyError.message}`)
 }
 
@@ -109,7 +112,7 @@ async function logBillingEvent(userId: string | null, eventType: string, dodoEve
     // If dodoEventId is provided, a unique constraint on dodo_event_id prevents duplicates atomically.
     if (dodoEventId) {
         // MED-3: Use INSERT ON CONFLICT to handle duplicate webhook events atomically
-        const { error: insertError } = await supabase
+        const { error: insertError } = await getAdminClient()
             .from('billing_events')
             .insert({
                 user_id: userId,
@@ -129,7 +132,7 @@ async function logBillingEvent(userId: string | null, eventType: string, dodoEve
     }
 
     // No dodoEventId — just insert without idempotency check
-    const { error } = await supabase.from('billing_events').insert({
+    const { error } = await getAdminClient().from('billing_events').insert({
         user_id: userId,
         event_type: eventType,
         dodo_event_id: dodoEventId,
@@ -177,7 +180,7 @@ export const POST = Webhooks({
 
         if (!userId) {
             console.error(`[webhook] CRITICAL: No user found for customer_id=${customerId}, subscription_id=${subscriptionId}. User paid but activation was lost.`)
-            await supabase.from('billing_events').insert({
+            await getAdminClient().from('billing_events').insert({
                 user_id: null,
                 event_type: 'subscription.active.orphaned',
                 dodo_event_id: null,
@@ -198,7 +201,7 @@ export const POST = Webhooks({
 
         // Restore previously removed squad members if slots available
         const newLimit = TIER_LIMITS[plan as keyof typeof TIER_LIMITS]?.squadLimit ?? 4
-        const { data: currentGang } = await supabase
+        const { data: currentGang } = await getAdminClient()
             .from('gang_members')
             .select('character_id, gangs!inner(user_id)')
             .eq('gangs.user_id', userId)
@@ -206,7 +209,7 @@ export const POST = Webhooks({
         const slotsAvailable = newLimit - currentCount
 
         if (slotsAvailable > 0) {
-            const { data: restorable } = await supabase
+            const { data: restorable } = await getAdminClient()
                 .from('squad_tier_members')
                 .select('character_id')
                 .eq('user_id', userId)
@@ -217,27 +220,27 @@ export const POST = Webhooks({
             if (restorable?.length) {
                 const restoreIds = restorable.map(r => r.character_id)
 
-                await supabase
+                await getAdminClient()
                     .from('squad_tier_members')
                     .update({ is_active: true, deactivated_at: null })
                     .eq('user_id', userId)
                     .in('character_id', restoreIds)
 
                 // I5: Use upsert to avoid duplicate key errors on squad restore
-                const { data: gang } = await supabase
+                const { data: gang } = await getAdminClient()
                     .from('gangs')
                     .select('id')
                     .eq('user_id', userId)
                     .single()
                 if (gang && restoreIds.length > 0) {
-                    await supabase.from('gang_members').upsert(
+                    await getAdminClient().from('gang_members').upsert(
                         restoreIds.map(id => ({ gang_id: gang.id, character_id: id })),
                         { onConflict: 'gang_id,character_id' }
                     )
                 }
 
                 const allIds = [...(currentGang?.map(g => g.character_id) ?? []), ...restoreIds]
-                await supabase.from('profiles').update({
+                await getAdminClient().from('profiles').update({
                     preferred_squad: allIds,
                     restored_members_pending: restoreIds,
                 }).eq('id', userId)
@@ -273,7 +276,7 @@ export const POST = Webhooks({
         const isNew = await logBillingEvent(userId, 'subscription.renewed', webhookId, data)
         if (!isNew) return
 
-        const { error } = await supabase.from('subscriptions').update({
+        const { error } = await getAdminClient().from('subscriptions').update({
             status: 'active',
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
@@ -307,7 +310,7 @@ export const POST = Webhooks({
         // The onSubscriptionExpired handler will handle the actual downgrade.
         const periodEnd = (data.next_billing_date as string) ?? (data.current_period_end as string) ?? null
 
-        const { error } = await supabase.from('subscriptions').update({
+        const { error } = await getAdminClient().from('subscriptions').update({
             status: 'cancelled_pending',
             current_period_end: periodEnd,
             updated_at: new Date().toISOString(),
@@ -339,13 +342,13 @@ export const POST = Webhooks({
         const isNew = await logBillingEvent(userId, 'subscription.expired', webhookId, data)
         if (!isNew) return
 
-        const { error } = await supabase.from('subscriptions').update({
+        const { error } = await getAdminClient().from('subscriptions').update({
             status: 'expired',
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
         if (error) console.error('[webhook] Expiration update failed:', error)
         await updateProfileTier(userId, 'free')
-        await supabase.from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
+        await getAdminClient().from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
     },
 
     onPaymentSucceeded: async (payload) => {
@@ -387,32 +390,35 @@ export const POST = Webhooks({
         if (!isNew) return
 
         // Downgrade to free
-        await supabase.from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
-        await supabase.from('subscriptions').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
+        await getAdminClient().from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
+        await getAdminClient().from('subscriptions').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
     },
 
     onDisputeOpened: async (payload) => {
         const data = payload.data as Record<string, unknown>
         const disputeId = data.dispute_id as string ?? null
 
-        // Look up user via payment_id from billing_events
-        const { data: event } = await supabase
-            .from('billing_events')
-            .select('user_id')
-            .eq('event_type', 'payment.succeeded')
-            .not('user_id', 'is', null)
-            .limit(1)
-            .single()
+        // C1 FIX: Find the actual disputed user via customer_id + email fallback
+        const customerId = getWebhookCustomerId(data)
+        const customerEmail = getWebhookCustomerEmail(data)
 
-        const userId = event?.user_id ?? null
+        const userId = customerId
+            ? await findUserByCustomerId(customerId)
+            : customerEmail
+                ? await findUserByEmailFallback(customerEmail)
+                : null
+
+        if (!userId) {
+            console.error(`[webhook] Dispute opened but no user found. customer_id=${customerId}, dispute_id=${disputeId}`)
+            await logBillingEvent(null, 'dispute.opened.orphaned', disputeId, data)
+            return
+        }
 
         const isNew = await logBillingEvent(userId, 'dispute.opened', disputeId, data)
         if (!isNew) return
 
-        if (userId) {
-            await supabase.from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
-            await supabase.from('subscriptions').update({ status: 'disputed', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
-        }
+        await getAdminClient().from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
+        await getAdminClient().from('subscriptions').update({ status: 'disputed', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
     },
 
     onSubscriptionPlanChanged: async (payload) => {
@@ -439,11 +445,11 @@ export const POST = Webhooks({
 
         const newTier = productId === process.env.DODO_PRODUCT_PRO ? 'pro' : productId === process.env.DODO_PRODUCT_BASIC ? 'basic' : 'free'
 
-        await supabase.from('profiles').update({
+        await getAdminClient().from('profiles').update({
             subscription_tier: newTier,
             pending_squad_downgrade: newTier === 'free',
         }).eq('id', userId)
-        await supabase.from('subscriptions').upsert({
+        await getAdminClient().from('subscriptions').upsert({
             id: subscriptionId,
             user_id: userId,
             product_id: productId,

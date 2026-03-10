@@ -692,6 +692,9 @@ export function useChatApi({
         pendingUserMessageIdRef.current = target.id
         lastUserMessageIdRef.current = target.id
         clearIdleAutonomousTimerRef.current()
+        // M4 FIX: Reset autonomous counters like enqueueUserMessage does
+        silentTurnsRef.current = 0
+        burstCountRef.current = 0
         triggerReadingStatuses()
         trackEvent('message_retry', { metadata: { messageId: target.id } })
 

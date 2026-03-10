@@ -6,7 +6,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
-import { getTierFromProfile, isMemoryEnabled, getContextLimit, getMemoryInPromptLimit, type SubscriptionTier } from '@/lib/billing'
+import { getTierFromProfile, isMemoryEnabled, getContextLimit, getMemoryInPromptLimit, getSquadLimit, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
@@ -98,11 +98,10 @@ type ProfileStateRow = {
     relationship_state: Record<string, RelationshipState> | null
     session_summary: string | null
     summary_turns: number | null
-    daily_msg_count: number | null
-    last_msg_reset: string | null
     subscription_tier: string | null
     abuse_score: number | null
     custom_character_names: Record<string, string> | null
+    purchase_celebration_pending: string | null
 }
 
 type ProfileUpdatesPayload = {
@@ -527,7 +526,6 @@ const requestSchema = z.object({
     lowCostMode: z.boolean().optional(),
     source: z.enum(['user', 'autonomous', 'autonomous_idle']).optional(),
     autonomousIdle: z.boolean().optional(),
-    purchaseCelebration: z.enum(['basic', 'pro']).optional(),
 })
 
 function getStatusCodeFromError(err: unknown, depth = 0): number | null {
@@ -639,7 +637,6 @@ export async function POST(req: Request) {
             lowCostMode: requestedLowCostMode = false,
             source = 'user',
             autonomousIdle = false,
-            purchaseCelebration
         } = parsed.data
         const chatMode = requestedChatMode
         const requestStartedAt = Date.now()
@@ -752,11 +749,19 @@ export async function POST(req: Request) {
         // Fetch profile first (needed to determine tier for rate limiting)
         const { data: profile } = await supabase
             .from('profiles')
-            .select('user_profile, relationship_state, session_summary, summary_turns, daily_msg_count, last_msg_reset, subscription_tier, abuse_score, custom_character_names')
+            .select('user_profile, relationship_state, session_summary, summary_turns, subscription_tier, abuse_score, custom_character_names, purchase_celebration_pending')
             .eq('id', user.id)
             .single<ProfileStateRow>()
 
         const profileTier = getTierFromProfile(profile?.subscription_tier ?? null)
+
+        // H1 FIX: Enforce tier-based squad limit server-side
+        const tierFilteredIds = filteredIds.slice(0, getSquadLimit(profileTier))
+
+        // H2 FIX: Read purchase celebration from DB, not client
+        const purchaseCelebration = (profile?.purchase_celebration_pending === 'basic' || profile?.purchase_celebration_pending === 'pro')
+            ? profile.purchase_celebration_pending as 'basic' | 'pro'
+            : null
 
         // BILLING-C1: Ecosystem mode is Basic/Pro only
         if (chatMode === 'ecosystem' && profileTier === 'free') {
@@ -961,7 +966,7 @@ ${sessionSummary}
             })
         }
         const characterContext = characterContextBlocks.filter(Boolean).join('\n')
-        const customNameEntries = Object.entries(customNames).filter(([id]) => filteredIds.includes(id))
+        const customNameEntries = Object.entries(customNames).filter(([id]) => tierFilteredIds.includes(id))
         const customNamesDirective = customNameEntries.length > 0
             ? `\nCUSTOM NAMES (user renamed these characters — ALWAYS use the custom name, NEVER the original):\n${customNameEntries.map(([id, name]) => {
                 const original = activeGangSafe.find((c) => c.id === id)?.name || id
@@ -976,7 +981,7 @@ ${sessionSummary}
         const tierMaxResp = isGangFocusMode
             ? (tierMaxRespGangFocus[tier] ?? 3)
             : (tierMaxRespEcosystem[tier] ?? 4)
-        const baseResponders = Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, filteredIds.length)
+        const baseResponders = Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, tierFilteredIds.length)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders
         const safetyDirective = unsafeFlag.soft
@@ -1128,6 +1133,8 @@ FLOW FLAGS:
         const tierOutputTokens = TIER_MAX_OUTPUT_TOKENS[tier] ?? LLM_MAX_OUTPUT_TOKENS
         const llmMaxOutputTokens = autonomousIdle ? IDLE_MAX_OUTPUT_TOKENS : (lowCostMode ? Math.min(LOW_COST_MAX_OUTPUT_TOKENS, tierOutputTokens) : tierOutputTokens)
 
+        const llmController = new AbortController()
+        const llmTimeout = setTimeout(() => llmController.abort(), 25_000)
         try {
             const result = await generateObject({
                 model: openRouterModel,
@@ -1138,10 +1145,13 @@ FLOW FLAGS:
                 ],
                 maxOutputTokens: llmMaxOutputTokens,
                 maxRetries: LLM_MAX_RETRIES,
+                abortSignal: llmController.signal,
             })
+            clearTimeout(llmTimeout)
             object = result.object
             providerUsed = 'openrouter'
         } catch (err) {
+            clearTimeout(llmTimeout)
             console.error('OpenRouter error:', err instanceof Error ? err.message : 'Unknown error')
             if (isProviderCapacityError(err)) {
                 await logChatRouteMetric(supabase, user?.id ?? null, {
@@ -1264,13 +1274,13 @@ FLOW FLAGS:
         }
 
         // Apply responder filtering to keep events within planned speakers
-        const plannedResponders = Array.isArray(object?.responders) ? object.responders.filter((id: string) => filteredIds.includes(id)) : []
+        const plannedResponders = Array.isArray(object?.responders) ? object.responders.filter((id: string) => tierFilteredIds.includes(id)) : []
         let limitedResponders = plannedResponders.slice(0, maxResponders)
         if (limitedResponders.length === 0) {
             const seen: string[] = []
             for (const event of object.events) {
                 if (event.type === 'message' || event.type === 'reaction') {
-                    if (filteredIds.includes(event.character) && !seen.includes(event.character)) seen.push(event.character)
+                    if (tierFilteredIds.includes(event.character) && !seen.includes(event.character)) seen.push(event.character)
                 }
                 if (seen.length >= maxResponders) break
             }
@@ -1322,7 +1332,7 @@ FLOW FLAGS:
 
         // Fallback: if AI returned zero usable events, inject a retry nudge
         if (!object?.events?.length || object.events.length === 0) {
-            const fallbackSpeaker = filteredIds[Math.floor(Math.random() * filteredIds.length)]
+            const fallbackSpeaker = tierFilteredIds[Math.floor(Math.random() * tierFilteredIds.length)]
             object.events = [{
                 type: 'message',
                 character: fallbackSpeaker,
@@ -1390,12 +1400,6 @@ FLOW FLAGS:
             ...(messagesRemaining !== null ? { messages_remaining: messagesRemaining } : {}),
             ...(memoriesSavedCount > 0 ? { memories_saved_count: memoriesSavedCount } : {}),
             ...(totalMemoryCount !== null ? { total_memory_count: totalMemoryCount } : {}),
-            usage: {
-                promptChars: llmPromptChars,
-                responseChars: JSON.stringify(object.events).length,
-                historyCount: historyForLLM.length,
-                provider: providerUsed,
-            },
         })
 
         // Fire-and-forget: persist memory, profile, and chat history without blocking the response
@@ -1420,7 +1424,7 @@ FLOW FLAGS:
             if (object?.relationship_updates?.length) {
                 const clamp = (n: number) => Math.max(0, Math.min(100, n))
                 object.relationship_updates.forEach((update) => {
-                    if (!filteredIds.includes(update.character)) return
+                    if (!tierFilteredIds.includes(update.character)) return
                     const current = relationshipState[update.character] || {
                         affinity: 50,
                         trust: 50,
@@ -1450,7 +1454,6 @@ FLOW FLAGS:
                 profileUpdates.summary_turns = summaryTurns + 1
             }
             // Calculate increments for atomic update (avoids race conditions)
-            const dailyMsgIncrement = freshUserMessageCount
             const abuseScoreIncrement = nextAbuseScore !== null ? (nextAbuseScore - (profileRow?.abuse_score ?? 0)) : 0
 
             // PERF-I1: Run profile/memory branch and chat history branch in parallel
@@ -1458,7 +1461,7 @@ FLOW FLAGS:
                 try {
                     await supabase.rpc('increment_profile_counters', {
                         p_user_id: user.id,
-                        p_daily_msg_increment: dailyMsgIncrement,
+                        p_daily_msg_increment: 0,
                         p_abuse_score_increment: abuseScoreIncrement,
                         p_session_summary: profileUpdates.session_summary || undefined,
                         p_summary_turns: profileUpdates.summary_turns ?? undefined,
@@ -1647,6 +1650,11 @@ FLOW FLAGS:
             }
 
             await Promise.all([profileMemoryBranch(), chatHistoryBranch()])
+
+            // H2: Clear purchase celebration flag after use
+            if (purchaseCelebration) {
+                await supabase.from('profiles').update({ purchase_celebration_pending: null }).eq('id', user.id)
+            }
             }
             waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err instanceof Error ? err.message : 'Unknown error')))
         }

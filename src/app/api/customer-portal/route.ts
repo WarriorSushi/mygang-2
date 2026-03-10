@@ -3,10 +3,17 @@ import { rateLimit } from '@/lib/rate-limit'
 import { NextRequest, NextResponse } from 'next/server'
 import { CustomerPortal } from '@dodopayments/nextjs'
 
-const portalHandler = CustomerPortal({
-    bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
-    environment: process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode' ? 'live_mode' : 'test_mode',
-})
+// M2 FIX: Lazy init to avoid module-scope crash on missing env vars
+let _portalHandler: ReturnType<typeof CustomerPortal> | null = null
+function getPortalHandler() {
+    if (!_portalHandler) {
+        _portalHandler = CustomerPortal({
+            bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
+            environment: process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode' ? 'live_mode' : 'test_mode',
+        })
+    }
+    return _portalHandler
+}
 
 export async function GET(req: NextRequest) {
     // Always require authentication — never trust client-supplied customer_id
@@ -41,5 +48,5 @@ export async function GET(req: NextRequest) {
         headers: req.headers,
     })
 
-    return portalHandler(newReq)
+    return getPortalHandler()(newReq)
 }

@@ -190,18 +190,17 @@ export const useChatStore = create<ChatState>()(
             }),
             onRehydrateStorage: () => (state) => {
                 if (state?.messages) {
-                    // Reset stale 'sending' statuses that survived a page refresh
-                    let hadStale = false
-                    for (const m of state.messages) {
-                        if (m.deliveryStatus === 'sending') {
-                            m.deliveryStatus = 'failed'
-                            m.deliveryError = 'Message interrupted. Please retry.'
-                            hadStale = true
-                        }
-                    }
-                    rebuildIdSet(state.messages)
+                    // M5 FIX: Create new objects instead of mutating in-place
+                    // (mutation defeats MessageItem memo — same ref = skip re-render)
+                    const fixed = state.messages.map(m =>
+                        m.deliveryStatus === 'sending'
+                            ? { ...m, deliveryStatus: 'failed' as const, deliveryError: 'Message interrupted. Please retry.' }
+                            : m
+                    )
+                    const hadStale = fixed.some((m, i) => m !== state.messages[i])
+                    rebuildIdSet(fixed)
                     if (hadStale) {
-                        useChatStore.setState({ messages: [...state.messages] })
+                        useChatStore.setState({ messages: fixed })
                     }
                 }
                 // Enrich activeGang from catalog to restore avatar URLs lost during serialization
