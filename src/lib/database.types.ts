@@ -189,6 +189,7 @@ export type Database = {
           id: string
           reaction: string | null
           reply_to_client_message_id: string | null
+          source: string
           speaker: string
           user_id: string | null
         }
@@ -200,6 +201,7 @@ export type Database = {
           id?: string
           reaction?: string | null
           reply_to_client_message_id?: string | null
+          source?: string
           speaker: string
           user_id?: string | null
         }
@@ -211,6 +213,7 @@ export type Database = {
           id?: string
           reaction?: string | null
           reply_to_client_message_id?: string | null
+          source?: string
           speaker?: string
           user_id?: string | null
         }
