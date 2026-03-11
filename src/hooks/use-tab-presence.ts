@@ -3,8 +3,6 @@
 import { useEffect, useRef } from 'react'
 import type { Message } from '@/stores/chat-store'
 
-const BASE_TITLE = 'MyGang.ai'
-
 /**
  * Count unseen incoming messages (non-user) that arrived after a cutoff timestamp.
  * Pure helper — exported for testing.
@@ -25,29 +23,36 @@ export function countUnseenMessages(
 }
 
 /**
- * Build the document title string from an unread count.
+ * Build the document title string from an unread count and the original page title.
  * Pure helper — exported for testing.
  */
-export function buildPresenceTitle(unreadCount: number): string {
-    if (unreadCount <= 0) return BASE_TITLE
-    return `(${unreadCount}) ${BASE_TITLE}`
+export function buildPresenceTitle(unreadCount: number, baseTitle: string): string {
+    if (unreadCount <= 0) return baseTitle
+    return `(${unreadCount}) ${baseTitle}`
 }
 
 /**
  * Hook: updates document.title with unseen message count while the tab is hidden.
  * Clears the count when the tab regains focus/visibility.
+ *
+ * Captures the current document.title on mount and restores it when clearing.
  */
 export function useTabPresence(messages: Message[]) {
     // Tracks the timestamp when the user last "saw" the chat (tab visible + focused)
     const seenCutoffRef = useRef(Date.now())
     const isHiddenRef = useRef(false)
+    // Capture the page title that was set before this hook touched it
+    const baseTitleRef = useRef('')
 
     // On focus/visibility return: mark everything as seen
     useEffect(() => {
+        // Snapshot the current title on mount (set by Next metadata)
+        baseTitleRef.current = document.title
+
         const markSeen = () => {
             isHiddenRef.current = false
             seenCutoffRef.current = Date.now()
-            document.title = BASE_TITLE
+            document.title = baseTitleRef.current
         }
 
         const handleVisibility = () => {
@@ -73,7 +78,7 @@ export function useTabPresence(messages: Message[]) {
         return () => {
             document.removeEventListener('visibilitychange', handleVisibility)
             window.removeEventListener('focus', handleFocus)
-            document.title = BASE_TITLE
+            document.title = baseTitleRef.current
         }
     }, [])
 
@@ -81,6 +86,6 @@ export function useTabPresence(messages: Message[]) {
     useEffect(() => {
         if (!isHiddenRef.current) return
         const unseen = countUnseenMessages(messages, seenCutoffRef.current)
-        document.title = buildPresenceTitle(unseen)
+        document.title = buildPresenceTitle(unseen, baseTitleRef.current)
     }, [messages])
 }

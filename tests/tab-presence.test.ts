@@ -9,6 +9,7 @@
  * - countUnseenMessages: user messages are skipped
  * - buildPresenceTitle: returns base title for 0 unread
  * - buildPresenceTitle: formats count correctly
+ * - buildPresenceTitle: preserves caller-supplied base title
  *
  * Run: pnpm exec tsx tests/tab-presence.test.ts
  */
@@ -129,34 +130,50 @@ console.log('\n8. countUnseenMessages — only user messages after cutoff')
 
 // ── buildPresenceTitle ──
 
+const base = 'MyGang.ai | Your Premium AI Group Chat'
+
 console.log('\n9. buildPresenceTitle — zero unread')
 {
-    const title = buildPresenceTitle(0)
-    assert(title === 'MyGang.ai', 'returns base title for 0')
+    const title = buildPresenceTitle(0, base)
+    assert(title === base, 'returns base title for 0')
 }
 
 console.log('\n10. buildPresenceTitle — negative unread')
 {
-    const title = buildPresenceTitle(-1)
-    assert(title === 'MyGang.ai', 'returns base title for negative')
+    const title = buildPresenceTitle(-1, base)
+    assert(title === base, 'returns base title for negative')
 }
 
 console.log('\n11. buildPresenceTitle — positive unread')
 {
-    const title = buildPresenceTitle(3)
-    assert(title === '(3) MyGang.ai', 'formats (3) MyGang.ai')
+    const title = buildPresenceTitle(3, base)
+    assert(title === `(3) ${base}`, 'formats (3) prefixed to base')
 }
 
 console.log('\n12. buildPresenceTitle — large count')
 {
-    const title = buildPresenceTitle(42)
-    assert(title === '(42) MyGang.ai', 'formats (42) MyGang.ai')
+    const title = buildPresenceTitle(42, base)
+    assert(title === `(42) ${base}`, 'formats (42) prefixed to base')
 }
 
 console.log('\n13. buildPresenceTitle — single message')
 {
-    const title = buildPresenceTitle(1)
-    assert(title === '(1) MyGang.ai', 'formats (1) MyGang.ai')
+    const title = buildPresenceTitle(1, base)
+    assert(title === `(1) ${base}`, 'formats (1) prefixed to base')
+}
+
+console.log('\n14. buildPresenceTitle — different base title preserved')
+{
+    const custom = 'Chat | MyGang.ai'
+    const title = buildPresenceTitle(5, custom)
+    assert(title === '(5) Chat | MyGang.ai', 'uses caller-supplied base title')
+}
+
+console.log('\n15. buildPresenceTitle — zero with custom base restores it')
+{
+    const custom = 'Some Other Title'
+    const title = buildPresenceTitle(0, custom)
+    assert(title === custom, 'zero unread returns the exact custom base')
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
