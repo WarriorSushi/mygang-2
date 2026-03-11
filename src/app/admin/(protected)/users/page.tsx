@@ -5,10 +5,12 @@ import {
     setAllUsersLowCostMode,
     setUserLowCostMode,
     setUserSubscriptionTier,
+    triggerWywaForUser,
 } from '@/app/admin/actions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Gauge, Shield, DatabaseZap, AlertTriangle, UsersRound, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { DeleteChatHistoryButton } from './delete-chat-history-button'
+import { WywaTriggerButton } from './wywa-trigger-button'
 
 const PAGE_SIZE = 20
 
@@ -380,6 +382,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                         </button>
                                     </form>
                                     <DeleteChatHistoryButton userId={profile.id} action={clearUserChatHistory} />
+                                    <WywaTriggerButton userId={profile.id} tier={tier} action={triggerWywaForUser} />
                                 </div>
                             </div>
                         </article>

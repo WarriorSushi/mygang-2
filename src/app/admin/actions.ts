@@ -12,6 +12,7 @@ import {
     recordFailedAdminLoginAttempt,
 } from '@/lib/admin/login-security'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { generateWywaForUser, type WywaResult } from '@/lib/ai/wywa'
 
 function buildLoginAttemptKey(email: string, ip: string) {
     return `admin-login:${email.trim().toLowerCase()}:${ip}`
@@ -441,4 +442,32 @@ export async function clearUserChatHistory(formData: FormData) {
     revalidatePath('/admin/users')
     revalidatePath('/admin/overview')
     redirect(`${returnTo}?message=user_history_deleted`)
+}
+
+export async function triggerWywaForUser(formData: FormData): Promise<WywaResult> {
+    const trustedRequest = await assertTrustedAdminRequest()
+    if (!trustedRequest) {
+        return { status: 'error', message: 'Untrusted request' }
+    }
+
+    const session = await requireAdminSession()
+    const requestMeta = await getAdminRequestMeta()
+    const userId = String(formData.get('userId') || '')
+    if (!isUuid(userId)) {
+        return { status: 'error', message: 'Invalid userId' }
+    }
+
+    const result = await generateWywaForUser(userId)
+
+    await insertAdminAudit('wywa_manual_trigger', session.email, {
+        user_id: userId,
+        result_status: result.status,
+        messages_written: result.status === 'generated' ? result.messagesWritten : 0,
+        ip: requestMeta.ip,
+        origin: requestMeta.origin,
+        referer: requestMeta.referer,
+        user_agent: requestMeta.userAgent?.slice(0, 220) || null,
+    })
+
+    return result
 }
