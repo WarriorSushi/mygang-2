@@ -137,6 +137,17 @@ function normalizeSpeaker(value: string) {
     return value.toLowerCase().trim()
 }
 
+/** Normalize source to 'chat' for legacy/missing rows (mirrors use-chat-history). */
+function normalizeMessageSource(source?: string): string {
+    return source || 'chat'
+}
+
+/** True when two adjacent messages belong to the same speaker+source group. */
+function isSameGroup(a: Message, b: Message): boolean {
+    return a.speaker === b.speaker
+        && normalizeMessageSource(a.source) === normalizeMessageSource(b.source)
+}
+
 export const MessageList = memo(function MessageList({
     messages,
     activeGang,
@@ -348,8 +359,8 @@ export const MessageList = memo(function MessageList({
                 <div className="flex flex-col">
                     {messages.map((message, index) => {
                         const character = characterBySpeaker.get(normalizeSpeaker(message.speaker))
-                        const samePrevious = index > 0 && messages[index - 1].speaker === message.speaker
-                        const sameNext = index < messages.length - 1 && messages[index + 1].speaker === message.speaker
+                        const samePrevious = index > 0 && isSameGroup(messages[index - 1], message)
+                        const sameNext = index < messages.length - 1 && isSameGroup(message, messages[index + 1])
                         const groupPosition =
                             samePrevious && sameNext ? 'middle'
                                 : !samePrevious && sameNext ? 'first'
