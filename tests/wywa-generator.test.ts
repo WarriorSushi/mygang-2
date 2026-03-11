@@ -21,6 +21,7 @@ import {
     buildStableTimestamps,
     INACTIVITY_THRESHOLD_MS,
     GENERATION_COOLDOWN_MS,
+    MIN_SQUAD_SIZE,
 } from '../src/lib/ai/wywa'
 
 let passed = 0
@@ -153,7 +154,22 @@ console.log('\n6. buildStableTimestamps')
 
 // ── Source field verification (structural) ──
 
-console.log('\n7. Row shaping verification')
+// ── MIN_SQUAD_SIZE ──
+
+console.log('\n7. MIN_SQUAD_SIZE enforcement')
+{
+    assert(MIN_SQUAD_SIZE === 2, 'minimum squad size is 2')
+
+    // pickParticipants with 1 member returns 1 — caller must check < MIN_SQUAD_SIZE
+    const single = pickParticipants(['kael'], 3)
+    assert(single.length < MIN_SQUAD_SIZE, 'single member fails MIN_SQUAD_SIZE check')
+
+    // pickParticipants with 2 members passes
+    const pair = pickParticipants(['kael', 'nyx'], 3)
+    assert(pair.length >= MIN_SQUAD_SIZE, 'pair passes MIN_SQUAD_SIZE check')
+}
+
+console.log('\n8. Row shaping verification')
 {
     // Verify that the generator module exports the right constants
     assert(INACTIVITY_THRESHOLD_MS === 2 * 60 * 60 * 1000, 'inactivity threshold is 2 hours')

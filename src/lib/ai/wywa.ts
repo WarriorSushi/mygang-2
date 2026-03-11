@@ -34,12 +34,16 @@ const WYWA_MAX_OUTPUT_TOKENS = 400
 
 // ── Result type ──
 
+/** Minimum effective squad size for WYWA to generate. */
+export const MIN_SQUAD_SIZE = 2
+
 export type WywaResult =
     | { status: 'generated'; messagesWritten: number }
     | { status: 'skipped_free_tier' }
     | { status: 'skipped_recently_active' }
     | { status: 'skipped_cooldown' }
     | { status: 'skipped_no_squad' }
+    | { status: 'skipped_insufficient_squad'; count: number }
     | { status: 'skipped_no_profile' }
     | { status: 'error'; message: string }
 
@@ -89,6 +93,58 @@ export function buildStableTimestamps(baseTime: number, count: number): string[]
     return timestamps
 }
 
+// ── Effective squad resolution (mirrors client-journey.ts logic) ──
+
+/**
+ * Resolve the effective squad for a user, matching the app's precedence:
+ * 1. gang_members (authoritative active squad)
+ * 2. preferred_squad (fallback if gang members < MIN_SQUAD_SIZE)
+ * Only includes IDs that exist in the CHARACTERS catalog.
+ */
+export async function resolveEffectiveSquad(
+    admin: ReturnType<typeof createAdminClient>,
+    userId: string,
+    preferredSquad: string[] | null,
+): Promise<{ gangId: string | null; squadIds: string[] }> {
+    const knownIds = new Set(CHARACTERS.map(c => c.id))
+
+    // Fetch gang
+    const { data: gang } = await admin
+        .from('gangs')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+    if (!gang) {
+        // No gang — fall back to preferred_squad
+        const fallback = (preferredSquad ?? []).filter(id => knownIds.has(id)).slice(0, 6)
+        return { gangId: null, squadIds: fallback }
+    }
+
+    // Fetch gang_members
+    const { data: members } = await admin
+        .from('gang_members')
+        .select('character_id')
+        .eq('gang_id', gang.id)
+
+    const gangIds = (members ?? [])
+        .map(m => m.character_id)
+        .filter((id): id is string => typeof id === 'string' && knownIds.has(id))
+        .slice(0, 6)
+
+    // Fall back to preferred_squad if gang_members insufficient
+    if (gangIds.length < MIN_SQUAD_SIZE) {
+        const fallback = (preferredSquad ?? []).filter(id => knownIds.has(id)).slice(0, 6)
+        if (fallback.length >= MIN_SQUAD_SIZE) {
+            return { gangId: gang.id, squadIds: fallback }
+        }
+        // Both sources insufficient — return whatever we have
+        return { gangId: gang.id, squadIds: gangIds.length > 0 ? gangIds : fallback }
+    }
+
+    return { gangId: gang.id, squadIds: gangIds }
+}
+
 // ── Generator ──
 
 export async function generateWywaForUser(userId: string): Promise<WywaResult> {
@@ -120,12 +176,20 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         return { status: 'skipped_cooldown' }
     }
 
-    // 3. Resolve squad
-    const squadIds = (profile.preferred_squad ?? []).filter(
-        (id: string) => CHARACTERS.some(c => c.id === id)
+    // 3. Resolve effective squad (gang_members first, preferred_squad fallback)
+    const { gangId, squadIds } = await resolveEffectiveSquad(
+        admin,
+        userId,
+        profile.preferred_squad as string[] | null,
     )
     if (squadIds.length === 0) {
         return { status: 'skipped_no_squad' }
+    }
+    if (squadIds.length < MIN_SQUAD_SIZE) {
+        return { status: 'skipped_insufficient_squad', count: squadIds.length }
+    }
+    if (!gangId) {
+        return { status: 'error', message: 'No gang found for user' }
     }
 
     // 4. Pick 2-3 participants
@@ -156,25 +220,14 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         .map(r => `${r.speaker}: ${(r.content || '').slice(0, 200)}`)
         .join('\n')
 
-    // 7. Fetch gang_id for the user
-    const { data: gang } = await admin
-        .from('gangs')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
-
-    if (!gang) {
-        return { status: 'error', message: 'No gang found for user' }
-    }
-
-    // 8. Build WYWA prompt
+    // 7. Build WYWA prompt
     const userName = profile.username || 'the user'
     const systemPrompt = buildWywaSystemPrompt(participants, participantDescriptions, userName)
     const userPrompt = recentContext
         ? `Recent chat context (for topic awareness only — do NOT continue this conversation directly):\n${recentContext}`
         : 'No recent chat history available. Start a fresh casual conversation among yourselves.'
 
-    // 9. Call LLM
+    // 8. Call LLM
     const responseSchema = z.object({
         messages: z.array(z.object({
             speaker: z.string(),
@@ -200,7 +253,7 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         return { status: 'error', message: `LLM call failed: ${msg}` }
     }
 
-    // 10. Validate and shape rows
+    // 9. Validate and shape rows
     const participantSet = new Set(participants)
     const validMessages = generated.messages
         .filter(m => participantSet.has(m.speaker) && m.content.trim().length > 0)
@@ -215,7 +268,7 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
 
     const rows = validMessages.map((m, i) => ({
         user_id: userId,
-        gang_id: gang.id,
+        gang_id: gangId,
         speaker: m.speaker,
         content: m.content.slice(0, MAX_WYWA_MESSAGE_CHARS),
         created_at: timestamps[i],
@@ -223,7 +276,7 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         source: 'wywa' as const,
     }))
 
-    // 11. Write to chat_history
+    // 10. Write to chat_history
     const { error: insertError } = await admin
         .from('chat_history')
         .insert(rows)
@@ -232,7 +285,7 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         return { status: 'error', message: `Insert failed: ${insertError.message}` }
     }
 
-    // 12. Update last_wywa_generated_at
+    // 11. Update last_wywa_generated_at
     const { error: updateError } = await admin
         .from('profiles')
         .update({ last_wywa_generated_at: new Date(now).toISOString() })
