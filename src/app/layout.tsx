@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthManager } from "@/components/orchestrator/auth-manager";
 import { PerfMonitor } from "@/components/orchestrator/perf-monitor";
 import { CookieConsent } from "@/components/ui/cookie-consent";
+import { SwRegister } from "@/components/orchestrator/sw-register";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -121,6 +122,7 @@ export default function RootLayout({
         >
           <AuthManager />
           <PerfMonitor />
+          <SwRegister />
           {children}
           <CookieConsent />
         </ThemeProvider>
