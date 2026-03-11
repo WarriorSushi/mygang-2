@@ -6,6 +6,11 @@ import { normalizeActivityStatus } from '@/constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { hasOpenFloorIntent } from './use-autonomous-flow'
 
+/** Only live-chat messages (source='chat' or legacy/undefined) enter the payload window. */
+export function isLiveChatMessage(m: { source?: string }): boolean {
+    return !m.source || m.source === 'chat'
+}
+
 type ChatEvent =
     | { type: 'message'; character: string; content?: string; delay: number; message_id?: string; target_message_id?: string }
     | { type: 'reaction'; character: string; content?: string; delay: number; message_id?: string; target_message_id?: string }
@@ -249,6 +254,7 @@ export function useChatApi({
             const payloadLimit = effectiveLowCostModeForCall ? 10 : 12
             const sendableMessages = currentMessages.filter((m) => (
                 !(m.speaker === 'user' && m.deliveryStatus === 'failed')
+                && isLiveChatMessage(m)
             ))
             const payloadSourceMessages = sendableMessages.slice(-payloadLimit)
             pendingDeliveryIdsForCall = payloadSourceMessages
@@ -260,7 +266,8 @@ export function useChatApi({
                 content: m.content,
                 created_at: m.created_at,
                 reaction: m.reaction,
-                replyToId: m.replyToId
+                replyToId: m.replyToId,
+                source: m.source,
             }))
             const mockAi = typeof window !== 'undefined' && (window.localStorage.getItem('mock_ai') === 'true' || process.env.NEXT_PUBLIC_MOCK_AI === 'true')
             const requestBody = {

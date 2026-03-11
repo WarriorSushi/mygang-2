@@ -137,6 +137,7 @@ type ChatMessageInput = {
     created_at: string
     reaction?: string
     replyToId?: string
+    source?: string
 }
 
 type ChatHistoryInsertRow = {
@@ -148,6 +149,7 @@ type ChatHistoryInsertRow = {
     client_message_id?: string | null
     reply_to_client_message_id?: string | null
     reaction?: string | null
+    source?: string
 }
 
 type ChatHistoryUserRecentRow = {
@@ -518,6 +520,7 @@ const requestSchema = z.object({
         created_at: z.string(),
         reaction: z.string().optional(),
         replyToId: z.string().max(128).optional(),
+        source: z.enum(['chat', 'wywa', 'system']).optional(),
     })).max(40),
     activeGangIds: z.array(z.string().min(1).max(32)).max(6).optional(),
     activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(6).optional(),
@@ -671,7 +674,8 @@ export async function POST(req: Request) {
                 content: m.content.trim().slice(0, 2000),
                 created_at: m.created_at,
                 reaction: typeof m.reaction === 'string' ? m.reaction.trim().slice(0, MAX_EVENT_CONTENT) : undefined,
-                replyToId: sanitizeMessageId(m.replyToId) || undefined
+                replyToId: sanitizeMessageId(m.replyToId) || undefined,
+                source: m.source,
             }))
             .filter((m) => m.content.length > 0)
 
@@ -1041,11 +1045,13 @@ ${sessionSummary}
         })
 
         // Prepare conversation for LLM with IDs — tier-based context depth
+        // Only chat-source messages enter the normal LLM context (excludes wywa/system rows)
+        const chatOnlyMessages = safeMessages.filter((m) => !m.source || m.source === 'chat')
         const tierContextLimit = getContextLimit(getTierFromProfile(profileRow?.subscription_tier ?? null))
         const HISTORY_LIMIT = lowCostMode
             ? (autonomousIdle ? LOW_COST_IDLE_HISTORY_LIMIT : LOW_COST_HISTORY_LIMIT)
             : (autonomousIdle ? Math.min(tierContextLimit, LLM_IDLE_HISTORY_LIMIT) : tierContextLimit)
-        const historySlice = safeMessages.slice(-HISTORY_LIMIT)
+        const historySlice = chatOnlyMessages.slice(-HISTORY_LIMIT)
         const compactHistory = formatHistoryForLLM(historySlice, MAX_LLM_MESSAGE_CHARS)
 
         let object: RouteResponseObject = {
@@ -1499,7 +1505,7 @@ ${sessionSummary}
                                 gang_id: gang.id,
                                 speaker: 'user',
                                 content: userContent,
-
+                                source: 'chat',
                                 created_at: candidate.created_at || new Date().toISOString(),
                                 client_message_id: candidateClientMessageId,
                                 reply_to_client_message_id: sanitizeMessageId(candidate.replyToId) || null,

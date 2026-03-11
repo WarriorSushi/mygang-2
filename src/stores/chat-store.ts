@@ -14,6 +14,7 @@ export interface Message {
     replyToId?: string // For "Quote-Reply UI"
     deliveryStatus?: 'sending' | 'sent' | 'failed'
     deliveryError?: string
+    source?: 'chat' | 'wywa' | 'system' // Message origin for filtering
 }
 
 export interface Character {
