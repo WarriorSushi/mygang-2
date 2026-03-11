@@ -334,10 +334,12 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         return { status: 'error', message: `Insert failed: ${insertError.message}` }
     }
 
-    // 11. Send one push teaser (fire-and-forget — must not block or fail the batch)
-    sendWywaTeaser(userId).catch(err => {
+    // 11. Send one push teaser (awaited, but non-fatal — push failure must not fail the batch)
+    try {
+        await sendWywaTeaser(userId)
+    } catch (err) {
         console.error('[wywa] Push teaser failed (non-fatal):', err instanceof Error ? err.message : err)
-    })
+    }
 
     // 12. Update last_wywa_generated_at
     const { error: updateError } = await admin
