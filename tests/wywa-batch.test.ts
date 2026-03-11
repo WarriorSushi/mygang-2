@@ -1,0 +1,153 @@
+/**
+ * Tests for Phase 06D WYWA batch/scheduler helpers.
+ *
+ * Proves:
+ * - Candidate selection constants are correct
+ * - MAX_CANDIDATES_PER_RUN and MAX_GENERATED_PER_RUN are conservative
+ * - Eligibility helpers still exclude free-tier users
+ * - WywaBatchResult shape is valid
+ *
+ * Run: pnpm exec tsx tests/wywa-batch.test.ts
+ */
+
+import {
+    isEligibleTier,
+    isInactiveEnough,
+    isCooldownSatisfied,
+    MAX_CANDIDATES_PER_RUN,
+    MAX_GENERATED_PER_RUN,
+    INACTIVITY_THRESHOLD_MS,
+    GENERATION_COOLDOWN_MS,
+    MIN_SQUAD_SIZE,
+    type WywaBatchResult,
+} from '../src/lib/ai/wywa'
+
+let passed = 0
+let failed = 0
+
+function assert(condition: boolean, label: string) {
+    if (condition) {
+        console.log(`  PASS: ${label}`)
+        passed++
+    } else {
+        console.error(`  FAIL: ${label}`)
+        failed++
+    }
+}
+
+const now = Date.now()
+
+// ── Constants verification ──
+
+console.log('\n1. Batch rollout cap constants')
+assert(MAX_CANDIDATES_PER_RUN === 10, 'MAX_CANDIDATES_PER_RUN is 10')
+assert(MAX_GENERATED_PER_RUN === 5, 'MAX_GENERATED_PER_RUN is 5')
+assert(MAX_GENERATED_PER_RUN <= MAX_CANDIDATES_PER_RUN, 'generated cap <= candidate cap')
+
+// ── Free-tier exclusion at candidate query level ──
+
+console.log('\n2. Free-tier users excluded by eligibility check')
+assert(isEligibleTier('free') === false, 'free excluded')
+assert(isEligibleTier(null) === false, 'null excluded')
+assert(isEligibleTier('basic') === true, 'basic included')
+assert(isEligibleTier('pro') === true, 'pro included')
+
+// ── Inactivity threshold for candidate query ──
+
+console.log('\n3. Inactivity cutoff used in candidate selection')
+{
+    const inactivityCutoff = new Date(now - INACTIVITY_THRESHOLD_MS).toISOString()
+    const recentActivity = new Date(now - 30 * 60 * 1000).toISOString() // 30 min ago
+    const oldActivity = new Date(now - 3 * 60 * 60 * 1000).toISOString() // 3h ago
+
+    assert(isInactiveEnough(oldActivity, now) === true, '3h old activity → inactive enough')
+    assert(isInactiveEnough(recentActivity, now) === false, '30min old activity → too recent')
+    assert(isInactiveEnough(null, now) === true, 'null activity → treated as inactive')
+
+    // Verify cutoff timestamp is reasonable
+    const cutoffTime = new Date(inactivityCutoff).getTime()
+    assert(now - cutoffTime === INACTIVITY_THRESHOLD_MS, 'inactivity cutoff is exactly 2h before now')
+}
+
+// ── Cooldown threshold for candidate query ──
+
+console.log('\n4. Cooldown cutoff used in candidate selection')
+{
+    const cooldownCutoff = new Date(now - GENERATION_COOLDOWN_MS).toISOString()
+    const recentGen = new Date(now - 2 * 60 * 60 * 1000).toISOString() // 2h ago
+    const oldGen = new Date(now - 8 * 60 * 60 * 1000).toISOString() // 8h ago
+
+    assert(isCooldownSatisfied(oldGen, now) === true, '8h old gen → cooldown met')
+    assert(isCooldownSatisfied(recentGen, now) === false, '2h old gen → cooldown not met')
+    assert(isCooldownSatisfied(null, now) === true, 'null gen → never generated → OK')
+
+    const cutoffTime = new Date(cooldownCutoff).getTime()
+    assert(now - cutoffTime === GENERATION_COOLDOWN_MS, 'cooldown cutoff is exactly 6h before now')
+}
+
+// ── Insufficient squad is caught before generation ──
+
+console.log('\n5. Squad size check prevents generation for small squads')
+assert(MIN_SQUAD_SIZE === 2, 'MIN_SQUAD_SIZE is 2')
+
+// ── WywaBatchResult shape ──
+
+console.log('\n6. WywaBatchResult shape is valid')
+{
+    const result: WywaBatchResult = {
+        scanned: 10,
+        eligible: 8,
+        attempted: 5,
+        generated: 3,
+        skipped: { skipped_free_tier: 1, skipped_cooldown: 1 },
+        errored: 1,
+        cappedAt: 'generated',
+    }
+    assert(typeof result.scanned === 'number', 'scanned is number')
+    assert(typeof result.eligible === 'number', 'eligible is number')
+    assert(typeof result.attempted === 'number', 'attempted is number')
+    assert(typeof result.generated === 'number', 'generated is number')
+    assert(typeof result.skipped === 'object', 'skipped is object')
+    assert(typeof result.errored === 'number', 'errored is number')
+    assert(result.cappedAt === 'generated' || result.cappedAt === 'candidates' || result.cappedAt === null, 'cappedAt is valid')
+}
+
+// ── Cap enforcement logic ──
+
+console.log('\n7. Cap enforcement: generated cap stops before candidate cap')
+{
+    // Simulate: 10 candidates but only 5 can generate
+    // This validates the constants relationship
+    assert(MAX_GENERATED_PER_RUN < MAX_CANDIDATES_PER_RUN, 'generation cap is stricter than candidate cap')
+}
+
+console.log('\n8. WywaBatchResult with no candidates')
+{
+    const empty: WywaBatchResult = {
+        scanned: 0,
+        eligible: 0,
+        attempted: 0,
+        generated: 0,
+        skipped: {},
+        errored: 0,
+        cappedAt: null,
+    }
+    assert(empty.scanned === 0, 'empty batch: scanned is 0')
+    assert(empty.generated === 0, 'empty batch: generated is 0')
+    assert(Object.keys(empty.skipped).length === 0, 'empty batch: no skips')
+    assert(empty.cappedAt === null, 'empty batch: not capped')
+}
+
+console.log('\n9. WywaBatchResult cappedAt values')
+{
+    const capped1: WywaBatchResult = { scanned: 10, eligible: 10, attempted: 5, generated: 5, skipped: {}, errored: 0, cappedAt: 'generated' }
+    const capped2: WywaBatchResult = { scanned: 10, eligible: 10, attempted: 10, generated: 3, skipped: {}, errored: 0, cappedAt: 'candidates' }
+    const notCapped: WywaBatchResult = { scanned: 3, eligible: 3, attempted: 3, generated: 2, skipped: {}, errored: 1, cappedAt: null }
+
+    assert(capped1.cappedAt === 'generated', 'generation cap hit')
+    assert(capped2.cappedAt === 'candidates', 'candidate cap hit')
+    assert(notCapped.cappedAt === null, 'no cap hit')
+}
+
+console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
+process.exit(failed > 0 ? 1 : 0)

@@ -23,6 +23,12 @@ export const INACTIVITY_THRESHOLD_MS = 2 * 60 * 60 * 1000
 /** Minimum 6 hours between WYWA generations for the same user. */
 export const GENERATION_COOLDOWN_MS = 6 * 60 * 60 * 1000
 
+/** Max users to attempt per cron run. */
+export const MAX_CANDIDATES_PER_RUN = 10
+
+/** Stop generating after this many successful WYWA batches per run. */
+export const MAX_GENERATED_PER_RUN = 5
+
 /** Number of recent chat-only messages to fetch for context. */
 const HISTORY_CONTEXT_LIMIT = 10
 
@@ -46,6 +52,16 @@ export type WywaResult =
     | { status: 'skipped_insufficient_squad'; count: number }
     | { status: 'skipped_no_profile' }
     | { status: 'error'; message: string }
+
+export type WywaBatchResult = {
+    scanned: number
+    eligible: number
+    attempted: number
+    generated: number
+    skipped: Record<string, number>
+    errored: number
+    cappedAt: 'candidates' | 'generated' | null
+}
 
 // ── Pure helpers (exported for testing) ──
 
@@ -292,6 +308,101 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
     }
 
     return { status: 'generated', messagesWritten: rows.length }
+}
+
+// ── Candidate selection ──
+
+/**
+ * Find WYWA-eligible candidates from the database.
+ * Pre-filters on tier, inactivity, and cooldown at the query level.
+ * Squad check is deferred to the single-user generator (requires per-user lookups).
+ */
+export async function findWywaCandidates(
+    admin: ReturnType<typeof createAdminClient>,
+    now: number,
+    limit: number,
+): Promise<Array<{ id: string }>> {
+    const inactivityCutoff = new Date(now - INACTIVITY_THRESHOLD_MS).toISOString()
+    const cooldownCutoff = new Date(now - GENERATION_COOLDOWN_MS).toISOString()
+
+    // Fetch paid users who are inactive enough and not on cooldown
+    const { data, error } = await admin
+        .from('profiles')
+        .select('id')
+        .in('subscription_tier', ['basic', 'pro'])
+        .or(`last_active_at.is.null,last_active_at.lt.${inactivityCutoff}`)
+        .or(`last_wywa_generated_at.is.null,last_wywa_generated_at.lt.${cooldownCutoff}`)
+        .limit(limit)
+
+    if (error) {
+        console.error('[wywa-batch] Candidate query failed:', error.message)
+        return []
+    }
+
+    return data ?? []
+}
+
+/**
+ * Run a WYWA batch: find candidates, generate for each, respect hard caps.
+ * Failures for one user do not fail the whole run.
+ */
+export async function runWywaBatch(): Promise<WywaBatchResult> {
+    const now = Date.now()
+    const admin = createAdminClient()
+
+    const result: WywaBatchResult = {
+        scanned: 0,
+        eligible: 0,
+        attempted: 0,
+        generated: 0,
+        skipped: {},
+        errored: 0,
+        cappedAt: null,
+    }
+
+    const candidates = await findWywaCandidates(admin, now, MAX_CANDIDATES_PER_RUN)
+    result.scanned = candidates.length
+
+    if (candidates.length === 0) {
+        return result
+    }
+
+    if (candidates.length >= MAX_CANDIDATES_PER_RUN) {
+        result.cappedAt = 'candidates'
+    }
+
+    result.eligible = candidates.length
+
+    for (const candidate of candidates) {
+        // Stop if generation cap reached
+        if (result.generated >= MAX_GENERATED_PER_RUN) {
+            result.cappedAt = 'generated'
+            break
+        }
+
+        result.attempted++
+
+        try {
+            const wywaResult = await generateWywaForUser(candidate.id)
+
+            if (wywaResult.status === 'generated') {
+                result.generated++
+            } else if (wywaResult.status === 'error') {
+                result.errored++
+                console.error(`[wywa-batch] Error for user ${candidate.id}: ${wywaResult.message}`)
+            } else {
+                // Skipped — track by status
+                const key = wywaResult.status
+                result.skipped[key] = (result.skipped[key] ?? 0) + 1
+            }
+        } catch (err) {
+            result.errored++
+            const msg = err instanceof Error ? err.message : 'Unknown error'
+            console.error(`[wywa-batch] Uncaught error for user ${candidate.id}: ${msg}`)
+        }
+    }
+
+    return result
 }
 
 // ── Prompt helpers (exported for testing) ──
