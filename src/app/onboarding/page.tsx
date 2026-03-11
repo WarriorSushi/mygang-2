@@ -69,7 +69,9 @@ function OnboardingPage() {
 
     const [step, setStep] = useState<Step>(isRetake ? 'VIBE_QUIZ' : 'WELCOME')
     const [name, setName] = useState(() => useChatStore.getState().userName ?? '')
-    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [selectedIds, setSelectedIds] = useState<string[]>(() =>
+        isRetake ? useChatStore.getState().activeGang.map(c => c.id) : []
+    )
     const [customNames, setCustomNames] = useState<Record<string, string>>(() => useChatStore.getState().customCharacterNames ?? {})
     const [vibeProfile, setVibeProfile] = useState<VibeProfile | null>(null)
     const [recommendedIds, setRecommendedIds] = useState<string[]>([])
@@ -136,8 +138,8 @@ function OnboardingPage() {
         setVibeProfile(vibe)
         const ranked = recommendCharacters(vibe)
         setRecommendedIds(ranked.slice(0, 4))
-        // Pre-select top recommended characters if nothing selected yet
-        if (selectedIds.length === 0) {
+        // Pre-select top recommended characters on first-time onboarding only
+        if (!isRetake && selectedIds.length === 0) {
             setSelectedIds(ranked.slice(0, 4))
         }
         setStep('SELECTION')
