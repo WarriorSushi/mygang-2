@@ -109,6 +109,37 @@ export function buildStableTimestamps(baseTime: number, count: number): string[]
     return timestamps
 }
 
+// ── Chat-history cooldown fallback ──
+
+/**
+ * Check whether the user has any recent WYWA rows in chat_history
+ * within the generation cooldown window. This acts as a secondary
+ * cooldown guard in case the profile's last_wywa_generated_at
+ * update failed after a previous batch insert.
+ */
+export async function hasRecentWywaHistory(
+    admin: ReturnType<typeof createAdminClient>,
+    userId: string,
+    now: number,
+): Promise<boolean> {
+    const cooldownCutoff = new Date(now - GENERATION_COOLDOWN_MS).toISOString()
+
+    const { count, error } = await admin
+        .from('chat_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'wywa')
+        .gte('created_at', cooldownCutoff)
+
+    if (error) {
+        // Fail closed — if we can't check, assume cooldown is active
+        console.error('[wywa] Failed to check recent WYWA history:', error.message)
+        return true
+    }
+
+    return (count ?? 0) > 0
+}
+
 // ── Effective squad resolution (mirrors client-journey.ts logic) ──
 
 /**
@@ -189,6 +220,12 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         return { status: 'skipped_recently_active' }
     }
     if (!isCooldownSatisfied(profile.last_wywa_generated_at, now)) {
+        return { status: 'skipped_cooldown' }
+    }
+
+    // 2b. Secondary cooldown: check recent WYWA rows in chat_history.
+    // Protects against duplicate batches if last_wywa_generated_at update failed.
+    if (await hasRecentWywaHistory(admin, userId, now)) {
         return { status: 'skipped_cooldown' }
     }
 
