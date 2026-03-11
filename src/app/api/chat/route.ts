@@ -958,6 +958,9 @@ ${sessionSummary}
         const customNames: Record<string, string> = isObject(profileRow?.custom_character_names) ? (profileRow.custom_character_names as Record<string, string>) : {}
         let characterContextBlocks: string[] = []
         if (process.env.USE_DB_CHARACTERS === 'true') {
+            // DB path verified: iterates activeGangSafe so only active squad blocks are included.
+            // Cross-character dynamics (clashes/alliances) are handled by the filtered dynamics block,
+            // so DB prompt_block values should avoid hard-coded cross-character references.
             const dbBlocks = await getDbPromptBlocks(supabase)
             characterContextBlocks = activeGangSafe.map((c) => {
                 const block = dbBlocks?.[c.id] || CHARACTER_PROMPT_BLOCKS.get(c.id) || ''
