@@ -4,7 +4,7 @@
  *
  * Run: pnpm exec tsx tests/memory-scoring.test.ts
  */
-import { computeCompositeScore, CATEGORY_PRIORITY } from '../src/lib/ai/memory'
+import { computeCompositeScore, CATEGORY_PRIORITY, validateExpiresInHours } from '../src/lib/ai/memory'
 
 let passed = 0
 let failed = 0
@@ -190,6 +190,62 @@ console.log('\n8. Importance caps at 3')
         category: null,
     })
     assertClose(capped, maxNormal, 0.0001, 'importance 10 equals importance 3 (capped)')
+}
+
+// -------------------------------------------------------
+// 9. validateExpiresInHours — valid small TTL
+// -------------------------------------------------------
+console.log('\n9. validateExpiresInHours — valid values')
+{
+    assert(validateExpiresInHours(24) === 24, 'valid TTL 24 hours')
+    assert(validateExpiresInHours(1) === 1, 'valid TTL 1 hour (lower bound)')
+    assert(validateExpiresInHours(720) === 720, 'valid TTL 720 hours (upper bound)')
+    assert(validateExpiresInHours(168) === 168, 'valid TTL 168 hours (1 week)')
+}
+
+// -------------------------------------------------------
+// 10. validateExpiresInHours — missing/undefined stays permanent
+// -------------------------------------------------------
+console.log('\n10. validateExpiresInHours — missing stays permanent')
+{
+    assert(validateExpiresInHours(undefined) === null, 'undefined returns null')
+    assert(validateExpiresInHours(null) === null, 'null returns null')
+}
+
+// -------------------------------------------------------
+// 11. validateExpiresInHours — zero rejected
+// -------------------------------------------------------
+console.log('\n11. validateExpiresInHours — zero rejected')
+{
+    assert(validateExpiresInHours(0) === null, '0 returns null')
+}
+
+// -------------------------------------------------------
+// 12. validateExpiresInHours — negative rejected
+// -------------------------------------------------------
+console.log('\n12. validateExpiresInHours — negative rejected')
+{
+    assert(validateExpiresInHours(-1) === null, '-1 returns null')
+    assert(validateExpiresInHours(-100) === null, '-100 returns null')
+}
+
+// -------------------------------------------------------
+// 13. validateExpiresInHours — huge value rejected
+// -------------------------------------------------------
+console.log('\n13. validateExpiresInHours — huge value rejected')
+{
+    assert(validateExpiresInHours(721) === null, '721 returns null (over 30 days)')
+    assert(validateExpiresInHours(10000) === null, '10000 returns null')
+}
+
+// -------------------------------------------------------
+// 14. validateExpiresInHours — non-finite rejected
+// -------------------------------------------------------
+console.log('\n14. validateExpiresInHours — non-finite rejected')
+{
+    assert(validateExpiresInHours(Infinity) === null, 'Infinity returns null')
+    assert(validateExpiresInHours(-Infinity) === null, '-Infinity returns null')
+    assert(validateExpiresInHours(NaN) === null, 'NaN returns null')
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
