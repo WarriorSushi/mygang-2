@@ -260,7 +260,8 @@ export function useChatApi({
                 content: m.content,
                 created_at: m.created_at,
                 reaction: m.reaction,
-                replyToId: m.replyToId
+                replyToId: m.replyToId,
+                source: m.source,
             }))
             const mockAi = typeof window !== 'undefined' && (window.localStorage.getItem('mock_ai') === 'true' || process.env.NEXT_PUBLIC_MOCK_AI === 'true')
             const requestBody = {
