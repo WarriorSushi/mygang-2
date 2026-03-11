@@ -753,3 +753,64 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
         console.error('Memory compaction error:', err)
     }
 }
+
+/**
+ * Backfill embeddings for a user's existing memories that lack them.
+ * Called on upgrade to paid tier so retrieval quality improves immediately.
+ * Idempotent: only targets rows where embedding IS NULL.
+ * Never throws — logs failures but does not break the caller.
+ */
+export async function backfillMemoryEmbeddings(
+    userId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    supabase: { from: (...args: any[]) => any },
+    batchSize = 50,
+): Promise<{ processed: number; failed: number }> {
+    try {
+        const nowIso = new Date().toISOString()
+
+        const { data: rows, error } = await supabase
+            .from('memories')
+            .select('id, content')
+            .eq('user_id', userId)
+            .eq('kind', 'episodic')
+            .is('embedding', null)
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+            .order('created_at', { ascending: false })
+            .limit(batchSize)
+
+        if (error || !rows?.length) {
+            if (error) console.error('[backfill] Query error:', error.message)
+            return { processed: 0, failed: 0 }
+        }
+
+        let processed = 0
+        let failed = 0
+
+        for (const row of rows) {
+            try {
+                const embedding = await generateEmbedding(row.content)
+                const { error: updateError } = await supabase
+                    .from('memories')
+                    .update({ embedding: embedding as unknown as string })
+                    .eq('id', row.id)
+
+                if (updateError) {
+                    console.error(`[backfill] Update failed for memory ${row.id}:`, updateError.message)
+                    failed++
+                } else {
+                    processed++
+                }
+            } catch (err) {
+                console.error(`[backfill] Embedding failed for memory ${row.id}:`, err)
+                failed++
+            }
+        }
+
+        console.log(`[backfill] User ${userId}: ${processed} embeddings backfilled, ${failed} failed`)
+        return { processed, failed }
+    } catch (err) {
+        console.error('[backfill] Unexpected error:', err)
+        return { processed: 0, failed: 0 }
+    }
+}
