@@ -1022,7 +1022,7 @@ ${sessionSummary}
 
         const systemPrompt = buildSystemPrompt({
             userName: userName || 'User',
-            userNickname,
+            userNickname: userNickname ?? null,
             characterContext,
             activeIds,
             customNamesDirective,
