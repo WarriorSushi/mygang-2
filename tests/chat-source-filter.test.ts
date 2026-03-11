@@ -1,15 +1,13 @@
 /**
  * Tests for Phase 06A message-source filtering.
  *
- * Verifies that filterChatOnlyMessages correctly:
- * - Passes through messages with source='chat'
- * - Passes through messages with no source (legacy)
- * - Excludes messages with source='wywa'
- * - Excludes messages with source='system'
- * - Preserves message order
+ * Part 1: Server-side filterChatOnlyMessages (route.ts)
+ * Part 2: Client-side isLiveChatMessage + payload window (use-chat-api.ts)
  *
  * Run: pnpm exec tsx tests/chat-source-filter.test.ts
  */
+
+import { isLiveChatMessage } from '../src/hooks/use-chat-api'
 
 type ChatMessageInput = {
     id: string
@@ -24,6 +22,14 @@ type ChatMessageInput = {
 // Extracted filter logic matching route.ts
 function filterChatOnlyMessages(messages: ChatMessageInput[]): ChatMessageInput[] {
     return messages.filter((m) => !m.source || m.source === 'chat')
+}
+
+// Simulates the client payload window construction
+function buildPayloadWindow(messages: ChatMessageInput[], payloadLimit: number): ChatMessageInput[] {
+    return messages
+        .filter((m) => !(m.speaker === 'user' && (m as { deliveryStatus?: string }).deliveryStatus === 'failed'))
+        .filter((m) => isLiveChatMessage(m))
+        .slice(-payloadLimit)
 }
 
 // ── Test runner ──
@@ -124,6 +130,65 @@ console.log('\n8. All WYWA returns empty')
     ]
     const result = filterChatOnlyMessages(msgs)
     assert(result.length === 0, 'all wywa excluded')
+}
+
+// ── Part 2: isLiveChatMessage + payload window ──
+
+console.log('\n9. isLiveChatMessage — chat source')
+assert(isLiveChatMessage({ source: 'chat' }) === true, 'chat is live')
+
+console.log('\n10. isLiveChatMessage — no source (legacy)')
+assert(isLiveChatMessage({}) === true, 'legacy is live')
+assert(isLiveChatMessage({ source: undefined }) === true, 'undefined is live')
+
+console.log('\n11. isLiveChatMessage — wywa/system excluded')
+assert(isLiveChatMessage({ source: 'wywa' }) === false, 'wywa is not live')
+assert(isLiveChatMessage({ source: 'system' }) === false, 'system is not live')
+
+console.log('\n12. Payload window — trailing WYWA rows do not crowd out real chat')
+{
+    // 8 real chat messages, then 5 WYWA rows at the end
+    const msgs: ChatMessageInput[] = []
+    for (let i = 1; i <= 8; i++) {
+        msgs.push(makeMsg({ id: `chat-${i}`, source: 'chat', content: `chat msg ${i}` }))
+    }
+    for (let i = 1; i <= 5; i++) {
+        msgs.push(makeMsg({ id: `wywa-${i}`, source: 'wywa', content: `wywa msg ${i}` }))
+    }
+    const payload = buildPayloadWindow(msgs, 6)
+    assert(payload.length === 6, 'payload has 6 messages')
+    assert(payload.every(m => m.source === 'chat'), 'all payload messages are chat')
+    assert(payload[0].id === 'chat-3', 'starts at chat-3 (last 6 of 8 chat msgs)')
+    assert(payload[5].id === 'chat-8', 'ends at chat-8')
+}
+
+console.log('\n13. Payload window — legacy rows count as chat')
+{
+    const msgs: ChatMessageInput[] = [
+        makeMsg({ id: 'legacy-1', content: 'old msg' }),
+        makeMsg({ id: 'chat-1', source: 'chat', content: 'new msg' }),
+        makeMsg({ id: 'wywa-1', source: 'wywa', content: 'away msg' }),
+    ]
+    const payload = buildPayloadWindow(msgs, 10)
+    assert(payload.length === 2, 'only 2 messages in payload')
+    assert(payload[0].id === 'legacy-1', 'legacy included')
+    assert(payload[1].id === 'chat-1', 'chat included')
+}
+
+console.log('\n14. Payload window — order preserved with mixed sources')
+{
+    const msgs: ChatMessageInput[] = [
+        makeMsg({ id: '1', source: 'chat', content: 'a' }),
+        makeMsg({ id: '2', source: 'wywa', content: 'b' }),
+        makeMsg({ id: '3', source: 'chat', content: 'c' }),
+        makeMsg({ id: '4', source: 'system', content: 'd' }),
+        makeMsg({ id: '5', source: 'chat', content: 'e' }),
+    ]
+    const payload = buildPayloadWindow(msgs, 10)
+    assert(payload.length === 3, '3 chat messages')
+    assert(payload[0].id === '1', 'first')
+    assert(payload[1].id === '3', 'second')
+    assert(payload[2].id === '5', 'third')
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
