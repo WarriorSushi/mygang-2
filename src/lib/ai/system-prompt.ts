@@ -219,8 +219,6 @@ function buildFlowFlagsBlock(
     farewellTurn: boolean,
     openFloorRequested: boolean,
     autonomousIdle: boolean,
-    chatMode: string,
-    lowCostMode: boolean,
 ): string {
     return `FLOW FLAGS:
 - INACTIVE_USER: ${isInactive ? 'YES' : 'NO'} -> should_continue FALSE when YES.
@@ -253,8 +251,6 @@ export function buildSystemPrompt(ctx: BuildSystemPromptInput): string {
             ctx.farewellTurn,
             ctx.openFloorRequested,
             ctx.autonomousIdle,
-            ctx.chatMode,
-            ctx.lowCostMode,
         ),
     ]
 
