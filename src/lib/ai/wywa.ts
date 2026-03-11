@@ -196,15 +196,9 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
     const participantCount = squadIds.length <= 2 ? squadIds.length : (2 + Math.floor(Math.random() * 2)) // 2 or 3
     const participants = pickParticipants(squadIds, participantCount)
 
-    // 5. Build character context for participants
+    // 5. Build character context for participants (ID-first for reliable speaker output)
     const customNames = (profile.custom_character_names as Record<string, string> | null) ?? {}
-    const participantDescriptions = participants.map(id => {
-        const char = CHARACTERS.find(c => c.id === id)
-        if (!char) return null
-        const displayName = customNames[id] || char.name
-        const style = TYPING_STYLES[id] || ''
-        return `- ${displayName} (${char.vibe}): ${style}`
-    }).filter(Boolean).join('\n')
+    const participantDescriptions = buildParticipantBlock(participants, customNames)
 
     // 6. Fetch recent chat-only history for context
     const { data: recentHistory } = await admin
@@ -227,10 +221,11 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         ? `Recent chat context (for topic awareness only — do NOT continue this conversation directly):\n${recentContext}`
         : 'No recent chat history available. Start a fresh casual conversation among yourselves.'
 
-    // 8. Call LLM
+    // 8. Call LLM — constrain speaker to exact participant IDs
+    const speakerEnum = z.enum(participants as [string, ...string[]])
     const responseSchema = z.object({
         messages: z.array(z.object({
-            speaker: z.string(),
+            speaker: speakerEnum,
             content: z.string(),
         })).min(2).max(5),
     })
@@ -299,6 +294,26 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
     return { status: 'generated', messagesWritten: rows.length }
 }
 
+// ── Prompt helpers (exported for testing) ──
+
+/**
+ * Build the participant block for the WYWA prompt.
+ * Format: `- speaker_id: "kael" | name: "Kale" | vibe: ... | style: ...`
+ * The speaker_id is always the lowercase ID from the catalog.
+ */
+export function buildParticipantBlock(
+    participantIds: string[],
+    customNames: Record<string, string>,
+): string {
+    return participantIds.map(id => {
+        const char = CHARACTERS.find(c => c.id === id)
+        if (!char) return null
+        const displayName = customNames[id] || char.name
+        const style = TYPING_STYLES[id] || ''
+        return `- speaker_id: "${id}" | name: "${displayName}" | vibe: ${char.vibe} | style: ${style}`
+    }).filter(Boolean).join('\n')
+}
+
 // ── Prompt builder ──
 
 function buildWywaSystemPrompt(
@@ -306,7 +321,7 @@ function buildWywaSystemPrompt(
     participantDescriptions: string,
     userName: string,
 ): string {
-    const speakerList = participantIds.join(', ')
+    const speakerList = participantIds.map(id => `"${id}"`).join(', ')
     return `You generate casual background group chat messages for MyGang.
 
 CONTEXT:
@@ -316,8 +331,13 @@ CONTEXT:
 CHARACTERS IN THIS CONVERSATION:
 ${participantDescriptions}
 
+CRITICAL — SPEAKER ID RULE:
+- The "speaker" field in your output MUST be the exact speaker_id shown above (lowercase).
+- NEVER use the display name. Use the ID. For example: "kael" not "Kael", "luna" not "Luna".
+- Allowed speaker IDs: ${speakerList}
+- Any other value will be rejected.
+
 RULES:
-- Only use these speaker IDs: ${speakerList}
 - Generate 3-5 short messages. Each message should be 1-3 sentences max.
 - Write casual, natural group chat banter. Light topics only.
 - Characters should talk TO EACH OTHER, not to or about the absent user.

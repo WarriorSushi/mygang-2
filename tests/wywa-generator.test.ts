@@ -19,6 +19,7 @@ import {
     pickParticipants,
     buildWywaMessageId,
     buildStableTimestamps,
+    buildParticipantBlock,
     INACTIVITY_THRESHOLD_MS,
     GENERATION_COOLDOWN_MS,
     MIN_SQUAD_SIZE,
@@ -169,7 +170,41 @@ console.log('\n7. MIN_SQUAD_SIZE enforcement')
     assert(pair.length >= MIN_SQUAD_SIZE, 'pair passes MIN_SQUAD_SIZE check')
 }
 
-console.log('\n8. Row shaping verification')
+// ── buildParticipantBlock ──
+
+console.log('\n8. buildParticipantBlock — IDs exposed in prompt')
+{
+    // Normal names (no custom)
+    const block = buildParticipantBlock(['kael', 'luna'], {})
+    assert(block.includes('speaker_id: "kael"'), 'includes kael speaker_id')
+    assert(block.includes('speaker_id: "luna"'), 'includes luna speaker_id')
+    assert(block.includes('name: "Kael"'), 'includes Kael display name')
+    assert(block.includes('name: "Luna"'), 'includes Luna display name')
+    // ID must come before name so LLM sees it first
+    const kaelLine = block.split('\n').find(l => l.includes('kael'))!
+    assert(kaelLine.indexOf('speaker_id') < kaelLine.indexOf('name:'), 'speaker_id appears before name')
+}
+
+console.log('\n9. buildParticipantBlock — custom names use ID not custom name as speaker')
+{
+    const block = buildParticipantBlock(['kael', 'nyx'], { kael: 'Kale', nyx: 'Shadow' })
+    assert(block.includes('speaker_id: "kael"'), 'custom name: kael ID still present')
+    assert(block.includes('name: "Kale"'), 'custom name: Kale display')
+    assert(block.includes('speaker_id: "nyx"'), 'custom name: nyx ID still present')
+    assert(block.includes('name: "Shadow"'), 'custom name: Shadow display')
+    // Ensure the speaker_id is lowercase ID, not the custom name
+    assert(!block.includes('speaker_id: "Kale"'), 'speaker_id is NOT the custom name')
+    assert(!block.includes('speaker_id: "Shadow"'), 'speaker_id is NOT the custom name')
+}
+
+console.log('\n10. buildParticipantBlock — unknown character filtered out')
+{
+    const block = buildParticipantBlock(['kael', 'nonexistent'], {})
+    assert(block.includes('speaker_id: "kael"'), 'known character included')
+    assert(!block.includes('nonexistent'), 'unknown character excluded')
+}
+
+console.log('\n11. Row shaping verification')
 {
     // Verify that the generator module exports the right constants
     assert(INACTIVITY_THRESHOLD_MS === 2 * 60 * 60 * 1000, 'inactivity threshold is 2 hours')
