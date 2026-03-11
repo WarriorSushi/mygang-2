@@ -368,6 +368,7 @@ export type Database = {
           id: string
           last_active_at: string | null
           last_msg_reset: string | null
+          last_wywa_generated_at: string | null
           low_cost_mode: boolean
           onboarding_completed: boolean | null
           pending_squad_downgrade: boolean | null
@@ -396,6 +397,7 @@ export type Database = {
           id: string
           last_active_at?: string | null
           last_msg_reset?: string | null
+          last_wywa_generated_at?: string | null
           low_cost_mode?: boolean
           onboarding_completed?: boolean | null
           pending_squad_downgrade?: boolean | null
@@ -424,6 +426,7 @@ export type Database = {
           id?: string
           last_active_at?: string | null
           last_msg_reset?: string | null
+          last_wywa_generated_at?: string | null
           low_cost_mode?: boolean
           onboarding_completed?: boolean | null
           pending_squad_downgrade?: boolean | null
