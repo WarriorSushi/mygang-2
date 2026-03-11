@@ -32,6 +32,7 @@ import { useTypingSimulation } from '@/hooks/use-typing-simulation'
 import { useCapacityManager } from '@/hooks/use-capacity-manager'
 import { useAutonomousFlow } from '@/hooks/use-autonomous-flow'
 import { useChatApi } from '@/hooks/use-chat-api'
+import { useTabPresence } from '@/hooks/use-tab-presence'
 
 function getStarterChips(name: string) {
     const label = name || 'everyone'
@@ -182,6 +183,9 @@ export default function ChatPage() {
     api.clearIdleAutonomousTimerRef.current = autonomous.clearIdleAutonomousTimer
     api.scheduleIdleAutonomousRef.current = autonomous.scheduleIdleAutonomous
     api.triggerLocalGreetingRef.current = autonomous.triggerLocalGreeting
+
+    // Title-based unread presence (shows count while tab is hidden)
+    useTabPresence(messages)
 
     const history = useChatHistory({
         userId,
