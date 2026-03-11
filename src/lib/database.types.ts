@@ -379,6 +379,7 @@ export type Database = {
           updated_at: string | null
           user_profile: Json | null
           username: string | null
+          vibe_profile: Json | null
         }
         Insert: {
           abuse_score?: number | null
@@ -406,6 +407,7 @@ export type Database = {
           updated_at?: string | null
           user_profile?: Json | null
           username?: string | null
+          vibe_profile?: Json | null
         }
         Update: {
           abuse_score?: number | null
@@ -433,6 +435,7 @@ export type Database = {
           updated_at?: string | null
           user_profile?: Json | null
           username?: string | null
+          vibe_profile?: Json | null
         }
         Relationships: []
       }
