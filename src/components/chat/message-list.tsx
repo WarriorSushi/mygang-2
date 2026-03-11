@@ -363,6 +363,11 @@ export const MessageList = memo(function MessageList({
                         const shouldAnimate = animatedMessageIdsRef.current.has(message.id)
                         const isReaction = !!message.reaction
 
+                        // WYWA divider: show before the first message of a contiguous wywa batch
+                        const isWywa = message.source === 'wywa'
+                        const prevIsWywa = index > 0 && messages[index - 1].source === 'wywa'
+                        const showWywaDivider = isWywa && !prevIsWywa
+
                         return (
                             <div
                                 key={message.id}
@@ -370,7 +375,7 @@ export const MessageList = memo(function MessageList({
                                     "px-4",
                                     index === 0
                                         ? ""
-                                        : samePrevious
+                                        : samePrevious && !showWywaDivider
                                             ? "pt-[3px]"
                                             : isReaction
                                                 ? "pt-3"
@@ -378,11 +383,20 @@ export const MessageList = memo(function MessageList({
                                     index < messages.length - 6 && "content-auto"
                                 )}
                             >
+                                {showWywaDivider && (
+                                    <div className="flex items-center gap-3 py-3" role="separator" aria-label="While you were away">
+                                        <div className="flex-1 h-px bg-border/50" />
+                                        <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium select-none">
+                                            While you were away
+                                        </span>
+                                        <div className="flex-1 h-px bg-border/50" />
+                                    </div>
+                                )}
                                 <div className={shouldAnimate ? "animate-msg-appear" : undefined}>
                                     <MessageItem
                                         message={message}
                                         character={character}
-                                        isContinued={samePrevious}
+                                        isContinued={samePrevious && !showWywaDivider}
                                         groupPosition={groupPosition}
                                         isFastMode={isFastMode}
                                         quotedMessage={quotedMessage}
