@@ -148,6 +148,7 @@ type ChatHistoryInsertRow = {
     client_message_id?: string | null
     reply_to_client_message_id?: string | null
     reaction?: string | null
+    source?: string
 }
 
 type ChatHistoryUserRecentRow = {
@@ -1499,7 +1500,7 @@ ${sessionSummary}
                                 gang_id: gang.id,
                                 speaker: 'user',
                                 content: userContent,
-
+                                source: 'chat',
                                 created_at: candidate.created_at || new Date().toISOString(),
                                 client_message_id: candidateClientMessageId,
                                 reply_to_client_message_id: sanitizeMessageId(candidate.replyToId) || null,

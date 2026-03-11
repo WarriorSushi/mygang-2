@@ -18,6 +18,7 @@ type ChatHistoryPageRow = {
     reaction?: string | null
     reply_to_client_message_id?: string | null
     client_message_id?: string | null
+    source?: string | null
 }
 
 const validCharacterIds = CHARACTERS.map(c => c.id)
@@ -404,7 +405,7 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
         : null
     let query = supabase
         .from('chat_history')
-        .select('id, speaker, content, created_at, reaction, reply_to_client_message_id, client_message_id')
+        .select('id, speaker, content, created_at, reaction, reply_to_client_message_id, client_message_id, source')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(limit + 1)
@@ -433,6 +434,7 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
             created_at: row.created_at,
             reaction: typeof row.reaction === 'string' && row.reaction.trim().length > 0 ? row.reaction : undefined,
             replyToId: sanitizeMessageId(row.reply_to_client_message_id) || undefined,
+            source: (row.source as 'chat' | 'wywa' | 'system') || 'chat',
         }))
 
     return {

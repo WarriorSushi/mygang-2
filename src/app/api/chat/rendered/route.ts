@@ -14,6 +14,7 @@ type ChatHistoryInsertRow = {
     client_message_id?: string | null
     reply_to_client_message_id?: string | null
     reaction?: string | null
+    source?: string
 }
 
 type ChatHistoryExistingIdRow = {
@@ -95,6 +96,7 @@ export async function POST(req: Request) {
             reaction: typeof event.reaction === 'string' && event.reaction.trim().length > 0
                 ? event.reaction.trim().slice(0, MAX_EVENT_CONTENT)
                 : null,
+            source: 'chat',
         })
     }
 
