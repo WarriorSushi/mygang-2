@@ -1,0 +1,279 @@
+/**
+ * Phase 06C: While You Were Away (WYWA) single-user generator.
+ *
+ * Generates a short batch of character messages for an inactive paid user,
+ * writes them to chat_history with source='wywa', and updates the profile
+ * last_wywa_generated_at timestamp.
+ *
+ * This module is admin-only and manual for now — no scheduler, no batch runner.
+ */
+
+import { generateObject } from 'ai'
+import { z } from 'zod'
+import { openRouterModel } from '@/lib/ai/openrouter'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { CHARACTERS } from '@/constants/characters'
+import { TYPING_STYLES } from './wywa-prompt'
+
+// ── Constants ──
+
+/** User must be inactive for at least 2 hours before WYWA fires. */
+export const INACTIVITY_THRESHOLD_MS = 2 * 60 * 60 * 1000
+
+/** Minimum 6 hours between WYWA generations for the same user. */
+export const GENERATION_COOLDOWN_MS = 6 * 60 * 60 * 1000
+
+/** Number of recent chat-only messages to fetch for context. */
+const HISTORY_CONTEXT_LIMIT = 10
+
+/** Max characters per generated WYWA message. */
+const MAX_WYWA_MESSAGE_CHARS = 280
+
+/** WYWA LLM output token cap — keep small and cheap. */
+const WYWA_MAX_OUTPUT_TOKENS = 400
+
+// ── Result type ──
+
+export type WywaResult =
+    | { status: 'generated'; messagesWritten: number }
+    | { status: 'skipped_free_tier' }
+    | { status: 'skipped_recently_active' }
+    | { status: 'skipped_cooldown' }
+    | { status: 'skipped_no_squad' }
+    | { status: 'skipped_no_profile' }
+    | { status: 'error'; message: string }
+
+// ── Pure helpers (exported for testing) ──
+
+export function isEligibleTier(tier: string | null | undefined): boolean {
+    return tier === 'basic' || tier === 'pro'
+}
+
+export function isInactiveEnough(lastActiveAt: string | null | undefined, now: number): boolean {
+    if (!lastActiveAt) return true // never active — treat as inactive
+    const lastActive = new Date(lastActiveAt).getTime()
+    if (!Number.isFinite(lastActive)) return true
+    return now - lastActive >= INACTIVITY_THRESHOLD_MS
+}
+
+export function isCooldownSatisfied(lastWywaAt: string | null | undefined, now: number): boolean {
+    if (!lastWywaAt) return true // never generated
+    const lastGen = new Date(lastWywaAt).getTime()
+    if (!Number.isFinite(lastGen)) return true
+    return now - lastGen >= GENERATION_COOLDOWN_MS
+}
+
+export function pickParticipants(squadIds: string[], count: number): string[] {
+    if (squadIds.length <= count) return [...squadIds]
+    // Fisher-Yates partial shuffle for random selection
+    const arr = [...squadIds]
+    for (let i = arr.length - 1; i > 0 && arr.length - i <= count; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr.slice(-count)
+}
+
+export function buildWywaMessageId(batchId: string, index: number): string {
+    return `wywa-${batchId}-${index.toString(36)}`
+}
+
+export function buildStableTimestamps(baseTime: number, count: number): string[] {
+    // Space messages 30-90 seconds apart for natural feel
+    const timestamps: string[] = []
+    let t = baseTime
+    for (let i = 0; i < count; i++) {
+        t += 30_000 + Math.floor(Math.random() * 60_000)
+        timestamps.push(new Date(t).toISOString())
+    }
+    return timestamps
+}
+
+// ── Generator ──
+
+export async function generateWywaForUser(userId: string): Promise<WywaResult> {
+    const now = Date.now()
+    const admin = createAdminClient()
+
+    // 1. Fetch profile
+    const { data: profile, error: profileError } = await admin
+        .from('profiles')
+        .select('subscription_tier, last_active_at, last_wywa_generated_at, custom_character_names, preferred_squad, username')
+        .eq('id', userId)
+        .maybeSingle()
+
+    if (profileError) {
+        return { status: 'error', message: `Profile fetch failed: ${profileError.message}` }
+    }
+    if (!profile) {
+        return { status: 'skipped_no_profile' }
+    }
+
+    // 2. Eligibility checks
+    if (!isEligibleTier(profile.subscription_tier)) {
+        return { status: 'skipped_free_tier' }
+    }
+    if (!isInactiveEnough(profile.last_active_at, now)) {
+        return { status: 'skipped_recently_active' }
+    }
+    if (!isCooldownSatisfied(profile.last_wywa_generated_at, now)) {
+        return { status: 'skipped_cooldown' }
+    }
+
+    // 3. Resolve squad
+    const squadIds = (profile.preferred_squad ?? []).filter(
+        (id: string) => CHARACTERS.some(c => c.id === id)
+    )
+    if (squadIds.length === 0) {
+        return { status: 'skipped_no_squad' }
+    }
+
+    // 4. Pick 2-3 participants
+    const participantCount = squadIds.length <= 2 ? squadIds.length : (2 + Math.floor(Math.random() * 2)) // 2 or 3
+    const participants = pickParticipants(squadIds, participantCount)
+
+    // 5. Build character context for participants
+    const customNames = (profile.custom_character_names as Record<string, string> | null) ?? {}
+    const participantDescriptions = participants.map(id => {
+        const char = CHARACTERS.find(c => c.id === id)
+        if (!char) return null
+        const displayName = customNames[id] || char.name
+        const style = TYPING_STYLES[id] || ''
+        return `- ${displayName} (${char.vibe}): ${style}`
+    }).filter(Boolean).join('\n')
+
+    // 6. Fetch recent chat-only history for context
+    const { data: recentHistory } = await admin
+        .from('chat_history')
+        .select('speaker, content')
+        .eq('user_id', userId)
+        .eq('source', 'chat')
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_CONTEXT_LIMIT)
+
+    const recentContext = (recentHistory ?? [])
+        .reverse()
+        .map(r => `${r.speaker}: ${(r.content || '').slice(0, 200)}`)
+        .join('\n')
+
+    // 7. Fetch gang_id for the user
+    const { data: gang } = await admin
+        .from('gangs')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+    if (!gang) {
+        return { status: 'error', message: 'No gang found for user' }
+    }
+
+    // 8. Build WYWA prompt
+    const userName = profile.username || 'the user'
+    const systemPrompt = buildWywaSystemPrompt(participants, participantDescriptions, userName)
+    const userPrompt = recentContext
+        ? `Recent chat context (for topic awareness only — do NOT continue this conversation directly):\n${recentContext}`
+        : 'No recent chat history available. Start a fresh casual conversation among yourselves.'
+
+    // 9. Call LLM
+    const responseSchema = z.object({
+        messages: z.array(z.object({
+            speaker: z.string(),
+            content: z.string(),
+        })).min(2).max(5),
+    })
+
+    let generated: z.infer<typeof responseSchema>
+    try {
+        const result = await generateObject({
+            model: openRouterModel,
+            schema: responseSchema,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            maxOutputTokens: WYWA_MAX_OUTPUT_TOKENS,
+            maxRetries: 1,
+        })
+        generated = result.object
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown LLM error'
+        return { status: 'error', message: `LLM call failed: ${msg}` }
+    }
+
+    // 10. Validate and shape rows
+    const participantSet = new Set(participants)
+    const validMessages = generated.messages
+        .filter(m => participantSet.has(m.speaker) && m.content.trim().length > 0)
+        .slice(0, 5)
+
+    if (validMessages.length === 0) {
+        return { status: 'error', message: 'LLM returned no valid messages' }
+    }
+
+    const batchId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+    const timestamps = buildStableTimestamps(now, validMessages.length)
+
+    const rows = validMessages.map((m, i) => ({
+        user_id: userId,
+        gang_id: gang.id,
+        speaker: m.speaker,
+        content: m.content.slice(0, MAX_WYWA_MESSAGE_CHARS),
+        created_at: timestamps[i],
+        client_message_id: buildWywaMessageId(batchId, i),
+        source: 'wywa' as const,
+    }))
+
+    // 11. Write to chat_history
+    const { error: insertError } = await admin
+        .from('chat_history')
+        .insert(rows)
+
+    if (insertError) {
+        return { status: 'error', message: `Insert failed: ${insertError.message}` }
+    }
+
+    // 12. Update last_wywa_generated_at
+    const { error: updateError } = await admin
+        .from('profiles')
+        .update({ last_wywa_generated_at: new Date(now).toISOString() })
+        .eq('id', userId)
+
+    if (updateError) {
+        console.error('Failed to update last_wywa_generated_at:', updateError)
+        // Non-fatal — rows were already written
+    }
+
+    return { status: 'generated', messagesWritten: rows.length }
+}
+
+// ── Prompt builder ──
+
+function buildWywaSystemPrompt(
+    participantIds: string[],
+    participantDescriptions: string,
+    userName: string,
+): string {
+    const speakerList = participantIds.join(', ')
+    return `You generate casual background group chat messages for MyGang.
+
+CONTEXT:
+- ${userName} is away from the chat. These characters are chatting among themselves while the user is gone.
+- The user will see these messages labeled "While you were away" when they return.
+
+CHARACTERS IN THIS CONVERSATION:
+${participantDescriptions}
+
+RULES:
+- Only use these speaker IDs: ${speakerList}
+- Generate 3-5 short messages. Each message should be 1-3 sentences max.
+- Write casual, natural group chat banter. Light topics only.
+- Characters should talk TO EACH OTHER, not to or about the absent user.
+- Do NOT address the user directly. Do NOT say "where is [user]" or "I miss [user]".
+- Do NOT generate any user messages. The "user" speaker is forbidden.
+- Match each character's typing style and personality closely.
+- Keep it light: jokes, banter, random topics, mild debates, daily life stuff.
+- If recent chat context is provided, you may lightly reference a topic from it, but do NOT continue the conversation. Start something new.
+- No melodrama. No deep emotional confessions. No relationship drama.
+- No memory extraction. No summary updates. Just casual chat.
+- No meta-commentary about being AI or being in a group chat app.`
+}
