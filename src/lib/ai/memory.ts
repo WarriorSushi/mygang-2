@@ -21,6 +21,7 @@ export type StoredMemory = {
     tags?: string[] | null
     category?: MemoryCategory | null
     last_used_at?: string | null
+    expires_at?: string | null
 }
 
 export async function generateEmbedding(text: string) {
@@ -41,11 +42,12 @@ export async function storeMemory(
         importance?: number
         useEmbedding?: boolean
         category?: MemoryCategory
+        expires_at?: string | null
     }
 ) {
     try {
         const supabase = await createClient()
-        const { kind = 'episodic', tags = [], importance = 1, useEmbedding = true, category } = options || {}
+        const { kind = 'episodic', tags = [], importance = 1, useEmbedding = true, category, expires_at } = options || {}
         const normalizedContent = content.trim().replace(/\s+/g, ' ')
         const embedding = useEmbedding ? await generateEmbedding(normalizedContent) : null
 
@@ -116,6 +118,7 @@ export async function storeMemory(
             importance,
         }
         if (category) insertData.category = category
+        if (expires_at) insertData.expires_at = expires_at
 
         const { error } = await supabase.from('memories').insert(insertData)
 
@@ -134,6 +137,7 @@ export async function storeMemories(
         tags?: string[]
         importance?: number
         category?: MemoryCategory
+        expires_at?: string | null
     }>,
     tier: SubscriptionTier = 'basic'
 ) {
@@ -270,6 +274,7 @@ export async function storeMemories(
                     importance: mem.importance || 1,
                 }
                 if (mem.category) row.category = mem.category
+                if (mem.expires_at) row.expires_at = mem.expires_at
                 return row
             })
         )
@@ -366,6 +371,7 @@ export async function retrieveMemoriesLite(userId: string, query: string, limit 
         .select('id, content, created_at, importance, tags')
         .eq('user_id', userId)
         .eq('kind', 'episodic')
+        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -411,9 +417,10 @@ export async function retrieveMemoriesHybrid(userId: string, query: string, limi
 
     const recentQueryPromise = supabase
         .from('memories')
-        .select('id, content, created_at, importance, tags, last_used_at')
+        .select('id, content, created_at, importance, tags, last_used_at, category')
         .eq('user_id', userId)
         .eq('kind', 'episodic')
+        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(5)
 

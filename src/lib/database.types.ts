@@ -301,39 +301,45 @@ export type Database = {
       }
       memories: {
         Row: {
+          category: string | null
           content: string
           created_at: string | null
           embedding: string | null
+          expires_at: string | null
           id: string
           importance: number | null
           kind: string | null
           last_used_at: string | null
-          metadata: Json | null
           tags: string[] | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
+          category?: string | null
           content: string
           created_at?: string | null
           embedding?: string | null
+          expires_at?: string | null
           id?: string
           importance?: number | null
           kind?: string | null
           last_used_at?: string | null
-          metadata?: Json | null
           tags?: string[] | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
+          category?: string | null
           content?: string
           created_at?: string | null
           embedding?: string | null
+          expires_at?: string | null
           id?: string
           importance?: number | null
           kind?: string | null
           last_used_at?: string | null
-          metadata?: Json | null
           tags?: string[] | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -538,9 +544,13 @@ export type Database = {
           query_embedding: string
         }
         Returns: {
-          content: string
           id: string
+          content: string
           similarity: number
+          importance: number
+          created_at: string
+          last_used_at: string | null
+          category: string | null
         }[]
       }
     }
