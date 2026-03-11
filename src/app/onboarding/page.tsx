@@ -1,26 +1,36 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { Suspense, useState, useEffect, useMemo } from 'react'
 import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { CHARACTERS } from '@/constants/characters'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { useChatStore } from '@/stores/chat-store'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { persistUserJourney } from '@/lib/supabase/client-journey'
+import { recommendCharacters } from '@/lib/ai/character-recommendation'
+import type { VibeProfile } from '@/lib/ai/character-recommendation'
 
-// New modular components
+// Modular components
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { IdentityStep } from '@/components/onboarding/identity-step'
+import { VibeQuizStep } from '@/components/onboarding/vibe-quiz-step'
 import { SelectionStep } from '@/components/onboarding/selection-step'
 import { FriendsIntroStep } from '@/components/onboarding/friends-intro-step'
 import { LoadingStep } from '@/components/onboarding/loading-step'
 
-type Step = 'WELCOME' | 'IDENTITY' | 'SELECTION' | 'INTRO' | 'LOADING'
+type Step = 'WELCOME' | 'IDENTITY' | 'VIBE_QUIZ' | 'SELECTION' | 'INTRO' | 'LOADING'
 
-const PROGRESS_STEPS: Step[] = ['WELCOME', 'IDENTITY', 'SELECTION', 'INTRO', 'LOADING']
+const PROGRESS_STEPS: Step[] = ['WELCOME', 'IDENTITY', 'VIBE_QUIZ', 'SELECTION', 'INTRO', 'LOADING']
+
+const BACK_MAP: Partial<Record<Step, Step>> = {
+    IDENTITY: 'WELCOME',
+    VIBE_QUIZ: 'IDENTITY',
+    SELECTION: 'VIBE_QUIZ',
+    INTRO: 'SELECTION',
+}
 
 function StepProgress({ current }: { current: Step }) {
     if (current === 'LOADING') return null
@@ -45,11 +55,24 @@ function StepProgress({ current }: { current: Step }) {
     )
 }
 
-export default function OnboardingPage() {
-    const [step, setStep] = useState<Step>('WELCOME')
+export default function OnboardingPageWrapper() {
+    return (
+        <Suspense>
+            <OnboardingPage />
+        </Suspense>
+    )
+}
+
+function OnboardingPage() {
+    const searchParams = useSearchParams()
+    const isRetake = searchParams.get('retake') === 'true'
+
+    const [step, setStep] = useState<Step>(isRetake ? 'VIBE_QUIZ' : 'WELCOME')
     const [name, setName] = useState(() => useChatStore.getState().userName ?? '')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [customNames, setCustomNames] = useState<Record<string, string>>(() => useChatStore.getState().customCharacterNames ?? {})
+    const [vibeProfile, setVibeProfile] = useState<VibeProfile | null>(null)
+    const [recommendedIds, setRecommendedIds] = useState<string[]>([])
     const setUserName = useChatStore((s) => s.setUserName)
     const setActiveGang = useChatStore((s) => s.setActiveGang)
     const setCustomCharacterNames = useChatStore((s) => s.setCustomCharacterNames)
@@ -67,21 +90,21 @@ export default function OnboardingPage() {
         }
     }, [isHydrated, userId, router])
 
-    // Bypass onboarding once squad exists locally
+    // Bypass onboarding once squad exists locally — but NOT in retake mode
     useEffect(() => {
-        if (isHydrated && activeGang.length >= 2) {
+        if (isHydrated && !isRetake && activeGang.length >= 2) {
             router.replace('/chat')
         }
-    }, [isHydrated, activeGang.length, router])
+    }, [isHydrated, activeGang.length, router, isRetake])
 
     useEffect(() => {
         const session = ensureAnalyticsSession()
         if (session.isNew) {
             trackEvent('session_start', { sessionId: session.id, metadata: { source: 'onboarding' } })
         }
-        trackEvent('onboarding_started', { sessionId: session.id })
+        trackEvent(isRetake ? 'vibe_retake_started' : 'onboarding_started', { sessionId: session.id })
         router.prefetch('/chat')
-    }, [router])
+    }, [router, isRetake])
 
     const toggleCharacter = (id: string) => {
         setSelectedIds((prev) => {
@@ -109,6 +132,17 @@ export default function OnboardingPage() {
         return next
     }, [customNames, selectedIds])
 
+    const handleVibeComplete = (vibe: VibeProfile) => {
+        setVibeProfile(vibe)
+        const ranked = recommendCharacters(vibe)
+        setRecommendedIds(ranked.slice(0, 4))
+        // Pre-select top recommended characters if nothing selected yet
+        if (selectedIds.length === 0) {
+            setSelectedIds(ranked.slice(0, 4))
+        }
+        setStep('SELECTION')
+    }
+
     const handleSelectionDone = () => {
         setStep('INTRO')
     }
@@ -128,7 +162,7 @@ export default function OnboardingPage() {
         setStep('LOADING')
 
         const session = ensureAnalyticsSession()
-        trackEvent('onboarding_completed', { sessionId: session.id })
+        trackEvent(isRetake ? 'vibe_retake_completed' : 'onboarding_completed', { sessionId: session.id })
 
         // Persist to cloud (if logged in) and show loading animation for at least 1.5s
         await Promise.all([
@@ -138,11 +172,26 @@ export default function OnboardingPage() {
                       gangIds: selectedIds,
                       onboardingCompleted: true,
                       customCharacterNames: normalizedCustomNames,
+                      vibeProfile: vibeProfile as unknown as Record<string, string> | undefined,
                   }).catch((err) => console.error('Failed to auto-save to cloud:', err))
                 : Promise.resolve(),
             new Promise((resolve) => setTimeout(resolve, 1500)),
         ])
         router.replace('/chat')
+    }
+
+    // In retake mode, only show vibe quiz → selection → intro → loading
+    const showBackButton = isRetake
+        ? step === 'SELECTION' || step === 'INTRO'
+        : step === 'IDENTITY' || step === 'VIBE_QUIZ' || step === 'SELECTION' || step === 'INTRO'
+
+    const handleBack = () => {
+        const prev = BACK_MAP[step]
+        if (prev) {
+            // In retake mode, don't go back past VIBE_QUIZ
+            if (isRetake && (prev === 'WELCOME' || prev === 'IDENTITY')) return
+            setStep(prev)
+        }
     }
 
     return (
@@ -159,16 +208,10 @@ export default function OnboardingPage() {
 
             <StepProgress current={step} />
 
-            {(step === 'IDENTITY' || step === 'SELECTION' || step === 'INTRO') && (
+            {showBackButton && (
                 <button
                     type="button"
-                    onClick={() => setStep(
-                        step === 'INTRO'
-                            ? 'SELECTION'
-                            : step === 'SELECTION'
-                                ? 'IDENTITY'
-                                : 'WELCOME'
-                    )}
+                    onClick={handleBack}
                     className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] left-4 z-20 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                     aria-label="Go back"
                 >
@@ -187,8 +230,12 @@ export default function OnboardingPage() {
                         <IdentityStep
                             name={name}
                             setName={setName}
-                            onNext={() => setStep('SELECTION')}
+                            onNext={() => setStep('VIBE_QUIZ')}
                         />
+                    )}
+
+                    {step === 'VIBE_QUIZ' && (
+                        <VibeQuizStep onNext={handleVibeComplete} />
                     )}
 
                     {step === 'SELECTION' && (
@@ -196,6 +243,7 @@ export default function OnboardingPage() {
                             selectedIds={selectedIds}
                             toggleCharacter={toggleCharacter}
                             onNext={handleSelectionDone}
+                            recommendedIds={recommendedIds}
                         />
                     )}
 

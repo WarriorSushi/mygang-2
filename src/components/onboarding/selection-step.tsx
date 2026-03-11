@@ -13,13 +13,22 @@ interface SelectionStepProps {
     toggleCharacter: (id: string) => void
     onNext: () => void
     maxMembers?: number
+    recommendedIds?: string[]
 }
 
-export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers = 4 }: SelectionStepProps) {
+export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers = 4, recommendedIds = [] }: SelectionStepProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null)
 
     const selectedChars = CHARACTERS.filter(c => selectedIds.includes(c.id))
     const canContinue = selectedIds.length >= 2
+
+    // Sort: recommended first, then the rest
+    const sortedCharacters = recommendedIds.length > 0
+        ? [
+            ...CHARACTERS.filter(c => recommendedIds.includes(c.id)),
+            ...CHARACTERS.filter(c => !recommendedIds.includes(c.id)),
+          ]
+        : CHARACTERS
 
     const handleCharacterKeyDown = (e: KeyboardEvent, id: string) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -47,10 +56,11 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
             {/* Character grid */}
             <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-44 sm:pb-28">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                    {CHARACTERS.map((char) => {
+                    {sortedCharacters.map((char) => {
                         const isSelected = selectedIds.includes(char.id)
                         const isExpanded = expandedId === char.id
                         const isMaxed = selectedIds.length >= maxMembers && !isSelected
+                        const isRecommended = recommendedIds.includes(char.id)
 
                         return (
                             <m.div
@@ -87,6 +97,13 @@ export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers
                                         </m.div>
                                     )}
                                 </AnimatePresence>
+
+                                {/* Recommended badge */}
+                                {isRecommended && !isSelected && (
+                                    <div className="absolute top-2 right-2 z-10 text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-primary/90 text-primary-foreground shadow-sm">
+                                        Match
+                                    </div>
+                                )}
 
                                 {/* Avatar */}
                                 <div className="relative w-full aspect-square overflow-hidden">
