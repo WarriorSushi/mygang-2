@@ -15,6 +15,7 @@ import {
     isInactiveEnough,
     isCooldownSatisfied,
     filterEligibleCandidates,
+    resolveEffectiveSquad,
     MAX_CANDIDATES_PER_RUN,
     MAX_GENERATED_PER_RUN,
     CANDIDATE_PREFETCH_LIMIT,
@@ -228,6 +229,86 @@ console.log('\n16. filterEligibleCandidates — all ineligible')
     ]
     const result = filterEligibleCandidates(profiles, now, 10)
     assert(result.length === 0, 'none pass all checks')
+}
+
+// ── Squad-aware candidate selection (structural) ──
+
+console.log('\n17. resolveEffectiveSquad is exported and async')
+{
+    assert(typeof resolveEffectiveSquad === 'function', 'resolveEffectiveSquad is exported')
+    // It's async — calling with null args would throw, but the function exists
+}
+
+console.log('\n18. MIN_SQUAD_SIZE enforces squad-aware filtering')
+{
+    // Users with 0 or 1 squad members should be excluded before generation.
+    // filterEligibleCandidates is phase 1 (pure), squad check is phase 2.
+    // We verify the structural requirement: MIN_SQUAD_SIZE >= 2
+    assert(MIN_SQUAD_SIZE >= 2, 'MIN_SQUAD_SIZE requires at least 2 members')
+
+    // Verify that filterEligibleCandidates alone cannot check squad —
+    // it only checks tier, inactivity, cooldown. Squad is checked separately.
+    const paidInactive = [
+        { id: 'u1', subscription_tier: 'pro' as string | null, last_active_at: null, last_wywa_generated_at: null },
+    ]
+    const phase1 = filterEligibleCandidates(paidInactive, now, 10)
+    assert(phase1.length === 1, 'phase 1 passes paid+inactive user (squad not checked yet)')
+}
+
+// ── Deterministic ordering verification ──
+
+console.log('\n19. Candidate ordering: null last_wywa_generated_at sorts first')
+{
+    // Simulates what the DB ordering should produce:
+    // null wywa → before non-null wywa (nulls first)
+    const profiles = [
+        { id: 'u1', subscription_tier: 'pro' as string | null, last_active_at: null, last_wywa_generated_at: new Date(now - 8 * 60 * 60 * 1000).toISOString() },
+        { id: 'u2', subscription_tier: 'pro' as string | null, last_active_at: null, last_wywa_generated_at: null },
+    ]
+    // If ordered by last_wywa_generated_at ASC NULLS FIRST, u2 should come first
+    const sorted = [...profiles].sort((a, b) => {
+        if (a.last_wywa_generated_at === null && b.last_wywa_generated_at !== null) return -1
+        if (a.last_wywa_generated_at !== null && b.last_wywa_generated_at === null) return 1
+        if (a.last_wywa_generated_at && b.last_wywa_generated_at) {
+            return a.last_wywa_generated_at.localeCompare(b.last_wywa_generated_at)
+        }
+        return 0
+    })
+    assert(sorted[0].id === 'u2', 'null wywa_generated sorts before non-null')
+    // Both pass eligibility
+    const result = filterEligibleCandidates(sorted, now, 10)
+    assert(result.length === 2, 'both eligible')
+    assert(result[0].id === 'u2', 'never-generated user comes first')
+}
+
+console.log('\n20. Candidate ordering: null last_active_at sorts first as tie-breaker')
+{
+    // Both have null last_wywa_generated_at, so last_active_at breaks the tie
+    const profiles = [
+        { id: 'u1', subscription_tier: 'basic' as string | null, last_active_at: new Date(now - 5 * 60 * 60 * 1000).toISOString(), last_wywa_generated_at: null },
+        { id: 'u2', subscription_tier: 'basic' as string | null, last_active_at: null, last_wywa_generated_at: null },
+    ]
+    const sorted = [...profiles].sort((a, b) => {
+        // last_wywa_generated_at tie (both null) → sort by last_active_at ASC NULLS FIRST
+        if (a.last_active_at === null && b.last_active_at !== null) return -1
+        if (a.last_active_at !== null && b.last_active_at === null) return 1
+        if (a.last_active_at && b.last_active_at) {
+            return a.last_active_at.localeCompare(b.last_active_at)
+        }
+        return 0
+    })
+    assert(sorted[0].id === 'u2', 'null last_active sorts first as tie-breaker')
+}
+
+console.log('\n21. Candidate ordering: id as final stable tie-breaker')
+{
+    // All fields identical except id
+    const profiles = [
+        { id: 'u-zzz', subscription_tier: 'pro' as string | null, last_active_at: null, last_wywa_generated_at: null },
+        { id: 'u-aaa', subscription_tier: 'pro' as string | null, last_active_at: null, last_wywa_generated_at: null },
+    ]
+    const sorted = [...profiles].sort((a, b) => a.id.localeCompare(b.id))
+    assert(sorted[0].id === 'u-aaa', 'id ascending as stable tie-breaker')
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)

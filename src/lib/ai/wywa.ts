@@ -374,19 +374,27 @@ export function filterEligibleCandidates(
 
 /**
  * Find WYWA-eligible candidates from the database.
- * Fetches a broad slice of paid profiles, then filters in code for deterministic results.
- * Squad check is deferred to the single-user generator (requires per-user lookups).
+ * Fetches a broad slice of paid profiles ordered deterministically,
+ * filters by eligibility in code, then validates effective squad
+ * before returning candidates. This prevents squad-less users from
+ * consuming the small per-run candidate cap.
  */
 export async function findWywaCandidates(
     admin: ReturnType<typeof createAdminClient>,
     now: number,
     limit: number,
 ): Promise<Array<{ id: string }>> {
-    // Overfetch paid profiles, filter eligibility in code
+    // Overfetch paid profiles with deterministic ordering:
+    // 1. Least-recently generated first (nulls = never generated = highest priority)
+    // 2. Least-recently active first (nulls = never active = high priority)
+    // 3. Stable tie-breaker by id
     const { data, error } = await admin
         .from('profiles')
-        .select('id, subscription_tier, last_active_at, last_wywa_generated_at')
+        .select('id, subscription_tier, last_active_at, last_wywa_generated_at, preferred_squad')
         .in('subscription_tier', ['basic', 'pro'])
+        .order('last_wywa_generated_at', { ascending: true, nullsFirst: true })
+        .order('last_active_at', { ascending: true, nullsFirst: true })
+        .order('id', { ascending: true })
         .limit(CANDIDATE_PREFETCH_LIMIT)
 
     if (error) {
@@ -394,7 +402,28 @@ export async function findWywaCandidates(
         return []
     }
 
-    return filterEligibleCandidates(data ?? [], now, limit)
+    // Phase 1: filter by tier, inactivity, cooldown (pure, no DB calls)
+    const profileEligible = filterEligibleCandidates(data ?? [], now, CANDIDATE_PREFETCH_LIMIT)
+
+    // Phase 2: filter by effective squad (requires per-user gang lookups)
+    const candidates: Array<{ id: string }> = []
+    // Build a lookup for preferred_squad from the prefetched data
+    const profileMap = new Map((data ?? []).map(p => [p.id, p]))
+
+    for (const candidate of profileEligible) {
+        if (candidates.length >= limit) break
+
+        const profile = profileMap.get(candidate.id)
+        const preferredSquad = (profile?.preferred_squad as string[] | null) ?? null
+        const { gangId, squadIds } = await resolveEffectiveSquad(admin, candidate.id, preferredSquad)
+
+        if (!gangId) continue
+        if (squadIds.length < MIN_SQUAD_SIZE) continue
+
+        candidates.push({ id: candidate.id })
+    }
+
+    return candidates
 }
 
 /**
