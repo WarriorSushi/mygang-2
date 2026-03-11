@@ -108,14 +108,23 @@ export function usePushSubscription() {
         try {
             const reg = await navigator.serviceWorker.ready
             const sub = await reg.pushManager.getSubscription()
-            if (sub) {
-                await fetch('/api/push/subscription', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint: sub.endpoint }),
-                })
-                await sub.unsubscribe()
+            if (!sub) {
+                setState('unsubscribed')
+                return
             }
+
+            const res = await fetch('/api/push/subscription', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: sub.endpoint }),
+            })
+
+            if (!res.ok) {
+                console.error('[push] Server failed to delete subscription, keeping local state')
+                return
+            }
+
+            await sub.unsubscribe()
             setState('unsubscribed')
         } catch (err) {
             console.error('[push] Unsubscribe failed:', err)
