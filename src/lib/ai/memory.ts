@@ -234,22 +234,28 @@ export async function storeMemories(
         }
 
         // M-C3: Enforce memory count limits — delete oldest if at/over limit
+        // Only count non-expired memories toward quota so stale temporal memories
+        // don't pressure stable facts into eviction.
         const memoryMaxCount = getMemoryMaxCount(tier)
         if (memoryMaxCount !== null) {
+            const quotaNowIso = new Date().toISOString()
             const { count: currentCount } = await supabase
                 .from('memories')
                 .select('id', { count: 'exact', head: true })
                 .eq('user_id', userId)
                 .eq('kind', 'episodic')
+                .or(`expires_at.is.null,expires_at.gt.${quotaNowIso}`)
 
             if (currentCount !== null && currentCount + nonDuplicates.length > memoryMaxCount) {
                 const excess = (currentCount + nonDuplicates.length) - memoryMaxCount
                 if (excess > 0) {
+                    // Evict oldest non-expired memories (expired ones are already invisible)
                     const { data: oldest } = await supabase
                         .from('memories')
                         .select('id')
                         .eq('user_id', userId)
                         .eq('kind', 'episodic')
+                        .or(`expires_at.is.null,expires_at.gt.${quotaNowIso}`)
                         .order('created_at', { ascending: true })
                         .limit(excess)
 
@@ -572,17 +578,20 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
             .eq('user_id', userId)
             .eq('kind', 'compacting')
 
-        // Count active episodic memories
+        // Count active non-expired episodic memories
+        const nowIso = new Date().toISOString()
         const { count, error: countError } = await supabase
             .from('memories')
             .select('id', { count: 'exact', head: true })
             .eq('user_id', userId)
             .eq('kind', 'episodic')
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
 
         if (countError || count === null || count < COMPACTION_THRESHOLD) return
 
-        // Atomically claim episodic memories by marking them as 'compacting'.
-        // If another request already changed them, this returns 0 rows and we bail.
+        // Atomically claim non-expired episodic memories by marking them as 'compacting'.
+        // Expired temporal memories are excluded — compacting them would resurrect temporary
+        // states (mood, plans) as permanent compacted summaries.
         // Note: category column may not exist in generated types — use type assertion
         type ClaimedMemory = { id: string; content: string; importance: number; tags: string[]; created_at: string; category: string | null }
         const { data: claimedRaw, error: claimError } = await supabase
@@ -590,6 +599,7 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
             .update({ kind: 'compacting' })
             .eq('user_id', userId)
             .eq('kind', 'episodic')
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
             .select('id, content, importance, tags, created_at, category')
 
         const claimed = (claimedRaw || []) as unknown as ClaimedMemory[]
