@@ -235,6 +235,7 @@ function makeCtx(overrides: Partial<BuildSystemPromptInput> = {}): BuildSystemPr
         isInactive: false,
         farewellTurn: false,
         openFloorRequested: false,
+        vibeContext: null,
         ...overrides,
     }
 }
@@ -454,6 +455,21 @@ console.log('\nNo nickname')
     const prompt = buildSystemPrompt(makeCtx({ userNickname: null }))
     assertNotContains(prompt, 'called "', 'no nickname clause')
     assertContains(prompt, 'User: TestUser.', 'plain user name')
+}
+
+console.log('\nVibe context present')
+{
+    const prompt = buildSystemPrompt(makeCtx({ vibeContext: '- wants humor and laughs\n- enjoys sarcastic unfiltered banter' }))
+    assertContains(prompt, 'USER VIBE PREFERENCES', 'vibe block header present')
+    assertContains(prompt, 'wants humor and laughs', 'vibe intent present')
+    assertContains(prompt, 'sarcastic unfiltered banter', 'vibe warmth present')
+    assertContains(prompt, 'light guide, not a script', 'vibe disclaimer present')
+}
+
+console.log('\nVibe context absent')
+{
+    const prompt = buildSystemPrompt(makeCtx({ vibeContext: null }))
+    assertNotContains(prompt, 'USER VIBE PREFERENCES', 'no vibe block when null')
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)

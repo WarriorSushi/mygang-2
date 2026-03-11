@@ -104,6 +104,7 @@ type ProfileStateRow = {
     abuse_score: number | null
     custom_character_names: Record<string, string> | null
     purchase_celebration_pending: string | null
+    vibe_profile: Record<string, string> | null
 }
 
 type ProfileUpdatesPayload = {
@@ -752,7 +753,7 @@ export async function POST(req: Request) {
         // Fetch profile first (needed to determine tier for rate limiting)
         const { data: profile } = await supabase
             .from('profiles')
-            .select('user_profile, relationship_state, session_summary, summary_turns, subscription_tier, abuse_score, custom_character_names, purchase_celebration_pending')
+            .select('user_profile, relationship_state, session_summary, summary_turns, subscription_tier, abuse_score, custom_character_names, purchase_celebration_pending, vibe_profile')
             .eq('id', user.id)
             .single<ProfileStateRow>()
 
@@ -1000,6 +1001,21 @@ ${sessionSummary}
             : 'SAFETY FLAG: NO.'
         const allowedStatusList = ACTIVITY_STATUSES.map((status) => `- "${status}"`).join('\n')
 
+        // Build vibe context from onboarding quiz (light hint for personalization)
+        const VIBE_LABELS: Record<string, Record<string, string>> = {
+            primary_intent: { hype: 'wants hype and encouragement', honest: 'wants honest real talk', humor: 'wants humor and laughs', chill: 'wants chill deep vibes' },
+            warmth_style: { warm: 'prefers warm supportive tone', balanced: 'likes a balanced mix', edgy: 'enjoys sarcastic unfiltered banter' },
+            chaos_level: { calm: 'prefers calm energy', lively: 'likes lively fun energy', chaotic: 'thrives on chaotic energy' },
+        }
+        let vibeContext: string | null = null
+        const vp = profile?.vibe_profile
+        if (vp && typeof vp === 'object') {
+            const lines = Object.entries(vp)
+                .map(([key, val]) => VIBE_LABELS[key]?.[val])
+                .filter(Boolean)
+            if (lines.length > 0) vibeContext = lines.map(l => `- ${l}`).join('\n')
+        }
+
         const systemPrompt = buildSystemPrompt({
             userName: userName || 'User',
             userNickname,
@@ -1021,6 +1037,7 @@ ${sessionSummary}
             isInactive,
             farewellTurn,
             openFloorRequested,
+            vibeContext,
         })
 
         // Prepare conversation for LLM with IDs — tier-based context depth

@@ -621,6 +621,7 @@ export async function resetOnboarding() {
             preferred_squad: null,
             username: null,
             custom_character_names: null,
+            vibe_profile: null,
         })
         .eq('id', user.id)
 

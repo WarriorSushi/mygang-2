@@ -50,6 +50,9 @@ export type BuildSystemPromptInput = {
     isInactive: boolean
     farewellTurn: boolean
     openFloorRequested: boolean
+
+    // Vibe profile (optional — from onboarding quiz)
+    vibeContext: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +241,12 @@ function buildFlowFlagsBlock(
 - If idle_autonomous is YES, keep short (1-3 messages), then hand back to user, and set should_continue FALSE.`
 }
 
+function buildVibeBlock(vibeContext: string | null): string {
+    if (!vibeContext) return ''
+    return `USER VIBE PREFERENCES (from onboarding — use as a light guide, not a script):
+${vibeContext}`
+}
+
 // ---------------------------------------------------------------------------
 // Main builder — assembles all blocks
 // ---------------------------------------------------------------------------
@@ -248,6 +257,7 @@ export function buildSystemPrompt(ctx: BuildSystemPromptInput): string {
         buildUserBlock(ctx.userName, ctx.userNickname),
         buildConversationFormatBlock(),
         buildSquadBlock(ctx.characterContext, ctx.customNamesDirective, ctx.activeIds),
+        buildVibeBlock(ctx.vibeContext),
         buildMemorySnapshotBlock(ctx.memorySnapshot, ctx.greetingOnly, ctx.autonomousIdle),
         buildSafetyBlock(ctx.safetyDirective),
         buildModeBlock(ctx.chatMode, ctx.lowCostMode),

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'
 import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, signOut } from '@/app/auth/actions'
@@ -148,6 +149,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
 }
 
 export function SettingsPanel({ username, email, initialSettings, usage }: SettingsPanelProps) {
+    const router = useRouter()
     const { setTheme } = useTheme()
     const [themeChoice, setThemeChoice] = useState<'light' | 'dark'>(initialSettings.theme)
     const [deleteEmail, setDeleteEmail] = useState('')
@@ -432,6 +434,26 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                         >
                             <Trash2 className="w-3 h-3 mr-1" />
                             Delete All Memories
+                        </Button>
+                    </div>
+
+                    <div className="h-px bg-border/40" />
+
+                    {/* Retake Vibe Quiz */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold">Retake Vibe Quiz</div>
+                            <div className="text-[11px] text-muted-foreground">
+                                Update your vibe preferences. Your chat, memories, and squad stay safe.
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="rounded-full text-[10px] uppercase tracking-widest shrink-0"
+                            onClick={() => router.push('/onboarding?retake=true')}
+                        >
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Retake Quiz
                         </Button>
                     </div>
 

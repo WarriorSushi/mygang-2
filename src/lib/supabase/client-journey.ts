@@ -15,6 +15,7 @@ export type JourneyProfile = {
     subscription_tier: 'free' | 'basic' | 'pro' | null
     pending_squad_downgrade: boolean | null
     restored_members_pending: string[] | null
+    vibe_profile: Record<string, string> | null
 }
 
 type GangRow = { id: string }
@@ -25,7 +26,7 @@ export async function fetchJourneyState(supabase: SupabaseClient, userId: string
     const [profileResult, gangResult] = await Promise.all([
         supabase
             .from('profiles')
-            .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier, pending_squad_downgrade, restored_members_pending')
+            .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier, pending_squad_downgrade, restored_members_pending, vibe_profile')
             .eq('id', userId)
             .single<JourneyProfile>(),
         supabase
@@ -67,14 +68,11 @@ export async function persistUserJourney(
         gangIds?: string[]
         onboardingCompleted?: boolean
         customCharacterNames?: Record<string, string>
+        vibeProfile?: Record<string, string>
     }
 ) {
-    const profileUpdate: {
-        username?: string
-        preferred_squad?: string[]
-        onboarding_completed?: boolean
-        custom_character_names?: Record<string, string>
-    } = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileUpdate: Record<string, any> = {}
 
     if (typeof payload.username === 'string' && payload.username.trim()) {
         profileUpdate.username = payload.username.trim()
@@ -87,6 +85,9 @@ export async function persistUserJourney(
     }
     if (payload.customCharacterNames) {
         profileUpdate.custom_character_names = payload.customCharacterNames
+    }
+    if (payload.vibeProfile) {
+        profileUpdate.vibe_profile = payload.vibeProfile
     }
 
     if (Object.keys(profileUpdate).length > 0) {
