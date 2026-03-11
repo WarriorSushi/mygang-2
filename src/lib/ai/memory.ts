@@ -409,6 +409,14 @@ export async function retrieveMemoriesLite(userId: string, query: string, limit 
     return scored.slice(0, limit) as StoredMemory[]
 }
 
+/** Validate and clamp expires_in_hours from LLM output. Returns valid hours or null. */
+export function validateExpiresInHours(value: unknown): number | null {
+    if (value == null) return null
+    const n = Number(value)
+    if (!Number.isFinite(n) || n < 1 || n > 720) return null
+    return n
+}
+
 /** Pure scoring function — exported for testing */
 export function computeCompositeScore(params: {
     similarity: number

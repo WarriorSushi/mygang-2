@@ -1,6 +1,6 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
-import { retrieveMemoriesHybrid, storeMemories, touchMemories, compactMemoriesIfNeeded } from '@/lib/ai/memory'
+import { retrieveMemoriesHybrid, storeMemories, touchMemories, compactMemoriesIfNeeded, validateExpiresInHours } from '@/lib/ai/memory'
 import type { MemoryCategory } from '@/lib/ai/memory'
 import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
@@ -494,7 +494,7 @@ const responseSchema = z.object({
             tags: z.array(z.string()).optional(),
             importance: z.number().optional(),
             category: z.enum(['identity', 'preference', 'life_event', 'relationship', 'inside_joke', 'routine', 'mood', 'topic']).optional(),
-            expires_in_hours: z.number().optional().describe('For time-sensitive facts (mood, plans, schedule). Omit for stable facts.')
+            expires_in_hours: z.number().min(1).max(720).optional().describe('For time-sensitive facts (mood, plans, schedule). Omit for stable facts. Range: 1-720 hours.')
         })).optional()
     }).optional(),
     relationship_updates: z.array(z.object({
@@ -1397,9 +1397,10 @@ ${sessionSummary}
                             tags: m.tags || [],
                             importance: m.importance || 1,
                             category: m.category as MemoryCategory | undefined,
-                            expires_at: m.expires_in_hours
-                                ? new Date(Date.now() + m.expires_in_hours * 60 * 60 * 1000).toISOString()
-                                : null,
+                            expires_at: (() => {
+                                const h = validateExpiresInHours(m.expires_in_hours)
+                                return h !== null ? new Date(Date.now() + h * 60 * 60 * 1000).toISOString() : null
+                            })(),
                         })),
                         tier
                     )
