@@ -28,3 +28,48 @@ self.addEventListener('fetch', (event) => {
         )
     )
 })
+
+// Phase 07B: Push notification handling
+self.addEventListener('push', (event) => {
+    let title = 'MyGang'
+    let options = {
+        body: 'Your gang has something new',
+        icon: '/icon.png',
+        badge: '/icon.png',
+        data: { url: '/chat' },
+    }
+
+    if (event.data) {
+        try {
+            const payload = event.data.json()
+            title = payload.title || title
+            options.body = payload.body || options.body
+            if (payload.url) options.data.url = payload.url
+        } catch {
+            // If not JSON, use text as body
+            const text = event.data.text()
+            if (text) options.body = text
+        }
+    }
+
+    event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close()
+    const targetUrl = event.notification.data?.url || '/chat'
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+            // Focus an existing tab if one is open
+            for (const client of clients) {
+                if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    client.navigate(targetUrl)
+                    return client.focus()
+                }
+            }
+            // Otherwise open a new window
+            return self.clients.openWindow(targetUrl)
+        })
+    )
+})
