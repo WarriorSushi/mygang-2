@@ -10,7 +10,8 @@ import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, s
 import { trackEvent } from '@/lib/analytics'
 import { getMessagesPerWindow, getTierCopy, getTierFromProfile } from '@/lib/billing'
 import { useChatStore } from '@/stores/chat-store'
-import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw, Sparkles, Globe, Palette, PenLine, X } from 'lucide-react'
+import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw, Sparkles, Globe, Palette, PenLine, X, Bell, BellOff } from 'lucide-react'
+import { usePushSubscription } from '@/hooks/use-push-subscription'
 
 interface SettingsPanelProps {
     username: string | null
@@ -143,6 +144,95 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                         </Button>
                     </div>
                 </div>
+            </div>
+        </section>
+    )
+}
+
+function NotificationsSection() {
+    const { state, busy, subscribe, unsubscribe } = usePushSubscription()
+
+    if (state === 'unsupported') {
+        return (
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
+                <div className="flex items-center gap-2">
+                    <BellOff className="w-3.5 h-3.5 text-muted-foreground" />
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Notifications</div>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                    Push notifications are not supported in this browser.
+                </p>
+            </section>
+        )
+    }
+
+    if (state === 'loading') {
+        return (
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
+                <div className="flex items-center gap-2">
+                    <Bell className="w-3.5 h-3.5 text-muted-foreground" />
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Notifications</div>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">Checking notification status...</p>
+            </section>
+        )
+    }
+
+    return (
+        <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
+            <div className="flex items-center gap-2">
+                <Bell className="w-3.5 h-3.5 text-muted-foreground" />
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Notifications</div>
+            </div>
+            <div className="mt-3">
+                {state === 'denied' && (
+                    <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                            Notifications are blocked for this site.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground/70">
+                            To re-enable, open your browser&apos;s site settings and allow notifications for this page, then refresh.
+                        </p>
+                    </div>
+                )}
+                {state === 'subscribed' && (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold">Push notifications are on</div>
+                            <div className="text-[11px] text-muted-foreground">
+                                This device will receive notifications from your gang.
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="rounded-full text-[10px] uppercase tracking-widest shrink-0"
+                            disabled={busy}
+                            onClick={unsubscribe}
+                        >
+                            <BellOff className="w-3 h-3 mr-1" />
+                            {busy ? 'Disabling...' : 'Disable'}
+                        </Button>
+                    </div>
+                )}
+                {(state === 'default' || state === 'unsubscribed') && (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold">Get notified when your gang is active</div>
+                            <div className="text-[11px] text-muted-foreground">
+                                Enable push notifications so you never miss what your gang is up to.
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="rounded-full text-[10px] uppercase tracking-widest shrink-0"
+                            disabled={busy}
+                            onClick={subscribe}
+                        >
+                            <Bell className="w-3 h-3 mr-1" />
+                            {busy ? 'Enabling...' : 'Enable Notifications'}
+                        </Button>
+                    </div>
+                )}
             </div>
         </section>
     )
@@ -388,6 +478,9 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     </div>
                 )}
             </section>
+
+            {/* Notifications */}
+            <NotificationsSection />
 
             {/* Data Management */}
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
