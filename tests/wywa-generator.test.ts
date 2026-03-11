@@ -20,6 +20,7 @@ import {
     buildWywaMessageId,
     buildStableTimestamps,
     buildParticipantBlock,
+    hasRecentWywaHistory,
     INACTIVITY_THRESHOLD_MS,
     GENERATION_COOLDOWN_MS,
     MIN_SQUAD_SIZE,
@@ -209,6 +210,12 @@ console.log('\n11. Row shaping verification')
     // Verify that the generator module exports the right constants
     assert(INACTIVITY_THRESHOLD_MS === 2 * 60 * 60 * 1000, 'inactivity threshold is 2 hours')
     assert(GENERATION_COOLDOWN_MS === 6 * 60 * 60 * 1000, 'cooldown is 6 hours')
+}
+
+console.log('\n12. hasRecentWywaHistory is exported and is a function')
+{
+    assert(typeof hasRecentWywaHistory === 'function', 'hasRecentWywaHistory is exported')
+    assert(hasRecentWywaHistory.length === 3, 'accepts 3 params (admin, userId, now)')
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)

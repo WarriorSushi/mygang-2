@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/wywa",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

@@ -23,6 +23,12 @@ export const INACTIVITY_THRESHOLD_MS = 2 * 60 * 60 * 1000
 /** Minimum 6 hours between WYWA generations for the same user. */
 export const GENERATION_COOLDOWN_MS = 6 * 60 * 60 * 1000
 
+/** Max users to attempt per cron run. */
+export const MAX_CANDIDATES_PER_RUN = 10
+
+/** Stop generating after this many successful WYWA batches per run. */
+export const MAX_GENERATED_PER_RUN = 5
+
 /** Number of recent chat-only messages to fetch for context. */
 const HISTORY_CONTEXT_LIMIT = 10
 
@@ -46,6 +52,16 @@ export type WywaResult =
     | { status: 'skipped_insufficient_squad'; count: number }
     | { status: 'skipped_no_profile' }
     | { status: 'error'; message: string }
+
+export type WywaBatchResult = {
+    scanned: number
+    eligible: number
+    attempted: number
+    generated: number
+    skipped: Record<string, number>
+    errored: number
+    cappedAt: 'candidates' | 'generated' | null
+}
 
 // ── Pure helpers (exported for testing) ──
 
@@ -91,6 +107,37 @@ export function buildStableTimestamps(baseTime: number, count: number): string[]
         timestamps.push(new Date(t).toISOString())
     }
     return timestamps
+}
+
+// ── Chat-history cooldown fallback ──
+
+/**
+ * Check whether the user has any recent WYWA rows in chat_history
+ * within the generation cooldown window. This acts as a secondary
+ * cooldown guard in case the profile's last_wywa_generated_at
+ * update failed after a previous batch insert.
+ */
+export async function hasRecentWywaHistory(
+    admin: ReturnType<typeof createAdminClient>,
+    userId: string,
+    now: number,
+): Promise<boolean> {
+    const cooldownCutoff = new Date(now - GENERATION_COOLDOWN_MS).toISOString()
+
+    const { count, error } = await admin
+        .from('chat_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'wywa')
+        .gte('created_at', cooldownCutoff)
+
+    if (error) {
+        // Fail closed — if we can't check, assume cooldown is active
+        console.error('[wywa] Failed to check recent WYWA history:', error.message)
+        return true
+    }
+
+    return (count ?? 0) > 0
 }
 
 // ── Effective squad resolution (mirrors client-journey.ts logic) ──
@@ -173,6 +220,12 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         return { status: 'skipped_recently_active' }
     }
     if (!isCooldownSatisfied(profile.last_wywa_generated_at, now)) {
+        return { status: 'skipped_cooldown' }
+    }
+
+    // 2b. Secondary cooldown: check recent WYWA rows in chat_history.
+    // Protects against duplicate batches if last_wywa_generated_at update failed.
+    if (await hasRecentWywaHistory(admin, userId, now)) {
         return { status: 'skipped_cooldown' }
     }
 
@@ -292,6 +345,148 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
     }
 
     return { status: 'generated', messagesWritten: rows.length }
+}
+
+// ── Candidate selection ──
+
+/** Max paid profiles to fetch before code-side filtering. */
+export const CANDIDATE_PREFETCH_LIMIT = 50
+
+/**
+ * Filter a list of profile rows down to WYWA-eligible candidates.
+ * Pure function — exported for testing.
+ */
+export function filterEligibleCandidates(
+    profiles: Array<{ id: string; subscription_tier: string | null; last_active_at: string | null; last_wywa_generated_at: string | null }>,
+    now: number,
+    limit: number,
+): Array<{ id: string }> {
+    const eligible: Array<{ id: string }> = []
+    for (const p of profiles) {
+        if (eligible.length >= limit) break
+        if (!isEligibleTier(p.subscription_tier)) continue
+        if (!isInactiveEnough(p.last_active_at, now)) continue
+        if (!isCooldownSatisfied(p.last_wywa_generated_at, now)) continue
+        eligible.push({ id: p.id })
+    }
+    return eligible
+}
+
+/**
+ * Find WYWA-eligible candidates from the database.
+ * Fetches a broad slice of paid profiles ordered deterministically,
+ * filters by eligibility in code, then validates effective squad
+ * before returning candidates. This prevents squad-less users from
+ * consuming the small per-run candidate cap.
+ */
+export async function findWywaCandidates(
+    admin: ReturnType<typeof createAdminClient>,
+    now: number,
+    limit: number,
+): Promise<Array<{ id: string }>> {
+    // Overfetch paid profiles with deterministic ordering:
+    // 1. Least-recently generated first (nulls = never generated = highest priority)
+    // 2. Least-recently active first (nulls = never active = high priority)
+    // 3. Stable tie-breaker by id
+    const { data, error } = await admin
+        .from('profiles')
+        .select('id, subscription_tier, last_active_at, last_wywa_generated_at, preferred_squad')
+        .in('subscription_tier', ['basic', 'pro'])
+        .order('last_wywa_generated_at', { ascending: true, nullsFirst: true })
+        .order('last_active_at', { ascending: true, nullsFirst: true })
+        .order('id', { ascending: true })
+        .limit(CANDIDATE_PREFETCH_LIMIT)
+
+    if (error) {
+        console.error('[wywa-batch] Candidate query failed:', error.message)
+        return []
+    }
+
+    // Phase 1: filter by tier, inactivity, cooldown (pure, no DB calls)
+    const profileEligible = filterEligibleCandidates(data ?? [], now, CANDIDATE_PREFETCH_LIMIT)
+
+    // Phase 2: filter by effective squad (requires per-user gang lookups)
+    const candidates: Array<{ id: string }> = []
+    // Build a lookup for preferred_squad from the prefetched data
+    const profileMap = new Map((data ?? []).map(p => [p.id, p]))
+
+    for (const candidate of profileEligible) {
+        if (candidates.length >= limit) break
+
+        const profile = profileMap.get(candidate.id)
+        const preferredSquad = (profile?.preferred_squad as string[] | null) ?? null
+        const { gangId, squadIds } = await resolveEffectiveSquad(admin, candidate.id, preferredSquad)
+
+        if (!gangId) continue
+        if (squadIds.length < MIN_SQUAD_SIZE) continue
+
+        candidates.push({ id: candidate.id })
+    }
+
+    return candidates
+}
+
+/**
+ * Run a WYWA batch: find candidates, generate for each, respect hard caps.
+ * Failures for one user do not fail the whole run.
+ */
+export async function runWywaBatch(): Promise<WywaBatchResult> {
+    const now = Date.now()
+    const admin = createAdminClient()
+
+    const result: WywaBatchResult = {
+        scanned: 0,
+        eligible: 0,
+        attempted: 0,
+        generated: 0,
+        skipped: {},
+        errored: 0,
+        cappedAt: null,
+    }
+
+    const candidates = await findWywaCandidates(admin, now, MAX_CANDIDATES_PER_RUN)
+    result.scanned = candidates.length
+
+    if (candidates.length === 0) {
+        return result
+    }
+
+    if (candidates.length >= MAX_CANDIDATES_PER_RUN) {
+        result.cappedAt = 'candidates'
+    }
+
+    result.eligible = candidates.length
+
+    for (const candidate of candidates) {
+        // Stop if generation cap reached
+        if (result.generated >= MAX_GENERATED_PER_RUN) {
+            result.cappedAt = 'generated'
+            break
+        }
+
+        result.attempted++
+
+        try {
+            const wywaResult = await generateWywaForUser(candidate.id)
+
+            if (wywaResult.status === 'generated') {
+                result.generated++
+            } else if (wywaResult.status === 'error') {
+                result.errored++
+                console.error(`[wywa-batch] Error for user ${candidate.id}: ${wywaResult.message}`)
+            } else {
+                // Skipped — track by status
+                const key = wywaResult.status
+                result.skipped[key] = (result.skipped[key] ?? 0) + 1
+            }
+        } catch (err) {
+            result.errored++
+            const msg = err instanceof Error ? err.message : 'Unknown error'
+            console.error(`[wywa-batch] Uncaught error for user ${candidate.id}: ${msg}`)
+        }
+    }
+
+    return result
 }
 
 // ── Prompt helpers (exported for testing) ──
