@@ -14,8 +14,10 @@ import {
     isEligibleTier,
     isInactiveEnough,
     isCooldownSatisfied,
+    filterEligibleCandidates,
     MAX_CANDIDATES_PER_RUN,
     MAX_GENERATED_PER_RUN,
+    CANDIDATE_PREFETCH_LIMIT,
     INACTIVITY_THRESHOLD_MS,
     GENERATION_COOLDOWN_MS,
     MIN_SQUAD_SIZE,
@@ -147,6 +149,85 @@ console.log('\n9. WywaBatchResult cappedAt values')
     assert(capped1.cappedAt === 'generated', 'generation cap hit')
     assert(capped2.cappedAt === 'candidates', 'candidate cap hit')
     assert(notCapped.cappedAt === null, 'no cap hit')
+}
+
+// ── CANDIDATE_PREFETCH_LIMIT ──
+
+console.log('\n10. CANDIDATE_PREFETCH_LIMIT is conservative')
+assert(CANDIDATE_PREFETCH_LIMIT === 50, 'prefetch limit is 50')
+assert(CANDIDATE_PREFETCH_LIMIT >= MAX_CANDIDATES_PER_RUN, 'prefetch >= candidate cap')
+
+// ── filterEligibleCandidates ──
+
+console.log('\n11. filterEligibleCandidates — excludes free-tier users')
+{
+    const profiles = [
+        { id: 'u1', subscription_tier: 'free', last_active_at: null, last_wywa_generated_at: null },
+        { id: 'u2', subscription_tier: 'basic', last_active_at: null, last_wywa_generated_at: null },
+        { id: 'u3', subscription_tier: null, last_active_at: null, last_wywa_generated_at: null },
+    ]
+    const result = filterEligibleCandidates(profiles, now, 10)
+    assert(result.length === 1, 'only 1 eligible')
+    assert(result[0].id === 'u2', 'u2 (basic) passes')
+}
+
+console.log('\n12. filterEligibleCandidates — excludes recently active users')
+{
+    const recentlyActive = new Date(now - 30 * 60 * 1000).toISOString() // 30 min ago
+    const longAgo = new Date(now - 4 * 60 * 60 * 1000).toISOString() // 4h ago
+    const profiles = [
+        { id: 'u1', subscription_tier: 'pro', last_active_at: recentlyActive, last_wywa_generated_at: null },
+        { id: 'u2', subscription_tier: 'pro', last_active_at: longAgo, last_wywa_generated_at: null },
+    ]
+    const result = filterEligibleCandidates(profiles, now, 10)
+    assert(result.length === 1, 'only 1 eligible')
+    assert(result[0].id === 'u2', 'u2 (inactive 4h) passes')
+}
+
+console.log('\n13. filterEligibleCandidates — excludes users on cooldown')
+{
+    const recentGen = new Date(now - 2 * 60 * 60 * 1000).toISOString() // 2h ago
+    const oldGen = new Date(now - 8 * 60 * 60 * 1000).toISOString() // 8h ago
+    const profiles = [
+        { id: 'u1', subscription_tier: 'basic', last_active_at: null, last_wywa_generated_at: recentGen },
+        { id: 'u2', subscription_tier: 'basic', last_active_at: null, last_wywa_generated_at: oldGen },
+        { id: 'u3', subscription_tier: 'basic', last_active_at: null, last_wywa_generated_at: null },
+    ]
+    const result = filterEligibleCandidates(profiles, now, 10)
+    assert(result.length === 2, '2 eligible (u2 and u3)')
+    assert(result[0].id === 'u2', 'u2 (old gen) passes')
+    assert(result[1].id === 'u3', 'u3 (never gen) passes')
+}
+
+console.log('\n14. filterEligibleCandidates — respects limit')
+{
+    const profiles = Array.from({ length: 20 }, (_, i) => ({
+        id: `u${i}`,
+        subscription_tier: 'pro' as string | null,
+        last_active_at: null,
+        last_wywa_generated_at: null,
+    }))
+    const result = filterEligibleCandidates(profiles, now, 3)
+    assert(result.length === 3, 'capped at limit=3')
+    assert(result[0].id === 'u0', 'first candidate')
+    assert(result[2].id === 'u2', 'third candidate')
+}
+
+console.log('\n15. filterEligibleCandidates — empty input')
+{
+    const result = filterEligibleCandidates([], now, 10)
+    assert(result.length === 0, 'empty in → empty out')
+}
+
+console.log('\n16. filterEligibleCandidates — all ineligible')
+{
+    const recentlyActive = new Date(now - 10 * 60 * 1000).toISOString() // 10 min ago
+    const profiles = [
+        { id: 'u1', subscription_tier: 'free', last_active_at: null, last_wywa_generated_at: null },
+        { id: 'u2', subscription_tier: 'pro', last_active_at: recentlyActive, last_wywa_generated_at: null },
+    ]
+    const result = filterEligibleCandidates(profiles, now, 10)
+    assert(result.length === 0, 'none pass all checks')
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)

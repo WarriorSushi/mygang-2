@@ -312,9 +312,32 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
 
 // ── Candidate selection ──
 
+/** Max paid profiles to fetch before code-side filtering. */
+export const CANDIDATE_PREFETCH_LIMIT = 50
+
+/**
+ * Filter a list of profile rows down to WYWA-eligible candidates.
+ * Pure function — exported for testing.
+ */
+export function filterEligibleCandidates(
+    profiles: Array<{ id: string; subscription_tier: string | null; last_active_at: string | null; last_wywa_generated_at: string | null }>,
+    now: number,
+    limit: number,
+): Array<{ id: string }> {
+    const eligible: Array<{ id: string }> = []
+    for (const p of profiles) {
+        if (eligible.length >= limit) break
+        if (!isEligibleTier(p.subscription_tier)) continue
+        if (!isInactiveEnough(p.last_active_at, now)) continue
+        if (!isCooldownSatisfied(p.last_wywa_generated_at, now)) continue
+        eligible.push({ id: p.id })
+    }
+    return eligible
+}
+
 /**
  * Find WYWA-eligible candidates from the database.
- * Pre-filters on tier, inactivity, and cooldown at the query level.
+ * Fetches a broad slice of paid profiles, then filters in code for deterministic results.
  * Squad check is deferred to the single-user generator (requires per-user lookups).
  */
 export async function findWywaCandidates(
@@ -322,24 +345,19 @@ export async function findWywaCandidates(
     now: number,
     limit: number,
 ): Promise<Array<{ id: string }>> {
-    const inactivityCutoff = new Date(now - INACTIVITY_THRESHOLD_MS).toISOString()
-    const cooldownCutoff = new Date(now - GENERATION_COOLDOWN_MS).toISOString()
-
-    // Fetch paid users who are inactive enough and not on cooldown
+    // Overfetch paid profiles, filter eligibility in code
     const { data, error } = await admin
         .from('profiles')
-        .select('id')
+        .select('id, subscription_tier, last_active_at, last_wywa_generated_at')
         .in('subscription_tier', ['basic', 'pro'])
-        .or(`last_active_at.is.null,last_active_at.lt.${inactivityCutoff}`)
-        .or(`last_wywa_generated_at.is.null,last_wywa_generated_at.lt.${cooldownCutoff}`)
-        .limit(limit)
+        .limit(CANDIDATE_PREFETCH_LIMIT)
 
     if (error) {
         console.error('[wywa-batch] Candidate query failed:', error.message)
         return []
     }
 
-    return data ?? []
+    return filterEligibleCandidates(data ?? [], now, limit)
 }
 
 /**
