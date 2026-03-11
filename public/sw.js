@@ -34,8 +34,8 @@ self.addEventListener('push', (event) => {
     let title = 'MyGang'
     let options = {
         body: 'Your gang has something new',
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-192x192.png',
+        icon: '/icon.png',
+        badge: '/icon.png',
         data: { url: '/chat' },
     }
 
