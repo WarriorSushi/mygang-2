@@ -24,7 +24,8 @@ type HistoryMessage = {
  * - Newlines in content are normalized to spaces
  */
 function formatLine(m: HistoryMessage): string {
-    const cleanContent = m.content.replace(/\r?\n/g, ' ').trim()
+    // Escape reserved reply marker in content to prevent ambiguity with structural |>target_id
+    const cleanContent = m.content.replace(/\r?\n/g, ' ').replace(/\|>/g, '|\\>').trim()
     const replyTarget = m.replyToId ? ` |>${m.replyToId}` : ''
 
     if (m.reaction) {
