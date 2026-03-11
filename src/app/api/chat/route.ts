@@ -1061,7 +1061,7 @@ The user JUST upgraded to the ${purchaseCelebration.toUpperCase()} plan! This is
 - Keep it natural — like friends celebrating good news, not a corporate welcome email.
 - This is the FIRST thing the gang should address this turn. Prioritize it over other conversation.
 ` : ''}CORE RULES:
-1) Latest message is "now". Prioritize newest user info.
+1) Latest message is "now". ALWAYS address the user's newest message first. If they changed topic, follow the new topic — do not continue the old thread.
 2) REPLYING: Leave target_message_id null on 85%+ of messages. Only set it when directly calling out, quoting, or replying to a SPECIFIC earlier message. Never reply to the user's latest — it's already obvious context.
 3) Use occasional emoji reactions for realism.
 4) Status content must be exactly one of:
