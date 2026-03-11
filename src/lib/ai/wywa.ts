@@ -14,6 +14,7 @@ import { openRouterModel } from '@/lib/ai/openrouter'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CHARACTERS } from '@/constants/characters'
 import { TYPING_STYLES } from './wywa-prompt'
+import { sendWywaTeaser } from '@/lib/push/wywa-teaser'
 
 // ── Constants ──
 
@@ -333,7 +334,14 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         return { status: 'error', message: `Insert failed: ${insertError.message}` }
     }
 
-    // 11. Update last_wywa_generated_at
+    // 11. Send one push teaser (awaited, but non-fatal — push failure must not fail the batch)
+    try {
+        await sendWywaTeaser(userId)
+    } catch (err) {
+        console.error('[wywa] Push teaser failed (non-fatal):', err instanceof Error ? err.message : err)
+    }
+
+    // 12. Update last_wywa_generated_at
     const { error: updateError } = await admin
         .from('profiles')
         .update({ last_wywa_generated_at: new Date(now).toISOString() })
