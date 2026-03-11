@@ -6,6 +6,19 @@ import { getMemoryMaxCount, getMemoryInPromptLimit, type SubscriptionTier } from
 
 const embeddingModel = google.textEmbeddingModel('text-embedding-004')
 
+/** Category priority: additive tiebreaker for composite scoring (max +0.06).
+ *  Stable identity and inside jokes beat bland topical memories when scores are close. */
+export const CATEGORY_PRIORITY: Record<string, number> = {
+    identity: 0.06,
+    inside_joke: 0.05,
+    life_event: 0.04,
+    relationship: 0.03,
+    preference: 0.02,
+    routine: 0.01,
+    mood: 0.01,
+    topic: 0.00,
+}
+
 const STOPWORDS = new Set([
     'the','a','an','and','or','but','if','then','else','when','to','of','in','on','for','with','at','by','from','is','are','was','were','be','been','being','i','you','he','she','they','we','me','my','your','our','their','this','that','these','those'
 ])
@@ -21,6 +34,7 @@ export type StoredMemory = {
     tags?: string[] | null
     category?: MemoryCategory | null
     last_used_at?: string | null
+    expires_at?: string | null
 }
 
 export async function generateEmbedding(text: string) {
@@ -41,11 +55,12 @@ export async function storeMemory(
         importance?: number
         useEmbedding?: boolean
         category?: MemoryCategory
+        expires_at?: string | null
     }
 ) {
     try {
         const supabase = await createClient()
-        const { kind = 'episodic', tags = [], importance = 1, useEmbedding = true, category } = options || {}
+        const { kind = 'episodic', tags = [], importance = 1, useEmbedding = true, category, expires_at } = options || {}
         const normalizedContent = content.trim().replace(/\s+/g, ' ')
         const embedding = useEmbedding ? await generateEmbedding(normalizedContent) : null
 
@@ -116,6 +131,7 @@ export async function storeMemory(
             importance,
         }
         if (category) insertData.category = category
+        if (expires_at) insertData.expires_at = expires_at
 
         const { error } = await supabase.from('memories').insert(insertData)
 
@@ -134,6 +150,7 @@ export async function storeMemories(
         tags?: string[]
         importance?: number
         category?: MemoryCategory
+        expires_at?: string | null
     }>,
     tier: SubscriptionTier = 'basic'
 ) {
@@ -217,22 +234,28 @@ export async function storeMemories(
         }
 
         // M-C3: Enforce memory count limits — delete oldest if at/over limit
+        // Only count non-expired memories toward quota so stale temporal memories
+        // don't pressure stable facts into eviction.
         const memoryMaxCount = getMemoryMaxCount(tier)
         if (memoryMaxCount !== null) {
+            const quotaNowIso = new Date().toISOString()
             const { count: currentCount } = await supabase
                 .from('memories')
                 .select('id', { count: 'exact', head: true })
                 .eq('user_id', userId)
                 .eq('kind', 'episodic')
+                .or(`expires_at.is.null,expires_at.gt.${quotaNowIso}`)
 
             if (currentCount !== null && currentCount + nonDuplicates.length > memoryMaxCount) {
                 const excess = (currentCount + nonDuplicates.length) - memoryMaxCount
                 if (excess > 0) {
+                    // Evict oldest non-expired memories (expired ones are already invisible)
                     const { data: oldest } = await supabase
                         .from('memories')
                         .select('id')
                         .eq('user_id', userId)
                         .eq('kind', 'episodic')
+                        .or(`expires_at.is.null,expires_at.gt.${quotaNowIso}`)
                         .order('created_at', { ascending: true })
                         .limit(excess)
 
@@ -270,6 +293,7 @@ export async function storeMemories(
                     importance: mem.importance || 1,
                 }
                 if (mem.category) row.category = mem.category
+                if (mem.expires_at) row.expires_at = mem.expires_at
                 return row
             })
         )
@@ -366,6 +390,7 @@ export async function retrieveMemoriesLite(userId: string, query: string, limit 
         .select('id, content, created_at, importance, tags')
         .eq('user_id', userId)
         .eq('kind', 'episodic')
+        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -382,6 +407,19 @@ export async function retrieveMemoriesLite(userId: string, query: string, limit 
 
     scored.sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
     return scored.slice(0, limit) as StoredMemory[]
+}
+
+/** Pure scoring function — exported for testing */
+export function computeCompositeScore(params: {
+    similarity: number
+    recency: number
+    importance: number
+    usageFrequency: number
+    category: string | null
+}): number {
+    const importance = Math.min(3, params.importance)
+    const categoryBoost = CATEGORY_PRIORITY[params.category || ''] ?? 0
+    return 0.5 * params.similarity + 0.2 * params.recency + 0.15 * (importance / 3) + 0.15 * params.usageFrequency + categoryBoost
 }
 
 /** Hybrid retrieval: embedding similarity + recency, merged & ranked with category diversity */
@@ -411,9 +449,10 @@ export async function retrieveMemoriesHybrid(userId: string, query: string, limi
 
     const recentQueryPromise = supabase
         .from('memories')
-        .select('id, content, created_at, importance, tags, last_used_at')
+        .select('id, content, created_at, importance, tags, last_used_at, category')
         .eq('user_id', userId)
         .eq('kind', 'episodic')
+        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(5)
 
@@ -449,14 +488,18 @@ export async function retrieveMemoriesHybrid(userId: string, query: string, limi
         }
     }
 
-    // 4. Rank by composite score: 0.5*similarity + 0.2*recency + 0.15*importance/3 + 0.15*usage_frequency
+    // 4. Rank by composite score: base formula preserved, category priority added as tiebreaker
     const scored = Array.from(mergedMap.values()).map(mem => {
-        const importance = Math.min(3, mem.importance ?? 1)
-        // usage_frequency: based on last_used_at, more recent use = higher frequency
         const lastUsed = mem.last_used_at ? new Date(mem.last_used_at).getTime() : 0
         const usageFrequency = lastUsed ? Math.max(0, 1 - (now - lastUsed) / (14 * 24 * 60 * 60 * 1000)) : 0
 
-        const compositeScore = 0.5 * mem._similarity + 0.2 * mem._recency + 0.15 * (importance / 3) + 0.15 * usageFrequency
+        const compositeScore = computeCompositeScore({
+            similarity: mem._similarity,
+            recency: mem._recency,
+            importance: mem.importance ?? 1,
+            usageFrequency,
+            category: mem.category || null,
+        })
         return { ...mem, compositeScore }
     })
 
@@ -535,17 +578,20 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
             .eq('user_id', userId)
             .eq('kind', 'compacting')
 
-        // Count active episodic memories
+        // Count active non-expired episodic memories
+        const nowIso = new Date().toISOString()
         const { count, error: countError } = await supabase
             .from('memories')
             .select('id', { count: 'exact', head: true })
             .eq('user_id', userId)
             .eq('kind', 'episodic')
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
 
         if (countError || count === null || count < COMPACTION_THRESHOLD) return
 
-        // Atomically claim episodic memories by marking them as 'compacting'.
-        // If another request already changed them, this returns 0 rows and we bail.
+        // Atomically claim non-expired episodic memories by marking them as 'compacting'.
+        // Expired temporal memories are excluded — compacting them would resurrect temporary
+        // states (mood, plans) as permanent compacted summaries.
         // Note: category column may not exist in generated types — use type assertion
         type ClaimedMemory = { id: string; content: string; importance: number; tags: string[]; created_at: string; category: string | null }
         const { data: claimedRaw, error: claimError } = await supabase
@@ -553,6 +599,7 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
             .update({ kind: 'compacting' })
             .eq('user_id', userId)
             .eq('kind', 'episodic')
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
             .select('id, content, importance, tags, created_at, category')
 
         const claimed = (claimedRaw || []) as unknown as ClaimedMemory[]

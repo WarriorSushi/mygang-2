@@ -493,7 +493,8 @@ const responseSchema = z.object({
             content: z.string(),
             tags: z.array(z.string()).optional(),
             importance: z.number().optional(),
-            category: z.enum(['identity', 'preference', 'life_event', 'relationship', 'inside_joke', 'routine', 'mood', 'topic']).optional()
+            category: z.enum(['identity', 'preference', 'life_event', 'relationship', 'inside_joke', 'routine', 'mood', 'topic']).optional(),
+            expires_in_hours: z.number().optional().describe('For time-sensitive facts (mood, plans, schedule). Omit for stable facts.')
         })).optional()
     }).optional(),
     relationship_updates: z.array(z.object({
@@ -910,7 +911,7 @@ export async function POST(req: Request) {
                     const relationshipBoard = activeGangSafe.map((c) => {
                         const state = relationshipState?.[c.id] || { affinity: 50, trust: 50, banter: 50, protectiveness: 50, note: '' }
                         const note = state.note ? ` | ${state.note}` : ''
-                        return `- ${c.name}: affinity ${state.affinity}, trust ${state.trust}, banter ${state.banter}, protectiveness ${state.protectiveness}${note}`
+                        return `- ${c.id}: aff${state.affinity} tru${state.trust} ban${state.banter} pro${state.protectiveness}${note}`
                     }).join('\n')
 
                     const profileLines = Object.keys(userProfile).length > 0
@@ -941,7 +942,7 @@ ${profileLines}
 TOP MEMORIES (organized by category):
 ${structuredMemories}
 
-RELATIONSHIP BOARD:
+RELATIONSHIP BOARD (aff=affinity tru=trust ban=banter pro=protectiveness, 0-100):
 ${relationshipBoard || 'No relationship data yet.'}
 
 SESSION SUMMARY:
@@ -1396,6 +1397,9 @@ ${sessionSummary}
                             tags: m.tags || [],
                             importance: m.importance || 1,
                             category: m.category as MemoryCategory | undefined,
+                            expires_at: m.expires_in_hours
+                                ? new Date(Date.now() + m.expires_in_hours * 60 * 60 * 1000).toISOString()
+                                : null,
                         })),
                         tier
                     )

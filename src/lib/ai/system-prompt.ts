@@ -192,7 +192,16 @@ function buildMemoryRulesBlock(
   - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
   - If the user corrects a previous fact, store the correction with importance >= 2.
   - When in doubt about USER facts, STORE IT. But never store what characters did or said.
-  - importance: 1 = casual mention, 2 = explicitly stated fact, 3 = corrected/emphasized fact.
+  - IMPORTANCE — ask "would a real friend remember this in two weeks?":
+    1 = passing mention (what they had for lunch today)
+    2 = explicitly stated fact worth remembering (their job, a hobby, a goal)
+    3 = corrected or emphasized fact (user corrected a previous detail, or repeated it with emphasis)
+  - TEMPORAL — set expires_in_hours for time-sensitive facts. Omit for stable facts:
+    mood / how they feel right now → 24
+    plans for this week / temporary schedule → 168
+    short-lived situation (e.g. "working on a deadline") → 72
+    Stable facts (name, job, preferences, relationships) → omit (permanent)
+  - INSIDE JOKES — when a genuinely funny or memorable moment happens between user and a character (callback humor, a shared bit), store it as category: "inside_joke" with importance 2+. These are high-value relationship glue.
   - CATEGORY: Tag each episodic memory with a category:
     identity = name, age, occupation, role, identity facts
     preference = likes, dislikes, favorites, opinions
