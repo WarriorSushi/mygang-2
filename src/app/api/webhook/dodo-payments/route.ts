@@ -2,6 +2,7 @@ import { Webhooks } from '@dodopayments/nextjs'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database } from '@/lib/database.types'
 import { TIER_LIMITS } from '@/lib/billing'
+import { backfillMemoryEmbeddings } from '@/lib/ai/memory'
 
 // M2 FIX: Lazy init to avoid module-scope crash on missing env vars
 function getAdminClient() {
@@ -249,6 +250,11 @@ export const POST = Webhooks({
 
         // Set celebration flag so AI friends congratulate user on next chat
         await updatePurchaseCelebration(userId, plan as 'basic' | 'pro')
+
+        // Backfill embeddings for memories stored during free tier (fire-and-forget)
+        backfillMemoryEmbeddings(userId, getAdminClient()).catch(err =>
+            console.error('[webhook] Memory backfill error (non-fatal):', err)
+        )
     },
 
     onSubscriptionRenewed: async (payload) => {
@@ -457,5 +463,12 @@ export const POST = Webhooks({
             status: 'active',
             updated_at: new Date().toISOString(),
         })
+
+        // Backfill embeddings when upgrading to a paid tier (fire-and-forget)
+        if (newTier === 'basic' || newTier === 'pro') {
+            backfillMemoryEmbeddings(userId, getAdminClient()).catch(err =>
+                console.error('[webhook] Memory backfill error on plan change (non-fatal):', err)
+            )
+        }
     },
 })
