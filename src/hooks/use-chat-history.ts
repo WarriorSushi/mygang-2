@@ -6,12 +6,17 @@ import { getChatHistoryPage } from '@/app/auth/actions'
 
 // ── Pure helpers ──
 
+/** Normalize source to 'chat' for legacy rows (undefined/missing). */
+export function normalizeSource(source?: string): string {
+    return source || 'chat'
+}
+
 function normalizeMessageContent(content: string) {
     return content.replace(/\s+/g, ' ').trim()
 }
 
 function messageSignature(message: Message) {
-    return `${message.speaker}::${message.reaction || ''}::${normalizeMessageContent(message.content)}`
+    return `${message.speaker}::${normalizeSource(message.source)}::${message.reaction || ''}::${normalizeMessageContent(message.content)}`
 }
 
 function messageStrictSignature(message: Message) {

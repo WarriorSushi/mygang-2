@@ -137,6 +137,17 @@ function normalizeSpeaker(value: string) {
     return value.toLowerCase().trim()
 }
 
+/** Normalize source to 'chat' for legacy/missing rows (mirrors use-chat-history). */
+function normalizeMessageSource(source?: string): string {
+    return source || 'chat'
+}
+
+/** True when two adjacent messages belong to the same speaker+source group. */
+function isSameGroup(a: Message, b: Message): boolean {
+    return a.speaker === b.speaker
+        && normalizeMessageSource(a.source) === normalizeMessageSource(b.source)
+}
+
 export const MessageList = memo(function MessageList({
     messages,
     activeGang,
@@ -348,8 +359,8 @@ export const MessageList = memo(function MessageList({
                 <div className="flex flex-col">
                     {messages.map((message, index) => {
                         const character = characterBySpeaker.get(normalizeSpeaker(message.speaker))
-                        const samePrevious = index > 0 && messages[index - 1].speaker === message.speaker
-                        const sameNext = index < messages.length - 1 && messages[index + 1].speaker === message.speaker
+                        const samePrevious = index > 0 && isSameGroup(messages[index - 1], message)
+                        const sameNext = index < messages.length - 1 && isSameGroup(message, messages[index + 1])
                         const groupPosition =
                             samePrevious && sameNext ? 'middle'
                                 : !samePrevious && sameNext ? 'first'
@@ -363,6 +374,11 @@ export const MessageList = memo(function MessageList({
                         const shouldAnimate = animatedMessageIdsRef.current.has(message.id)
                         const isReaction = !!message.reaction
 
+                        // WYWA divider: show before the first message of a contiguous wywa batch
+                        const isWywa = message.source === 'wywa'
+                        const prevIsWywa = index > 0 && messages[index - 1].source === 'wywa'
+                        const showWywaDivider = isWywa && !prevIsWywa
+
                         return (
                             <div
                                 key={message.id}
@@ -370,7 +386,7 @@ export const MessageList = memo(function MessageList({
                                     "px-4",
                                     index === 0
                                         ? ""
-                                        : samePrevious
+                                        : samePrevious && !showWywaDivider
                                             ? "pt-[3px]"
                                             : isReaction
                                                 ? "pt-3"
@@ -378,11 +394,20 @@ export const MessageList = memo(function MessageList({
                                     index < messages.length - 6 && "content-auto"
                                 )}
                             >
+                                {showWywaDivider && (
+                                    <div className="flex items-center gap-3 py-3" role="separator" aria-label="While you were away">
+                                        <div className="flex-1 h-px bg-border/50" />
+                                        <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium select-none">
+                                            While you were away
+                                        </span>
+                                        <div className="flex-1 h-px bg-border/50" />
+                                    </div>
+                                )}
                                 <div className={shouldAnimate ? "animate-msg-appear" : undefined}>
                                     <MessageItem
                                         message={message}
                                         character={character}
-                                        isContinued={samePrevious}
+                                        isContinued={samePrevious && !showWywaDivider}
                                         groupPosition={groupPosition}
                                         isFastMode={isFastMode}
                                         quotedMessage={quotedMessage}
