@@ -202,6 +202,8 @@ interface UseChatHistoryArgs {
     debounceTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>
 }
 
+export type HistoryStatus = 'unknown' | 'bootstrapping' | 'has_history' | 'empty' | 'error'
+
 export function useChatHistory({
     userId,
     isHydrated,
@@ -218,7 +220,7 @@ export function useChatHistory({
     const [isBootstrappingHistory, setIsBootstrappingHistory] = useState(false)
     const [isLoadingOlderHistory, setIsLoadingOlderHistory] = useState(false)
     const [historyBootstrapDone, setHistoryBootstrapDone] = useState(false)
-    const [historyStatus, setHistoryStatus] = useState<'unknown' | 'has_history' | 'empty' | 'error'>('unknown')
+    const [historyStatus, setHistoryStatus] = useState<HistoryStatus>('unknown')
 
     const historySyncInFlightRef = useRef(false)
     const lastHistorySyncAtRef = useRef(0)
@@ -230,6 +232,7 @@ export function useChatHistory({
     useEffect(() => {
         if (prevUserIdRef.current !== userId) {
             prevUserIdRef.current = userId
+            setIsBootstrappingHistory(false)
             setHistoryBootstrapDone(false)
             setHistoryCursor(null)
             setHasMoreHistory(false)
@@ -241,15 +244,12 @@ export function useChatHistory({
     useEffect(() => {
         if (!isHydrated) return
         if (!userId) {
-            setHistoryStatus('empty')
+            setIsBootstrappingHistory(false)
+            setHistoryStatus(messagesLength > 0 ? 'has_history' : 'empty')
             setHistoryBootstrapDone(true)
             setHistoryCursor(null)
             setHasMoreHistory(false)
             return
-        }
-        if (messagesLength > 0) {
-            setHistoryStatus('has_history')
-            setHistoryBootstrapDone(true)
         }
     }, [isHydrated, messagesLength, userId])
 
@@ -257,16 +257,26 @@ export function useChatHistory({
     useEffect(() => {
         if (!isHydrated || !userId) return
         if (historyBootstrapDone) return
-        if (messagesLength > 0) return
 
         let cancelled = false
         const bootstrapHistory = async () => {
             setIsBootstrappingHistory(true)
+            setHistoryStatus('bootstrapping')
             try {
                 const page = await getChatHistoryPage({ limit: 40 })
                 if (cancelled) return
-                if (page.items.length > 0) {
-                    setMessages(collapseLikelyDuplicateMessages(page.items))
+
+                const localMessages = useChatStore.getState().messages
+                const reconciledMessages = reconcileMessagesFromHistory(page.items, localMessages)
+
+                if (
+                    localMessages.length !== reconciledMessages.length
+                    || !isSameMessageTail(localMessages, reconciledMessages)
+                ) {
+                    setMessages(reconciledMessages)
+                }
+
+                if (reconciledMessages.length > 0) {
                     setHistoryStatus('has_history')
                 } else {
                     setHistoryStatus('empty')
@@ -287,7 +297,7 @@ export function useChatHistory({
         return () => {
             cancelled = true
         }
-    }, [historyBootstrapDone, isHydrated, messagesLength, setMessages, userId])
+    }, [historyBootstrapDone, isHydrated, setMessages, userId])
 
     // Periodic sync
     const syncLatestHistory = useCallback(async (force = false) => {
@@ -309,18 +319,8 @@ export function useChatHistory({
             setHasMoreHistory(page.hasMore)
 
             const localMessages = useChatStore.getState().messages
-            if (page.items.length === 0) {
-                setHistoryStatus('empty')
-                return
-            }
-
-            setHistoryStatus('has_history')
-            if (localMessages.length === 0) {
-                setMessages(collapseLikelyDuplicateMessages(page.items))
-                return
-            }
-
             const reconciledMessages = reconcileMessagesFromHistory(page.items, localMessages)
+            setHistoryStatus(reconciledMessages.length > 0 ? 'has_history' : 'empty')
             if (
                 localMessages.length !== reconciledMessages.length
                 || !isSameMessageTail(localMessages, reconciledMessages)

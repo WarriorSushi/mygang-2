@@ -93,6 +93,7 @@ export function AuthManager() {
                 const { activeGang: localGang, userName: localName } = useChatStore.getState()
                 const remote = await fetchJourneyState(supabase, session.user.id)
                 const savedIds = remote.gangIds
+                const remoteGangSource = remote.gangSource
                 const localIds = localGang.map((c) => c.id)
                 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
                 const profile = remote.profile
@@ -101,6 +102,7 @@ export function AuthManager() {
                 const remoteTier = getTierFromProfile(profile?.subscription_tier ?? null)
                 const maxSquad = getSquadLimit(remoteTier)
                 const remoteIds = savedIds.length >= 2 && savedIds.length <= maxSquad ? savedIds : null
+                const remoteGangNeedsRepair = remoteGangSource === 'preferred_squad_fallback' && !!remoteIds
 
                 const hasLocalGang = localIds.length >= 2 && localIds.length <= maxSquad
                 const hasRemoteGang = remoteIds && remoteIds.length >= 2
@@ -124,6 +126,16 @@ export function AuthManager() {
                     if (hasRemoteGang) {
                         if (localGang.length === 0 || !sameSet(localIds, remoteIds!)) {
                             setActiveGang(remoteSquad)
+                        }
+                        if (remoteGangNeedsRepair) {
+                            try {
+                                await persistUserJourney(supabase, session.user.id, {
+                                    gangIds: remoteIds!,
+                                    onboardingCompleted: true,
+                                })
+                            } catch (err) {
+                                console.error('Error repairing fallback squad during auth sync:', err)
+                            }
                         }
                     } else if (hasLocalGang) {
                         try {

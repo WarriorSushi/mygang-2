@@ -22,6 +22,7 @@ export type JourneyProfile = {
 
 type GangRow = { id: string }
 type GangMemberRow = { character_id: string | null }
+export type JourneyGangSource = 'gang_members' | 'preferred_squad_fallback' | 'none'
 
 export async function fetchJourneyState(supabase: SupabaseClient, userId: string) {
     // I15: Parallelize profile and gang queries
@@ -40,6 +41,7 @@ export async function fetchJourneyState(supabase: SupabaseClient, userId: string
 
     const profile = profileResult.data
     let gangIds: string[] = []
+    let gangSource: JourneyGangSource = 'none'
 
     if (gangResult.data?.id) {
         const { data: members } = await supabase
@@ -50,15 +52,20 @@ export async function fetchJourneyState(supabase: SupabaseClient, userId: string
         gangIds = (members || [])
             .map((m) => m.character_id)
             .filter((id): id is string => typeof id === 'string')
+        if (gangIds.length >= 2) {
+            gangSource = 'gang_members'
+        }
     }
 
     if (gangIds.length < 2 && Array.isArray(profile?.preferred_squad) && profile.preferred_squad.length >= 2 && profile.preferred_squad.length <= 6) {
         gangIds = profile.preferred_squad
+        gangSource = 'preferred_squad_fallback'
     }
 
     return {
         profile: profile || null,
-        gangIds: gangIds.slice(0, 6)
+        gangIds: gangIds.slice(0, 6),
+        gangSource,
     }
 }
 

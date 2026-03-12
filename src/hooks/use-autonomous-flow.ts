@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
 import { CHARACTER_GREETINGS } from '@/constants/character-greetings'
+import type { HistoryStatus } from '@/hooks/use-chat-history'
 
 function pickRandom<T>(items: T[]): T | undefined {
     if (items.length === 0) return undefined
@@ -38,6 +39,8 @@ interface UseAutonomousFlowArgs {
     pulseStatus: (characterId: string, status: string, duration?: number) => void
     pickStatusFor: (characterId: string) => string
     initialGreetingRef: React.MutableRefObject<boolean>
+    historyBootstrapDone: boolean
+    historyStatus: HistoryStatus
 }
 
 export function useAutonomousFlow({
@@ -55,6 +58,8 @@ export function useAutonomousFlow({
     pulseStatus,
     pickStatusFor,
     initialGreetingRef,
+    historyBootstrapDone,
+    historyStatus,
 }: UseAutonomousFlowArgs) {
     const {
         activeGang,
@@ -135,6 +140,7 @@ export function useAutonomousFlow({
     const triggerLocalGreeting = useCallback(() => {
         if (!isMountedRef.current) return
         if (initialGreetingRef.current) return
+        if (!historyBootstrapDone || historyStatus !== 'empty') return
         const state = useChatStore.getState()
         if (state.activeGang.length === 0 || state.messages.length > 0) return
         initialGreetingRef.current = true
@@ -173,13 +179,14 @@ export function useAutonomousFlow({
             }, delay)
             delay += 900 + Math.random() * 700
         })
-    }, [initialGreetingRef, pickStatusFor, pulseStatus, queueTypingUser, removeTypingUser])
+    }, [historyBootstrapDone, historyStatus, initialGreetingRef, pickStatusFor, pulseStatus, queueTypingUser, removeTypingUser])
 
     triggerLocalGreetingRef.current = triggerLocalGreeting
 
     // Resume autonomous for returning users with open-floor intent
     useEffect(() => {
         if (!isHydrated || !userId) return
+        if (!historyBootstrapDone || historyStatus !== 'has_history') return
         if (chatMode !== 'ecosystem') return
         if (resumeAutonomousTriggeredRef.current) return
         if (messageCount === 0) return
@@ -212,15 +219,15 @@ export function useAutonomousFlow({
             })
         }, 700)
         return () => clearTimeout(timer)
-    }, [canRunIdleAutonomous, chatMode, isHydrated, messageCount, userId, isGeneratingRef, pendingUserMessagesRef, sendToApiRef])
+    }, [canRunIdleAutonomous, chatMode, historyBootstrapDone, historyStatus, isHydrated, messageCount, userId, isGeneratingRef, pendingUserMessagesRef, sendToApiRef])
 
     // Initial greeting for first-time sessions
     useEffect(() => {
-        const allowGreeting = !userId || useChatStore.getState().messages.length === 0
-        if (activeGang.length > 0 && messageCount === 0 && !initialGreetingRef.current && allowGreeting) {
+        if (!historyBootstrapDone || historyStatus !== 'empty') return
+        if (activeGang.length > 0 && messageCount === 0 && !initialGreetingRef.current) {
             triggerLocalGreetingRef.current()
         }
-    }, [activeGang.length, initialGreetingRef, messageCount, userId])
+    }, [activeGang.length, historyBootstrapDone, historyStatus, initialGreetingRef, messageCount])
 
     // Cleanup: cancel all greeting timers on unmount
     useEffect(() => {

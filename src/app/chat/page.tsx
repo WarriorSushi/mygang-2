@@ -162,6 +162,16 @@ export default function ChatPage() {
         onPaywall,
     })
 
+    const history = useChatHistory({
+        userId,
+        isHydrated,
+        isOnline,
+        isGeneratingRef: api.isGeneratingRef,
+        pendingUserMessagesRef: api.pendingUserMessagesRef,
+        debounceTimerRef: api.debounceTimerRef,
+    })
+    const shouldShowEmptyStatePrompts = history.historyBootstrapDone && history.historyStatus === 'empty'
+
     const autonomous = useAutonomousFlow({
         isGeneratingRef: api.isGeneratingRef,
         pendingUserMessagesRef: api.pendingUserMessagesRef,
@@ -177,6 +187,8 @@ export default function ChatPage() {
         removeTypingUser: typing.removeTypingUser,
         pulseStatus: typing.pulseStatus,
         pickStatusFor: typing.pickStatusFor,
+        historyBootstrapDone: history.historyBootstrapDone,
+        historyStatus: history.historyStatus,
     })
 
     // Patch autonomous callbacks into API hook bridge refs (read at call time via .current)
@@ -186,15 +198,6 @@ export default function ChatPage() {
 
     // Title-based unread presence (shows count while tab is hidden)
     useTabPresence(messages)
-
-    const history = useChatHistory({
-        userId,
-        isHydrated,
-        isOnline,
-        isGeneratingRef: api.isGeneratingRef,
-        pendingUserMessagesRef: api.pendingUserMessagesRef,
-        debounceTimerRef: api.debounceTimerRef,
-    })
 
     // Show toast on history sync failure
     useEffect(() => {
@@ -550,7 +553,7 @@ export default function ChatPage() {
                         online={isOnline}
                         replyingTo={replyingToDisplay}
                         onCancelReply={() => setReplyingTo(null)}
-                        starterChips={hasUserSentMessage ? [] : getStarterChips(userName || '')}
+                        starterChips={!hasUserSentMessage && shouldShowEmptyStatePrompts ? getStarterChips(userName || '') : []}
                         cooldownPlaceholder={cooldownLabel}
                     />
                 </div>

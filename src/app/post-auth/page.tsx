@@ -30,6 +30,7 @@ export default function PostAuthPage() {
 
             const remote = await fetchJourneyState(supabase, userId)
             const remoteGangIds = remote.gangIds
+            const remoteGangNeedsRepair = remote.gangSource === 'preferred_squad_fallback'
             const hasRemoteGang = remoteGangIds.length >= 2 && remoteGangIds.length <= 6
             const hasLocalGang = localGangIds.length >= 2 && localGangIds.length <= 6
 
@@ -44,6 +45,16 @@ export default function PostAuthPage() {
             }
 
             if (hasRemoteGang) {
+                if (remoteGangNeedsRepair) {
+                    try {
+                        await persistUserJourney(supabase, userId, {
+                            gangIds: remoteGangIds,
+                            onboardingCompleted: true
+                        })
+                    } catch (error) {
+                        console.error('Failed to repair fallback squad during post-auth:', error)
+                    }
+                }
                 const squad = CHARACTERS.filter((c) => remoteGangIds.includes(c.id))
                 setActiveGang(squad)
                 if (!isCancelled) router.replace('/chat')
