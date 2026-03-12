@@ -11,6 +11,7 @@ import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
 import { formatHistoryForLLM } from '@/lib/ai/history-format'
+import { shouldPreserveSingleBubbleTurn } from '@/lib/ai/response-style'
 import { buildSystemPrompt } from '@/lib/ai/system-prompt'
 import type { Json } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -433,10 +434,13 @@ function normalizeEventWritingStyle(
     options: {
         allowLongReplies: boolean
         farewellTurn: boolean
+        preserveSingleBubbleTurn: boolean
     }
 ): RouteResponseObject['events'] {
     const normalized: RouteResponseObject['events'] = []
-    const maxBubbleChars = options.farewellTurn ? 90 : options.allowLongReplies ? 260 : 170
+    const maxBubbleChars = options.farewellTurn
+        ? 90
+        : (options.allowLongReplies || options.preserveSingleBubbleTurn ? 260 : 170)
 
     for (const event of events) {
         if (event.type !== 'message' || !event.content) {
@@ -450,7 +454,7 @@ function normalizeEventWritingStyle(
             continue
         }
 
-        if (!options.allowLongReplies || options.farewellTurn) {
+        if ((!options.allowLongReplies && !options.preserveSingleBubbleTurn) || options.farewellTurn) {
             const split = !options.farewellTurn ? splitMessageForSecondBubble(content) : null
             if (split) {
                 normalized.push({
@@ -1276,12 +1280,23 @@ ${sessionSummary}
             object.should_continue = false
         }
 
+        const preserveSingleBubbleTurn = shouldPreserveSingleBubbleTurn(lastUserMsg, {
+            allowLongReplies,
+            farewellTurn,
+        })
+
         // Sometimes break one long message into two short back-to-back bubbles for realism.
         if (object?.events?.length) {
-            const splitChance = TIER_SPLIT_CHANCE[tier] ?? (isGangFocusMode ? 0.34 : 0.42)
+            const splitChance = preserveSingleBubbleTurn
+                ? 0
+                : (TIER_SPLIT_CHANCE[tier] ?? (isGangFocusMode ? 0.34 : 0.42))
             object.events = maybeSplitAiMessages(object.events, splitChance)
         }
-        object.events = normalizeEventWritingStyle(object.events, { allowLongReplies, farewellTurn })
+        object.events = normalizeEventWritingStyle(object.events, {
+            allowLongReplies,
+            farewellTurn,
+            preserveSingleBubbleTurn,
+        })
 
         if (farewellTurn) {
             let farewellCount = 0

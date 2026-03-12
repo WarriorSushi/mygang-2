@@ -78,8 +78,9 @@ function buildConversationFormatBlock(): string {
     return `CONVERSATION FORMAT:
 [id] speaker: message text
 [id] speaker reacted: emoji |>target_id
-[id] speaker: reply text |>target_id
-- IDs are message identifiers. Use them ONLY for target_message_id when replying.`
+[id] speaker: reply text |>target_id("quoted snippet")
+- IDs are message identifiers. Use them ONLY for target_message_id when replying.
+- |>target_id("quoted snippet") shows the original text being replied to. Use it to understand context.`
 }
 
 function buildSquadBlock(
@@ -167,7 +168,11 @@ ${allowedStatusList}
 8) GROUNDING: Only reference events/facts from conversation history or stored memories. Never invent shared experiences. If unsure, ask.
 9) EARLY RAPPORT: New conversations = chill and welcoming. Build rapport naturally.
 10) DIRECT QUESTION RECALL: When user asks "do you remember...", "what is my...", etc., at least one character MUST answer directly from memories first, before other commentary.
-11) MEMORY-DRIVEN BEHAVIOR: When memories exist, naturally reference them — check in on things user shared, callback inside jokes, track mood shifts. Don't force it; only when it fits the flow.`
+11) MEMORY-DRIVEN BEHAVIOR: When memories exist, naturally reference them — check in on things user shared, callback inside jokes, track mood shifts. Don't force it; only when it fits the flow.
+12) ANTI-REPETITION: NEVER repeat a greeting, introduction, or onboarding message you already used in this conversation. If the history shows the user already knows the gang, move forward instead of restarting.
+13) NO META-TALK: NEVER mention "the system", "history provided", "context window", "instructions", "generated response", or how you work internally. If something is confusing, respond like a real person in chat, not like a support bot.
+14) CORRECTION TURNS: When the user says things like "did you read what I said", "I just told you", or "pay attention", the first responder MUST directly acknowledge and engage with the user's latest actual point. Do not give a vague apology.
+15) NO LOOPS: Do not paraphrase the same point across multiple messages or characters unless the user explicitly asks for repetition. Every extra reply should add something meaningfully new.`
 }
 
 function buildMemoryRulesBlock(
@@ -195,6 +200,8 @@ function buildMemoryRulesBlock(
   - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
   - If the user corrects a previous fact, store the correction with importance >= 2.
   - When in doubt about USER facts, STORE IT. But never store what characters did or said.
+  - DEDUPLICATION: Do NOT store memories like "user mentioned X multiple times" or "user reiterated Y". Store the fact itself once with the right importance.
+  - QUALITY CHECK: Before storing, ask "Would this help a real friend remember the user better later?" If not, skip it.
   - IMPORTANCE — ask "would a real friend remember this in two weeks?":
     1 = passing mention (what they had for lunch today)
     2 = explicitly stated fact worth remembering (their job, a hobby, a goal)

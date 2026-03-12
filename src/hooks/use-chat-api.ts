@@ -4,11 +4,20 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { normalizeActivityStatus } from '@/constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
+import { getContextLimit, getTierFromProfile } from '@/lib/billing'
 import { hasOpenFloorIntent } from './use-autonomous-flow'
 
 /** Only live-chat messages (source='chat' or legacy/undefined) enter the payload window. */
 export function isLiveChatMessage(m: { source?: string }): boolean {
     return !m.source || m.source === 'chat'
+}
+
+export function getPayloadWindowLimit(
+    subscriptionTier: string | null | undefined,
+    lowCostMode: boolean
+): number {
+    if (lowCostMode) return 10
+    return getContextLimit(getTierFromProfile(subscriptionTier ?? null))
 }
 
 type ChatEvent =
@@ -251,7 +260,10 @@ export function useChatApi({
                 : null
             const openFloorIntent = !!sourceUserMessage?.content && hasOpenFloorIntent(sourceUserMessage.content)
 
-            const payloadLimit = effectiveLowCostModeForCall ? 10 : 12
+            const payloadLimit = getPayloadWindowLimit(
+                useChatStore.getState().subscriptionTier,
+                effectiveLowCostModeForCall
+            )
             const sendableMessages = currentMessages.filter((m) => (
                 !(m.speaker === 'user' && m.deliveryStatus === 'failed')
                 && isLiveChatMessage(m)

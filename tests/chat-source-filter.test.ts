@@ -7,7 +7,7 @@
  * Run: pnpm exec tsx tests/chat-source-filter.test.ts
  */
 
-import { isLiveChatMessage } from '../src/hooks/use-chat-api'
+import { getPayloadWindowLimit, isLiveChatMessage } from '../src/hooks/use-chat-api'
 
 type ChatMessageInput = {
     id: string
@@ -190,6 +190,16 @@ console.log('\n14. Payload window — order preserved with mixed sources')
     assert(payload[1].id === '3', 'second')
     assert(payload[2].id === '5', 'third')
 }
+
+console.log('\n15. Payload window limit follows billing tier context')
+assert(getPayloadWindowLimit('free', false) === 15, 'free tier uses 15-message context window')
+assert(getPayloadWindowLimit('basic', false) === 25, 'basic tier uses 25-message context window')
+assert(getPayloadWindowLimit('pro', false) === 35, 'pro tier uses 35-message context window')
+assert(getPayloadWindowLimit(undefined, false) === 15, 'missing tier falls back to free window')
+
+console.log('\n16. Low-cost mode overrides tier context window')
+assert(getPayloadWindowLimit('pro', true) === 10, 'pro low-cost mode uses reduced 10-message window')
+assert(getPayloadWindowLimit('basic', true) === 10, 'basic low-cost mode uses reduced 10-message window')
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
 process.exit(failed > 0 ? 1 : 0)

@@ -101,8 +101,9 @@ USER:
 CONVERSATION FORMAT:
 [id] speaker: message text
 [id] speaker reacted: emoji |>target_id
-[id] speaker: reply text |>target_id
+[id] speaker: reply text |>target_id("quoted snippet")
 - IDs are message identifiers. Use them ONLY for target_message_id when replying.
+- |>target_id("quoted snippet") shows the original text being replied to. Use it to understand context.
 
 SQUAD (id|name|gender|role|voice) — gender: F=female, M=male:
 ${characterContext}
@@ -159,6 +160,10 @@ ${allowedStatusList}
 9) EARLY RAPPORT: New conversations = chill and welcoming. Build rapport naturally.
 10) DIRECT QUESTION RECALL: When user asks "do you remember...", "what is my...", etc., at least one character MUST answer directly from memories first, before other commentary.
 11) MEMORY-DRIVEN BEHAVIOR: When memories exist, naturally reference them — check in on things user shared, callback inside jokes, track mood shifts. Don't force it; only when it fits the flow.
+12) ANTI-REPETITION: NEVER repeat a greeting, introduction, or onboarding message you already used in this conversation. If the history shows the user already knows the gang, move forward instead of restarting.
+13) NO META-TALK: NEVER mention "the system", "history provided", "context window", "instructions", "generated response", or how you work internally. If something is confusing, respond like a real person in chat, not like a support bot.
+14) CORRECTION TURNS: When the user says things like "did you read what I said", "I just told you", or "pay attention", the first responder MUST directly acknowledge and engage with the user's latest actual point. Do not give a vague apology.
+15) NO LOOPS: Do not paraphrase the same point across multiple messages or characters unless the user explicitly asks for repetition. Every extra reply should add something meaningfully new.
 
 ${allowMemoryUpdates || shouldUpdateSummary ? `MEMORY/RELATIONSHIP:
 - MEMORY_UPDATE_ALLOWED: ${allowMemoryUpdates ? 'YES' : 'NO'}.
@@ -174,6 +179,8 @@ ${allowMemoryUpdates ? `- MEMORY EXTRACTION RULES (CRITICAL):
   - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
   - If the user corrects a previous fact, store the correction with importance >= 2.
   - When in doubt about USER facts, STORE IT. But never store what characters did or said.
+  - DEDUPLICATION: Do NOT store memories like "user mentioned X multiple times" or "user reiterated Y". Store the fact itself once with the right importance.
+  - QUALITY CHECK: Before storing, ask "Would this help a real friend remember the user better later?" If not, skip it.
   - IMPORTANCE — ask "would a real friend remember this in two weeks?":
     1 = passing mention (what they had for lunch today)
     2 = explicitly stated fact worth remembering (their job, a hobby, a goal)
@@ -325,6 +332,10 @@ console.log('Fixture A: greeting-only baseline')
     assert(!actual.endsWith('\n'), 'fixture A: no trailing newline')
     assertNotContains(actual, '== MEMORY SNAPSHOT ==', 'fixture A: no memory snapshot')
     assertContains(actual, 'Updates disabled this turn', 'fixture A: memory disabled')
+    assertContains(actual, '|>target_id("quoted snippet")', 'fixture A: quoted reply syntax')
+    assertContains(actual, 'ANTI-REPETITION', 'fixture A: anti-repetition rule')
+    assertContains(actual, 'NO META-TALK', 'fixture A: anti-meta rule')
+    assertContains(actual, 'NO LOOPS', 'fixture A: anti-loop rule')
 
     // Section order: each section must appear after the previous
     const sectionOrder = [
@@ -362,6 +373,8 @@ console.log('\nFixture B: ecosystem + memory + nickname')
     assertContains(actual, 'expires_in_hours', 'fixture B: expires_in_hours directive')
     assertContains(actual, 'INSIDE JOKES', 'fixture B: inside joke framing')
     assertContains(actual, 'CATEGORY: Tag each episodic memory', 'fixture B: category directive')
+    assertContains(actual, 'DEDUPLICATION', 'fixture B: deduplication rule')
+    assertContains(actual, 'QUALITY CHECK', 'fixture B: quality gate')
 
     // Verify memory snapshot appears between DEPTH_MOMENT and SAFETY
     const depthIdx = actual.indexOf('DEPTH MOMENT:')
@@ -436,6 +449,13 @@ console.log('\nOpen floor')
 {
     const prompt = buildSystemPrompt(makeCtx({ openFloorRequested: true }))
     assertContains(prompt, 'OPEN_FLOOR_REQUESTED: YES', 'open floor yes')
+}
+
+console.log('\nAnti-loop and correction guidance')
+{
+    const prompt = buildSystemPrompt(makeCtx())
+    assertContains(prompt, 'Do not paraphrase the same point across multiple messages', 'anti-loop text present')
+    assertContains(prompt, 'the first responder MUST directly acknowledge', 'correction-turn guidance present')
 }
 
 console.log('\nHigh silent turns')
