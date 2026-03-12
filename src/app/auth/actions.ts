@@ -735,10 +735,8 @@ export async function saveMemoryManual(content: string) {
 }
 
 // ── Squad Tier Member Tracking ──
-// Note: squad_tier_members table is not yet in generated types — use type assertion
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const squadTierTable = (supabase: Awaited<ReturnType<typeof createClient>>) =>
-    (supabase as any).from('squad_tier_members')
+    supabase.from('squad_tier_members')
 
 export async function addSquadTierMembers(characterIds: string[], _tier?: 'basic' | 'pro') {
     const supabase = await createClient()

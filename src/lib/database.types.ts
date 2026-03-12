@@ -64,7 +64,7 @@ export type Database = {
       }
       analytics_events: {
         Row: {
-          created_at: string | null
+          created_at: string
           event: string
           id: string
           metadata: Json | null
@@ -73,7 +73,7 @@ export type Database = {
           value: number | null
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           event: string
           id?: string
           metadata?: Json | null
@@ -82,7 +82,7 @@ export type Database = {
           value?: number | null
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           event?: string
           id?: string
           metadata?: Json | null
@@ -102,7 +102,7 @@ export type Database = {
       }
       billing_events: {
         Row: {
-          created_at: string | null
+          created_at: string
           dodo_event_id: string | null
           event_type: string
           id: string
@@ -110,7 +110,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           dodo_event_id?: string | null
           event_type: string
           id?: string
@@ -118,7 +118,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           dodo_event_id?: string | null
           event_type?: string
           id?: string
@@ -184,38 +184,38 @@ export type Database = {
         Row: {
           client_message_id: string | null
           content: string
-          created_at: string | null
+          created_at: string
           gang_id: string
           id: string
           reaction: string | null
           reply_to_client_message_id: string | null
           source: string
           speaker: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           client_message_id?: string | null
           content: string
-          created_at?: string | null
+          created_at?: string
           gang_id: string
           id?: string
           reaction?: string | null
           reply_to_client_message_id?: string | null
           source?: string
           speaker: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           client_message_id?: string | null
           content?: string
-          created_at?: string | null
+          created_at?: string
           gang_id?: string
           id?: string
           reaction?: string | null
           reply_to_client_message_id?: string | null
           source?: string
           speaker?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -237,24 +237,27 @@ export type Database = {
       gang_members: {
         Row: {
           character_id: string
-          created_at: string | null
+          created_at: string
           gang_id: string
           id: string
           relationship_score: number | null
+          updated_at: string | null
         }
         Insert: {
           character_id: string
-          created_at?: string | null
+          created_at?: string
           gang_id: string
           id?: string
           relationship_score?: number | null
+          updated_at?: string | null
         }
         Update: {
           character_id?: string
-          created_at?: string | null
+          created_at?: string
           gang_id?: string
           id?: string
           relationship_score?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -275,19 +278,19 @@ export type Database = {
       }
       gangs: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           name: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           name?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           name?: string
           user_id?: string
@@ -306,7 +309,7 @@ export type Database = {
         Row: {
           category: string | null
           content: string
-          created_at: string | null
+          created_at: string
           embedding: string | null
           expires_at: string | null
           id: string
@@ -320,7 +323,7 @@ export type Database = {
         Insert: {
           category?: string | null
           content: string
-          created_at?: string | null
+          created_at?: string
           embedding?: string | null
           expires_at?: string | null
           id?: string
@@ -334,7 +337,7 @@ export type Database = {
         Update: {
           category?: string | null
           content?: string
-          created_at?: string | null
+          created_at?: string
           embedding?: string | null
           expires_at?: string | null
           id?: string
@@ -354,6 +357,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          abuse_score: number
+          chat_mode: string | null
+          chat_wallpaper: string | null
+          created_at: string
+          custom_character_names: Json | null
+          daily_msg_count: number
+          dodo_customer_id: string | null
+          gang_vibe_score: number | null
+          id: string
+          last_active_at: string | null
+          last_msg_reset: string | null
+          last_wywa_generated_at: string | null
+          low_cost_mode: boolean
+          onboarding_completed: boolean
+          pending_squad_downgrade: boolean | null
+          preferred_squad: string[] | null
+          purchase_celebration_pending: string | null
+          relationship_state: Json | null
+          restored_members_pending: string[] | null
+          session_summary: string | null
+          subscription_tier: string
+          summary_turns: number | null
+          theme: string | null
+          updated_at: string | null
+          user_profile: Json | null
+          username: string | null
+          vibe_profile: Json | null
+        }
+        Insert: {
+          abuse_score?: number
+          chat_mode?: string | null
+          chat_wallpaper?: string | null
+          created_at?: string
+          custom_character_names?: Json | null
+          daily_msg_count?: number
+          dodo_customer_id?: string | null
+          gang_vibe_score?: number | null
+          id: string
+          last_active_at?: string | null
+          last_msg_reset?: string | null
+          last_wywa_generated_at?: string | null
+          low_cost_mode?: boolean
+          onboarding_completed?: boolean
+          pending_squad_downgrade?: boolean | null
+          preferred_squad?: string[] | null
+          purchase_celebration_pending?: string | null
+          relationship_state?: Json | null
+          restored_members_pending?: string[] | null
+          session_summary?: string | null
+          subscription_tier?: string
+          summary_turns?: number | null
+          theme?: string | null
+          updated_at?: string | null
+          user_profile?: Json | null
+          username?: string | null
+          vibe_profile?: Json | null
+        }
+        Update: {
+          abuse_score?: number
+          chat_mode?: string | null
+          chat_wallpaper?: string | null
+          created_at?: string
+          custom_character_names?: Json | null
+          daily_msg_count?: number
+          dodo_customer_id?: string | null
+          gang_vibe_score?: number | null
+          id?: string
+          last_active_at?: string | null
+          last_msg_reset?: string | null
+          last_wywa_generated_at?: string | null
+          low_cost_mode?: boolean
+          onboarding_completed?: boolean
+          pending_squad_downgrade?: boolean | null
+          preferred_squad?: string[] | null
+          purchase_celebration_pending?: string | null
+          relationship_state?: Json | null
+          restored_members_pending?: string[] | null
+          session_summary?: string | null
+          subscription_tier?: string
+          summary_turns?: number | null
+          theme?: string | null
+          updated_at?: string | null
+          user_profile?: Json | null
+          username?: string | null
+          vibe_profile?: Json | null
+        }
+        Relationships: []
       }
       push_subscriptions: {
         Row: {
@@ -396,96 +489,6 @@ export type Database = {
           },
         ]
       }
-      profiles: {
-        Row: {
-          abuse_score: number | null
-          chat_mode: string | null
-          chat_wallpaper: string | null
-          created_at: string | null
-          custom_character_names: Json | null
-          daily_msg_count: number | null
-          dodo_customer_id: string | null
-          gang_vibe_score: number | null
-          id: string
-          last_active_at: string | null
-          last_msg_reset: string | null
-          last_wywa_generated_at: string | null
-          low_cost_mode: boolean
-          onboarding_completed: boolean | null
-          pending_squad_downgrade: boolean | null
-          preferred_squad: string[] | null
-          purchase_celebration_pending: string | null
-          relationship_state: Json | null
-          restored_members_pending: string[] | null
-          session_summary: string | null
-          subscription_tier: string | null
-          summary_turns: number | null
-          theme: string | null
-          updated_at: string | null
-          user_profile: Json | null
-          username: string | null
-          vibe_profile: Json | null
-        }
-        Insert: {
-          abuse_score?: number | null
-          chat_mode?: string | null
-          chat_wallpaper?: string | null
-          created_at?: string | null
-          custom_character_names?: Json | null
-          daily_msg_count?: number | null
-          dodo_customer_id?: string | null
-          gang_vibe_score?: number | null
-          id: string
-          last_active_at?: string | null
-          last_msg_reset?: string | null
-          last_wywa_generated_at?: string | null
-          low_cost_mode?: boolean
-          onboarding_completed?: boolean | null
-          pending_squad_downgrade?: boolean | null
-          preferred_squad?: string[] | null
-          purchase_celebration_pending?: string | null
-          relationship_state?: Json | null
-          restored_members_pending?: string[] | null
-          session_summary?: string | null
-          subscription_tier?: string | null
-          summary_turns?: number | null
-          theme?: string | null
-          updated_at?: string | null
-          user_profile?: Json | null
-          username?: string | null
-          vibe_profile?: Json | null
-        }
-        Update: {
-          abuse_score?: number | null
-          chat_mode?: string | null
-          chat_wallpaper?: string | null
-          created_at?: string | null
-          custom_character_names?: Json | null
-          daily_msg_count?: number | null
-          dodo_customer_id?: string | null
-          gang_vibe_score?: number | null
-          id?: string
-          last_active_at?: string | null
-          last_msg_reset?: string | null
-          last_wywa_generated_at?: string | null
-          low_cost_mode?: boolean
-          onboarding_completed?: boolean | null
-          pending_squad_downgrade?: boolean | null
-          preferred_squad?: string[] | null
-          purchase_celebration_pending?: string | null
-          relationship_state?: Json | null
-          restored_members_pending?: string[] | null
-          session_summary?: string | null
-          subscription_tier?: string | null
-          summary_turns?: number | null
-          theme?: string | null
-          updated_at?: string | null
-          user_profile?: Json | null
-          username?: string | null
-          vibe_profile?: Json | null
-        }
-        Relationships: []
-      }
       squad_tier_members: {
         Row: {
           added_at_tier: string
@@ -494,6 +497,7 @@ export type Database = {
           deactivated_at: string | null
           id: string
           is_active: boolean
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -503,6 +507,7 @@ export type Database = {
           deactivated_at?: string | null
           id?: string
           is_active?: boolean
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -512,9 +517,17 @@ export type Database = {
           deactivated_at?: string | null
           id?: string
           is_active?: boolean
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "squad_tier_members_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "squad_tier_members_user_id_fkey"
             columns: ["user_id"]
@@ -526,7 +539,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
-          created_at: string | null
+          created_at: string
           current_period_end: string | null
           id: string
           plan: string
@@ -536,7 +549,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           current_period_end?: string | null
           id: string
           plan: string
@@ -546,7 +559,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           current_period_end?: string | null
           id?: string
           plan?: string
@@ -594,13 +607,13 @@ export type Database = {
           query_embedding: string
         }
         Returns: {
-          id: string
+          category: string
           content: string
-          similarity: number
-          importance: number
           created_at: string
-          last_used_at: string | null
-          category: string | null
+          id: string
+          importance: number
+          last_used_at: string
+          similarity: number
         }[]
       }
     }

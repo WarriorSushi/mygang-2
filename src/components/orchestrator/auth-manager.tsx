@@ -232,13 +232,13 @@ export function AuthManager() {
                             // DOWNGRADE — fetch auto-removable members and show keeper
                             let autoRemovableIds: string[] = []
                             try {
-                                const { data: autoRemovable } = await (supabase as any)
+                                const { data: autoRemovable } = await supabase
                                     .from('squad_tier_members')
                                     .select('character_id')
                                     .eq('user_id', session.user.id)
                                     .eq('is_active', true)
                                     .order('created_at', { ascending: false })
-                                    .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+                                    .limit(currentSquadSize - newLimit)
                                 autoRemovableIds = autoRemovable?.map(r => r.character_id) ?? []
                             } catch (err) {
                                 console.error('Failed to fetch auto-removable members:', err)
@@ -258,13 +258,13 @@ export function AuthManager() {
                         if (currentSquadSize > newLimit) {
                             let autoRemovableIds: string[] = []
                             try {
-                                const { data: autoRemovable } = await (supabase as any)
+                                const { data: autoRemovable } = await supabase
                                     .from('squad_tier_members')
                                     .select('character_id')
                                     .eq('user_id', session.user.id)
                                     .eq('is_active', true)
                                     .order('created_at', { ascending: false })
-                                    .limit(currentSquadSize - newLimit) as { data: { character_id: string }[] | null }
+                                    .limit(currentSquadSize - newLimit)
                                 autoRemovableIds = autoRemovable?.map(r => r.character_id) ?? []
                             } catch (err) {
                                 console.error('Failed to fetch auto-removable members:', err)
@@ -276,7 +276,7 @@ export function AuthManager() {
                             })
                         }
                         // Clear the flag
-                        await supabase.from('profiles').update({ pending_squad_downgrade: false } as any).eq('id', session.user.id)
+                        await supabase.from('profiles').update({ pending_squad_downgrade: false }).eq('id', session.user.id)
                     }
 
                     // Handle restored members (welcome-back messages)
@@ -293,7 +293,7 @@ export function AuthManager() {
                             }
                         }
                         // Clear the flag
-                        await supabase.from('profiles').update({ restored_members_pending: [] } as any).eq('id', session.user.id)
+                        await supabase.from('profiles').update({ restored_members_pending: [] }).eq('id', session.user.id)
                     }
                 }
             } catch (err) {
