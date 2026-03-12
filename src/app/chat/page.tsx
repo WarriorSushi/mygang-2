@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
+import { isSquadTierWriteError, trackOperationalError } from '@/lib/operational-telemetry'
 import { saveGang, deactivateSquadTierMembers } from '@/app/auth/actions'
 import { CHARACTERS } from '@/constants/characters'
 
@@ -594,25 +595,43 @@ export default function ChatPage() {
                     maxKeep={pendingDowngrade.newLimit}
                     autoRemovableIds={pendingDowngrade.autoRemovableIds}
                     onConfirm={async (keepIds) => {
+                        const removedIds = activeGang.filter(c => !keepIds.includes(c.id)).map(c => c.id)
                         try {
-                            const removedIds = activeGang.filter(c => !keepIds.includes(c.id)).map(c => c.id)
                             await saveGang(keepIds)
                             await deactivateSquadTierMembers(removedIds)
                             setActiveGang(activeGang.filter(c => keepIds.includes(c.id)))
                             setPendingDowngrade(null)
                         } catch (error) {
+                            trackOperationalError(
+                                isSquadTierWriteError(error) ? 'squad_tier_write_failed' : 'squad_write_failed',
+                                {
+                                    user_id: userId,
+                                    source_path: 'chat.downgrade.confirm',
+                                    removed_count: removedIds.length,
+                                },
+                                error
+                            )
                             setToastMessage(error instanceof Error ? error.message : 'Could not update your squad. Please try again.')
                         }
                     }}
                     onAutoRemove={async () => {
+                        const removeIds = pendingDowngrade.autoRemovableIds
                         try {
-                            const removeIds = pendingDowngrade.autoRemovableIds
                             const keepIds = activeGang.filter(c => !removeIds.includes(c.id)).map(c => c.id)
                             await saveGang(keepIds)
                             await deactivateSquadTierMembers(removeIds)
                             setActiveGang(activeGang.filter(c => !removeIds.includes(c.id)))
                             setPendingDowngrade(null)
                         } catch (error) {
+                            trackOperationalError(
+                                isSquadTierWriteError(error) ? 'squad_tier_write_failed' : 'squad_write_failed',
+                                {
+                                    user_id: userId,
+                                    source_path: 'chat.downgrade.auto-remove',
+                                    removed_count: removeIds.length,
+                                },
+                                error
+                            )
                             setToastMessage(error instanceof Error ? error.message : 'Could not update your squad. Please try again.')
                         }
                     }}

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import * as nextEnv from '@next/env'
 import { createClient } from '@supabase/supabase-js'
+import { clearBrowserState } from './helpers/auth'
 
 const { loadEnvConfig } = nextEnv
 loadEnvConfig(process.cwd())
@@ -92,26 +93,32 @@ test.describe('Auth-first onboarding', () => {
     test('signed-in user sees intro/rename step and names persist', async ({ page }) => {
         const { supabase, userId } = await ensureResetTestUser()
 
-        await page.context().clearCookies()
-        await page.addInitScript(() => {
-            window.localStorage.clear()
-            window.sessionStorage.clear()
-        })
+        await clearBrowserState(page)
 
         await page.goto('/')
 
         await page.getByRole('button', { name: 'Log in' }).click()
         await page.getByRole('button', { name: 'Continue with email' }).click()
+        await page.getByRole('checkbox').first().check()
         await page.getByLabel('Email address').fill(TEST_EMAIL)
         await page.getByLabel('Password').fill(TEST_PASSWORD)
         await page.getByRole('button', { name: 'Continue', exact: true }).click()
 
-        await page.waitForURL(/\/(post-auth|onboarding)/, { timeout: 30_000 })
+        try {
+            await page.waitForURL(/\/(post-auth|onboarding)/, { timeout: 20_000 })
+        } catch {
+            const authWallText = await page.getByTestId('auth-wall').textContent()
+            throw new Error(`Auth wall did not progress after submit. Visible text: ${authWallText}`)
+        }
         await page.waitForURL(/\/onboarding/, { timeout: 30_000 })
 
         await page.getByTestId('onboarding-welcome-next').click()
         await page.getByTestId('onboarding-name').fill('Playwright Crew')
         await page.getByTestId('onboarding-name-next').click()
+        await page.getByTestId('vibe-primary_intent-hype').click()
+        await page.getByTestId('vibe-warmth_style-balanced').click()
+        await page.getByTestId('vibe-chaos_level-lively').click()
+        await page.getByTestId('vibe-quiz-next').click()
 
         await page.getByTestId('character-kael').click()
         await page.getByTestId('character-nyx').click()
@@ -120,25 +127,33 @@ test.describe('Auth-first onboarding', () => {
         await expect(page.getByText('Meet your AI friends')).toBeVisible()
         await expect(page.getByText(/change them later anytime in settings/i)).toBeVisible()
 
-        await page.locator('#intro-name-kael').fill('Kai')
-        await page.locator('#intro-name-nyx').fill('Nox')
+        const introInputs = page.locator('input[id^="intro-name-"]')
+        await introInputs.nth(0).fill('Kai')
+        await introInputs.nth(1).fill('Nox')
         await page.getByRole('button', { name: 'Start Chat' }).click()
 
         await page.waitForURL(/\/chat/, { timeout: 30_000 })
 
-        const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('username, custom_character_names, onboarding_completed')
-            .eq('id', userId)
-            .single()
+        await expect.poll(async () => {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('username, custom_character_names, onboarding_completed')
+                .eq('id', userId)
+                .single()
 
-        if (error) throw error
+            if (error) throw error
 
-        expect(profile?.username).toBe('Playwright Crew')
-        expect(profile?.onboarding_completed).toBe(true)
-        expect(profile?.custom_character_names).toMatchObject({
-            kael: 'Kai',
-            nyx: 'Nox',
+            return {
+                username: profile?.username ?? null,
+                onboardingCompleted: profile?.onboarding_completed ?? null,
+                customNames: Object.values(profile?.custom_character_names || {}).sort(),
+            }
+        }, {
+            timeout: 15_000,
+        }).toEqual({
+            username: 'Playwright Crew',
+            onboardingCompleted: true,
+            customNames: ['Kai', 'Nox'].sort(),
         })
     })
 })

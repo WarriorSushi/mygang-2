@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Character, useChatStore } from '@/stores/chat-store'
 import { saveGang } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
+import { trackOperationalError } from '@/lib/operational-telemetry'
 import { createClient } from '@/lib/supabase/client'
 import { persistUserJourney } from '@/lib/supabase/client-journey'
 
@@ -50,6 +51,13 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
             trackEvent('squad_reconcile', { metadata: { choice: 'local', hasGangConflict, hasNameConflict } })
             onResolve()
         } catch (error) {
+            if (hasGangConflict) {
+                trackOperationalError('squad_write_failed', {
+                    user_id: userId,
+                    source_path: 'squad-reconcile.local',
+                    choice: 'local',
+                }, error)
+            }
             setErrorMessage(error instanceof Error ? error.message : 'Could not keep the device data. Please try again.')
         } finally {
             setIsSaving(false)
@@ -74,6 +82,13 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
             trackEvent('squad_reconcile', { metadata: { choice: 'cloud', hasGangConflict, hasNameConflict } })
             onResolve()
         } catch (error) {
+            if (hasGangConflict) {
+                trackOperationalError('squad_write_failed', {
+                    user_id: userId,
+                    source_path: 'squad-reconcile.cloud',
+                    choice: 'cloud',
+                }, error)
+            }
             setErrorMessage(error instanceof Error ? error.message : 'Could not keep the cloud data. Please try again.')
         } finally {
             setIsSaving(false)

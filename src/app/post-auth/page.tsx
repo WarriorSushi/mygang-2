@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { addSquadTierMembers } from '@/app/auth/actions'
 import { createClient } from '@/lib/supabase/client'
 import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-journey'
 import { CHARACTERS } from '@/constants/characters'
 import { useChatStore } from '@/stores/chat-store'
+import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
 
 export default function PostAuthPage() {
     const router = useRouter()
@@ -46,6 +48,12 @@ export default function PostAuthPage() {
 
             if (hasRemoteGang) {
                 if (remoteGangNeedsRepair) {
+                    trackOperationalEvent('preferred_squad_fallback_used', {
+                        user_id: userId,
+                        source_path: 'post-auth',
+                        outcome: 'detected',
+                        gang_size: remoteGangIds.length,
+                    })
                     try {
                         await persistUserJourney(supabase, userId, {
                             gangIds: remoteGangIds,
@@ -53,6 +61,23 @@ export default function PostAuthPage() {
                         })
                     } catch (error) {
                         console.error('Failed to repair fallback squad during post-auth:', error)
+                        trackOperationalError('squad_write_failed', {
+                            user_id: userId,
+                            source_path: 'post-auth.fallback-repair',
+                            squad_size: remoteGangIds.length,
+                        }, error)
+                    }
+                    if (remote.profile?.subscription_tier === 'basic' || remote.profile?.subscription_tier === 'pro') {
+                        try {
+                            await addSquadTierMembers(remoteGangIds)
+                        } catch (error) {
+                            console.error('Failed to repair paid squad tier rows during post-auth:', error)
+                            trackOperationalError('squad_tier_write_failed', {
+                                user_id: userId,
+                                source_path: 'post-auth.fallback-tier-repair',
+                                squad_size: remoteGangIds.length,
+                            }, error)
+                        }
                     }
                 }
                 const squad = CHARACTERS.filter((c) => remoteGangIds.includes(c.id))
@@ -69,6 +94,11 @@ export default function PostAuthPage() {
                     })
                 } catch (error) {
                     console.error('Failed to persist local squad during post-auth:', error)
+                    trackOperationalError('squad_write_failed', {
+                        user_id: userId,
+                        source_path: 'post-auth.local-squad',
+                        squad_size: localGangIds.length,
+                    }, error)
                 }
                 if (!isCancelled) router.replace('/chat')
                 return
@@ -115,6 +145,17 @@ export default function PostAuthPage() {
         // Fallback: if no session after 8 seconds, redirect to landing
         const timeout = setTimeout(() => {
             if (!resolved && !isCancelled) {
+                supabase.auth.getUser().then(({ data: { user } }) => {
+                    if (user) {
+                        trackOperationalEvent('post_auth_timeout_fallback', {
+                            user_id: user.id,
+                            source_path: 'post-auth',
+                            outcome: 'redirect_home',
+                            error_code: 'timeout',
+                            error_message: 'Post-auth resolution timed out.',
+                        })
+                    }
+                }).catch(() => {})
                 router.replace('/')
             }
         }, 8000)

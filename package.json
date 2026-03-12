@@ -9,7 +9,10 @@
     "lint": "eslint",
     "load:test": "node scripts/load-test-chat.mjs",
     "billing:reconcile": "node scripts/reconcile-billing.mjs",
-    "test:admin": "playwright test tests/admin-flow.spec.ts"
+    "test:admin": "playwright test tests/admin-flow.spec.ts",
+    "test:fast": "node scripts/run-fast-tests.mjs",
+    "test:seeded": "playwright test tests/onboarding-auth.spec.ts tests/authenticated-history-restore.spec.ts tests/chat-scroll.spec.ts",
+    "test": "pnpm run test:fast && pnpm run test:seeded"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.20",

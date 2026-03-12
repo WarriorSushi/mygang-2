@@ -2,14 +2,14 @@
 
 import { Suspense, useState, useEffect, useMemo } from 'react'
 import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
+import { completeOnboarding } from '@/app/auth/actions'
 import { CHARACTERS } from '@/constants/characters'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { useChatStore } from '@/stores/chat-store'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
+import { trackOperationalError } from '@/lib/operational-telemetry'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
-import { persistUserJourney } from '@/lib/supabase/client-journey'
 import { recommendCharacters } from '@/lib/ai/character-recommendation'
 import type { VibeProfile } from '@/lib/ai/character-recommendation'
 
@@ -83,7 +83,6 @@ function OnboardingPage() {
     const isHydrated = useChatStore((s) => s.isHydrated)
     const router = useRouter()
     const isSelection = step === 'SELECTION'
-    const supabase = useMemo(() => createClient(), [])
 
     // Auth guard: redirect to landing if not authenticated
     useEffect(() => {
@@ -168,15 +167,23 @@ function OnboardingPage() {
 
         // Persist to cloud (if logged in) and show loading animation for at least 1.5s
         await Promise.all([
-            userId
-                ? persistUserJourney(supabase, userId, {
-                      username: name,
-                      gangIds: selectedIds,
-                      onboardingCompleted: true,
-                      customCharacterNames: normalizedCustomNames,
-                      vibeProfile: vibeProfile as unknown as Record<string, string> | undefined,
-                  }).catch((err) => console.error('Failed to auto-save to cloud:', err))
-                : Promise.resolve(),
+            userId ? (async () => {
+                try {
+                    await completeOnboarding({
+                        username: name,
+                        characterIds: selectedIds,
+                        customCharacterNames: normalizedCustomNames,
+                        vibeProfile: vibeProfile as unknown as Record<string, string> | undefined,
+                    })
+                } catch (err) {
+                    console.error('Failed to auto-save to cloud:', err)
+                    trackOperationalError('squad_write_failed', {
+                        user_id: userId,
+                        source_path: 'onboarding.finish',
+                        squad_size: selectedIds.length,
+                    }, err)
+                }
+            })() : Promise.resolve(),
             new Promise((resolve) => setTimeout(resolve, 1500)),
         ])
         router.replace('/chat')

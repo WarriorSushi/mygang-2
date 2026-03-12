@@ -130,10 +130,11 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
             )}
             {starterChips.length > 0 && (
                 <div className="mb-2 flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
-                    {starterChips.map((chip) => (
+                    {starterChips.map((chip, index) => (
                         <button
                             key={chip}
                             type="button"
+                            data-testid={`starter-chip-${index}`}
                             onClick={() => {
                                 if (sendThrottleRef.current) return
                                 sendThrottleRef.current = true

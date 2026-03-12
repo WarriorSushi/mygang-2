@@ -6,9 +6,11 @@ import { useChatStore } from '@/stores/chat-store'
 import { CHARACTERS } from '@/constants/characters'
 import { useTheme } from 'next-themes'
 import type { Session } from '@supabase/supabase-js'
+import { addSquadTierMembers } from '@/app/auth/actions'
 import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-journey'
 import { getSquadLimit, getTierFromProfile, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTER_WELCOME_BACK_MESSAGES } from '@/constants/character-messages'
+import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
 
 export function AuthManager() {
     const setUserId = useChatStore((s) => s.setUserId)
@@ -128,6 +130,12 @@ export function AuthManager() {
                             setActiveGang(remoteSquad)
                         }
                         if (remoteGangNeedsRepair) {
+                            trackOperationalEvent('preferred_squad_fallback_used', {
+                                user_id: session.user.id,
+                                source_path: 'auth-manager',
+                                outcome: 'detected',
+                                gang_size: remoteIds!.length,
+                            })
                             try {
                                 await persistUserJourney(supabase, session.user.id, {
                                     gangIds: remoteIds!,
@@ -135,6 +143,23 @@ export function AuthManager() {
                                 })
                             } catch (err) {
                                 console.error('Error repairing fallback squad during auth sync:', err)
+                                trackOperationalError('squad_write_failed', {
+                                    user_id: session.user.id,
+                                    source_path: 'auth-manager.fallback-repair',
+                                    squad_size: remoteIds!.length,
+                                }, err)
+                            }
+                            if (remoteTier !== 'free') {
+                                try {
+                                    await addSquadTierMembers(remoteIds!)
+                                } catch (err) {
+                                    console.error('Error repairing paid squad tier rows during auth sync:', err)
+                                    trackOperationalError('squad_tier_write_failed', {
+                                        user_id: session.user.id,
+                                        source_path: 'auth-manager.fallback-tier-repair',
+                                        squad_size: remoteIds!.length,
+                                    }, err)
+                                }
                             }
                         }
                     } else if (hasLocalGang) {
@@ -145,6 +170,11 @@ export function AuthManager() {
                             })
                         } catch (err) {
                             console.error('Error saving local gang:', err)
+                            trackOperationalError('squad_write_failed', {
+                                user_id: session.user.id,
+                                source_path: 'auth-manager.local-repair',
+                                squad_size: localIds.length,
+                            }, err)
                         }
                     }
 

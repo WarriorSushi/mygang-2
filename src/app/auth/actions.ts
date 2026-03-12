@@ -213,6 +213,71 @@ export async function saveGang(characterIds: string[]) {
     }
 }
 
+export async function completeOnboarding(payload: {
+    username: string
+    characterIds: string[]
+    customCharacterNames?: Record<string, string>
+    vibeProfile?: Record<string, string>
+}) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new SquadPersistenceError('not_authenticated', 'You must be signed in to complete onboarding.')
+    }
+
+    try {
+        const rate = await rateLimit('complete-onboarding:' + user.id, 10, 60_000)
+        if (!rate.success) {
+            throw new SquadPersistenceError('rate_limited', 'Too many onboarding attempts. Please wait a moment and try again.')
+        }
+    } catch (error) {
+        if (error instanceof SquadPersistenceError) throw error
+        throw new SquadPersistenceError('rate_limited', 'Too many onboarding attempts. Please wait a moment and try again.')
+    }
+
+    const parsedName = usernameSchema.safeParse(payload.username)
+    if (!parsedName.success) {
+        throw new SquadPersistenceError('profile_update_failed', parsedName.error.issues[0]?.message || 'Invalid username')
+    }
+
+    const parsedIds = characterIdsSchema.safeParse(payload.characterIds)
+    if (!parsedIds.success) {
+        throw new SquadPersistenceError('invalid_character_ids', parsedIds.error.issues[0]?.message || 'Invalid character ID')
+    }
+
+    const persistedGang = await persistGangMembership(supabase, user.id, parsedIds.data)
+    const updates: Record<string, unknown> = {
+        username: parsedName.data,
+        preferred_squad: persistedGang.characterIds,
+        onboarding_completed: true,
+        custom_character_names: payload.customCharacterNames ?? null,
+    }
+
+    if (payload.vibeProfile) {
+        updates.vibe_profile = payload.vibeProfile
+    }
+
+    const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+
+    if (profileUpdateError) {
+        throw new SquadPersistenceError(
+            'profile_update_failed',
+            'Could not finish onboarding in the cloud.',
+            { error: profileUpdateError.message, userId: user.id }
+        )
+    }
+
+    return {
+        ok: true as const,
+        gangId: persistedGang.gangId,
+        characterIds: persistedGang.characterIds,
+    }
+}
+
 export async function getSavedGang() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -441,7 +506,7 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     }
 }
 
-export async function updateUserSettings(settings: { theme?: string; chat_mode?: string; low_cost_mode?: boolean; preferred_squad?: string[]; chat_wallpaper?: string }) {
+export async function updateUserSettings(settings: { theme?: string; chat_mode?: string; low_cost_mode?: boolean; preferred_squad?: string[]; chat_wallpaper?: string; custom_character_names?: Record<string, string> }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -678,15 +743,24 @@ const squadTierTable = (supabase: Awaited<ReturnType<typeof createClient>>) =>
 export async function addSquadTierMembers(characterIds: string[], _tier?: 'basic' | 'pro') {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+        throw new SquadPersistenceError('not_authenticated', 'You must be signed in to change paid squad members.')
+    }
 
     try {
         const rate = await rateLimit('add-squad-tier:' + user.id, 10, 60_000)
-        if (!rate.success) return
-    } catch { return }
+        if (!rate.success) {
+            throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+        }
+    } catch (error) {
+        if (error instanceof SquadPersistenceError) throw error
+        throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+    }
 
     const parsed = characterIdsSchema.safeParse(characterIds)
-    if (!parsed.success) return
+    if (!parsed.success) {
+        throw new SquadPersistenceError('invalid_character_ids', parsed.error.issues[0]?.message || 'Invalid character ID')
+    }
 
     // Read actual tier from DB instead of trusting client
     const { data: profile } = await supabase
@@ -695,7 +769,9 @@ export async function addSquadTierMembers(characterIds: string[], _tier?: 'basic
         .eq('id', user.id)
         .single()
     const tier = getTierFromProfile(profile?.subscription_tier ?? null)
-    if (tier === 'free') return
+    if (tier === 'free') {
+        throw new SquadPersistenceError('tier_limit_exceeded', 'A paid plan is required to add paid squad members.', { tier })
+    }
 
     const rows = parsed.data.map(id => ({
         user_id: user.id,
@@ -705,26 +781,53 @@ export async function addSquadTierMembers(characterIds: string[], _tier?: 'basic
         deactivated_at: null,
     }))
 
-    await squadTierTable(supabase).upsert(rows, { onConflict: 'user_id,character_id' })
+    const { error } = await squadTierTable(supabase).upsert(rows, { onConflict: 'user_id,character_id' })
+    if (error) {
+        throw new SquadPersistenceError(
+            'squad_tier_upsert_failed',
+            'Could not save paid-tier squad members.',
+            { error: error.message, userId: user.id, characterIds: parsed.data }
+        )
+    }
+
+    return { ok: true as const, characterIds: parsed.data }
 }
 
 export async function deactivateSquadTierMembers(characterIds: string[]) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+        throw new SquadPersistenceError('not_authenticated', 'You must be signed in to update paid squad members.')
+    }
 
     const parsed = characterIdsSchema.safeParse(characterIds)
-    if (!parsed.success) return
+    if (!parsed.success) {
+        throw new SquadPersistenceError('invalid_character_ids', parsed.error.issues[0]?.message || 'Invalid character ID')
+    }
 
     try {
         const rate = await rateLimit('squad-tier-action:' + user.id, 10, 60_000)
-        if (!rate.success) return
-    } catch { return }
+        if (!rate.success) {
+            throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+        }
+    } catch (error) {
+        if (error instanceof SquadPersistenceError) throw error
+        throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+    }
 
-    await squadTierTable(supabase)
+    const { error } = await squadTierTable(supabase)
         .update({ is_active: false, deactivated_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .in('character_id', parsed.data)
+    if (error) {
+        throw new SquadPersistenceError(
+            'squad_tier_deactivate_failed',
+            'Could not deactivate paid squad members.',
+            { error: error.message, userId: user.id, characterIds: parsed.data }
+        )
+    }
+
+    return { ok: true as const, characterIds: parsed.data }
 }
 
 export async function getRestorableMembers() {
@@ -744,20 +847,38 @@ export async function getRestorableMembers() {
 export async function restoreSquadTierMembers(characterIds: string[]) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+        throw new SquadPersistenceError('not_authenticated', 'You must be signed in to restore paid squad members.')
+    }
 
     const parsed = characterIdsSchema.safeParse(characterIds)
-    if (!parsed.success) return
+    if (!parsed.success) {
+        throw new SquadPersistenceError('invalid_character_ids', parsed.error.issues[0]?.message || 'Invalid character ID')
+    }
 
     try {
         const rate = await rateLimit('squad-tier-action:' + user.id, 10, 60_000)
-        if (!rate.success) return
-    } catch { return }
+        if (!rate.success) {
+            throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+        }
+    } catch (error) {
+        if (error instanceof SquadPersistenceError) throw error
+        throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+    }
 
-    await squadTierTable(supabase)
+    const { error } = await squadTierTable(supabase)
         .update({ is_active: true, deactivated_at: null })
         .eq('user_id', user.id)
         .in('character_id', parsed.data)
+    if (error) {
+        throw new SquadPersistenceError(
+            'squad_tier_restore_failed',
+            'Could not restore paid squad members.',
+            { error: error.message, userId: user.id, characterIds: parsed.data }
+        )
+    }
+
+    return { ok: true as const, characterIds: parsed.data }
 }
 
 export async function getAutoRemovableMembers() {

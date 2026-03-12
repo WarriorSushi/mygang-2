@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { getChatHistoryPage } from '@/app/auth/actions'
+import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
 
 // ── Pure helpers ──
 
@@ -281,11 +282,24 @@ export function useChatHistory({
                 } else {
                     setHistoryStatus('empty')
                 }
+                trackOperationalEvent('history_bootstrap_resolved', {
+                    user_id: userId,
+                    source_path: 'use-chat-history.bootstrap',
+                    outcome: reconciledMessages.length > 0 ? 'has_history' : 'empty',
+                    remote_message_count: page.items.length,
+                    reconciled_message_count: reconciledMessages.length,
+                })
                 setHistoryCursor(page.nextBefore)
                 setHasMoreHistory(page.hasMore)
             } catch (err) {
                 console.error('Failed to load initial chat history:', err)
                 setHistoryStatus('error')
+                trackOperationalError('history_bootstrap_resolved', {
+                    user_id: userId,
+                    source_path: 'use-chat-history.bootstrap',
+                    remote_message_count: 0,
+                    reconciled_message_count: useChatStore.getState().messages.length,
+                }, err)
             } finally {
                 if (cancelled) return
                 setIsBootstrappingHistory(false)

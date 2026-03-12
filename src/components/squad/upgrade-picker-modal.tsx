@@ -9,6 +9,7 @@ import { Check, ChevronRight, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/stores/chat-store'
 import { saveGang, addSquadTierMembers } from '@/app/auth/actions'
+import { isSquadTierWriteError, trackOperationalError } from '@/lib/operational-telemetry'
 import Image from 'next/image'
 
 interface UpgradePickerModalProps {
@@ -30,6 +31,7 @@ export function UpgradePickerModal({
     const [saving, setSaving] = useState(false)
     const [saveError, setSaveError] = useState<string | null>(null)
     const addMessage = useChatStore((s) => s.addMessage)
+    const userId = useChatStore((s) => s.userId)
     const modalRef = useRef<HTMLDivElement>(null)
 
     // Escape key handler
@@ -107,6 +109,16 @@ export function UpgradePickerModal({
             onComplete(selectedIds)
         } catch (err) {
             console.error('Failed to add members:', err)
+            trackOperationalError(
+                isSquadTierWriteError(err) ? 'squad_tier_write_failed' : 'squad_write_failed',
+                {
+                    user_id: userId,
+                    source_path: 'upgrade-picker-modal',
+                    selected_count: selectedIds.length,
+                    new_tier: newTier,
+                },
+                err
+            )
             setSaveError('Could not add members. Please try again.')
             setSaving(false)
         }

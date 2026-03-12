@@ -19,6 +19,9 @@ export type SquadPersistenceErrorCode =
     | 'gang_member_read_failed'
     | 'gang_member_upsert_failed'
     | 'gang_member_delete_failed'
+    | 'squad_tier_upsert_failed'
+    | 'squad_tier_deactivate_failed'
+    | 'squad_tier_restore_failed'
     | 'profile_update_failed'
 
 export class SquadPersistenceError extends Error {
