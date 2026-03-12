@@ -335,7 +335,7 @@ export const MessageList = memo(function MessageList({
                 style={{ paddingBottom: 80 }}
                 data-testid="chat-scroll"
             >
-              <div className="max-w-3xl mx-auto w-full">
+              <div className="max-w-[960px] mx-auto w-full">
                 {(hasMoreHistory || loadingHistory) && (
                     <div className="px-4 pb-2">
                         <div className="flex justify-center" aria-live="polite">
