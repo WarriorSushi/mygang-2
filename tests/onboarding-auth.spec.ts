@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import * as nextEnv from '@next/env'
 import { createClient } from '@supabase/supabase-js'
-import { clearBrowserState } from './helpers/auth'
+import { clearBrowserState, loginWithPassword } from './helpers/auth'
 
 const { loadEnvConfig } = nextEnv
 loadEnvConfig(process.cwd())
@@ -94,22 +94,7 @@ test.describe('Auth-first onboarding', () => {
         const { supabase, userId } = await ensureResetTestUser()
 
         await clearBrowserState(page)
-
-        await page.goto('/')
-
-        await page.getByRole('button', { name: 'Log in' }).click()
-        await page.getByRole('button', { name: 'Continue with email' }).click()
-        await page.getByRole('checkbox').first().check()
-        await page.getByLabel('Email address').fill(TEST_EMAIL)
-        await page.getByLabel('Password').fill(TEST_PASSWORD)
-        await page.getByRole('button', { name: 'Continue', exact: true }).click()
-
-        try {
-            await page.waitForURL(/\/(post-auth|onboarding)/, { timeout: 20_000 })
-        } catch {
-            const authWallText = await page.getByTestId('auth-wall').textContent()
-            throw new Error(`Auth wall did not progress after submit. Visible text: ${authWallText}`)
-        }
+        await loginWithPassword(page, TEST_EMAIL, TEST_PASSWORD)
         await page.waitForURL(/\/onboarding/, { timeout: 30_000 })
 
         await page.getByTestId('onboarding-welcome-next').click()

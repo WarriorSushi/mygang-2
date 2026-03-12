@@ -6,6 +6,11 @@ const { loadEnvConfig } = nextEnv
 loadEnvConfig(process.cwd())
 
 export const TEST_PASSWORD = 'testtest'
+const NAVIGATION_RETRY_ERRORS = [
+    'net::ERR_ABORTED',
+    'frame was detached',
+    'Navigation failed because page was closed',
+]
 
 type SubscriptionTier = 'free' | 'basic' | 'pro'
 
@@ -67,7 +72,7 @@ export async function clearBrowserState(
     }
 ) {
     await page.context().clearCookies()
-    await page.addInitScript((payload) => {
+    await page.context().addInitScript((payload) => {
         window.localStorage.clear()
         window.sessionStorage.clear()
 
@@ -79,6 +84,28 @@ export async function clearBrowserState(
             window.sessionStorage.setItem(key, value)
         }
     }, options || {})
+}
+
+async function gotoWithRetry(page: Page, url: string, attempts = 3) {
+    let lastError: unknown
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+            return
+        } catch (error) {
+            lastError = error
+            const message = error instanceof Error ? error.message : String(error)
+            const isRetryable = NAVIGATION_RETRY_ERRORS.some((needle) => message.includes(needle))
+            if (!isRetryable || attempt === attempts) {
+                throw error
+            }
+
+            await page.waitForTimeout(500 * attempt)
+        }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(`Could not navigate to ${url}`)
 }
 
 export async function seedUserState({
@@ -193,7 +220,7 @@ export async function seedUserState({
 }
 
 export async function loginWithPassword(page: Page, email: string, password = TEST_PASSWORD) {
-    await page.goto('/')
+    await gotoWithRetry(page, '/')
 
     await page.getByRole('button', { name: 'Log in' }).click()
     await page.getByRole('button', { name: 'Continue with email' }).click()
