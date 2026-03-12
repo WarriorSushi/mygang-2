@@ -76,7 +76,14 @@ export function AuthManager() {
             if (syncInFlightRef.current) return
             syncInFlightRef.current = true
             try {
-                if (!initialSyncDoneRef.current) {
+                const previousUserId = useChatStore.getState().userId
+                const incomingUserId = incomingSession?.user?.id ?? null
+                const shouldBlockUntilProfileSync = (
+                    !initialSyncDoneRef.current
+                    || (incomingUserId !== null && incomingUserId !== previousUserId)
+                    || (!incomingUserId && (hadSessionRef.current || !!previousUserId))
+                )
+                if (shouldBlockUntilProfileSync) {
                     setIsHydrated(false)
                 }
                 const session = incomingSession ?? (await supabase.auth.getSession()).data.session

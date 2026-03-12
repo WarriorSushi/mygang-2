@@ -9,6 +9,18 @@ import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-jou
 import { CHARACTERS } from '@/constants/characters'
 import { useChatStore } from '@/stores/chat-store'
 import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
+import { getTierFromProfile } from '@/lib/billing'
+
+const DEFAULT_POST_AUTH_TIMEOUT_MS = 8_000
+
+function getPostAuthTimeoutMs() {
+    if (typeof window === 'undefined') return DEFAULT_POST_AUTH_TIMEOUT_MS
+
+    const override = window.localStorage.getItem('mygang-test-post-auth-timeout-ms')
+    const parsed = Number(override)
+    if (!Number.isFinite(parsed) || parsed < 500) return DEFAULT_POST_AUTH_TIMEOUT_MS
+    return Math.min(parsed, 30_000)
+}
 
 export default function PostAuthPage() {
     const router = useRouter()
@@ -40,6 +52,23 @@ export default function PostAuthPage() {
             const remoteGangNeedsRepair = remote.gangSource === 'preferred_squad_fallback'
             const hasRemoteGang = remoteGangIds.length >= 2 && remoteGangIds.length <= 6
             const hasLocalGang = localGangIds.length >= 2 && localGangIds.length <= 6
+
+            if (remote.profile) {
+                const nextTier = getTierFromProfile(remote.profile.subscription_tier ?? null)
+                const safeChatMode = nextTier === 'free' ? 'gang_focus' : (remote.profile.chat_mode ?? 'gang_focus')
+                useChatStore.setState((state) => ({
+                    ...state,
+                    subscriptionTier: nextTier,
+                    chatMode: safeChatMode,
+                    lowCostMode: typeof remote.profile?.low_cost_mode === 'boolean'
+                        ? remote.profile.low_cost_mode
+                        : state.lowCostMode,
+                    chatWallpaper: remote.profile?.chat_wallpaper ?? state.chatWallpaper,
+                    customCharacterNames: remote.profile?.custom_character_names && typeof remote.profile.custom_character_names === 'object'
+                        ? remote.profile.custom_character_names
+                        : state.customCharacterNames,
+                }))
+            }
 
             if (remote.profile?.username) {
                 setUserName(remote.profile.username)
@@ -114,17 +143,20 @@ export default function PostAuthPage() {
 
         // Try getUser first, and also listen for auth state changes (OAuth sessions
         // may not be available immediately on the client after the callback redirect)
-        let resolved = false
+        let journeyResolved = false
+        let resolvingJourney = false
 
         const tryResolve = async (userId: string) => {
-            if (resolved || isCancelled) return
-            resolved = true
+            if (journeyResolved || resolvingJourney || isCancelled) return
+            resolvingJourney = true
             try {
                 await resolveJourney(userId)
+                journeyResolved = true
             } catch (err) {
                 console.error('Failed to resolve journey:', err)
                 setLastErrorMessage(err instanceof Error ? err.message : 'Could not finish syncing your account state.')
-                resolved = false
+            } finally {
+                resolvingJourney = false
             }
         }
 
@@ -139,7 +171,7 @@ export default function PostAuthPage() {
         // Try immediately, then retry after a short delay in case cookies haven't propagated
         attemptGetUser()
         const retryTimer = setTimeout(() => {
-            if (!resolved && !isCancelled) attemptGetUser()
+            if (!journeyResolved && !resolvingJourney && !isCancelled) attemptGetUser()
         }, 1500)
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -150,8 +182,9 @@ export default function PostAuthPage() {
 
         // Fallback: if no session after 8 seconds, redirect to landing
         const timeout = setTimeout(() => {
-            if (!resolved && !isCancelled) {
-                supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!journeyResolved && !isCancelled) {
+                setShowRetryState(true)
+                void supabase.auth.getUser().then(({ data: { user } }) => {
                     if (user) {
                         trackOperationalEvent('post_auth_timeout_fallback', {
                             user_id: user.id,
@@ -162,9 +195,8 @@ export default function PostAuthPage() {
                         })
                     }
                 }).catch(() => {})
-                setShowRetryState(true)
             }
-        }, 8000)
+        }, getPostAuthTimeoutMs())
 
         return () => {
             isCancelled = true
@@ -190,7 +222,7 @@ export default function PostAuthPage() {
                     {showRetryState ? 'We could not finish automatically, but you can retry safely.' : 'Getting your gang, name, and settings ready.'}
                 </p>
                 {showRetryState ? (
-                    <div className="space-y-3 rounded-3xl border border-border/50 bg-card/70 px-5 py-4 backdrop-blur-xl">
+                    <div data-testid="post-auth-recovery" className="space-y-3 rounded-3xl border border-border/50 bg-card/70 px-5 py-4 backdrop-blur-xl">
                         <p className="text-sm text-foreground/85">
                             Your session is still open. Try syncing again, or reload this page if the callback finished in another tab.
                         </p>
@@ -203,6 +235,7 @@ export default function PostAuthPage() {
                             <button
                                 type="button"
                                 onClick={() => setRetryNonce((value) => value + 1)}
+                                data-testid="post-auth-retry-button"
                                 className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
                             >
                                 Try again
@@ -210,6 +243,7 @@ export default function PostAuthPage() {
                             <button
                                 type="button"
                                 onClick={() => window.location.reload()}
+                                data-testid="post-auth-reload-button"
                                 className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-border/60 px-5 py-2.5 text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted/50"
                             >
                                 Reload page

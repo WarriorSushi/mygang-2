@@ -11,7 +11,7 @@
     "billing:reconcile": "node scripts/reconcile-billing.mjs",
     "test:admin": "playwright test tests/admin-flow.spec.ts",
     "test:fast": "node scripts/run-fast-tests.mjs",
-    "test:seeded": "playwright test tests/onboarding-auth.spec.ts tests/authenticated-history-restore.spec.ts tests/chat-scroll.spec.ts",
+    "test:seeded": "playwright test tests/onboarding-auth.spec.ts tests/authenticated-history-restore.spec.ts tests/chat-scroll.spec.ts tests/release-signoff-gaps.spec.ts",
     "test": "pnpm run test:fast && pnpm run test:seeded",
     "guard:supabase-types": "node scripts/check-supabase-types.mjs",
     "guard:character-catalog-parity": "node scripts/check-character-catalog-parity --dry-run",

@@ -121,7 +121,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const renderPlanBadge = (mobile: boolean) => {
         if (subscriptionTier === 'pro') {
             return (
-                <span className={`inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 ${mobile ? 'sm:hidden' : 'hidden sm:inline-flex'}`}>
+                <span
+                    data-testid={mobile ? 'chat-plan-badge-mobile' : 'chat-plan-badge-desktop'}
+                    data-tier="pro"
+                    className={`inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 ${mobile ? 'sm:hidden' : 'hidden sm:inline-flex'}`}
+                >
                     <Crown className="w-2.5 h-2.5" />
                     Pro
                 </span>
@@ -130,7 +134,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
 
         if (subscriptionTier === 'basic') {
             return (
-                <span className={`inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400 ${mobile ? 'sm:hidden' : 'hidden sm:inline-flex'}`}>
+                <span
+                    data-testid={mobile ? 'chat-plan-badge-mobile' : 'chat-plan-badge-desktop'}
+                    data-tier="basic"
+                    className={`inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400 ${mobile ? 'sm:hidden' : 'hidden sm:inline-flex'}`}
+                >
                     <Zap className="w-2.5 h-2.5" />
                     Basic
                 </span>

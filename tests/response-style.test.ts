@@ -43,5 +43,11 @@ assert(
     'casual short turn does not force coherence mode'
 )
 
+console.log('\n5. Direct correction wording used in live signoff is detected')
+assert(
+    isCorrectionOrClarificationTurn('No, make it one concrete action only. No intro, no multiple suggestions.'),
+    'detects concise correction request'
+)
+
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
 process.exit(failed > 0 ? 1 : 0)

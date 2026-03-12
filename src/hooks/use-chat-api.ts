@@ -69,11 +69,21 @@ export type HandleSendHandler = (content: string, options?: { replyToId?: string
 
 const CAPACITY_BACKOFF_MIN_MS = 90_000
 const MAX_DELIVERY_ERROR_CHARS = 140
+const DEFAULT_CHAT_REQUEST_TIMEOUT_MS = 30_000
 
 function withDeliveryError(errorMessage: string) {
     const trimmed = errorMessage.trim()
     if (!trimmed) return 'Failed to send'
     return trimmed.slice(0, MAX_DELIVERY_ERROR_CHARS)
+}
+
+function getChatRequestTimeoutMs() {
+    if (typeof window === 'undefined') return DEFAULT_CHAT_REQUEST_TIMEOUT_MS
+
+    const override = window.localStorage.getItem('mygang-test-chat-request-timeout-ms')
+    const parsed = Number(override)
+    if (!Number.isFinite(parsed) || parsed < 500) return DEFAULT_CHAT_REQUEST_TIMEOUT_MS
+    return Math.min(parsed, 120_000)
 }
 
 function isFarewellLikeMessage(text: string) {
@@ -253,6 +263,7 @@ export function useChatApi({
         let pendingDeliveryIdsForCall: string[] = []
         const renderedEventsForAck: RenderedChatEventPayload[] = []
         let responseTurnId: string | null = null
+        let requestTimedOut = false
         try {
             const currentMessages = useChatStore.getState().messages
             const sourceUserMessage = sourceUserMessageId
@@ -308,17 +319,38 @@ export function useChatApi({
                 }
             }
             lastApiCallAtRef.current = Date.now()
+            const requestTimeoutMs = getChatRequestTimeoutMs()
             abortControllerRef.current?.abort()
-            abortControllerRef.current = new AbortController()
-            res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(mockAi ? { 'x-mock-ai': 'true' } : {})
-                },
-                body: JSON.stringify(requestBody),
-                signal: abortControllerRef.current.signal,
-            })
+            const requestController = new AbortController()
+            abortControllerRef.current = requestController
+            let requestTimeoutId: number | null = null
+            try {
+                res = await Promise.race([
+                    fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(mockAi ? { 'x-mock-ai': 'true' } : {})
+                        },
+                        body: JSON.stringify(requestBody),
+                        signal: requestController.signal,
+                    }),
+                    new Promise<never>((_, reject) => {
+                        requestTimeoutId = window.setTimeout(() => {
+                            requestTimedOut = true
+                            requestController.abort()
+                            reject(new DOMException('Chat request timed out', 'AbortError'))
+                        }, requestTimeoutMs)
+                    })
+                ])
+            } finally {
+                if (requestTimeoutId) {
+                    window.clearTimeout(requestTimeoutId)
+                }
+                if (abortControllerRef.current === requestController) {
+                    abortControllerRef.current = null
+                }
+            }
             try {
                 data = await res.json()
             } catch (err) {
@@ -565,7 +597,12 @@ export function useChatApi({
 
         } catch (err) {
             if (err instanceof DOMException && err.name === 'AbortError') {
-                // Request was aborted (user sent new message or navigated away), don't mark as failed
+                if (requestTimedOut) {
+                    const timeoutMessage = 'Reply took too long. Please retry.'
+                    updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', timeoutMessage)
+                    onToast(timeoutMessage)
+                }
+                // Request was superseded by a newer send or aborted during cleanup.
                 return
             }
             console.error('Chat API Error:', err)

@@ -11,8 +11,9 @@ import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
 import { formatHistoryForLLM } from '@/lib/ai/history-format'
-import { shouldPreserveSingleBubbleTurn } from '@/lib/ai/response-style'
+import { isCorrectionOrClarificationTurn, shouldPreserveSingleBubbleTurn } from '@/lib/ai/response-style'
 import { buildSystemPrompt } from '@/lib/ai/system-prompt'
+import { buildTimeoutFallbackTurn, shouldUseFastTimeoutFallback } from '@/lib/ai/timeout-fallback'
 import type { Json } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { waitUntil } from '@vercel/functions'
@@ -30,6 +31,9 @@ const IDLE_MAX_OUTPUT_TOKENS = 600
 const LOW_COST_MAX_OUTPUT_TOKENS = 800
 const LOW_COST_HISTORY_LIMIT = 8
 const LOW_COST_IDLE_HISTORY_LIMIT = 6
+const LLM_REQUEST_TIMEOUT_MS = 25_000
+const FAST_TURN_LLM_TIMEOUT_MS = 12_000
+const ROUTE_REQUEST_TIMEOUT_MS = 28_000
 const MAX_LLM_MESSAGE_CHARS = 1000
 const MAX_MEMORY_CONTENT_CHARS = 220
 const MAX_SESSION_SUMMARY_CHARS = 500
@@ -173,6 +177,52 @@ function createServerTurnId() {
 
 function createServerEventMessageId(turnId: string, index: number) {
     return `srv-${turnId}-${index.toString(36)}`
+}
+
+class LlmTimeoutError extends Error {
+    constructor(timeoutMs: number) {
+        super(`LLM request timed out after ${timeoutMs}ms`)
+        this.name = 'LlmTimeoutError'
+    }
+}
+
+async function withHardTimeout<T>(
+    promiseFactory: () => Promise<T>,
+    controller: AbortController,
+    timeoutMs: number
+) {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    try {
+        return await Promise.race([
+            promiseFactory(),
+            new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    controller.abort()
+                    reject(new LlmTimeoutError(timeoutMs))
+                }, timeoutMs)
+            })
+        ])
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId)
+    }
+}
+
+async function withResponseTimeout(
+    promiseFactory: () => Promise<Response>,
+    timeoutMs: number,
+    onTimeout: () => Response | Promise<Response>
+) {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    try {
+        return await Promise.race([
+            promiseFactory(),
+            new Promise<Response>((resolve) => {
+                timeoutId = setTimeout(async () => resolve(await onTimeout()), timeoutMs)
+            })
+        ])
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId)
+    }
 }
 
 function toLegacyHistoryRows(rows: ChatHistoryInsertRow[]) {
@@ -622,7 +672,7 @@ function ensureEventMessageIds(
     })
 }
 
-export async function POST(req: Request) {
+async function handlePost(req: Request) {
     try {
         const body = await req.json()
         const parsed = requestSchema.safeParse(body)
@@ -737,6 +787,8 @@ export async function POST(req: Request) {
             : 0
         const lastUserMsg = lastUserMessage?.content || ''
         const farewellTurn = hasFreshUserTurn && isFarewellMessage(lastUserMsg)
+        const correctionOrClarificationTurn = hasFreshUserTurn && isCorrectionOrClarificationTurn(lastUserMsg)
+        const fastTimeoutFallbackTurn = hasFreshUserTurn && shouldUseFastTimeoutFallback(lastUserMsg)
         const lastUserMsgAt = lastUserMessage?.created_at ? new Date(lastUserMessage.created_at).getTime() : 0
         const inactiveMinutes = lastUserMsgAt ? (Date.now() - lastUserMsgAt) / (1000 * 60) : 0
         const isInactive = inactiveMinutes > 5
@@ -896,7 +948,11 @@ export async function POST(req: Request) {
                 allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && !autonomousIdle && memoryEnabled
 
                 // Memory retrieval: all tiers save memories, but only basic+ get them in prompt
-                const memoryInPromptLimit = getMemoryInPromptLimit(tier)
+                const memoryInPromptLimit = fastTimeoutFallbackTurn
+                    ? 0
+                    : correctionOrClarificationTurn
+                        ? Math.min(2, getMemoryInPromptLimit(tier))
+                        : getMemoryInPromptLimit(tier)
                 if (memoryEnabled && lastUserMsg.trim() && !greetingOnly && !autonomousIdle && memoryInPromptLimit > 0) {
                     // CRIT-1: Use hybrid embedding+recency retrieval instead of lite keyword matching
                     const memories = await retrieveMemoriesHybrid(user.id, lastUserMsg, memoryInPromptLimit)
@@ -1001,9 +1057,17 @@ ${sessionSummary}
         const tierMaxResp = isGangFocusMode
             ? (tierMaxRespGangFocus[tier] ?? 3)
             : (tierMaxRespEcosystem[tier] ?? 4)
-        const baseResponders = Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, tierFilteredIds.length)
+        const baseResponders = fastTimeoutFallbackTurn
+            ? 1
+            : correctionOrClarificationTurn
+            ? 1
+            : Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, tierFilteredIds.length)
         const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
-        const maxResponders = lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders
+        const maxResponders = fastTimeoutFallbackTurn
+            ? 1
+            : correctionOrClarificationTurn
+            ? 1
+            : (lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders)
         const safetyDirective = unsafeFlag.soft
             ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support.'
             : 'SAFETY FLAG: NO.'
@@ -1052,9 +1116,13 @@ ${sessionSummary}
         // Only chat-source messages enter the normal LLM context (excludes wywa/system rows)
         const chatOnlyMessages = safeMessages.filter((m) => !m.source || m.source === 'chat')
         const tierContextLimit = getContextLimit(getTierFromProfile(profileRow?.subscription_tier ?? null))
-        const HISTORY_LIMIT = lowCostMode
-            ? (autonomousIdle ? LOW_COST_IDLE_HISTORY_LIMIT : LOW_COST_HISTORY_LIMIT)
-            : (autonomousIdle ? Math.min(tierContextLimit, LLM_IDLE_HISTORY_LIMIT) : tierContextLimit)
+        const HISTORY_LIMIT = fastTimeoutFallbackTurn
+            ? Math.min(tierContextLimit, 4)
+            : correctionOrClarificationTurn
+            ? Math.min(tierContextLimit, 8)
+            : lowCostMode
+                ? (autonomousIdle ? LOW_COST_IDLE_HISTORY_LIMIT : LOW_COST_HISTORY_LIMIT)
+                : (autonomousIdle ? Math.min(tierContextLimit, LLM_IDLE_HISTORY_LIMIT) : tierContextLimit)
         const historySlice = chatOnlyMessages.slice(-HISTORY_LIMIT)
         const compactHistory = formatHistoryForLLM(historySlice, MAX_LLM_MESSAGE_CHARS)
 
@@ -1069,36 +1137,73 @@ ${sessionSummary}
         const llmPromptChars = systemPrompt.length + conversationPayload.length
         let providerUsed: 'openrouter' | 'fallback' = 'fallback'
         const tierOutputTokens = TIER_MAX_OUTPUT_TOKENS[tier] ?? LLM_MAX_OUTPUT_TOKENS
-        const llmMaxOutputTokens = autonomousIdle ? IDLE_MAX_OUTPUT_TOKENS : (lowCostMode ? Math.min(LOW_COST_MAX_OUTPUT_TOKENS, tierOutputTokens) : tierOutputTokens)
+        const llmMaxOutputTokens = fastTimeoutFallbackTurn
+            ? Math.min(tierOutputTokens, 240)
+            : correctionOrClarificationTurn
+            ? Math.min(tierOutputTokens, 700)
+            : autonomousIdle
+                ? IDLE_MAX_OUTPUT_TOKENS
+                : (lowCostMode ? Math.min(LOW_COST_MAX_OUTPUT_TOKENS, tierOutputTokens) : tierOutputTokens)
+        const llmTimeoutMs = fastTimeoutFallbackTurn ? FAST_TURN_LLM_TIMEOUT_MS : LLM_REQUEST_TIMEOUT_MS
 
-        const llmController = new AbortController()
-        const llmTimeout = setTimeout(() => llmController.abort(), 25_000)
-        try {
-            const result = await generateObject({
-                model: openRouterModel,
-                schema: responseSchema,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: conversationPayload },
-                ],
-                maxOutputTokens: llmMaxOutputTokens,
-                maxRetries: LLM_MAX_RETRIES,
-                abortSignal: llmController.signal,
-            })
-            clearTimeout(llmTimeout)
-            object = result.object
-            providerUsed = 'openrouter'
-        } catch (err) {
-            clearTimeout(llmTimeout)
-            console.error('OpenRouter error:', err instanceof Error ? err.message : 'Unknown error')
-            if (isProviderCapacityError(err)) {
+        if (fastTimeoutFallbackTurn) {
+            object = buildTimeoutFallbackTurn(lastUserMsg, tierFilteredIds)
+            providerUsed = 'fallback'
+        } else {
+            const llmController = new AbortController()
+            try {
+                const result = await withHardTimeout(
+                    () => generateObject({
+                        model: openRouterModel,
+                        schema: responseSchema,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: conversationPayload },
+                        ],
+                        maxOutputTokens: llmMaxOutputTokens,
+                        maxRetries: LLM_MAX_RETRIES,
+                        abortSignal: llmController.signal,
+                    }),
+                    llmController,
+                    llmTimeoutMs
+                )
+                object = result.object
+                providerUsed = 'openrouter'
+            } catch (err) {
+                console.error('OpenRouter error:', err instanceof Error ? err.message : 'Unknown error')
+                if (isProviderCapacityError(err)) {
+                    await logChatRouteMetric(supabase, user?.id ?? null, {
+                        source,
+                        lowCostMode,
+                        globalLowCostOverride,
+                        status: 429,
+                        providerUsed,
+                        providerCapacityBlocked: true,
+                        clientMessagesCount: safeMessages.length,
+                        llmHistoryCount: historySlice.length,
+                        promptChars: llmPromptChars,
+                        elapsedMs: Date.now() - requestStartedAt
+                    })
+                    return Response.json({
+                        events: [{
+                            type: 'message',
+                            character: 'system',
+                            content: 'Capacity is tight right now. Try again in a moment.',
+                            delay: 300
+                        }],
+                        should_continue: false
+                    }, {
+                        status: 429,
+                        headers: { 'Retry-After': '15' }
+                    })
+                }
                 await logChatRouteMetric(supabase, user?.id ?? null, {
                     source,
                     lowCostMode,
                     globalLowCostOverride,
-                    status: 429,
+                    status: 502,
                     providerUsed,
-                    providerCapacityBlocked: true,
+                    providerCapacityBlocked: false,
                     clientMessagesCount: safeMessages.length,
                     llmHistoryCount: historySlice.length,
                     promptChars: llmPromptChars,
@@ -1108,36 +1213,14 @@ ${sessionSummary}
                     events: [{
                         type: 'message',
                         character: 'system',
-                        content: 'Capacity is tight right now. Try again in a moment.',
+                        content: err instanceof LlmTimeoutError
+                            ? 'Reply took too long on our side. Please retry.'
+                            : 'Quick hiccup on our side. Please try again.',
                         delay: 300
                     }],
                     should_continue: false
-                }, {
-                    status: 429,
-                    headers: { 'Retry-After': '15' }
-                })
+                }, { status: err instanceof LlmTimeoutError ? 504 : 502 })
             }
-            await logChatRouteMetric(supabase, user?.id ?? null, {
-                source,
-                lowCostMode,
-                globalLowCostOverride,
-                status: 502,
-                providerUsed,
-                providerCapacityBlocked: false,
-                clientMessagesCount: safeMessages.length,
-                llmHistoryCount: historySlice.length,
-                promptChars: llmPromptChars,
-                elapsedMs: Date.now() - requestStartedAt
-            })
-            return Response.json({
-                events: [{
-                    type: 'message',
-                    character: 'system',
-                    content: 'Quick hiccup on our side. Please try again.',
-                    delay: 300
-                }],
-                should_continue: false
-            }, { status: 502 })
         }
 
         if (object?.events && Array.isArray(object.events)) {
@@ -1635,4 +1718,23 @@ ${sessionSummary}
             }]
         }, { status: 500 })
     }
+}
+
+export async function POST(req: Request) {
+    return withResponseTimeout(
+        () => handlePost(req),
+        ROUTE_REQUEST_TIMEOUT_MS,
+        () => {
+            console.error(`Critical Route Error: chat route timed out after ${ROUTE_REQUEST_TIMEOUT_MS}ms`)
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: 'Reply took too long on our side. Please retry.',
+                    delay: 300
+                }],
+                should_continue: false
+            }, { status: 504 })
+        }
+    )
 }
