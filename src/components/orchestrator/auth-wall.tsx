@@ -36,6 +36,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [showEmailForm, setShowEmailForm] = useState(false)
     const [agreedToTerms, setAgreedToTerms] = useState(false)
+    const [showTermsNudge, setShowTermsNudge] = useState(false)
     useEffect(() => {
         if (isOpen) {
             trackEvent('auth_wall_shown', { metadata: { source: 'auth_wall' } })
@@ -116,27 +117,59 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
 
                     <div className="grid gap-4 py-4">
                         {/* Terms & Privacy consent */}
-                        <label className="flex items-start gap-2.5 cursor-pointer select-none group">
-                            <input
-                                type="checkbox"
-                                checked={agreedToTerms}
-                                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                                className="mt-0.5 h-4 w-4 rounded border-border/60 accent-primary cursor-pointer shrink-0"
-                            />
-                            <span className="text-xs text-muted-foreground/70 leading-relaxed group-hover:text-muted-foreground/90 transition-colors">
-                                I agree to the{' '}
-                                <Link href="/terms" className="underline text-primary/80 hover:text-primary" target="_blank">Terms of Service</Link>
-                                {' '}and{' '}
-                                <Link href="/privacy" className="underline text-primary/80 hover:text-primary" target="_blank">Privacy Policy</Link>
-                            </span>
-                        </label>
+                        <div className="space-y-1.5">
+                            <label className={cn(
+                                "flex items-start gap-2.5 cursor-pointer select-none group",
+                                showTermsNudge && !agreedToTerms && "animate-[shake_0.5s_ease-in-out]"
+                            )}
+                                onAnimationEnd={() => setShowTermsNudge(false)}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={agreedToTerms}
+                                    onChange={(e) => {
+                                        setAgreedToTerms(e.target.checked)
+                                        if (e.target.checked) setShowTermsNudge(false)
+                                    }}
+                                    className={cn(
+                                        "mt-0.5 h-4 w-4 rounded border-border/60 accent-primary cursor-pointer shrink-0",
+                                        showTermsNudge && !agreedToTerms && "ring-2 ring-red-400/80"
+                                    )}
+                                />
+                                <span className={cn(
+                                    "text-xs leading-relaxed transition-colors",
+                                    showTermsNudge && !agreedToTerms
+                                        ? "text-red-400 font-medium"
+                                        : "text-muted-foreground/70 group-hover:text-muted-foreground/90"
+                                )}>
+                                    I agree to the{' '}
+                                    <Link href="/terms" className="underline text-primary/80 hover:text-primary" target="_blank">Terms of Service</Link>
+                                    {' '}and{' '}
+                                    <Link href="/privacy" className="underline text-primary/80 hover:text-primary" target="_blank">Privacy Policy</Link>
+                                </span>
+                            </label>
+                            {showTermsNudge && !agreedToTerms && (
+                                <p className="text-[11px] text-red-400 pl-6.5 animate-in fade-in duration-200">
+                                    Please accept the terms to continue
+                                </p>
+                            )}
+                        </div>
 
                         {/* Google Sign-In Button */}
                         <Button
                             type="button"
-                            onClick={handleGoogleSignIn}
-                            disabled={isGoogleLoading || isLoading || !agreedToTerms}
-                            className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 dark:bg-muted/60 dark:hover:bg-muted/80 dark:text-foreground dark:border-border/60 transition-all active:scale-[0.98] shadow-sm"
+                            onClick={() => {
+                                if (!agreedToTerms) {
+                                    setShowTermsNudge(true)
+                                    return
+                                }
+                                handleGoogleSignIn()
+                            }}
+                            disabled={isGoogleLoading || isLoading}
+                            className={cn(
+                                "w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 dark:bg-muted/60 dark:hover:bg-muted/80 dark:text-foreground dark:border-border/60 transition-all active:scale-[0.98] shadow-sm",
+                                !agreedToTerms && "opacity-60"
+                            )}
                         >
                             {isGoogleLoading ? (
                                 <Loader2 className="animate-spin h-5 w-5" />
@@ -201,8 +234,17 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                     <Button
                                         type="submit"
                                         variant="outline"
-                                        disabled={isLoading || isGoogleLoading || !agreedToTerms}
-                                        className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-border/50 bg-muted/40 hover:bg-muted/60 transition-all active:scale-[0.98]"
+                                        disabled={isLoading || isGoogleLoading}
+                                        onClick={(e) => {
+                                            if (!agreedToTerms) {
+                                                e.preventDefault()
+                                                setShowTermsNudge(true)
+                                            }
+                                        }}
+                                        className={cn(
+                                            "w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-border/50 bg-muted/40 hover:bg-muted/60 transition-all active:scale-[0.98]",
+                                            !agreedToTerms && "opacity-60"
+                                        )}
                                     >
                                         {isLoading ? (
                                             <Loader2 className="animate-spin h-5 w-5" />
