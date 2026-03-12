@@ -539,7 +539,7 @@ export default function ChatPage() {
                     </div>
                 </div>
 
-                <div className="shrink-0 relative z-20 border-t border-border/40 bg-background/90 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+                <div className="shrink-0 relative z-20 px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
                     {!isOnline && (
                         <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-600/40 dark:border-amber-400/40 bg-amber-100/60 dark:bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-200">
                             Offline mode - reconnect to send messages
