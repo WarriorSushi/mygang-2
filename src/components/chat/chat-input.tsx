@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { AiDisclaimer } from '@/components/chat/ai-disclaimer'
 import { ArrowRight, X } from 'lucide-react'
 
 interface ReplyTarget {
@@ -190,6 +191,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
                     Message limit is {MAX_CHARS} characters.
                 </p>
             )}
+            <AiDisclaimer />
         </div>
     )
 })

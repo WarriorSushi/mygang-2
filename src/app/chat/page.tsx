@@ -20,7 +20,6 @@ import { ChatInput } from '@/components/chat/chat-input'
 import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 import { InlineToast } from '@/components/chat/inline-toast'
 import { MessagesRemainingBanner } from '@/components/billing/messages-remaining-banner'
-import { AiDisclaimer } from '@/components/chat/ai-disclaimer'
 const SquadReconcile = dynamic(() => import('@/components/orchestrator/squad-reconcile').then((m) => m.SquadReconcile), { ssr: false })
 const PaywallPopup = dynamic(() => import('@/components/billing/paywall-popup').then((m) => m.PaywallPopup), { ssr: false })
 const ConfettiCelebration = dynamic(() => import('@/components/effects/confetti-celebration').then((m) => m.ConfettiCelebration), { ssr: false })
@@ -522,7 +521,6 @@ export default function ChatPage() {
                             </div>
                         )}
                     </div>
-                    <AiDisclaimer />
                     <div className="flex-1 min-h-0 flex flex-col">
                         <ErrorBoundary>
                             <MessageList
