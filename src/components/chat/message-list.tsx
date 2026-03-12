@@ -332,7 +332,7 @@ export const MessageList = memo(function MessageList({
                 role="log"
                 aria-label="Chat messages"
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-4"
-                style={{ paddingBottom: 120 }}
+                style={{ paddingBottom: 80 }}
                 data-testid="chat-scroll"
             >
               <div className="max-w-3xl mx-auto w-full">
