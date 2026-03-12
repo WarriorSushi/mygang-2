@@ -86,6 +86,15 @@ export async function clearBrowserState(
     }, options || {})
 }
 
+async function dismissCookieConsent(page: Page) {
+    const consentButton = page.getByRole('button', { name: 'Got it' })
+    try {
+        await consentButton.click({ timeout: 3_000 })
+    } catch {
+        // Consent banner is not always shown.
+    }
+}
+
 async function gotoWithRetry(page: Page, url: string, attempts = 3) {
     let lastError: unknown
 
@@ -221,9 +230,17 @@ export async function seedUserState({
 
 export async function loginWithPassword(page: Page, email: string, password = TEST_PASSWORD) {
     await gotoWithRetry(page, '/')
+    await dismissCookieConsent(page)
 
     await page.getByRole('button', { name: 'Log in' }).click()
-    await page.getByRole('button', { name: 'Continue with email' }).click()
+    const continueWithEmailButton = page.getByRole('button', { name: 'Continue with email' })
+    try {
+        await continueWithEmailButton.click({ timeout: 10_000 })
+    } catch {
+        await dismissCookieConsent(page)
+        await page.getByRole('button', { name: 'Log in' }).click()
+        await continueWithEmailButton.click({ timeout: 10_000 })
+    }
     await page.getByRole('checkbox').first().check()
     await page.getByLabel('Email address').fill(email)
     await page.getByLabel('Password').fill(password)
@@ -239,8 +256,9 @@ export async function loginWithPassword(page: Page, email: string, password = TE
 
 export async function expectChatReady(page: Page) {
     await page.waitForURL(/\/chat/, { timeout: 30_000 })
-    await expect(page.getByTestId('chat-header')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('chat-input')).toBeVisible({ timeout: 15_000 })
+    await dismissCookieConsent(page)
+    await expect(page.getByTestId('chat-header')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByTestId('chat-input')).toBeVisible({ timeout: 20_000 })
 }
 
 export async function getAnalyticsEvents(userId: string, event: string, sinceIso?: string) {

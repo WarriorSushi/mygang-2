@@ -18,6 +18,10 @@ assert(
     shouldUseFastTimeoutFallback('Give me one single action I should do in the next five minutes. No intro, no list.'),
     'detects direct one-action prompt'
 )
+assert(
+    shouldUseFastTimeoutFallback('No, make it one concrete action only. No intro, no empathy preamble, no multiple suggestions.'),
+    'detects correction-turn concrete-action prompt'
+)
 
 console.log('\n2. Timeout fallback prefers a concrete advice voice when available')
 const directiveFallback = buildTimeoutFallbackTurn(
