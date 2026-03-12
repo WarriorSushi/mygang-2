@@ -15,10 +15,15 @@ export default function PostAuthPage() {
     const setUserId = useChatStore((s) => s.setUserId)
     const setUserName = useChatStore((s) => s.setUserName)
     const setActiveGang = useChatStore((s) => s.setActiveGang)
+    const [retryNonce, setRetryNonce] = useState(0)
+    const [showRetryState, setShowRetryState] = useState(false)
+    const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null)
 
     useEffect(() => {
         let isCancelled = false
         const supabase = createClient()
+        setShowRetryState(false)
+        setLastErrorMessage(null)
 
         router.prefetch('/chat')
         router.prefetch('/onboarding')
@@ -118,6 +123,7 @@ export default function PostAuthPage() {
                 await resolveJourney(userId)
             } catch (err) {
                 console.error('Failed to resolve journey:', err)
+                setLastErrorMessage(err instanceof Error ? err.message : 'Could not finish syncing your account state.')
                 resolved = false
             }
         }
@@ -150,13 +156,13 @@ export default function PostAuthPage() {
                         trackOperationalEvent('post_auth_timeout_fallback', {
                             user_id: user.id,
                             source_path: 'post-auth',
-                            outcome: 'redirect_home',
+                            outcome: 'retry_state',
                             error_code: 'timeout',
                             error_message: 'Post-auth resolution timed out.',
                         })
                     }
                 }).catch(() => {})
-                router.replace('/')
+                setShowRetryState(true)
             }
         }, 8000)
 
@@ -166,23 +172,53 @@ export default function PostAuthPage() {
             clearTimeout(retryTimer)
             clearTimeout(timeout)
         }
-    }, [router, setActiveGang, setUserId, setUserName])
+    }, [retryNonce, router, setActiveGang, setUserId, setUserName])
 
     const [showSlowHint, setShowSlowHint] = useState(false)
     useEffect(() => {
+        setShowSlowHint(false)
         const timer = setTimeout(() => setShowSlowHint(true), 4000)
         return () => clearTimeout(timer)
-    }, [])
+    }, [retryNonce])
 
     return (
         <main id="main-content" className="min-h-dvh flex items-center justify-center bg-background text-foreground px-6">
             <div className="text-center space-y-4">
                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">Syncing your journey...</h1>
-                <p className="text-sm text-muted-foreground">Getting your gang, name, and settings ready.</p>
-                {showSlowHint && (
+                <p className="text-sm text-muted-foreground">
+                    {showRetryState ? 'We could not finish automatically, but you can retry safely.' : 'Getting your gang, name, and settings ready.'}
+                </p>
+                {showRetryState ? (
+                    <div className="space-y-3 rounded-3xl border border-border/50 bg-card/70 px-5 py-4 backdrop-blur-xl">
+                        <p className="text-sm text-foreground/85">
+                            Your session is still open. Try syncing again, or reload this page if the callback finished in another tab.
+                        </p>
+                        {lastErrorMessage && (
+                            <p className="text-xs text-muted-foreground/70">
+                                Last error: {lastErrorMessage}
+                            </p>
+                        )}
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setRetryNonce((value) => value + 1)}
+                                className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
+                            >
+                                Try again
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => window.location.reload()}
+                                className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-border/60 px-5 py-2.5 text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted/50"
+                            >
+                                Reload page
+                            </button>
+                        </div>
+                    </div>
+                ) : showSlowHint && (
                     <p className="text-xs text-muted-foreground/60 animate-in fade-in duration-500">
-                        Taking longer than expected. You&apos;ll be redirected shortly.
+                        Taking longer than expected. We&apos;ll stay here and keep listening for your session.
                     </p>
                 )}
             </div>

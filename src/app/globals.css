@@ -353,11 +353,6 @@
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-.content-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: 120px 80px;
-}
-
 /* ── Background blob CSS animations (GPU-composited, zero JS) ── */
 
 @keyframes blob-drift-1 {

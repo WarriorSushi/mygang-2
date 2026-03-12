@@ -390,8 +390,7 @@ export const MessageList = memo(function MessageList({
                                             ? "pt-[3px]"
                                             : isReaction
                                                 ? "pt-3"
-                                                : "pt-4",
-                                    index < messages.length - 6 && "content-auto"
+                                                : "pt-4"
                                 )}
                             >
                                 {showWywaDivider && (

@@ -45,7 +45,7 @@ This note defines the remediation telemetry added during the fix implementation 
 ### `post_auth_timeout_fallback`
 - `user_id`: authenticated user id when available
 - `source_path`: `post-auth`
-- `outcome`: `redirect_home`
+- `outcome`: `retry_state`
 - `error_code`: `timeout`
 - `error_message`: `Post-auth resolution timed out.`
 

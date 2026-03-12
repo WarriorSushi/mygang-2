@@ -88,6 +88,14 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [showRefreshed, setShowRefreshed] = useState(false)
     const devToolsEnabled = process.env.NODE_ENV === 'development'
+    const statusText = typingUsers.length > 0
+        ? (() => {
+            const names = typingUsers.map(id => activeGang.find(c => c.id === id)?.name || id)
+            if (names.length === 1) return `${names[0]} is typing…`
+            if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`
+            return `${names[0]} and ${names.length - 1} others are typing…`
+        })()
+        : `${activeGang.length} online${memoryActive ? ' · Memory active' : ''}`
 
     useEffect(() => {
         if (!showCapacityInfo) return
@@ -110,11 +118,33 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
         }
     }, [showCapacityInfo])
 
+    const renderPlanBadge = (mobile: boolean) => {
+        if (subscriptionTier === 'pro') {
+            return (
+                <span className={`inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 ${mobile ? 'sm:hidden' : 'hidden sm:inline-flex'}`}>
+                    <Crown className="w-2.5 h-2.5" />
+                    Pro
+                </span>
+            )
+        }
+
+        if (subscriptionTier === 'basic') {
+            return (
+                <span className={`inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400 ${mobile ? 'sm:hidden' : 'hidden sm:inline-flex'}`}>
+                    <Zap className="w-2.5 h-2.5" />
+                    Basic
+                </span>
+            )
+        }
+
+        return null
+    }
+
     return (
         <header data-testid="chat-header" aria-label="Chat header" className="chat-header-desktop px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/40 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/95 z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
             <div className="flex items-center gap-3 min-w-0">
                 <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                         <div className="flex -space-x-2" role="group" aria-label={`${activeGang.length} gang members`}>
                             {activeGang.map((char) => (
                                 <Avatar
@@ -137,56 +167,22 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                 </Avatar>
                             ))}
                         </div>
-                        <h1 className="font-semibold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
-                        {subscriptionTier === 'pro' && (
-                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
-                                <Crown className="w-2.5 h-2.5" />
-                                Pro
-                            </span>
-                        )}
-                        {subscriptionTier === 'basic' && (
-                            <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">
-                                <Zap className="w-2.5 h-2.5" />
-                                Basic
+                        <h1 className="min-w-0 truncate font-semibold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
+                        {renderPlanBadge(true)}
+                        {renderPlanBadge(false)}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1.5 min-h-[14px] min-w-0 text-[10px] text-muted-foreground/60 whitespace-nowrap">
+                        <span className={`w-1.5 h-1.5 shrink-0 rounded-full ${typingUsers.length > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
+                        <span className="min-w-0 flex-1 truncate text-muted-foreground/80">
+                            {statusText}
+                        </span>
+                        {chatMode === 'ecosystem' && (
+                            <span className="hidden sm:inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-violet-600/10 dark:bg-violet-500/15 border border-violet-600/30 dark:border-violet-500/25 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400">
+                                <Globe className="w-2.5 h-2.5" />
+                                Ecosystem
                             </span>
                         )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1.5 mt-0.5 min-h-[14px]">
-                        <span className={`w-1.5 h-1.5 rounded-full ${typingUsers.length > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
-                        {typingUsers.length > 0 ? (
-                            <span className="text-muted-foreground/80 truncate">
-                                {(() => {
-                                    const names = typingUsers.map(id => activeGang.find(c => c.id === id)?.name || id)
-                                    if (names.length === 1) return `${names[0]} is typing\u2026`
-                                    if (names.length === 2) return `${names[0]} and ${names[1]} are typing\u2026`
-                                    return `${names[0]} and ${names.length - 1} others are typing\u2026`
-                                })()}
-                            </span>
-                        ) : (
-                            <>
-                                {activeGang.length} online
-                                {memoryActive && <span> &middot; Memory active</span>}
-                                {chatMode === 'ecosystem' && (
-                                    <span className="inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded-md bg-violet-600/10 dark:bg-violet-500/15 border border-violet-600/30 dark:border-violet-500/25 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400">
-                                        <Globe className="w-2.5 h-2.5" />
-                                        Ecosystem
-                                    </span>
-                                )}
-                            </>
-                        )}
-                        {subscriptionTier === 'pro' && (
-                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
-                                <Crown className="w-2.5 h-2.5" />
-                                Pro
-                            </span>
-                        )}
-                        {subscriptionTier === 'basic' && (
-                            <span className="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">
-                                <Zap className="w-2.5 h-2.5" />
-                                Basic
-                            </span>
-                        )}
-                    </span>
                 </div>
             </div>
 
