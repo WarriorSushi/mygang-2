@@ -2,6 +2,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ChatWallpaper } from '@/constants/wallpapers'
+import type { Database } from '@/lib/database.types'
+import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
 
 export type JourneyProfile = {
     username: string | null
@@ -61,7 +63,7 @@ export async function fetchJourneyState(supabase: SupabaseClient, userId: string
 }
 
 export async function persistUserJourney(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     userId: string,
     payload: {
         username?: string
@@ -73,15 +75,10 @@ export async function persistUserJourney(
 ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profileUpdate: Record<string, any> = {}
+    let persistedGangIds: string[] | null = null
 
     if (typeof payload.username === 'string' && payload.username.trim()) {
         profileUpdate.username = payload.username.trim()
-    }
-    if (typeof payload.onboardingCompleted === 'boolean') {
-        profileUpdate.onboarding_completed = payload.onboardingCompleted
-    }
-    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 6) {
-        profileUpdate.preferred_squad = payload.gangIds
     }
     if (payload.customCharacterNames) {
         profileUpdate.custom_character_names = payload.customCharacterNames
@@ -90,28 +87,39 @@ export async function persistUserJourney(
         profileUpdate.vibe_profile = payload.vibeProfile
     }
 
+    if (payload.gangIds) {
+        const persistedGang = await persistGangMembership(
+            supabase,
+            userId,
+            payload.gangIds
+        )
+        persistedGangIds = persistedGang.characterIds
+        profileUpdate.preferred_squad = persistedGang.characterIds
+        if (typeof payload.onboardingCompleted === 'boolean') {
+            profileUpdate.onboarding_completed = payload.onboardingCompleted
+        }
+    } else if (typeof payload.onboardingCompleted === 'boolean') {
+        profileUpdate.onboarding_completed = payload.onboardingCompleted
+    }
+
     if (Object.keys(profileUpdate).length > 0) {
-        await supabase
+        const { error: profileUpdateError } = await supabase
             .from('profiles')
             .update(profileUpdate)
             .eq('id', userId)
+
+        if (profileUpdateError) {
+            throw new SquadPersistenceError(
+                'profile_update_failed',
+                'Could not update the cloud journey state.',
+                { error: profileUpdateError.message, userId }
+            )
+        }
     }
 
-    if (payload.gangIds && payload.gangIds.length >= 2 && payload.gangIds.length <= 6) {
-        const { data: gang } = await supabase
-            .from('gangs')
-            .upsert({ user_id: userId }, { onConflict: 'user_id' })
-            .select('id')
-            .single<GangRow>()
-
-        if (!gang?.id) return
-
-        const memberIds = payload.gangIds
-        // Delete all existing members, then insert fresh — avoids 409 upsert conflicts
-        await supabase.from('gang_members')
-            .delete()
-            .eq('gang_id', gang.id)
-        await supabase.from('gang_members')
-            .insert(memberIds.map((character_id) => ({ gang_id: gang.id, character_id })))
+    return {
+        ok: true as const,
+        profileUpdated: Object.keys(profileUpdate).length > 0,
+        gangIds: persistedGangIds,
     }
 }

@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { CHARACTERS } from '@/constants/characters'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
 import { getTierFromProfile, getSquadLimit } from '@/lib/billing'
+import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
 
 type ChatHistoryPageRow = {
     id: string
@@ -154,15 +155,24 @@ export async function saveGang(characterIds: string[]) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return
+    if (!user) {
+        throw new SquadPersistenceError('not_authenticated', 'You must be signed in to save your squad.')
+    }
 
     try {
         const rate = await rateLimit('save-gang:' + user.id, 10, 60_000)
-        if (!rate.success) return
-    } catch { return }
+        if (!rate.success) {
+            throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+        }
+    } catch (error) {
+        if (error instanceof SquadPersistenceError) throw error
+        throw new SquadPersistenceError('rate_limited', 'Too many squad changes. Please wait a moment and try again.')
+    }
 
     const parsed = characterIdsSchema.safeParse(characterIds)
-    if (!parsed.success) return
+    if (!parsed.success) {
+        throw new SquadPersistenceError('invalid_character_ids', parsed.error.issues[0]?.message || 'Invalid character ID')
+    }
 
     // Enforce tier-based squad limit
     const { data: profile } = await supabase
@@ -173,47 +183,34 @@ export async function saveGang(characterIds: string[]) {
 
     const tier = getTierFromProfile(profile?.subscription_tier ?? null)
     const limit = getSquadLimit(tier)
-    if (parsed.data.length > limit) return
-
-    // 1. Ensure a gang exists for the user
-    const { data: gang, error: gangError } = await supabase
-        .from('gangs')
-        .upsert({ user_id: user.id }, { onConflict: 'user_id' })
-        .select()
-        .single()
-
-    if (gangError) {
-        console.error('Error upserting gang:', gangError)
-        return
+    if (parsed.data.length > limit) {
+        throw new SquadPersistenceError(
+            'tier_limit_exceeded',
+            `Your ${tier} plan supports up to ${limit} squad members.`,
+            { tier, limit }
+        )
     }
 
-    // 2. Atomic gang update: insert new members first, then delete stale ones
-    const newCharacterIds = parsed.data
-
-    const members = newCharacterIds.map(id => ({
-        gang_id: gang.id,
-        character_id: id
-    }))
-
-    // Upsert new members (safe if they already exist)
-    const { error: memberError } = await supabase
-        .from('gang_members')
-        .upsert(members, { onConflict: 'gang_id,character_id' })
-    if (memberError) console.error('Error upserting gang members:', memberError)
-
-    // Delete old members that are NOT in the new list
-    const { error: deleteError } = await supabase
-        .from('gang_members')
-        .delete()
-        .eq('gang_id', gang.id)
-        .not('character_id', 'in', `(${newCharacterIds.join(',')})`)
-    if (deleteError) console.error('Error removing old gang members:', deleteError)
+    const persistedGang = await persistGangMembership(supabase, user.id, parsed.data)
 
     const { error: settingsError } = await supabase
         .from('profiles')
-        .update({ preferred_squad: parsed.data, onboarding_completed: true })
+        .update({ preferred_squad: persistedGang.characterIds, onboarding_completed: true })
         .eq('id', user.id)
-    if (settingsError) console.error('Error updating preferred gang:', settingsError)
+
+    if (settingsError) {
+        throw new SquadPersistenceError(
+            'profile_update_failed',
+            'Could not update the saved squad settings.',
+            { error: settingsError.message, userId: user.id }
+        )
+    }
+
+    return {
+        ok: true as const,
+        gangId: persistedGang.gangId,
+        characterIds: persistedGang.characterIds,
+    }
 }
 
 export async function getSavedGang() {

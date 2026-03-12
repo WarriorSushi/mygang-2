@@ -1,0 +1,364 @@
+#!/usr/bin/env node
+
+const {
+    createAdminSupabaseClient,
+    loadShippedCharacterCatalog,
+    unique,
+    writeReportFiles,
+} = require('./lib/character-catalog.cjs')
+
+const rawArgs = process.argv.slice(2)
+const args = new Set(rawArgs)
+const applyChanges = args.has('--apply')
+const dryRun = !applyChanges || args.has('--dry-run')
+const shouldWriteReport = args.has('--report')
+
+function readFlagValue(flag) {
+    const index = rawArgs.indexOf(flag)
+    if (index === -1) return null
+    return rawArgs[index + 1] || null
+}
+
+const scopedUserId = readFlagValue('--user-id')
+
+if (!dryRun && !applyChanges) {
+    console.error('[repair-squad-integrity] Pass --dry-run or --apply.')
+    process.exit(1)
+}
+
+function buildMarkdown(report) {
+    const repairedRows = report.repairedUsers.map((entry) => {
+        return `| \`${entry.userId}\` | ${entry.email || 'unknown'} | ${entry.subscriptionTier || 'unknown'} | ${entry.gangMembersUpserted} | ${entry.tierRowsUpserted} | ${entry.tierRowsDeactivated} |`
+    }).join('\n') || '| None | None | None | 0 | 0 | 0 |'
+
+    const skippedRows = report.skippedUsers.map((entry) => {
+        return `| \`${entry.userId}\` | ${entry.email || 'unknown'} | ${entry.reason} | ${entry.details.join(', ') || 'none'} |`
+    }).join('\n') || '| None | None | None | none |'
+
+    return `
+# Squad Integrity Repair Report
+
+- Generated at: ${report.generatedAt}
+- Mode: ${report.mode}
+- Scoped user: ${report.scopedUserId || 'all repairable users'}
+- Profiles scanned: ${report.summary.scannedProfiles}
+- Repairable users: ${report.summary.repairableUsers}
+- Repaired users: ${report.summary.repairedUsers}
+- Skipped users: ${report.summary.skippedUsers}
+- Catalog backfill blockers: ${report.summary.blockedByMissingCharacters}
+
+## Repaired Users
+
+| User ID | Email | Tier | Gang Rows Upserted | Tier Rows Upserted | Tier Rows Deactivated |
+| --- | --- | --- | --- | --- | --- |
+${repairedRows}
+
+## Skipped Users
+
+| User ID | Email | Reason | Details |
+| --- | --- | --- | --- |
+${skippedRows}
+`.trim()
+}
+
+function getPreferredSquad(profile) {
+    return Array.isArray(profile.preferred_squad) ? profile.preferred_squad.filter((id) => typeof id === 'string') : []
+}
+
+async function main() {
+    const supabase = createAdminSupabaseClient()
+    const shippedCharacterIds = unique(loadShippedCharacterCatalog().map((entry) => entry.id)).sort()
+    const shippedCharacterIdSet = new Set(shippedCharacterIds)
+
+    const profileQuery = supabase
+        .from('profiles')
+        .select('id, subscription_tier, preferred_squad')
+        .not('preferred_squad', 'is', null)
+
+    const { data: profiles, error: profilesError } = scopedUserId
+        ? await profileQuery.eq('id', scopedUserId)
+        : await profileQuery
+
+    if (profilesError) throw profilesError
+
+    const [
+        { data: liveCharacters, error: liveCharactersError },
+        { data: gangs, error: gangsError },
+        { data: squadTierMembers, error: squadTierMembersError },
+        usersPage,
+    ] = await Promise.all([
+        supabase.from('characters').select('id').order('id'),
+        supabase.from('gangs').select('id, user_id'),
+        supabase.from('squad_tier_members').select('id, user_id, character_id, added_at_tier, is_active, deactivated_at'),
+        supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ])
+
+    if (liveCharactersError) throw liveCharactersError
+    if (gangsError) throw gangsError
+    if (squadTierMembersError) throw squadTierMembersError
+    if (usersPage.error) throw usersPage.error
+
+    const liveCharacterIds = unique((liveCharacters || []).map((entry) => entry.id)).sort()
+    const liveCharacterIdSet = new Set(liveCharacterIds)
+
+    const gangsByUserId = new Map()
+    for (const gang of gangs || []) {
+        gangsByUserId.set(gang.user_id, gang.id)
+    }
+
+    const allGangIds = unique((gangs || []).map((gang) => gang.id))
+    const { data: gangMembers, error: gangMembersError } = allGangIds.length === 0
+        ? { data: [], error: null }
+        : await supabase.from('gang_members').select('gang_id, character_id').in('gang_id', allGangIds)
+
+    if (gangMembersError) throw gangMembersError
+
+    const gangMembersByGangId = new Map()
+    for (const member of gangMembers || []) {
+        const rows = gangMembersByGangId.get(member.gang_id) || []
+        rows.push(member.character_id)
+        gangMembersByGangId.set(member.gang_id, rows)
+    }
+
+    const squadTierRowsByUserId = new Map()
+    for (const row of squadTierMembers || []) {
+        const rows = squadTierRowsByUserId.get(row.user_id) || []
+        rows.push(row)
+        squadTierRowsByUserId.set(row.user_id, rows)
+    }
+
+    const emailByUserId = new Map(usersPage.data.users.map((user) => [user.id, user.email || null]))
+
+    const repairedUsers = []
+    const skippedUsers = []
+    const repairablePlans = []
+
+    for (const profile of profiles || []) {
+        const preferredSquad = getPreferredSquad(profile)
+        const email = emailByUserId.get(profile.id) || null
+        const invalidCatalogIds = preferredSquad.filter((id) => !shippedCharacterIdSet.has(id))
+        const missingLiveCharacterIds = preferredSquad.filter((id) => !liveCharacterIdSet.has(id))
+
+        if (preferredSquad.length < 2 || preferredSquad.length > 6) {
+            skippedUsers.push({
+                userId: profile.id,
+                email,
+                reason: 'invalid_preferred_squad_length',
+                details: [`length=${preferredSquad.length}`],
+            })
+            continue
+        }
+
+        if (invalidCatalogIds.length > 0) {
+            skippedUsers.push({
+                userId: profile.id,
+                email,
+                reason: 'invalid_catalog_ids',
+                details: invalidCatalogIds,
+            })
+            continue
+        }
+
+        const gangId = gangsByUserId.get(profile.id) || null
+        const currentGangMembers = gangId ? (gangMembersByGangId.get(gangId) || []) : []
+        const currentGangMemberSet = new Set(currentGangMembers)
+        const missingGangMembers = preferredSquad.filter((id) => !currentGangMemberSet.has(id))
+        const extraGangMembers = currentGangMembers.filter((id) => !preferredSquad.includes(id))
+
+        const currentTierRows = squadTierRowsByUserId.get(profile.id) || []
+        const tierRowsByCharacterId = new Map(currentTierRows.map((row) => [row.character_id, row]))
+        const activeTierRows = currentTierRows.filter((row) => row.is_active)
+        const extraActiveTierRows = activeTierRows.filter((row) => !preferredSquad.includes(row.character_id))
+
+        const subscriptionTier = profile.subscription_tier || null
+        const isPaidTier = subscriptionTier === 'basic' || subscriptionTier === 'pro'
+        const missingOrInactiveTierRows = isPaidTier
+            ? preferredSquad.filter((id) => {
+                const row = tierRowsByCharacterId.get(id)
+                return !row || !row.is_active
+            })
+            : []
+
+        const isAffected = missingLiveCharacterIds.length > 0
+            || !gangId
+            || missingGangMembers.length > 0
+            || extraGangMembers.length > 0
+            || extraActiveTierRows.length > 0
+            || missingOrInactiveTierRows.length > 0
+
+        if (!isAffected) continue
+
+        if (missingLiveCharacterIds.length > 0) {
+            skippedUsers.push({
+                userId: profile.id,
+                email,
+                reason: 'missing_live_characters',
+                details: missingLiveCharacterIds,
+            })
+            continue
+        }
+
+        repairablePlans.push({
+            userId: profile.id,
+            email,
+            subscriptionTier,
+            preferredSquad,
+            existingGangId: gangId,
+            missingGangMembers,
+            extraGangMembers,
+            missingOrInactiveTierRows,
+            extraActiveTierRows: extraActiveTierRows.map((row) => row.character_id),
+        })
+
+        if (!applyChanges) continue
+
+        const { data: repairedGang, error: gangError } = await supabase
+            .from('gangs')
+            .upsert({ user_id: profile.id }, { onConflict: 'user_id' })
+            .select('id')
+            .single()
+
+        if (gangError || !repairedGang?.id) {
+            skippedUsers.push({
+                userId: profile.id,
+                email,
+                reason: 'gang_upsert_failed',
+                details: [gangError?.message || 'Missing gang id after upsert'],
+            })
+            continue
+        }
+
+        const desiredGangRows = preferredSquad.map((characterId) => ({
+            gang_id: repairedGang.id,
+            character_id: characterId,
+        }))
+
+        const { error: gangUpsertError } = await supabase
+            .from('gang_members')
+            .upsert(desiredGangRows, { onConflict: 'gang_id,character_id' })
+
+        if (gangUpsertError) {
+            skippedUsers.push({
+                userId: profile.id,
+                email,
+                reason: 'gang_members_upsert_failed',
+                details: [gangUpsertError.message],
+            })
+            continue
+        }
+
+        if (extraGangMembers.length > 0) {
+            const { error: gangDeleteError } = await supabase
+                .from('gang_members')
+                .delete()
+                .eq('gang_id', repairedGang.id)
+                .in('character_id', extraGangMembers)
+
+            if (gangDeleteError) {
+                skippedUsers.push({
+                    userId: profile.id,
+                    email,
+                    reason: 'gang_members_delete_failed',
+                    details: [gangDeleteError.message],
+                })
+                continue
+            }
+        }
+
+        let tierRowsUpserted = 0
+        let tierRowsDeactivated = 0
+
+        if (isPaidTier) {
+            const tierRowsToUpsert = preferredSquad.map((characterId) => {
+                const existing = tierRowsByCharacterId.get(characterId)
+                return {
+                    user_id: profile.id,
+                    character_id: characterId,
+                    added_at_tier: existing?.added_at_tier || subscriptionTier,
+                    is_active: true,
+                    deactivated_at: null,
+                }
+            })
+
+            const { error: tierUpsertError } = await supabase
+                .from('squad_tier_members')
+                .upsert(tierRowsToUpsert, { onConflict: 'user_id,character_id' })
+
+            if (tierUpsertError) {
+                skippedUsers.push({
+                    userId: profile.id,
+                    email,
+                    reason: 'squad_tier_upsert_failed',
+                    details: [tierUpsertError.message],
+                })
+                continue
+            }
+
+            tierRowsUpserted = tierRowsToUpsert.length
+
+            if (extraActiveTierRows.length > 0) {
+                const { error: tierDeactivateError } = await supabase
+                    .from('squad_tier_members')
+                    .update({ is_active: false, deactivated_at: new Date().toISOString() })
+                    .eq('user_id', profile.id)
+                    .in('character_id', extraActiveTierRows.map((row) => row.character_id))
+
+                if (tierDeactivateError) {
+                    skippedUsers.push({
+                        userId: profile.id,
+                        email,
+                        reason: 'squad_tier_deactivate_failed',
+                        details: [tierDeactivateError.message],
+                    })
+                    continue
+                }
+
+                tierRowsDeactivated = extraActiveTierRows.length
+            }
+        }
+
+        repairedUsers.push({
+            userId: profile.id,
+            email,
+            subscriptionTier,
+            preferredSquad,
+            gangMembersUpserted: desiredGangRows.length,
+            tierRowsUpserted,
+            tierRowsDeactivated,
+        })
+    }
+
+    const report = {
+        generatedAt: new Date().toISOString(),
+        mode: applyChanges ? 'apply' : 'dry-run',
+        scopedUserId: scopedUserId || null,
+        summary: {
+            scannedProfiles: (profiles || []).length,
+            repairableUsers: repairablePlans.length,
+            repairedUsers: repairedUsers.length,
+            skippedUsers: skippedUsers.length,
+            blockedByMissingCharacters: skippedUsers.filter((entry) => entry.reason === 'missing_live_characters').length,
+        },
+        repairablePlans,
+        repairedUsers,
+        skippedUsers,
+    }
+
+    console.log(JSON.stringify(report, null, 2))
+
+    if (shouldWriteReport) {
+        const scopeSuffix = scopedUserId ? `.user-${scopedUserId}` : '.all'
+        const modeSuffix = applyChanges ? 'apply' : 'dry-run'
+        const files = writeReportFiles(
+            `squad-integrity-repair.${modeSuffix}${scopeSuffix}`,
+            report,
+            buildMarkdown(report)
+        )
+        console.error(`[repair-squad-integrity] Wrote ${files.jsonPath} and ${files.markdownPath}`)
+    }
+}
+
+main().catch((error) => {
+    console.error('[repair-squad-integrity] Failed:', error instanceof Error ? error.message : error)
+    process.exitCode = 1
+})

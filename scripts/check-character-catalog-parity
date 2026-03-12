@@ -1,0 +1,171 @@
+#!/usr/bin/env node
+
+const {
+    buildCharacterRows,
+    createAdminSupabaseClient,
+    loadShippedCharacterCatalog,
+    unique,
+    writeReportFiles,
+} = require('./lib/character-catalog.cjs')
+
+const args = new Set(process.argv.slice(2))
+const dryRun = args.has('--dry-run') || process.argv.length <= 2
+const shouldWriteReport = args.has('--report')
+
+if (!dryRun) {
+    console.error('[check-character-catalog-parity] Only --dry-run and --report are supported.')
+    process.exit(1)
+}
+
+function buildMarkdown(report) {
+    const missingRows = report.missingInDatabase.map((id) => {
+        const row = report.missingCharacterRows.find((entry) => entry.id === id)
+        return `| \`${id}\` | ${row?.name || 'Unknown'} | ${row?.archetype || 'Unknown'} |`
+    }).join('\n') || '| None | None | None |'
+
+    const affectedRows = report.affectedProfiles.map((profile) => {
+        return `| \`${profile.userId}\` | ${profile.email || 'unknown'} | ${profile.subscriptionTier || 'unknown'} | ${profile.invalidPreferredIds.join(', ')} | ${profile.gangMemberCount} | ${profile.activeSquadTierCount} |`
+    }).join('\n') || '| None | None | None | None | 0 | 0 |'
+
+    return `
+# Character Catalog Parity Report
+
+- Generated at: ${report.generatedAt}
+- Mode: ${report.mode}
+- Shipped character count: ${report.shippedCharacterIds.length}
+- Live character count: ${report.liveCharacterIds.length}
+- Missing in database: ${report.missingInDatabase.length}
+- Extra in database: ${report.extraInDatabase.length}
+- Affected preferred-squad profiles: ${report.summary.affectedPreferredSquadProfiles}
+
+## Missing Database Characters
+
+| ID | Name | Archetype |
+| --- | --- | --- |
+${missingRows}
+
+## Affected Profiles
+
+| User ID | Email | Tier | Invalid Preferred IDs | Gang Members | Active Squad Tier Rows |
+| --- | --- | --- | --- | --- | --- |
+${affectedRows}
+`.trim()
+}
+
+async function main() {
+    const supabase = createAdminSupabaseClient()
+    const shippedCatalog = loadShippedCharacterCatalog()
+    const shippedCharacterIds = unique(shippedCatalog.map((entry) => entry.id)).sort()
+    const shippedCharacterRows = buildCharacterRows()
+
+    const [
+        { data: liveCharacters, error: liveCharactersError },
+        { data: profiles, error: profilesError },
+        { data: gangs, error: gangsError },
+        { data: squadTierMembers, error: squadTierMembersError },
+        usersPage,
+    ] = await Promise.all([
+        supabase.from('characters').select('id').order('id'),
+        supabase.from('profiles').select('id, subscription_tier, preferred_squad').not('preferred_squad', 'is', null),
+        supabase.from('gangs').select('id, user_id'),
+        supabase.from('squad_tier_members').select('user_id, character_id, is_active'),
+        supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ])
+
+    if (liveCharactersError) throw liveCharactersError
+    if (profilesError) throw profilesError
+    if (gangsError) throw gangsError
+    if (squadTierMembersError) throw squadTierMembersError
+    if (usersPage.error) throw usersPage.error
+
+    const liveCharacterIds = unique((liveCharacters || []).map((entry) => entry.id)).sort()
+    const liveCharacterIdSet = new Set(liveCharacterIds)
+    const missingInDatabase = shippedCharacterIds.filter((id) => !liveCharacterIdSet.has(id))
+    const extraInDatabase = liveCharacterIds.filter((id) => !shippedCharacterIds.includes(id))
+
+    const emailByUserId = new Map(usersPage.data.users.map((user) => [user.id, user.email || null]))
+    const gangsByUserId = new Map()
+    for (const gang of gangs || []) {
+        gangsByUserId.set(gang.user_id, gang.id)
+    }
+
+    const allGangIds = unique((gangs || []).map((gang) => gang.id))
+    const { data: gangMembers, error: gangMembersError } = allGangIds.length === 0
+        ? { data: [], error: null }
+        : await supabase.from('gang_members').select('gang_id, character_id').in('gang_id', allGangIds)
+
+    if (gangMembersError) throw gangMembersError
+
+    const gangMembersByGangId = new Map()
+    for (const member of gangMembers || []) {
+        const rows = gangMembersByGangId.get(member.gang_id) || []
+        rows.push(member.character_id)
+        gangMembersByGangId.set(member.gang_id, rows)
+    }
+
+    const activeSquadTierCountByUserId = new Map()
+    for (const member of squadTierMembers || []) {
+        if (!member.is_active) continue
+        activeSquadTierCountByUserId.set(
+            member.user_id,
+            (activeSquadTierCountByUserId.get(member.user_id) || 0) + 1
+        )
+    }
+
+    const affectedProfiles = []
+
+    for (const profile of profiles || []) {
+        const preferredSquad = Array.isArray(profile.preferred_squad) ? profile.preferred_squad : []
+        if (preferredSquad.length === 0) continue
+
+        const invalidPreferredIds = preferredSquad.filter((id) => !liveCharacterIdSet.has(id))
+        if (invalidPreferredIds.length === 0) continue
+
+        const gangId = gangsByUserId.get(profile.id) || null
+        const gangMemberCount = gangId ? (gangMembersByGangId.get(gangId) || []).length : 0
+
+        affectedProfiles.push({
+            userId: profile.id,
+            email: emailByUserId.get(profile.id) || null,
+            subscriptionTier: profile.subscription_tier || null,
+            preferredSquad,
+            invalidPreferredIds,
+            gangId,
+            gangMemberCount,
+            activeSquadTierCount: activeSquadTierCountByUserId.get(profile.id) || 0,
+        })
+    }
+
+    const report = {
+        generatedAt: new Date().toISOString(),
+        mode: 'dry-run',
+        shippedCharacterIds,
+        liveCharacterIds,
+        missingInDatabase,
+        extraInDatabase,
+        missingCharacterRows: shippedCharacterRows.filter((row) => missingInDatabase.includes(row.id)),
+        summary: {
+            affectedPreferredSquadProfiles: affectedProfiles.length,
+            preferredSquadProfilesChecked: (profiles || []).length,
+            invalidAndZeroGangMembers: affectedProfiles.filter((profile) => profile.gangMemberCount === 0).length,
+            invalidAndZeroActiveSquadTierRows: affectedProfiles.filter((profile) => profile.activeSquadTierCount === 0).length,
+        },
+        affectedProfiles,
+    }
+
+    console.log(JSON.stringify(report, null, 2))
+
+    if (shouldWriteReport) {
+        const files = writeReportFiles(
+            'character-catalog-parity.dry-run',
+            report,
+            buildMarkdown(report)
+        )
+        console.error(`[check-character-catalog-parity] Wrote ${files.jsonPath} and ${files.markdownPath}`)
+    }
+}
+
+main().catch((error) => {
+    console.error('[check-character-catalog-parity] Failed:', error instanceof Error ? error.message : error)
+    process.exitCode = 1
+})

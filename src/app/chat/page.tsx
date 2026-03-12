@@ -591,19 +591,27 @@ export default function ChatPage() {
                     maxKeep={pendingDowngrade.newLimit}
                     autoRemovableIds={pendingDowngrade.autoRemovableIds}
                     onConfirm={async (keepIds) => {
-                        const removedIds = activeGang.filter(c => !keepIds.includes(c.id)).map(c => c.id)
-                        await saveGang(keepIds)
-                        await deactivateSquadTierMembers(removedIds)
-                        setActiveGang(activeGang.filter(c => keepIds.includes(c.id)))
-                        setPendingDowngrade(null)
+                        try {
+                            const removedIds = activeGang.filter(c => !keepIds.includes(c.id)).map(c => c.id)
+                            await saveGang(keepIds)
+                            await deactivateSquadTierMembers(removedIds)
+                            setActiveGang(activeGang.filter(c => keepIds.includes(c.id)))
+                            setPendingDowngrade(null)
+                        } catch (error) {
+                            setToastMessage(error instanceof Error ? error.message : 'Could not update your squad. Please try again.')
+                        }
                     }}
                     onAutoRemove={async () => {
-                        const removeIds = pendingDowngrade.autoRemovableIds
-                        const keepIds = activeGang.filter(c => !removeIds.includes(c.id)).map(c => c.id)
-                        await saveGang(keepIds)
-                        await deactivateSquadTierMembers(removeIds)
-                        setActiveGang(activeGang.filter(c => !removeIds.includes(c.id)))
-                        setPendingDowngrade(null)
+                        try {
+                            const removeIds = pendingDowngrade.autoRemovableIds
+                            const keepIds = activeGang.filter(c => !removeIds.includes(c.id)).map(c => c.id)
+                            await saveGang(keepIds)
+                            await deactivateSquadTierMembers(removeIds)
+                            setActiveGang(activeGang.filter(c => !removeIds.includes(c.id)))
+                            setPendingDowngrade(null)
+                        } catch (error) {
+                            setToastMessage(error instanceof Error ? error.message : 'Could not update your squad. Please try again.')
+                        }
                     }}
                 />
             )}

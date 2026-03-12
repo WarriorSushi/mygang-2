@@ -36,7 +36,11 @@ export default function PostAuthPage() {
             if (remote.profile?.username) {
                 setUserName(remote.profile.username)
             } else if (localName) {
-                await persistUserJourney(supabase, userId, { username: localName })
+                try {
+                    await persistUserJourney(supabase, userId, { username: localName })
+                } catch (error) {
+                    console.error('Failed to persist local username during post-auth:', error)
+                }
             }
 
             if (hasRemoteGang) {
@@ -47,10 +51,14 @@ export default function PostAuthPage() {
             }
 
             if (hasLocalGang) {
-                await persistUserJourney(supabase, userId, {
-                    gangIds: localGangIds,
-                    onboardingCompleted: true
-                })
+                try {
+                    await persistUserJourney(supabase, userId, {
+                        gangIds: localGangIds,
+                        onboardingCompleted: true
+                    })
+                } catch (error) {
+                    console.error('Failed to persist local squad during post-auth:', error)
+                }
                 if (!isCancelled) router.replace('/chat')
                 return
             }

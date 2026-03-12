@@ -26,6 +26,7 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
     const setUserName = useChatStore((s) => s.setUserName)
     const userId = useChatStore((s) => s.userId)
     const [isSaving, setIsSaving] = useState(false)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     if (!conflict) return null
 
@@ -35,6 +36,7 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
 
     const handleUseLocal = async () => {
         setIsSaving(true)
+        setErrorMessage(null)
         try {
             if (hasGangConflict) {
                 await saveGang(local.map((c) => c.id))
@@ -46,14 +48,17 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
                 await persistUserJourney(supabase, userId, { username: localName })
             }
             trackEvent('squad_reconcile', { metadata: { choice: 'local', hasGangConflict, hasNameConflict } })
+            onResolve()
+        } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : 'Could not keep the device data. Please try again.')
         } finally {
             setIsSaving(false)
-            onResolve()
         }
     }
 
     const handleUseCloud = async () => {
         setIsSaving(true)
+        setErrorMessage(null)
         try {
             if (hasGangConflict) {
                 await saveGang(remote.map((c) => c.id))
@@ -67,9 +72,11 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
                 setUserName(remoteName)
             }
             trackEvent('squad_reconcile', { metadata: { choice: 'cloud', hasGangConflict, hasNameConflict } })
+            onResolve()
+        } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : 'Could not keep the cloud data. Please try again.')
         } finally {
             setIsSaving(false)
-            onResolve()
         }
     }
 
@@ -82,6 +89,12 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
                         This device and the cloud have different data. Pick which to keep.
                     </DialogDescription>
                 </DialogHeader>
+
+                {errorMessage && (
+                    <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                        {errorMessage}
+                    </div>
+                )}
 
                 <div className="grid gap-4">
                     {hasNameConflict && (
