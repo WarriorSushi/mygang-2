@@ -514,7 +514,7 @@ export default function ChatPage() {
                 />
 
                 <div className="flex-1 flex flex-col min-h-0 relative">
-                    <div className="px-4 max-w-[960px] mx-auto w-full">
+                    <div className="px-4 max-w-3xl mx-auto w-full">
                         {showResumeBanner && (
                             <div className="mb-2 rounded-full border border-border/50 bg-muted/40 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                                 {resumeBannerText}
