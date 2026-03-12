@@ -149,12 +149,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     }
 
     return (
-        <header data-testid="chat-header" aria-label="Chat header" className="chat-header-desktop border-b border-border/40 backdrop-blur-xl bg-card/95 z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
-            <div className="mx-auto flex w-full max-w-3xl flex-nowrap items-center justify-between gap-3 px-4 sm:px-4 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5">
-                <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <div className="flex -space-x-2" role="group" aria-label={`${activeGang.length} gang members`}>
+        <header data-testid="chat-header" aria-label="Chat header" className="chat-header-desktop px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/40 flex flex-nowrap justify-between items-center gap-3 backdrop-blur-xl bg-card/95 z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex -space-x-2" role="group" aria-label={`${activeGang.length} gang members`}>
                             {activeGang.map((char) => (
                                 <Avatar
                                     key={char.id}
@@ -195,109 +194,108 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 </div>
             </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    {devToolsEnabled && tokenUsage && <DevTokenIndicator usage={tokenUsage} />}
-                    {autoLowCostActive && (
-                        <div className="relative" ref={capacityInfoRef}>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setShowAutoLowCostInfo((value) => !value)}
-                                title="Capacity mode info"
-                                aria-label="Capacity mode info"
-                                aria-haspopup="dialog"
-                                aria-expanded={showCapacityInfo}
-                                aria-controls="capacity-mode-info"
-                                className="rounded-full text-amber-500/90 hover:text-amber-500 hover:bg-amber-500/10 size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {devToolsEnabled && tokenUsage && <DevTokenIndicator usage={tokenUsage} />}
+                {autoLowCostActive && (
+                    <div className="relative" ref={capacityInfoRef}>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowAutoLowCostInfo((value) => !value)}
+                            title="Capacity mode info"
+                            aria-label="Capacity mode info"
+                            aria-haspopup="dialog"
+                            aria-expanded={showCapacityInfo}
+                            aria-controls="capacity-mode-info"
+                            className="rounded-full text-amber-500/90 hover:text-amber-500 hover:bg-amber-500/10 size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
+                        >
+                            <Info size={13} />
+                        </Button>
+                        {showCapacityInfo && (
+                            <div
+                                id="capacity-mode-info"
+                                role="dialog"
+                                aria-label="Temporary capacity mode info"
+                                className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-600/40 dark:border-amber-400/35 bg-card/98 p-2 text-[10px] leading-relaxed text-amber-800 dark:text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
                             >
-                                <Info size={13} />
-                            </Button>
-                            {showCapacityInfo && (
-                                <div
-                                    id="capacity-mode-info"
-                                    role="dialog"
-                                    aria-label="Temporary capacity mode info"
-                                    className="absolute right-0 top-9 z-30 w-52 rounded-xl border border-amber-600/40 dark:border-amber-400/35 bg-card/98 p-2 text-[10px] leading-relaxed text-amber-800 dark:text-amber-100 shadow-[0_12px_30px_-18px_rgba(245,158,11,0.75)]"
-                                >
-                                    Temporary low-cost mode is active due to provider capacity. Full mode restores automatically after stable turns.
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {onRefresh && (
-                        <div className="relative">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={async () => {
-                                    if (isRefreshing) return
-                                    setIsRefreshing(true)
-                                    try {
-                                        await onRefresh()
-                                        setShowRefreshed(true)
-                                        setTimeout(() => setShowRefreshed(false), 1500)
-                                    } finally {
-                                        setIsRefreshing(false)
-                                    }
-                                }}
-                                title="Refresh chat"
-                                aria-label="Refresh chat"
-                                className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
-                            >
-                                <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-                            </Button>
-                            {showRefreshed && (
-                                <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium text-emerald-500 whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
-                                    Refreshed
-                                </span>
-                            )}
-                        </div>
-                    )}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                            if (subscriptionTier !== 'free') useChatStore.getState().setNewMemoryCount(0)
-                            onOpenVault()
-                        }}
-                        title="Memory Vault"
-                        aria-label="Manage AI memories"
-                        className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
-                    >
-                        <Brain size={18} />
-                        {memoryBadgeCount > 0 && (
-                            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold ring-2 ring-background px-1">
-                                {memoryBadgeCount > 99 ? '99+' : memoryBadgeCount}
+                                Temporary low-cost mode is active due to provider capacity. Full mode restores automatically after stable turns.
+                            </div>
+                        )}
+                    </div>
+                )}
+                {onRefresh && (
+                    <div className="relative">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => {
+                                if (isRefreshing) return
+                                setIsRefreshing(true)
+                                try {
+                                    await onRefresh()
+                                    setShowRefreshed(true)
+                                    setTimeout(() => setShowRefreshed(false), 1500)
+                                } finally {
+                                    setIsRefreshing(false)
+                                }
+                            }}
+                            title="Refresh chat"
+                            aria-label="Refresh chat"
+                            className="rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
+                        >
+                            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                        </Button>
+                        {showRefreshed && (
+                            <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium text-emerald-500 whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-200">
+                                Refreshed
                             </span>
                         )}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full text-muted-foreground/70 hover:text-foreground transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
-                        aria-label="Toggle theme"
-                        onClick={() => {
-                            setTheme(nextTheme)
-                            updateUserSettings({ theme: nextTheme })
-                        }}
-                    >
-                        <Sun size={18} className="hidden dark:block" aria-hidden="true" />
-                        <Moon size={18} className="dark:hidden" aria-hidden="true" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onOpenSettings}
-                        title="Gang Settings"
-                        aria-label="Open settings"
-                        className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
-                    >
-                        <Settings2 size={18} />
-                        {showUpgradeTour && (
-                            <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-background animate-pulse" />
-                        )}
-                    </Button>
-                </div>
+                    </div>
+                )}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                        if (subscriptionTier !== 'free') useChatStore.getState().setNewMemoryCount(0)
+                        onOpenVault()
+                    }}
+                    title="Memory Vault"
+                    aria-label="Manage AI memories"
+                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
+                >
+                    <Brain size={18} />
+                    {memoryBadgeCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold ring-2 ring-background px-1">
+                            {memoryBadgeCount > 99 ? '99+' : memoryBadgeCount}
+                        </span>
+                    )}
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full text-muted-foreground/70 hover:text-foreground transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
+                    aria-label="Toggle theme"
+                    onClick={() => {
+                        setTheme(nextTheme)
+                        updateUserSettings({ theme: nextTheme })
+                    }}
+                >
+                    <Sun size={18} className="hidden dark:block" aria-hidden="true" />
+                    <Moon size={18} className="dark:hidden" aria-hidden="true" />
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onOpenSettings}
+                    title="Gang Settings"
+                    aria-label="Open settings"
+                    className="relative rounded-full text-muted-foreground/70 hover:text-primary transition-colors size-9 sm:size-10 lg:size-9 min-w-[44px] min-h-[44px]"
+                >
+                    <Settings2 size={18} />
+                    {showUpgradeTour && (
+                        <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-background animate-pulse" />
+                    )}
+                </Button>
             </div>
         </header>
     )
