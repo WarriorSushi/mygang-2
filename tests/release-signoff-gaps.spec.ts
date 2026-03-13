@@ -70,9 +70,32 @@ test.describe('Release signoff gaps', () => {
 
         for (const scenario of BADGE_SCENARIOS.filter((entry) => entry.expectedBadge)) {
             await seedAndLogin(page, scenario)
+            const controlsRow = page.getByTestId('chat-header-controls')
+            const mobileBadgeRow = page.getByTestId('chat-mobile-badge-row')
             const mobileBadge = page.getByTestId('chat-plan-badge-mobile')
+            const desktopBadge = page.getByTestId('chat-plan-badge-desktop')
+            const mobileModeBadge = page.getByTestId('chat-mode-badge-mobile')
+            const desktopModeBadge = page.getByTestId('chat-mode-badge-desktop')
+
+            await expect(desktopBadge).toBeHidden()
+            await expect(desktopModeBadge).toBeHidden()
+            await expect(mobileBadgeRow).toBeVisible()
+            await expect(mobileModeBadge).toBeVisible()
             await expect(mobileBadge).toHaveAttribute('data-tier', scenario.tier)
             await expect(mobileBadge).toHaveText(scenario.expectedBadge!)
+
+            const controlsBox = await controlsRow.boundingBox()
+            const badgeRowBox = await mobileBadgeRow.boundingBox()
+
+            expect(controlsBox).not.toBeNull()
+            expect(badgeRowBox).not.toBeNull()
+
+            if (!controlsBox || !badgeRowBox) {
+                throw new Error('Could not measure mobile header controls or badge row.')
+            }
+
+            expect(badgeRowBox.y).toBeGreaterThan(controlsBox.y)
+            expect(Math.abs((badgeRowBox.x + badgeRowBox.width) - (controlsBox.x + controlsBox.width))).toBeLessThanOrEqual(12)
         }
     })
 
