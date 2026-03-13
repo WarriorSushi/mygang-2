@@ -124,9 +124,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 <span
                     data-testid={mobile ? 'chat-plan-badge-mobile' : 'chat-plan-badge-desktop'}
                     data-tier="pro"
-                    className={`${mobile ? 'inline-flex sm:hidden' : 'hidden sm:inline-flex'} items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400`}
+                    className={mobile
+                        ? 'inline-flex sm:hidden items-center gap-1 shrink-0 text-[10px] font-medium text-amber-700/80 dark:text-amber-300/80'
+                        : 'hidden sm:inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/10 dark:from-amber-500/20 to-yellow-600/10 dark:to-yellow-500/20 border border-amber-600/40 dark:border-amber-500/30 text-[9px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400'}
                 >
-                    <Crown className="w-2.5 h-2.5" />
+                    {mobile ? <span className="h-1.5 w-1.5 rounded-full bg-amber-500/85" aria-hidden="true" /> : <Crown className="w-2.5 h-2.5" />}
                     Pro
                 </span>
             )
@@ -137,9 +139,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 <span
                     data-testid={mobile ? 'chat-plan-badge-mobile' : 'chat-plan-badge-desktop'}
                     data-tier="basic"
-                    className={`${mobile ? 'inline-flex sm:hidden' : 'hidden sm:inline-flex'} items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400`}
+                    className={mobile
+                        ? 'inline-flex sm:hidden items-center gap-1 shrink-0 text-[10px] font-medium text-blue-700/80 dark:text-blue-300/80'
+                        : 'hidden sm:inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-blue-600/10 dark:bg-blue-500/15 border border-blue-600/35 dark:border-blue-500/25 text-[9px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400'}
                 >
-                    <Zap className="w-2.5 h-2.5" />
+                    {mobile ? <span className="h-1.5 w-1.5 rounded-full bg-blue-500/85" aria-hidden="true" /> : <Zap className="w-2.5 h-2.5" />}
                     Basic
                 </span>
             )
@@ -154,10 +158,12 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
         return (
             <span
                 data-testid={mobile ? 'chat-mode-badge-mobile' : 'chat-mode-badge-desktop'}
-                className={`${mobile ? 'inline-flex sm:hidden' : 'hidden sm:inline-flex'} items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-violet-600/10 dark:bg-violet-500/15 border border-violet-600/30 dark:border-violet-500/25 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400`}
+                className={mobile
+                    ? 'inline-flex sm:hidden items-center gap-1 shrink-0 text-[10px] font-medium text-violet-700/80 dark:text-violet-300/80'
+                    : 'hidden sm:inline-flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-violet-600/10 dark:bg-violet-500/15 border border-violet-600/30 dark:border-violet-500/25 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400'}
             >
-                <Globe className="w-2.5 h-2.5" />
-                Ecosystem
+                {mobile ? <span className="h-1.5 w-1.5 rounded-full bg-violet-500/85" aria-hidden="true" /> : <Globe className="w-2.5 h-2.5" />}
+                {mobile ? 'Ecosystem' : 'Ecosystem'}
             </span>
         )
     }
@@ -208,7 +214,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 </div>
             </div>
 
-            <div className="flex flex-col items-end gap-1 shrink-0 self-start sm:self-center">
+            <div className="flex flex-col items-end gap-0 shrink-0 self-start sm:self-center">
                 <div data-testid="chat-header-controls" className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
                     {devToolsEnabled && tokenUsage && <DevTokenIndicator usage={tokenUsage} />}
                     {autoLowCostActive && (
@@ -314,7 +320,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 </div>
 
                 {showMobileBadgeRow && (
-                    <div data-testid="chat-mobile-badge-row" className="flex items-center justify-end gap-1.5 min-h-[18px] self-end sm:hidden">
+                    <div data-testid="chat-mobile-badge-row" className="-mt-1 flex items-center justify-end gap-2.5 min-h-0 self-end sm:hidden leading-none">
                         {mobileModeBadge}
                         {mobilePlanBadge}
                     </div>
