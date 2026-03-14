@@ -421,6 +421,25 @@
   will-change: transform;
 }
 
+@keyframes avatar-pack-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - 0.375rem));
+  }
+}
+
+.avatar-pack-marquee-track {
+  animation: avatar-pack-marquee var(--avatar-marquee-duration, 26s) linear infinite;
+  will-change: transform;
+}
+
+.avatar-pack-marquee-track[data-direction="reverse"] {
+  animation-direction: reverse;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-msg-appear,
   .animate-bounce-short,
@@ -436,6 +455,10 @@
   }
   .landing-grain {
     animation: none !important;
+  }
+  .avatar-pack-marquee-track {
+    animation: none !important;
+    transform: translateX(0) !important;
   }
 }
 

@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ChatWallpaper } from '@/constants/wallpapers'
 import type { Database } from '@/lib/database.types'
+import { normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
 
 export type JourneyProfile = {
@@ -18,6 +19,7 @@ export type JourneyProfile = {
     pending_squad_downgrade: boolean | null
     restored_members_pending: string[] | null
     vibe_profile: Record<string, string> | null
+    avatar_style_preference: AvatarStyle | null
 }
 
 type GangRow = { id: string }
@@ -29,7 +31,7 @@ export async function fetchJourneyState(supabase: SupabaseClient, userId: string
     const [profileResult, gangResult] = await Promise.all([
         supabase
             .from('profiles')
-            .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier, pending_squad_downgrade, restored_members_pending, vibe_profile')
+            .select('username, chat_mode, low_cost_mode, theme, chat_wallpaper, preferred_squad, onboarding_completed, custom_character_names, subscription_tier, pending_squad_downgrade, restored_members_pending, vibe_profile, avatar_style_preference')
             .eq('id', userId)
             .single<JourneyProfile>(),
         supabase
@@ -78,6 +80,7 @@ export async function persistUserJourney(
         onboardingCompleted?: boolean
         customCharacterNames?: Record<string, string>
         vibeProfile?: Record<string, string>
+        avatarStylePreference?: AvatarStyle
     }
 ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,6 +95,9 @@ export async function persistUserJourney(
     }
     if (payload.vibeProfile) {
         profileUpdate.vibe_profile = payload.vibeProfile
+    }
+    if (typeof payload.avatarStylePreference === 'string') {
+        profileUpdate.avatar_style_preference = normalizeAvatarStyle(payload.avatarStylePreference)
     }
 
     if (payload.gangIds) {

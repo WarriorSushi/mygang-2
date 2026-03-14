@@ -361,6 +361,7 @@ export type Database = {
       profiles: {
         Row: {
           abuse_score: number
+          avatar_style_preference: string
           chat_mode: string | null
           chat_wallpaper: string | null
           created_at: string
@@ -390,6 +391,7 @@ export type Database = {
         }
         Insert: {
           abuse_score?: number
+          avatar_style_preference?: string
           chat_mode?: string | null
           chat_wallpaper?: string | null
           created_at?: string
@@ -419,6 +421,7 @@ export type Database = {
         }
         Update: {
           abuse_score?: number
+          avatar_style_preference?: string
           chat_mode?: string | null
           chat_wallpaper?: string | null
           created_at?: string

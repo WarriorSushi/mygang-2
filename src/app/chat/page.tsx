@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { isSquadTierWriteError, trackOperationalError } from '@/lib/operational-telemetry'
 import { saveGang, deactivateSquadTierMembers } from '@/app/auth/actions'
-import { CHARACTERS } from '@/constants/characters'
+import { getCharactersForAvatarStyle } from '@/constants/characters'
 
 // Modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -58,6 +58,7 @@ export default function ChatPage() {
         lowCostMode,
         chatWallpaper,
         subscriptionTier,
+        avatarStylePreference,
         squadConflict,
         setSquadConflict,
         pendingUpgrade,
@@ -76,6 +77,7 @@ export default function ChatPage() {
         lowCostMode: s.lowCostMode,
         chatWallpaper: s.chatWallpaper,
         subscriptionTier: s.subscriptionTier,
+        avatarStylePreference: s.avatarStylePreference,
         squadConflict: s.squadConflict,
         setSquadConflict: s.setSquadConflict,
         pendingUpgrade: s.pendingUpgrade,
@@ -580,7 +582,7 @@ export default function ChatPage() {
                     newSlots={pendingUpgrade.newSlots}
                     newTier={pendingUpgrade.newTier}
                     onComplete={(addedIds) => {
-                        const newChars = CHARACTERS.filter(c => addedIds.includes(c.id))
+                        const newChars = getCharactersForAvatarStyle(avatarStylePreference).filter(c => addedIds.includes(c.id))
                         setActiveGang([...activeGang, ...newChars])
                         setPendingUpgrade(null)
                     }}

@@ -25,9 +25,9 @@ export const CHARACTER_GREETINGS: Record<string, string[]> = {
         "ayyy {name} let's goooo. so what do you do? school? work? chaos?"
     ],
     vee: [
-        "hey {name}. so what's your background? what do you do?",
-        "{name}, nice to meet you. what are you into? what do you spend your time on?",
-        "alright {name}, tell me about yourself. i like knowing who i'm talking to."
+        "Hey {name}. Come here, angel. You're cute already, so tell me everything. What do you do?",
+        "{name}, hi. What are you into? What takes up your time? I want all your little details.",
+        "Alright {name}, come talk to me. What do you do, what do you love, and what should I memorize about you?"
     ],
     ezra: [
         "hey {name}... tell me about yourself. what do you do? what are you passionate about?",

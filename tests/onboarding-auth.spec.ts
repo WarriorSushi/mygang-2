@@ -78,6 +78,7 @@ async function ensureResetTestUser() {
             onboarding_completed: false,
             preferred_squad: null,
             custom_character_names: null,
+            avatar_style_preference: 'robots',
             purchase_celebration_pending: null,
         })
         .eq('id', user.id)
@@ -105,8 +106,12 @@ test.describe('Auth-first onboarding', () => {
         await page.getByTestId('vibe-chaos_level-lively').click()
         await page.getByTestId('vibe-quiz-next').click()
 
-        await page.getByTestId('character-kael').click()
-        await page.getByTestId('character-nyx').click()
+        await expect(page.getByTestId('onboarding-avatar-gift-step')).toBeVisible()
+        await page.getByTestId('onboarding-avatar-gift-next').click()
+
+        await expect(page.getByTestId('onboarding-avatar-style-step')).toBeVisible()
+        await page.getByTestId('avatar-style-select-human').click()
+        await page.getByTestId('onboarding-avatar-style-continue').click()
         await page.getByTestId('onboarding-selection-done').click()
 
         await expect(page.getByText('Meet your AI friends')).toBeVisible()
@@ -118,11 +123,20 @@ test.describe('Auth-first onboarding', () => {
         await page.getByRole('button', { name: 'Start Chat' }).click()
 
         await page.waitForURL(/\/chat/, { timeout: 30_000 })
+        await expect.poll(async () => {
+            return page.evaluate(() =>
+                Array.from(document.images).some((image) =>
+                    decodeURIComponent(image.currentSrc || image.src || '').includes('/avatars/human/')
+                )
+            )
+        }, {
+            timeout: 10_000,
+        }).toBe(true)
 
         await expect.poll(async () => {
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('username, custom_character_names, onboarding_completed')
+                .select('username, custom_character_names, onboarding_completed, avatar_style_preference')
                 .eq('id', userId)
                 .single()
 
@@ -131,6 +145,7 @@ test.describe('Auth-first onboarding', () => {
             return {
                 username: profile?.username ?? null,
                 onboardingCompleted: profile?.onboarding_completed ?? null,
+                avatarStylePreference: profile?.avatar_style_preference ?? null,
                 customNames: Object.values(profile?.custom_character_names || {}).sort(),
             }
         }, {
@@ -138,6 +153,7 @@ test.describe('Auth-first onboarding', () => {
         }).toEqual({
             username: 'Playwright Crew',
             onboardingCompleted: true,
+            avatarStylePreference: 'human',
             customNames: ['Kai', 'Nox'].sort(),
         })
     })

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { CHARACTERS } from '@/constants/characters'
+import { getCharactersForAvatarStyle } from '@/constants/characters'
 import { CHARACTER_INTRO_MESSAGES } from '@/constants/character-messages'
 import { Check, ChevronRight, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -32,7 +32,9 @@ export function UpgradePickerModal({
     const [saveError, setSaveError] = useState<string | null>(null)
     const addMessage = useChatStore((s) => s.addMessage)
     const userId = useChatStore((s) => s.userId)
+    const avatarStylePreference = useChatStore((s) => s.avatarStylePreference)
     const modalRef = useRef<HTMLDivElement>(null)
+    const styledCharacters = getCharactersForAvatarStyle(avatarStylePreference)
 
     // Escape key handler
     useEffect(() => {
@@ -70,7 +72,7 @@ export function UpgradePickerModal({
         return () => document.removeEventListener('keydown', handleTab)
     }, [])
 
-    const availableCharacters = CHARACTERS.filter(
+    const availableCharacters = styledCharacters.filter(
         (c) => !currentSquadIds.includes(c.id)
     )
 
@@ -302,7 +304,7 @@ export function UpgradePickerModal({
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <div className="flex -space-x-2">
                                     {selectedIds.map((id) => {
-                                        const c = CHARACTERS.find((ch) => ch.id === id)
+                                        const c = styledCharacters.find((ch) => ch.id === id)
                                         if (!c) return null
                                         return (
                                             <button

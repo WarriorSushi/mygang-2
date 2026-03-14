@@ -11,7 +11,7 @@ const STATUS_MESSAGES = [
     "Luna is aligning the vibes...",
     "Cleo is checking her makeup...",
     "Ezra is finding the right quote...",
-    "Vee is calibrating the logic...",
+    "Vee is drafting a dangerously sweet text...",
     "Kael is prepping the lighting..."
 ]
 

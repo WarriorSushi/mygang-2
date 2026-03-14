@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ChatWallpaper } from '@/constants/wallpapers'
 import { CHARACTERS } from '@/constants/characters'
+import { applyAvatarStyleToGang, DEFAULT_AVATAR_STYLE, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 
 const MAX_PERSISTED_MESSAGES = 100
 
@@ -35,6 +36,7 @@ export interface Character {
 interface ChatState {
     messages: Message[]
     activeGang: Character[]
+    avatarStylePreference: AvatarStyle
     userName: string | null
     userId: string | null
     subscriptionTier: 'free' | 'basic' | 'pro'
@@ -57,6 +59,7 @@ interface ChatState {
     setMessages: (messages: Message[]) => void
     addMessage: (message: Message) => void
     setActiveGang: (gang: Character[]) => void
+    setAvatarStylePreference: (style: AvatarStyle) => void
     setUserName: (name: string | null) => void
     setUserId: (id: string | null) => void
     setSubscriptionTier: (tier: 'free' | 'basic' | 'pro') => void
@@ -92,6 +95,7 @@ export const useChatStore = create<ChatState>()(
         (set) => ({
             messages: [],
             activeGang: [],
+            avatarStylePreference: DEFAULT_AVATAR_STYLE,
             userName: null,
             userId: null,
             subscriptionTier: 'free',
@@ -133,7 +137,18 @@ export const useChatStore = create<ChatState>()(
                 }
                 return { messages: next }
             }),
-            setActiveGang: (gang) => set({ activeGang: gang }),
+            setActiveGang: (gang) => set((state) => ({
+                activeGang: applyAvatarStyleToGang(gang, state.avatarStylePreference),
+            })),
+            setAvatarStylePreference: (avatarStylePreference) => set((state) => {
+                const normalizedStyle = normalizeAvatarStyle(avatarStylePreference)
+                return {
+                    avatarStylePreference: normalizedStyle,
+                    activeGang: state.activeGang.length > 0
+                        ? applyAvatarStyleToGang(state.activeGang, normalizedStyle)
+                        : state.activeGang,
+                }
+            }),
             setUserName: (name) => set({ userName: name }),
             setUserId: (userId) => set({ userId }),
             setSubscriptionTier: (subscriptionTier) => set((state) => {
@@ -176,6 +191,7 @@ export const useChatStore = create<ChatState>()(
             partialize: (state) => ({
                 messages: state.messages,
                 activeGang: state.activeGang,
+                avatarStylePreference: state.avatarStylePreference,
                 userName: state.userName,
                 userNickname: state.userNickname,
                 userId: state.userId,
@@ -204,13 +220,21 @@ export const useChatStore = create<ChatState>()(
                         useChatStore.setState({ messages: fixed })
                     }
                 }
+                const avatarStylePreference = normalizeAvatarStyle(state?.avatarStylePreference)
+                if (state?.avatarStylePreference !== avatarStylePreference) {
+                    useChatStore.setState({ avatarStylePreference })
+                }
+
                 // Enrich activeGang from catalog to restore avatar URLs lost during serialization
                 if (state?.activeGang?.length) {
                     const enriched = state.activeGang.map(char => {
                         const catalog = CHARACTERS.find(c => c.id === char.id)
-                        return catalog ? { ...catalog, ...char, avatar: catalog.avatar } : char
+                        return catalog ? { ...catalog, ...char } : char
                     })
-                    useChatStore.setState({ activeGang: enriched })
+                    useChatStore.setState({
+                        avatarStylePreference,
+                        activeGang: applyAvatarStyleToGang(enriched, avatarStylePreference),
+                    })
                 }
             },
         }

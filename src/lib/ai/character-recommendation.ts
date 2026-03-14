@@ -19,7 +19,7 @@ const INTENT_AFFINITY: Record<string, Record<string, number>> = {
 }
 
 const WARMTH_AFFINITY: Record<string, Record<string, number>> = {
-    warm:     { luna: 2, sage: 2, nova: 1, atlas: 1 },
+    warm:     { luna: 2, sage: 2, vee: 2, nova: 1, atlas: 1 },
     balanced: {},
     edgy:     { nyx: 2, rico: 2, zara: 1, jinx: 1 },
 }

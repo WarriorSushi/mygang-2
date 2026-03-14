@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useChatStore } from '@/stores/chat-store'
-import { CHARACTERS } from '@/constants/characters'
+import { getCharactersForAvatarStyle } from '@/constants/characters'
+import { normalizeAvatarStyle } from '@/lib/avatar-style'
 import { useTheme } from 'next-themes'
 import type { Session } from '@supabase/supabase-js'
 import { addSquadTierMembers } from '@/app/auth/actions'
@@ -15,6 +16,7 @@ import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-
 export function AuthManager() {
     const setUserId = useChatStore((s) => s.setUserId)
     const setActiveGang = useChatStore((s) => s.setActiveGang)
+    const setAvatarStylePreference = useChatStore((s) => s.setAvatarStylePreference)
     const setUserName = useChatStore((s) => s.setUserName)
     const clearChat = useChatStore((s) => s.clearChat)
     const setIsHydrated = useChatStore((s) => s.setIsHydrated)
@@ -57,20 +59,22 @@ export function AuthManager() {
         const syncProfileState = (profile: Awaited<ReturnType<typeof fetchJourneyState>>['profile']) => {
             if (!profile) return
 
-            const nextTier = getTierFromProfile(profile.subscription_tier ?? null)
-            // UF-I7: Force gang_focus if free tier (ecosystem is paid-only)
-            const safeChatMode = nextTier === 'free' ? 'gang_focus' : (profile.chat_mode ?? undefined)
-            useChatStore.setState((state) => ({
-                ...state,
-                subscriptionTier: nextTier,
-                chatMode: safeChatMode ?? state.chatMode,
-                lowCostMode: typeof profile.low_cost_mode === 'boolean' ? profile.low_cost_mode : state.lowCostMode,
-                chatWallpaper: profile.chat_wallpaper ?? state.chatWallpaper,
-                customCharacterNames: profile.custom_character_names && typeof profile.custom_character_names === 'object'
-                    ? profile.custom_character_names
-                    : state.customCharacterNames,
-            }))
-        }
+                const nextTier = getTierFromProfile(profile.subscription_tier ?? null)
+                // UF-I7: Force gang_focus if free tier (ecosystem is paid-only)
+                const safeChatMode = nextTier === 'free' ? 'gang_focus' : (profile.chat_mode ?? undefined)
+                const avatarStylePreference = normalizeAvatarStyle(profile.avatar_style_preference)
+                useChatStore.setState((state) => ({
+                    ...state,
+                    subscriptionTier: nextTier,
+                    chatMode: safeChatMode ?? state.chatMode,
+                    lowCostMode: typeof profile.low_cost_mode === 'boolean' ? profile.low_cost_mode : state.lowCostMode,
+                    chatWallpaper: profile.chat_wallpaper ?? state.chatWallpaper,
+                    avatarStylePreference,
+                    customCharacterNames: profile.custom_character_names && typeof profile.custom_character_names === 'object'
+                        ? profile.custom_character_names
+                        : state.customCharacterNames,
+                }))
+            }
 
         const syncSession = async (incomingSession?: Session | null) => {
             if (syncInFlightRef.current) return
@@ -99,7 +103,7 @@ export function AuthManager() {
                 setUserId(session.user.id)
                 hadSessionRef.current = true
 
-                const { activeGang: localGang, userName: localName } = useChatStore.getState()
+                const { activeGang: localGang, userName: localName, avatarStylePreference: localAvatarStyle } = useChatStore.getState()
                 const remote = await fetchJourneyState(supabase, session.user.id)
                 const savedIds = remote.gangIds
                 const remoteGangSource = remote.gangSource
@@ -107,6 +111,12 @@ export function AuthManager() {
                 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id))
                 const profile = remote.profile
                 syncProfileState(profile)
+                const remoteAvatarStyle = profile
+                    ? normalizeAvatarStyle(profile.avatar_style_preference)
+                    : localAvatarStyle
+                if (profile) {
+                    setAvatarStylePreference(remoteAvatarStyle)
+                }
 
                 const remoteTier = getTierFromProfile(profile?.subscription_tier ?? null)
                 const maxSquad = getSquadLimit(remoteTier)
@@ -115,7 +125,9 @@ export function AuthManager() {
 
                 const hasLocalGang = localIds.length >= 2 && localIds.length <= maxSquad
                 const hasRemoteGang = remoteIds && remoteIds.length >= 2
-                const remoteSquad = hasRemoteGang ? CHARACTERS.filter(c => remoteIds!.includes(c.id)) : []
+                const remoteSquad = hasRemoteGang
+                    ? getCharactersForAvatarStyle(remoteAvatarStyle).filter(c => remoteIds!.includes(c.id))
+                    : []
                 const remoteName = profile?.username || null
                 const gangsDiffer = hasLocalGang && hasRemoteGang && !sameSet(localIds, remoteIds!)
                 const namesDiffer = !!localName && !!remoteName && localName !== remoteName
@@ -147,6 +159,7 @@ export function AuthManager() {
                                 await persistUserJourney(supabase, session.user.id, {
                                     gangIds: remoteIds!,
                                     onboardingCompleted: true,
+                                    avatarStylePreference: remoteAvatarStyle,
                                 })
                             } catch (err) {
                                 console.error('Error repairing fallback squad during auth sync:', err)
@@ -173,7 +186,8 @@ export function AuthManager() {
                         try {
                             await persistUserJourney(supabase, session.user.id, {
                                 gangIds: localIds,
-                                onboardingCompleted: true
+                                onboardingCompleted: true,
+                                avatarStylePreference: localAvatarStyle,
                             })
                         } catch (err) {
                             console.error('Error saving local gang:', err)
@@ -330,7 +344,7 @@ export function AuthManager() {
         return () => {
             subscription.unsubscribe()
         }
-    }, [addMessage, clearChat, setActiveGang, setIsHydrated, setPendingDowngrade, setPendingUpgrade, setSquadConflict, setTheme, setUserId, setUserName, supabase])
+    }, [addMessage, clearChat, setActiveGang, setAvatarStylePreference, setIsHydrated, setPendingDowngrade, setPendingUpgrade, setSquadConflict, setTheme, setUserId, setUserName, supabase])
 
     return null
 }

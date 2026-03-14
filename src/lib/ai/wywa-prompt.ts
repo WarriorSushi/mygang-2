@@ -10,7 +10,7 @@ export const TYPING_STYLES: Record<string, string> = {
     atlas: 'Proper caps. Short direct sentences. No fluff. Period-heavy.',
     luna: 'Lowercase. Trailing "..." often. Warm and dreamy. Soft punctuation.',
     rico: 'ALL CAPS when excited. Excessive emojis. Very short bursts. Chaotic.',
-    vee: 'Proper caps. Precise language. "Actually/technically" openers. Factual.',
+    vee: 'Proper caps. Very warm, flirty, affectionate. Pet names often. Smart without sounding cold. Gentle teasing. "Come here" energy.',
     ezra: 'Proper caps. Longer, deliberate phrasing. References and metaphors.',
     cleo: 'Proper caps. Dramatic flair. Uses "honey", "darling". Judgmental asides.',
     sage: 'Proper caps. Calm, measured. Asks reflective questions. Gentle tone.',

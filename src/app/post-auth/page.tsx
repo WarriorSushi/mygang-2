@@ -6,7 +6,8 @@ import { Loader2 } from 'lucide-react'
 import { addSquadTierMembers } from '@/app/auth/actions'
 import { createClient } from '@/lib/supabase/client'
 import { fetchJourneyState, persistUserJourney } from '@/lib/supabase/client-journey'
-import { CHARACTERS } from '@/constants/characters'
+import { getCharactersForAvatarStyle } from '@/constants/characters'
+import { normalizeAvatarStyle } from '@/lib/avatar-style'
 import { useChatStore } from '@/stores/chat-store'
 import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
 import { getTierFromProfile } from '@/lib/billing'
@@ -27,6 +28,7 @@ export default function PostAuthPage() {
     const setUserId = useChatStore((s) => s.setUserId)
     const setUserName = useChatStore((s) => s.setUserName)
     const setActiveGang = useChatStore((s) => s.setActiveGang)
+    const setAvatarStylePreference = useChatStore((s) => s.setAvatarStylePreference)
     const [retryNonce, setRetryNonce] = useState(0)
     const [showRetryState, setShowRetryState] = useState(false)
     const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null)
@@ -46,12 +48,19 @@ export default function PostAuthPage() {
             const localState = useChatStore.getState()
             const localGangIds = localState.activeGang.map((c) => c.id)
             const localName = localState.userName
+            const localAvatarStyle = localState.avatarStylePreference
 
             const remote = await fetchJourneyState(supabase, userId)
             const remoteGangIds = remote.gangIds
             const remoteGangNeedsRepair = remote.gangSource === 'preferred_squad_fallback'
             const hasRemoteGang = remoteGangIds.length >= 2 && remoteGangIds.length <= 6
             const hasLocalGang = localGangIds.length >= 2 && localGangIds.length <= 6
+            const remoteAvatarStyle = remote.profile
+                ? normalizeAvatarStyle(remote.profile.avatar_style_preference)
+                : localAvatarStyle
+            if (remote.profile) {
+                setAvatarStylePreference(remoteAvatarStyle)
+            }
 
             if (remote.profile) {
                 const nextTier = getTierFromProfile(remote.profile.subscription_tier ?? null)
@@ -64,6 +73,7 @@ export default function PostAuthPage() {
                         ? remote.profile.low_cost_mode
                         : state.lowCostMode,
                     chatWallpaper: remote.profile?.chat_wallpaper ?? state.chatWallpaper,
+                    avatarStylePreference: remoteAvatarStyle,
                     customCharacterNames: remote.profile?.custom_character_names && typeof remote.profile.custom_character_names === 'object'
                         ? remote.profile.custom_character_names
                         : state.customCharacterNames,
@@ -91,7 +101,8 @@ export default function PostAuthPage() {
                     try {
                         await persistUserJourney(supabase, userId, {
                             gangIds: remoteGangIds,
-                            onboardingCompleted: true
+                            onboardingCompleted: true,
+                            avatarStylePreference: remoteAvatarStyle,
                         })
                     } catch (error) {
                         console.error('Failed to repair fallback squad during post-auth:', error)
@@ -114,7 +125,7 @@ export default function PostAuthPage() {
                         }
                     }
                 }
-                const squad = CHARACTERS.filter((c) => remoteGangIds.includes(c.id))
+                const squad = getCharactersForAvatarStyle(remoteAvatarStyle).filter((c) => remoteGangIds.includes(c.id))
                 setActiveGang(squad)
                 if (!isCancelled) router.replace('/chat')
                 return
@@ -124,7 +135,8 @@ export default function PostAuthPage() {
                 try {
                     await persistUserJourney(supabase, userId, {
                         gangIds: localGangIds,
-                        onboardingCompleted: true
+                        onboardingCompleted: true,
+                        avatarStylePreference: localAvatarStyle,
                     })
                 } catch (error) {
                     console.error('Failed to persist local squad during post-auth:', error)
@@ -204,7 +216,7 @@ export default function PostAuthPage() {
             clearTimeout(retryTimer)
             clearTimeout(timeout)
         }
-    }, [retryNonce, router, setActiveGang, setUserId, setUserName])
+    }, [retryNonce, router, setActiveGang, setAvatarStylePreference, setUserId, setUserName])
 
     const [showSlowHint, setShowSlowHint] = useState(false)
     useEffect(() => {

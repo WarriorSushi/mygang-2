@@ -31,19 +31,20 @@ test('MyGang.ai End-to-End Journey', async ({ page }) => {
     const nextBtn = page.locator('[data-testid="onboarding-name-next"]');
     await nextBtn.click({ force: true });
 
-    // 4. Selection Step
-    console.log('Selecting squad...');
-    const characters = ['kael', 'nyx', 'rico', 'cleo'];
-    for (const id of characters) {
-        console.log(`Selecting ${id}...`);
-        const card = page.locator(`[data-testid="character-${id}"]`);
-        await card.click({ force: true });
-        await page.waitForTimeout(500);
-    }
+    await page.locator('[data-testid="vibe-primary_intent-hype"]').click({ force: true });
+    await page.locator('[data-testid="vibe-warmth_style-balanced"]').click({ force: true });
+    await page.locator('[data-testid="vibe-chaos_level-lively"]').click({ force: true });
+    await page.locator('[data-testid="vibe-quiz-next"]').click({ force: true });
 
-    console.log('Clicking Lets Go...');
+    await page.locator('[data-testid="onboarding-avatar-gift-next"]').click({ force: true });
+    await page.locator('[data-testid="avatar-style-select-human"]').click({ force: true });
+    await page.locator('[data-testid="onboarding-avatar-style-continue"]').click({ force: true });
+
+    // 4. Selection Step
+    console.log('Continuing with recommended squad...');
     const letsGoBtn = page.locator('[data-testid="onboarding-selection-done"]');
     await letsGoBtn.click({ force: true });
+    await page.getByRole('button', { name: 'Skip for now' }).click({ force: true });
 
     // 5. Loading -> Chat
     console.log('Waiting for chat redirect...');

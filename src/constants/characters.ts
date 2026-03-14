@@ -1,8 +1,11 @@
 import type { Character } from '@/stores/chat-store'
+import { AVATAR_STYLES, DEFAULT_AVATAR_STYLE, normalizeAvatarStyle, resolveAvatarUrl, type AvatarStyle } from '@/lib/avatar-style'
 
-type CharacterCatalogEntry = Character & { avatar: string; roleLabel: string }
+export type CharacterCatalogEntry = Character & { avatar: string; roleLabel: string }
 
-export const CHARACTERS: CharacterCatalogEntry[] = [
+type BaseCharacterCatalogEntry = Omit<CharacterCatalogEntry, 'avatar'>
+
+const BASE_CHARACTERS: BaseCharacterCatalogEntry[] = [
     {
         id: 'kael',
         name: 'Kael',
@@ -15,7 +18,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.9,
         tags: ['hype', 'social', 'style'],
         gradient: 'from-amber-200 to-yellow-500',
-        avatar: '/avatars/kael.webp',
     },
     {
         id: 'nyx',
@@ -29,7 +31,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.8,
         tags: ['logic', 'roast'],
         gradient: 'from-purple-500 to-indigo-600',
-        avatar: '/avatars/nyx.webp',
     },
     {
         id: 'atlas',
@@ -43,7 +44,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.1,
         tags: ['ops', 'support'],
         gradient: 'from-blue-400 to-slate-600',
-        avatar: '/avatars/atlas.webp',
     },
     {
         id: 'luna',
@@ -57,7 +57,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.15,
         tags: ['empath', 'vibes'],
         gradient: 'from-pink-300 to-rose-400',
-        avatar: '/avatars/luna.webp',
     },
     {
         id: 'rico',
@@ -71,21 +70,19 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.85,
         tags: ['chaos', 'hype'],
         gradient: 'from-orange-500 to-red-600',
-        avatar: '/avatars/rico.webp',
     },
     {
         id: 'vee',
         name: 'Vee',
         vibe: 'Nerd energy',
         color: '#00FA9A', // Spring Green
-        roleLabel: 'the fact-checker',
+        roleLabel: 'the sweet flirt',
         archetype: 'The Nerd',
-        voice: 'Encyclopedia with swag, corrected informative',
-        sample: '*Technically*, calling it a hoverboard is incorrect.',
+        voice: 'Shamelessly flirty, loving, affectionate genius',
+        sample: 'Come here, angel. Tell me what you love and I will absolutely remember every detail.',
         typingSpeed: 1.2,
-        tags: ['logic', 'facts'],
+        tags: ['smart', 'flirty', 'loving'],
         gradient: 'from-emerald-400 to-teal-600',
-        avatar: '/avatars/vee.webp',
     },
     {
         id: 'ezra',
@@ -99,7 +96,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.05,
         tags: ['art', 'philosophy'],
         gradient: 'from-stone-500 to-neutral-800',
-        avatar: '/avatars/ezra.webp',
     },
     {
         id: 'cleo',
@@ -113,7 +109,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.95,
         tags: ['drama', 'social'],
         gradient: 'from-fuchsia-300 to-purple-600',
-        avatar: '/avatars/cleo.webp',
     },
     {
         id: 'sage',
@@ -127,7 +122,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.25,
         tags: ['support', 'wisdom'],
         gradient: 'from-green-400 to-emerald-700',
-        avatar: '/avatars/sage.webp',
     },
     {
         id: 'miko',
@@ -141,7 +135,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.75,
         tags: ['hype', 'chaos', 'drama'],
         gradient: 'from-pink-500 to-rose-600',
-        avatar: '/avatars/miko.webp',
     },
     {
         id: 'dash',
@@ -155,7 +148,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.8,
         tags: ['motivation', 'hype'],
         gradient: 'from-blue-500 to-cyan-600',
-        avatar: '/avatars/dash.webp',
     },
     {
         id: 'zara',
@@ -169,7 +161,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.0,
         tags: ['roast', 'support'],
         gradient: 'from-amber-600 to-orange-800',
-        avatar: '/avatars/zara.webp',
     },
     {
         id: 'jinx',
@@ -183,7 +174,6 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 0.9,
         tags: ['chaos', 'logic'],
         gradient: 'from-violet-500 to-indigo-800',
-        avatar: '/avatars/jinx.webp',
     },
     {
         id: 'nova',
@@ -197,6 +187,25 @@ export const CHARACTERS: CharacterCatalogEntry[] = [
         typingSpeed: 1.3,
         tags: ['vibes', 'philosophy'],
         gradient: 'from-teal-400 to-cyan-700',
-        avatar: '/avatars/nova.webp',
     },
 ]
+
+const CHARACTER_CATALOG_BY_STYLE = Object.fromEntries(
+    AVATAR_STYLES.map((style) => [
+        style,
+        BASE_CHARACTERS.map((character) => ({
+            ...character,
+            avatar: resolveAvatarUrl(character.id, style),
+        })),
+    ])
+) as Record<AvatarStyle, CharacterCatalogEntry[]>
+
+export const CHARACTERS = CHARACTER_CATALOG_BY_STYLE[DEFAULT_AVATAR_STYLE]
+
+export function getCharactersForAvatarStyle(style?: string | null): CharacterCatalogEntry[] {
+    return CHARACTER_CATALOG_BY_STYLE[normalizeAvatarStyle(style)]
+}
+
+export function getCharacterById(id: string, style?: string | null): CharacterCatalogEntry | undefined {
+    return getCharactersForAvatarStyle(style).find((character) => character.id === id)
+}

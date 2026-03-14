@@ -35,25 +35,30 @@ test('Capture All Screens', async ({ page }) => {
     const nextBtn = page.locator('[data-testid="onboarding-name-next"]');
     await nextBtn.click({ force: true });
 
+    await page.locator('[data-testid="vibe-primary_intent-hype"]').click({ force: true });
+    await page.locator('[data-testid="vibe-warmth_style-balanced"]').click({ force: true });
+    await page.locator('[data-testid="vibe-chaos_level-lively"]').click({ force: true });
+    await page.locator('[data-testid="vibe-quiz-next"]').click({ force: true });
+
+    await page.screenshot({ path: 'screenshots/4_onboarding_gift.png', animations: 'disabled' });
+    await page.locator('[data-testid="onboarding-avatar-gift-next"]').click({ force: true });
+    await page.screenshot({ path: 'screenshots/5_onboarding_styles.png', animations: 'disabled' });
+    await page.locator('[data-testid="avatar-style-select-human"]').click({ force: true });
+    await page.locator('[data-testid="onboarding-avatar-style-continue"]').click({ force: true });
+
     // 3. Selection
-    console.log('Selecting characters...');
+    console.log('Capturing recommended squad selection...');
     await page.waitForSelector('div[class*="grid"]');
-    const characters = ['kael', 'nyx', 'rico', 'cleo'];
-    for (const id of characters) {
-        console.log(`Selecting ${id}...`);
-        const card = page.locator(`[data-testid="character-${id}"]`);
-        await card.click({ force: true });
-        await page.waitForTimeout(400);
-    }
-    await page.screenshot({ path: 'screenshots/4_onboarding_selection.png', animations: 'disabled' });
+    await page.screenshot({ path: 'screenshots/6_onboarding_selection.png', animations: 'disabled' });
 
     const letsGoBtn = page.locator('[data-testid="onboarding-selection-done"]');
     await letsGoBtn.click({ force: true });
+    await page.getByRole('button', { name: 'Skip for now' }).click({ force: true });
 
     // 4. Chat Page
     console.log('Waiting for Chat...');
     await page.waitForURL(/.*chat/, { timeout: 15000 });
-    await page.screenshot({ path: 'screenshots/5_chat_initial.png', animations: 'disabled' });
+    await page.screenshot({ path: 'screenshots/7_chat_initial.png', animations: 'disabled' });
 
     // 5. Send Message & Typing
     console.log('Sending message...');
@@ -63,10 +68,10 @@ test('Capture All Screens', async ({ page }) => {
 
     console.log('Capturing typing indicators...');
     await page.waitForTimeout(3000);
-    await page.screenshot({ path: 'screenshots/6_chat_typing.png', animations: 'disabled' });
+    await page.screenshot({ path: 'screenshots/8_chat_typing.png', animations: 'disabled' });
 
     console.log('Waiting for responses...');
     await page.waitForTimeout(10000);
-    await page.screenshot({ path: 'screenshots/7_chat_complete.png', animations: 'disabled' });
+    await page.screenshot({ path: 'screenshots/9_chat_complete.png', animations: 'disabled' });
     console.log('--- VISUAL CHECK COMPLETE ---');
 });

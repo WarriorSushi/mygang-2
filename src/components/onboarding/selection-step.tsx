@@ -3,12 +3,13 @@
 import { type KeyboardEvent, useState } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { CHARACTERS } from '@/constants/characters'
+import type { CharacterCatalogEntry } from '@/constants/characters'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
 interface SelectionStepProps {
+    characters: CharacterCatalogEntry[]
     selectedIds: string[]
     toggleCharacter: (id: string) => void
     onNext: () => void
@@ -16,19 +17,19 @@ interface SelectionStepProps {
     recommendedIds?: string[]
 }
 
-export function SelectionStep({ selectedIds, toggleCharacter, onNext, maxMembers = 4, recommendedIds = [] }: SelectionStepProps) {
+export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext, maxMembers = 4, recommendedIds = [] }: SelectionStepProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null)
 
-    const selectedChars = CHARACTERS.filter(c => selectedIds.includes(c.id))
+    const selectedChars = characters.filter(c => selectedIds.includes(c.id))
     const canContinue = selectedIds.length >= 2
 
     // Sort: recommended first, then the rest
     const sortedCharacters = recommendedIds.length > 0
         ? [
-            ...CHARACTERS.filter(c => recommendedIds.includes(c.id)),
-            ...CHARACTERS.filter(c => !recommendedIds.includes(c.id)),
+            ...characters.filter(c => recommendedIds.includes(c.id)),
+            ...characters.filter(c => !recommendedIds.includes(c.id)),
           ]
-        : CHARACTERS
+        : characters
 
     const handleCharacterKeyDown = (e: KeyboardEvent, id: string) => {
         if (e.key === 'Enter' || e.key === ' ') {

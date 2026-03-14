@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { CHARACTERS } from '@/constants/characters'
+import { AVATAR_STYLES, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
 import { getTierFromProfile, getSquadLimit } from '@/lib/billing'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
@@ -37,6 +38,7 @@ const userSettingsSchema = z.object({
     preferred_squad: z.array(z.string()).max(6).refine(ids => !ids || ids.every(id => validCharacterIds.includes(id)), { message: 'Invalid character ID' }).optional(),
     chat_wallpaper: z.string().max(50).optional(),
     custom_character_names: z.record(z.string().max(30)).refine(v => !v || Object.keys(v).length <= 6, { message: 'Too many custom names' }).optional(),
+    avatar_style_preference: z.enum(AVATAR_STYLES).optional(),
 }).strict()
 
 async function getOrigin() {
@@ -218,6 +220,7 @@ export async function completeOnboarding(payload: {
     characterIds: string[]
     customCharacterNames?: Record<string, string>
     vibeProfile?: Record<string, string>
+    avatarStylePreference?: AvatarStyle
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -252,6 +255,7 @@ export async function completeOnboarding(payload: {
         preferred_squad: persistedGang.characterIds,
         onboarding_completed: true,
         custom_character_names: payload.customCharacterNames ?? null,
+        avatar_style_preference: normalizeAvatarStyle(payload.avatarStylePreference),
     }
 
     if (payload.vibeProfile) {
@@ -506,7 +510,15 @@ export async function getChatHistoryPage(params?: { before?: string | null; limi
     }
 }
 
-export async function updateUserSettings(settings: { theme?: string; chat_mode?: string; low_cost_mode?: boolean; preferred_squad?: string[]; chat_wallpaper?: string; custom_character_names?: Record<string, string> }) {
+export async function updateUserSettings(settings: {
+    theme?: string
+    chat_mode?: string
+    low_cost_mode?: boolean
+    preferred_squad?: string[]
+    chat_wallpaper?: string
+    custom_character_names?: Record<string, string>
+    avatar_style_preference?: AvatarStyle
+}) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return

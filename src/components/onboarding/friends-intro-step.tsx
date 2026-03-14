@@ -4,10 +4,11 @@ import { m } from 'framer-motion'
 import Image from 'next/image'
 import { Sparkles, PenLine, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CHARACTERS } from '@/constants/characters'
+import type { CharacterCatalogEntry } from '@/constants/characters'
 import { cn } from '@/lib/utils'
 
 interface FriendsIntroStepProps {
+    characters: CharacterCatalogEntry[]
     selectedIds: string[]
     customNames: Record<string, string>
     onNameChange: (characterId: string, nextName: string) => void
@@ -16,13 +17,14 @@ interface FriendsIntroStepProps {
 }
 
 export function FriendsIntroStep({
+    characters,
     selectedIds,
     customNames,
     onNameChange,
     onNext,
     onSkip,
 }: FriendsIntroStepProps) {
-    const selectedCharacters = CHARACTERS.filter((character) => selectedIds.includes(character.id))
+    const selectedCharacters = characters.filter((character) => selectedIds.includes(character.id))
 
     return (
         <m.div

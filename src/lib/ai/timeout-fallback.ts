@@ -34,8 +34,8 @@ function resolveTheme(text: string): TimeoutTheme {
 function chooseSpeaker(activeGangIds: string[], theme: TimeoutTheme) {
     const priorities: Record<TimeoutTheme, string[]> = {
         overwhelmed: ['vee', 'atlas', 'kael', 'nyx', 'cleo', 'luna'],
-        lonely: ['luna', 'sage', 'atlas', 'vee', 'kael', 'nyx'],
-        sleep: ['atlas', 'luna', 'nyx', 'vee', 'kael', 'cleo'],
+        lonely: ['vee', 'luna', 'sage', 'atlas', 'kael', 'nyx'],
+        sleep: ['vee', 'atlas', 'luna', 'nyx', 'kael', 'cleo'],
         work: ['vee', 'atlas', 'kael', 'nyx', 'cleo', 'luna'],
         general: ['vee', 'atlas', 'kael', 'nyx', 'cleo', 'luna'],
     }
@@ -65,7 +65,7 @@ function buildBaseAction(theme: TimeoutTheme) {
 function styleActionForSpeaker(speaker: string, baseAction: string) {
     switch (speaker) {
         case 'vee':
-            return baseAction
+            return `Okay, angel, come here. ${baseAction}`
         case 'atlas':
             return baseAction
         case 'kael':

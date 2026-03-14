@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 
+const ALL_CHARACTER_IDS = ['kael', 'nyx', 'atlas', 'luna', 'rico', 'vee', 'ezra', 'cleo', 'sage', 'miko', 'dash', 'zara', 'jinx', 'nova']
+
 test.describe('Full User Journey - Guest Flow', () => {
     test.setTimeout(90000)
 
@@ -32,16 +34,18 @@ test.describe('Full User Journey - Guest Flow', () => {
         const nameNext = page.locator('[data-testid="onboarding-name-next"]')
         await nameNext.click({ force: true })
 
-        // 4. Selection step - pick 4 characters
-        const characters = ['kael', 'nyx', 'rico', 'cleo']
-        for (const id of characters) {
-            const card = page.locator(`[data-testid="character-${id}"]`)
-            await card.click({ force: true })
-            await page.waitForTimeout(300)
-        }
+        await page.locator('[data-testid="vibe-primary_intent-hype"]').click({ force: true })
+        await page.locator('[data-testid="vibe-warmth_style-balanced"]').click({ force: true })
+        await page.locator('[data-testid="vibe-chaos_level-lively"]').click({ force: true })
+        await page.locator('[data-testid="vibe-quiz-next"]').click({ force: true })
+
+        await page.locator('[data-testid="onboarding-avatar-gift-next"]').click({ force: true })
+        await page.locator('[data-testid="avatar-style-select-human"]').click({ force: true })
+        await page.locator('[data-testid="onboarding-avatar-style-continue"]').click({ force: true })
 
         const doneBtn = page.locator('[data-testid="onboarding-selection-done"]')
         await doneBtn.click({ force: true })
+        await page.getByRole('button', { name: 'Skip for now' }).click({ force: true })
 
         // 5. Should arrive at chat
         await page.waitForURL(/.*chat/, { timeout: 15000 })
@@ -68,10 +72,24 @@ test.describe('Full User Journey - Guest Flow', () => {
         const nameNext = page.locator('[data-testid="onboarding-name-next"]')
         await nameNext.click({ force: true })
 
-        // Select only 1 character — below the 2-character minimum
-        const card = page.locator('[data-testid="character-kael"]')
-        await card.click({ force: true })
-        await page.waitForTimeout(200)
+        await page.locator('[data-testid="vibe-primary_intent-hype"]').click({ force: true })
+        await page.locator('[data-testid="vibe-warmth_style-balanced"]').click({ force: true })
+        await page.locator('[data-testid="vibe-chaos_level-lively"]').click({ force: true })
+        await page.locator('[data-testid="vibe-quiz-next"]').click({ force: true })
+
+        await page.locator('[data-testid="onboarding-avatar-gift-next"]').click({ force: true })
+        await page.locator('[data-testid="onboarding-avatar-style-continue"]').click({ force: true })
+
+        for (const id of ALL_CHARACTER_IDS) {
+            const card = page.locator(`[data-testid="character-${id}"]`)
+            const isSelected = (await card.getAttribute('aria-pressed')) === 'true'
+            const shouldBeSelected = id === 'kael'
+
+            if (shouldBeSelected !== isSelected) {
+                await card.click({ force: true })
+                await page.waitForTimeout(100)
+            }
+        }
 
         // Done button should be disabled with fewer than 2 characters
         const doneBtn = page.locator('[data-testid="onboarding-selection-done"]')

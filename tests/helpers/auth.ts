@@ -160,6 +160,7 @@ export async function seedUserState({
             subscription_tier: subscriptionTier,
             onboarding_completed: true,
             preferred_squad: preferredSquad,
+            avatar_style_preference: 'robots',
             custom_character_names: null,
             purchase_celebration_pending: null,
             pending_squad_downgrade: false,
