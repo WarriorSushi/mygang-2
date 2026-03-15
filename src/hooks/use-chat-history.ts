@@ -90,6 +90,9 @@ function mergeRemoteMessagesWithLocalMetadata(remoteMessages: Message[], localMe
 }
 
 function shouldPreserveLocalMessage(localMessage: Message, latestRemoteTimestamp: number) {
+    // Messages confirmed sent to the server are in the DB — never drop them locally
+    // They're just outside the 40-message remote page window
+    if (localMessage.deliveryStatus === 'sent') return true
     const localTimestamp = parseMessageCreatedAt(localMessage)
     if (!localTimestamp) return true
     if (Date.now() - localTimestamp > 15 * 60 * 1000) return false
@@ -108,8 +111,29 @@ export function collapseLikelyDuplicateMessages(messages: Message[]) {
         uniqueById.push(message)
     }
 
-    const collapsed: Message[] = []
+    // Global dedup: remove non-consecutive duplicates (same speaker, same content, within 15s)
+    // Keeps the first occurrence, drops later duplicates
+    const seenSignatures = new Map<string, number>() // signature → timestamp of first occurrence
+    const globalDeduped: Message[] = []
     for (const message of uniqueById) {
+        if (message.speaker === 'user') {
+            globalDeduped.push(message)
+            continue
+        }
+        const sig = messageSignature(message)
+        const ts = parseMessageCreatedAt(message)
+        const existingTs = seenSignatures.get(sig)
+        if (existingTs !== undefined && ts && existingTs && Math.abs(ts - existingTs) <= 15_000) {
+            // Duplicate — skip it
+            continue
+        }
+        seenSignatures.set(sig, ts)
+        globalDeduped.push(message)
+    }
+
+    // Consecutive dedup (original logic for quote-reply preference)
+    const collapsed: Message[] = []
+    for (const message of globalDeduped) {
         const previous = collapsed[collapsed.length - 1]
         if (!previous) {
             collapsed.push(message)
@@ -227,6 +251,8 @@ export function useChatHistory({
     const lastHistorySyncAtRef = useRef(0)
     // P-I3: Debounce forced syncs (focus/visibility) with a 3-second dedup window
     const lastForceSyncRef = useRef(0)
+    // Track the oldest message timestamp from "load older" so periodic sync preserves them
+    const olderHistoryLoadedRef = useRef(false)
 
     // Reset bootstrap when userId changes (e.g. logout → new login)
     const prevUserIdRef = useRef<string | null>(userId)
@@ -264,7 +290,7 @@ export function useChatHistory({
             setIsBootstrappingHistory(true)
             setHistoryStatus('bootstrapping')
             try {
-                const page = await getChatHistoryPage({ limit: 40 })
+                const page = await getChatHistoryPage({ limit: 100 })
                 if (cancelled) return
 
                 const localMessages = useChatStore.getState().messages
@@ -335,6 +361,32 @@ export function useChatHistory({
             const localMessages = useChatStore.getState().messages
             const reconciledMessages = reconcileMessagesFromHistory(page.items, localMessages)
             setHistoryStatus(reconciledMessages.length > 0 ? 'has_history' : 'empty')
+
+            // If older history was loaded via pagination, preserve those older messages
+            // that aren't in the latest 40-message remote page
+            if (olderHistoryLoadedRef.current && localMessages.length > 0 && reconciledMessages.length > 0) {
+                const reconciledIds = new Set(reconciledMessages.map(m => m.id))
+                const reconciledSigs = new Set(reconciledMessages.map(m => messageSignature(m)))
+                const oldestReconciledTs = parseMessageCreatedAt(reconciledMessages[0])
+                // Keep local messages that are older than the reconciled set and not already in it
+                const olderPreserved = localMessages.filter(m => {
+                    if (reconciledIds.has(m.id)) return false
+                    if (reconciledSigs.has(messageSignature(m))) return false
+                    const ts = parseMessageCreatedAt(m)
+                    return ts > 0 && ts < oldestReconciledTs
+                })
+                if (olderPreserved.length > 0) {
+                    const merged = collapseLikelyDuplicateMessages([...olderPreserved, ...reconciledMessages])
+                    if (
+                        localMessages.length !== merged.length
+                        || !isSameMessageTail(localMessages, merged)
+                    ) {
+                        setMessages(merged)
+                    }
+                    return
+                }
+            }
+
             if (
                 localMessages.length !== reconciledMessages.length
                 || !isSameMessageTail(localMessages, reconciledMessages)
@@ -444,6 +496,7 @@ export function useChatHistory({
             let appendedCount = 0
             if (older.length > 0) {
                 appendedCount = older.length
+                olderHistoryLoadedRef.current = true
                 setMessages(collapseLikelyDuplicateMessages([...older, ...currentMessages]))
             }
             setHistoryCursor(page.nextBefore)
