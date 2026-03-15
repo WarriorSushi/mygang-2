@@ -1,5 +1,6 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -33,6 +34,13 @@ function formatChars(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
     return String(n)
+}
+
+function truncatePreviewText(value: string | undefined, maxChars: number) {
+    if (!value) return ''
+    const normalized = value.replace(/\s+/g, ' ').trim()
+    if (normalized.length <= maxChars) return normalized
+    return `${normalized.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`
 }
 
 function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
@@ -75,8 +83,14 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const currentTheme = effectiveTheme === 'light' ? 'light' : 'dark'
     const nextTheme = currentTheme === 'dark' ? 'light' : 'dark'
     const [showAutoLowCostInfo, setShowAutoLowCostInfo] = useState(false)
+    const [canDesktopAvatarPreview, setCanDesktopAvatarPreview] = useState(false)
+    const [hoveredAvatar, setHoveredAvatar] = useState<Character | null>(null)
+    const [expandedAvatar, setExpandedAvatar] = useState<Character | null>(null)
     const showCapacityInfo = autoLowCostActive && showAutoLowCostInfo
     const capacityInfoRef = useRef<HTMLDivElement>(null)
+    const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const avatarTriggerRef = useRef<HTMLButtonElement | null>(null)
+    const lightboxRef = useRef<HTMLDivElement>(null)
 
     const newMemoryCount = useChatStore((s) => s.newMemoryCount)
     const totalMemoryCount = useChatStore((s) => s.totalMemoryCount)
@@ -117,6 +131,82 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
             document.removeEventListener('keydown', onKeyDown)
         }
     }, [showCapacityInfo])
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(min-width: 640px) and (hover: hover) and (pointer: fine)')
+        const updateCanPreview = () => {
+            const enabled = mediaQuery.matches
+            setCanDesktopAvatarPreview(enabled)
+            if (!enabled) {
+                setHoveredAvatar(null)
+                setExpandedAvatar(null)
+            }
+        }
+
+        updateCanPreview()
+        mediaQuery.addEventListener('change', updateCanPreview)
+        return () => mediaQuery.removeEventListener('change', updateCanPreview)
+    }, [])
+
+    useEffect(() => {
+        return () => {
+            if (hoverCloseTimerRef.current) {
+                clearTimeout(hoverCloseTimerRef.current)
+            }
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!expandedAvatar || !lightboxRef.current) return
+
+        const previousActiveElement = document.activeElement as HTMLElement | null
+        const focusable = lightboxRef.current.querySelectorAll<HTMLElement>('button, [tabindex="0"]')
+        const firstFocusable = focusable[0]
+        firstFocusable?.focus()
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setExpandedAvatar(null)
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown)
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            ;(avatarTriggerRef.current ?? previousActiveElement)?.focus?.()
+        }
+    }, [expandedAvatar])
+
+    const cancelAvatarHoverClose = () => {
+        if (hoverCloseTimerRef.current) {
+            clearTimeout(hoverCloseTimerRef.current)
+            hoverCloseTimerRef.current = null
+        }
+    }
+
+    const scheduleAvatarHoverClose = () => {
+        if (!canDesktopAvatarPreview || expandedAvatar) return
+        cancelAvatarHoverClose()
+        hoverCloseTimerRef.current = setTimeout(() => {
+            setHoveredAvatar(null)
+            hoverCloseTimerRef.current = null
+        }, 140)
+    }
+
+    const handleAvatarHover = (character: Character) => {
+        if (!canDesktopAvatarPreview || !character.avatar) return
+        cancelAvatarHoverClose()
+        setHoveredAvatar(character)
+    }
+
+    const handleAvatarClick = (event: React.MouseEvent<HTMLButtonElement>, character: Character) => {
+        if (!canDesktopAvatarPreview || !character.avatar) return
+        event.preventDefault()
+        cancelAvatarHoverClose()
+        avatarTriggerRef.current = event.currentTarget
+        setHoveredAvatar(character)
+        setExpandedAvatar(character)
+    }
 
     const renderPlanBadge = (mobile: boolean) => {
         if (subscriptionTier === 'pro') {
@@ -173,13 +263,112 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const mobileModeBadge = renderModeBadge(true)
     const desktopModeBadge = renderModeBadge(false)
     const showMobileBadgeRow = Boolean(mobilePlanBadge || mobileModeBadge)
+    const avatarPreview = hoveredAvatar && canDesktopAvatarPreview && !expandedAvatar ? hoveredAvatar : null
 
     return (
-        <header data-testid="chat-header" aria-label="Chat header" className="chat-header-desktop px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/40 flex flex-nowrap justify-between items-start sm:items-center gap-3 backdrop-blur-xl bg-card/95 z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
+        <header data-testid="chat-header" aria-label="Chat header" className="chat-header-desktop relative px-4 sm:px-6 pb-2.5 sm:pb-3 lg:pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)] lg:pt-2.5 border-b border-border/40 flex flex-nowrap justify-between items-start sm:items-center gap-3 backdrop-blur-xl bg-card/95 z-20 w-full shadow-[0_4px_20px_-12px_rgba(2,6,23,0.4)]">
             <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                 <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex -space-x-2" role="group" aria-label={`${activeGang.length} gang members`}>
+                        <div
+                            className="relative hidden sm:block"
+                            onPointerEnter={cancelAvatarHoverClose}
+                            onPointerLeave={scheduleAvatarHoverClose}
+                        >
+                            <div className="flex -space-x-2" role="group" aria-label={`${activeGang.length} gang members`}>
+                                {activeGang.map((char) => (
+                                    <button
+                                        key={char.id}
+                                        type="button"
+                                        aria-label={`Preview ${char.name}`}
+                                        className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                                        onPointerEnter={() => handleAvatarHover(char)}
+                                        onFocus={() => handleAvatarHover(char)}
+                                        onClick={(event) => handleAvatarClick(event, char)}
+                                    >
+                                        <Avatar
+                                            className="border-[1.5px] border-background w-8 h-8 sm:w-9 sm:h-9 lg:w-8 lg:h-8 transition-transform duration-150 hover:-translate-y-0.5"
+                                            title={char.name}
+                                        >
+                                            {char.avatar && (
+                                                <Image
+                                                    src={char.avatar}
+                                                    alt={char.name}
+                                                    width={40}
+                                                    height={40}
+                                                    className="object-cover"
+                                                    sizes="40px"
+                                                    priority={false}
+                                                />
+                                            )}
+                                            <AvatarFallback className="text-[11px] bg-muted">{char.name?.[0] || '?'}</AvatarFallback>
+                                        </Avatar>
+                                    </button>
+                                ))}
+                            </div>
+                            {avatarPreview && (
+                                <div
+                                    className="absolute left-0 top-full z-40 mt-3 w-[19rem] rounded-[1.35rem] border border-border/60 bg-background/95 p-3 shadow-[0_24px_70px_-35px_rgba(2,6,23,0.95)] backdrop-blur-xl animate-in fade-in slide-in-from-top-2 zoom-in-95 duration-150"
+                                    onPointerEnter={cancelAvatarHoverClose}
+                                    onPointerLeave={scheduleAvatarHoverClose}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div
+                                            className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[1rem] border border-white/10 bg-muted/60"
+                                            style={{ boxShadow: `0 0 0 1px ${avatarPreview.color}40` }}
+                                        >
+                                            {avatarPreview.avatar ? (
+                                                <Image
+                                                    src={avatarPreview.avatar}
+                                                    alt={avatarPreview.name}
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="96px"
+                                                    priority={false}
+                                                />
+                                            ) : (
+                                                <div className="flex h-full w-full items-center justify-center text-xl font-semibold text-foreground/80">
+                                                    {avatarPreview.name[0]}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <p className="truncate text-sm font-semibold text-foreground">{avatarPreview.name}</p>
+                                                {(avatarPreview.roleLabel || avatarPreview.archetype) && (
+                                                    <span className="truncate rounded-full border border-border/60 bg-muted/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                                                        {avatarPreview.roleLabel || avatarPreview.archetype}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {avatarPreview.vibe && (
+                                                <p className="mt-1 text-xs leading-relaxed text-muted-foreground/90">
+                                                    {avatarPreview.vibe}
+                                                </p>
+                                            )}
+                                            {avatarPreview.sample && (
+                                                <p className="mt-2 text-[11px] leading-relaxed text-foreground/80">
+                                                    &ldquo;{truncatePreviewText(avatarPreview.sample, 92)}&rdquo;
+                                                </p>
+                                            )}
+                                            {!!avatarPreview.tags?.length && (
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {avatarPreview.tags.slice(0, 3).map((tag) => (
+                                                        <span
+                                                            key={tag}
+                                                            className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-primary/85"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex -space-x-2 sm:hidden" role="group" aria-label={`${activeGang.length} gang members`}>
                             {activeGang.map((char) => (
                                 <Avatar
                                     key={char.id}
@@ -201,7 +390,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                 </Avatar>
                             ))}
                         </div>
-                        <h1 className="min-w-0 truncate font-semibold text-sm sm:text-base leading-none whitespace-nowrap">My Gang</h1>
+                        <h1 className="min-w-0 truncate font-semibold text-sm sm:text-base leading-tight whitespace-nowrap">My Gang</h1>
                         {desktopPlanBadge}
                     </div>
                     <div className="mt-0.5 flex items-center gap-1.5 min-h-[14px] min-w-0 text-[10px] text-muted-foreground/60 whitespace-nowrap">
@@ -326,6 +515,56 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                     </div>
                 )}
             </div>
+
+            {expandedAvatar?.avatar && createPortal(
+                <div
+                    ref={lightboxRef}
+                    className="fixed inset-0 z-[200] hidden sm:flex items-center justify-center bg-black/70 backdrop-blur-sm"
+                    onClick={() => setExpandedAvatar(null)}
+                    tabIndex={-1}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${expandedAvatar.name}'s avatar`}
+                >
+                    <div
+                        className="relative flex max-w-[26rem] flex-col items-center gap-3 rounded-[1.75rem] border border-white/10 bg-background/92 p-5 text-center shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div
+                            className="relative h-72 w-72 overflow-hidden rounded-[1.4rem] shadow-2xl"
+                            style={{ outline: `2px solid ${expandedAvatar.color || '#555'}`, outlineOffset: '2px' }}
+                        >
+                            <Image
+                                src={expandedAvatar.avatar}
+                                alt={expandedAvatar.name}
+                                fill
+                                className="object-cover"
+                                sizes="288px"
+                                priority
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-lg font-semibold text-foreground">{expandedAvatar.name}</p>
+                            {(expandedAvatar.roleLabel || expandedAvatar.archetype) && (
+                                <p className="text-sm text-muted-foreground">
+                                    {expandedAvatar.roleLabel || expandedAvatar.archetype}
+                                </p>
+                            )}
+                            {expandedAvatar.vibe && (
+                                <p className="text-sm text-foreground/80">{expandedAvatar.vibe}</p>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setExpandedAvatar(null)}
+                            className="mt-1 rounded-full bg-white/8 px-4 py-1.5 text-xs text-foreground/80 transition-colors hover:bg-white/14"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
         </header>
     )
 })

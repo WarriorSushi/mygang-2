@@ -152,7 +152,7 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
                     )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                     <Button
                         variant="outline"
                         onClick={handleUseCloud}
