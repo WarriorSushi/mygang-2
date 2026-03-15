@@ -17,13 +17,116 @@ interface SelectionStepProps {
     recommendedIds?: string[]
 }
 
+function CharacterModal({
+    character,
+    onClose,
+}: {
+    character: CharacterCatalogEntry
+    onClose: () => void
+}) {
+    return (
+        <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={onClose}
+        >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <m.div
+                initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 16 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 w-full max-w-sm max-h-[80dvh] overflow-y-auto rounded-2xl border border-border/50 bg-card shadow-2xl"
+            >
+                {/* Hero image */}
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl">
+                    <Image
+                        src={character.avatar}
+                        alt={character.name}
+                        fill
+                        className="object-cover"
+                        sizes="400px"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-black/20" />
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <h3 className="text-2xl font-black text-white">{character.name}</h3>
+                        <p className="text-sm font-semibold uppercase tracking-wider text-white/70">
+                            {character.archetype}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Details */}
+                <div className="space-y-3 p-4">
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                            Role
+                        </span>
+                        <p className="text-sm text-foreground">{character.roleLabel}</p>
+                    </div>
+
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                            Vibe
+                        </span>
+                        <p className="text-sm text-foreground">{character.vibe}</p>
+                    </div>
+
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                            Voice
+                        </span>
+                        <p className="text-sm text-foreground">{character.voice}</p>
+                    </div>
+
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                            Sample
+                        </span>
+                        <p className="text-sm italic text-foreground/80">&quot;{character.sample}&quot;</p>
+                    </div>
+
+                    {character.tags && character.tags.length > 0 && (
+                        <div>
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                                Tags
+                            </span>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {character.tags.map((tag) => (
+                                    <span
+                                        key={tag}
+                                        className="rounded-full border border-border/40 bg-muted/50 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </m.div>
+        </m.div>
+    )
+}
+
 export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext, maxMembers = 4, recommendedIds = [] }: SelectionStepProps) {
-    const [expandedId, setExpandedId] = useState<string | null>(null)
+    const [modalCharId, setModalCharId] = useState<string | null>(null)
 
     const selectedChars = characters.filter(c => selectedIds.includes(c.id))
     const canContinue = selectedIds.length >= 2
+    const modalChar = modalCharId ? characters.find(c => c.id === modalCharId) ?? null : null
 
-    // Sort: recommended first, then the rest
     const sortedCharacters = recommendedIds.length > 0
         ? [
             ...characters.filter(c => recommendedIds.includes(c.id)),
@@ -54,13 +157,11 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                 </p>
             </div>
 
-            {/* Character grid — compact cards, 3 cols mobile for above-the-fold fit */}
+            {/* Character grid */}
             <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-20 sm:pb-18">
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
                     {sortedCharacters.map((char) => {
                         const isSelected = selectedIds.includes(char.id)
-                        const isExpanded = expandedId === char.id
-                        const isMaxed = selectedIds.length >= maxMembers && !isSelected
                         const isRecommended = recommendedIds.includes(char.id)
 
                         return (
@@ -68,9 +169,7 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                                 key={char.id}
                                 layout
                                 data-testid={`character-${char.id}`}
-                                onClick={() => {
-                                    if (!isMaxed) toggleCharacter(char.id)
-                                }}
+                                onClick={() => toggleCharacter(char.id)}
                                 onKeyDown={(e) => handleCharacterKeyDown(e, char.id)}
                                 tabIndex={0}
                                 role="button"
@@ -80,9 +179,8 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                                     "relative rounded-xl border cursor-pointer transition-all duration-300 overflow-hidden group",
                                     "bg-card/80 backdrop-blur-sm hover:bg-card",
                                     isSelected
-                                        ? "border-primary/60 ring-2 ring-primary/30 shadow-lg shadow-primary/10"
+                                        ? "border-[3px] border-primary ring-[3px] ring-primary/30 shadow-lg shadow-primary/10"
                                         : "border-border/50 hover:border-border",
-                                    isMaxed && "opacity-40 cursor-not-allowed"
                                 )}
                             >
                                 {/* Selection checkmark */}
@@ -101,12 +199,12 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
 
                                 {/* Recommended badge */}
                                 {isRecommended && !isSelected && (
-                                    <div className="absolute top-1.5 right-1.5 z-10 text-[8px] uppercase tracking-wider font-bold px-1.5 py-px rounded-full bg-primary/90 text-primary-foreground shadow-sm">
-                                        Match
+                                    <div className="absolute top-1.5 left-1.5 right-1.5 z-10 text-[7px] uppercase tracking-wider font-bold px-1 py-0.5 rounded-full bg-primary/90 text-primary-foreground shadow-sm text-center leading-tight">
+                                        Recommended
                                     </div>
                                 )}
 
-                                {/* Avatar — compact portrait ratio */}
+                                {/* Avatar */}
                                 <div className="relative w-full aspect-[4/5] overflow-hidden">
                                     <div className={cn(
                                         "absolute inset-0 bg-gradient-to-br opacity-20",
@@ -135,10 +233,8 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                                             <span className="text-white text-2xl sm:text-4xl font-black">{char.name[0]}</span>
                                         </div>
                                     )}
-                                    {/* Bottom gradient overlay for text readability */}
                                     <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
-                                    {/* Name + archetype over the image */}
                                     <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-2.5">
                                         <h3 className="font-bold text-xs sm:text-sm text-white leading-tight">{char.name}</h3>
                                         <p className="text-[8px] sm:text-[10px] font-semibold uppercase tracking-wider text-white/70 mt-px">
@@ -147,59 +243,27 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                                     </div>
                                 </div>
 
-                                {/* Compact info — sample quote only, expand on tap */}
-                                <div
-                                    className="px-2 py-1.5 sm:px-2.5 sm:py-2"
+                                {/* Details button */}
+                                <button
+                                    type="button"
                                     onClick={(e) => {
                                         e.stopPropagation()
-                                        setExpandedId(isExpanded ? null : char.id)
+                                        setModalCharId(char.id)
                                     }}
+                                    className="flex w-full items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-foreground sm:py-2 sm:text-xs"
                                 >
-                                    <p className="text-[9px] sm:text-[11px] text-muted-foreground leading-snug line-clamp-1 italic">
-                                        &quot;{char.sample}&quot;
-                                    </p>
-
-                                    <AnimatePresence>
-                                        {isExpanded && (
-                                            <m.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="pt-1.5 space-y-1 border-t border-border/30 mt-1.5">
-                                                    <p className="text-[9px] sm:text-[11px] text-muted-foreground leading-snug italic line-clamp-none">
-                                                        &quot;{char.sample}&quot;
-                                                    </p>
-                                                    <div>
-                                                        <span className="text-[8px] uppercase tracking-widest text-muted-foreground/50">Vibe</span>
-                                                        <p className="text-[10px] sm:text-xs text-foreground/80">{char.vibe}</p>
-                                                    </div>
-                                                    {char.tags && (
-                                                        <div className="flex flex-wrap gap-0.5 pt-0.5">
-                                                            {char.tags.map(tag => (
-                                                                <span
-                                                                    key={tag}
-                                                                    className="text-[8px] uppercase tracking-wider px-1.5 py-px rounded-full bg-muted/60 text-muted-foreground border border-border/30"
-                                                                >
-                                                                    {tag}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </m.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
+                                    Details
+                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/15">
+                                        <ChevronRight className="h-2.5 w-2.5 text-emerald-400/60" />
+                                    </span>
+                                </button>
                             </m.div>
                         )
                     })}
                 </div>
             </div>
 
-            {/* Glassmorphic bottom bar — thin, translucent, edge-to-edge, flush */}
+            {/* Bottom bar */}
             <div
                 className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] dark:border-white/[0.06]"
                 style={{
@@ -209,7 +273,6 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                 }}
             >
                 <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
-                    {/* Selected avatars */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                         <div className="flex -space-x-1.5">
                             {selectedChars.map((c) => (
@@ -261,6 +324,16 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                     </Button>
                 </div>
             </div>
+
+            {/* Character detail modal */}
+            <AnimatePresence>
+                {modalChar && (
+                    <CharacterModal
+                        character={modalChar}
+                        onClose={() => setModalCharId(null)}
+                    />
+                )}
+            </AnimatePresence>
         </m.div>
     )
 }

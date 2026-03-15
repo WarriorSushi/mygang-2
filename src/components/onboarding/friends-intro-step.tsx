@@ -1,11 +1,11 @@
 'use client'
 
-import { m } from 'framer-motion'
+import { useState } from 'react'
+import { m, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
-import { Sparkles, PenLine, ChevronRight } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CharacterCatalogEntry } from '@/constants/characters'
-import { cn } from '@/lib/utils'
 
 interface FriendsIntroStepProps {
     characters: CharacterCatalogEntry[]
@@ -16,15 +16,99 @@ interface FriendsIntroStepProps {
     onSkip: () => void
 }
 
+function CharacterDetailModal({
+    character,
+    onClose,
+}: {
+    character: CharacterCatalogEntry
+    onClose: () => void
+}) {
+    return (
+        <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={onClose}
+        >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <m.div
+                initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 16 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 w-full max-w-sm max-h-[80dvh] overflow-y-auto rounded-2xl border border-border/50 bg-card shadow-2xl"
+            >
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl">
+                    <Image
+                        src={character.avatar}
+                        alt={character.name}
+                        fill
+                        className="object-cover"
+                        sizes="400px"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-black/20" />
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <h3 className="text-2xl font-black text-white">{character.name}</h3>
+                        <p className="text-sm font-semibold uppercase tracking-wider text-white/70">
+                            {character.archetype}
+                        </p>
+                    </div>
+                </div>
+                <div className="space-y-3 p-4">
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Role</span>
+                        <p className="text-sm text-foreground">{character.roleLabel}</p>
+                    </div>
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Vibe</span>
+                        <p className="text-sm text-foreground">{character.vibe}</p>
+                    </div>
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Voice</span>
+                        <p className="text-sm text-foreground">{character.voice}</p>
+                    </div>
+                    <div>
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Sample</span>
+                        <p className="text-sm italic text-foreground/80">&quot;{character.sample}&quot;</p>
+                    </div>
+                    {character.tags && character.tags.length > 0 && (
+                        <div>
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Tags</span>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {character.tags.map((tag) => (
+                                    <span key={tag} className="rounded-full border border-border/40 bg-muted/50 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </m.div>
+        </m.div>
+    )
+}
+
 export function FriendsIntroStep({
     characters,
     selectedIds,
     customNames,
     onNameChange,
     onNext,
-    onSkip,
 }: FriendsIntroStepProps) {
     const selectedCharacters = characters.filter((character) => selectedIds.includes(character.id))
+    const [modalCharId, setModalCharId] = useState<string | null>(null)
+    const modalChar = modalCharId ? characters.find(c => c.id === modalCharId) ?? null : null
 
     return (
         <m.div
@@ -33,104 +117,102 @@ export function FriendsIntroStep({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -18 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-5xl mx-auto flex flex-col min-h-0"
+            className="w-full max-w-4xl mx-auto flex flex-col min-h-0"
         >
-            <div className="text-center pt-3 sm:pt-8 pb-4 px-2">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-primary">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Meet your AI friends
-                </div>
-                <h2 className="mt-5 text-3xl sm:text-5xl font-black tracking-tight">Name them now, or later.</h2>
-                <p className="mt-3 max-w-2xl mx-auto text-sm sm:text-base text-muted-foreground leading-relaxed">
-                    These are the friends joining your first chat. You can keep their default names, personalize them now,
-                    and change them later anytime in settings.
+            <div className="text-center pt-2 sm:pt-4 pb-1.5 sm:pb-2 px-2">
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight">Name your gang</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                    Customize or keep defaults. Change anytime in settings.
                 </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+            <div className="flex-1 overflow-y-auto px-1 sm:px-2 pb-20 sm:pb-18">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedCharacters.map((character) => (
                         <div
                             key={character.id}
-                            className="rounded-[2rem] border border-border/50 bg-card/75 backdrop-blur-sm overflow-hidden"
+                            className="rounded-xl border border-border/50 bg-card/75 backdrop-blur-sm overflow-hidden p-3"
                         >
-                            <div className="relative p-5 sm:p-6">
-                                <div className={cn('absolute inset-x-0 top-0 h-24 bg-gradient-to-r opacity-15', character.gradient)} />
-
-                                <div className="relative flex items-start gap-4">
-                                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-border/40 bg-background/60">
-                                        <Image
-                                            src={character.avatar}
-                                            alt={character.name}
-                                            fill
-                                            className="object-cover"
-                                            sizes="80px"
-                                        />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="text-[11px] uppercase tracking-widest text-primary/80 font-bold">
-                                            {character.roleLabel}
-                                        </div>
-                                        <h3 className="mt-1 text-xl font-black tracking-tight">{character.name}</h3>
-                                        <p className="mt-1 text-sm text-muted-foreground">{character.archetype}</p>
-                                        <p className="mt-3 text-sm leading-relaxed text-foreground/85">&quot;{character.sample}&quot;</p>
-                                    </div>
-                                </div>
-
-                                <div className="relative mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="rounded-2xl border border-border/35 bg-background/50 px-4 py-3">
-                                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vibe</div>
-                                        <p className="mt-2 text-sm text-foreground/85">{character.vibe}</p>
-                                    </div>
-                                    <div className="rounded-2xl border border-border/35 bg-background/50 px-4 py-3">
-                                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Voice</div>
-                                        <p className="mt-2 text-sm text-foreground/85">{character.voice}</p>
-                                    </div>
-                                </div>
-
-                                <div className="relative mt-4 rounded-2xl border border-border/35 bg-background/60 px-4 py-4">
-                                    <label htmlFor={`intro-name-${character.id}`} className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                                        <PenLine className="w-3.5 h-3.5" />
-                                        What should they call themselves?
-                                    </label>
-                                    <input
-                                        id={`intro-name-${character.id}`}
-                                        type="text"
-                                        value={customNames[character.id] || ''}
-                                        onChange={(event) => onNameChange(character.id, event.target.value)}
-                                        placeholder={character.name}
-                                        maxLength={30}
-                                        className="mt-3 h-12 w-full rounded-xl border border-border/40 bg-background/70 px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/45 focus:border-primary/40"
+                            {/* Top row: avatar + name + details button */}
+                            <div className="flex items-center gap-3">
+                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border/40">
+                                    <Image
+                                        src={character.avatar}
+                                        alt={character.name}
+                                        fill
+                                        className="object-cover"
+                                        sizes="48px"
                                     />
-                                    <p className="mt-2 text-[11px] text-muted-foreground">
-                                        Leave this blank to keep <span className="font-medium text-foreground/80">{character.name}</span>.
-                                    </p>
                                 </div>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="text-sm font-bold tracking-tight">{character.name}</h3>
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">{character.archetype}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setModalCharId(character.id)}
+                                    className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                                >
+                                    Details
+                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/15">
+                                        <ChevronRight className="h-2.5 w-2.5 text-emerald-400/60" />
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Name input */}
+                            <div className="mt-2.5">
+                                <label htmlFor={`intro-name-${character.id}`} className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
+                                    Change name or ignore to keep default
+                                </label>
+                                <input
+                                    id={`intro-name-${character.id}`}
+                                    type="text"
+                                    value={customNames[character.id] || ''}
+                                    onChange={(event) => onNameChange(character.id, event.target.value)}
+                                    placeholder={character.name}
+                                    maxLength={30}
+                                    className="mt-1 h-9 w-full rounded-lg border border-border/40 bg-white/80 px-3 text-sm text-black outline-none transition-colors placeholder:text-black/70 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/20"
+                                />
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div className="sticky bottom-0 z-30 border-t border-border/40 bg-background/85 backdrop-blur-2xl px-4 sm:px-6 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-                <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <button
-                        type="button"
-                        onClick={onSkip}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        Skip for now
-                    </button>
+            {/* Bottom bar — matching other screens */}
+            <div
+                className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08]"
+                style={{
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.12) 100%)',
+                    backdropFilter: 'blur(24px) saturate(1.6)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(1.6)',
+                }}
+            >
+                <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+                    <p className="text-xs text-muted-foreground">
+                        {selectedCharacters.length} friend{selectedCharacters.length !== 1 ? 's' : ''} ready
+                    </p>
                     <Button
-                        size="lg"
+                        size="sm"
                         onClick={onNext}
-                        className="rounded-2xl px-8 sm:px-10 py-5 text-sm sm:text-base font-bold shadow-lg shadow-primary/20"
+                        className="rounded-xl px-5 sm:px-8 py-2 sm:py-2.5 text-xs sm:text-sm font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95 shrink-0"
                     >
                         Start Chat
-                        <ChevronRight className="w-4 h-4 ml-1" />
+                        <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
                     </Button>
                 </div>
             </div>
+
+            {/* Detail modal */}
+            <AnimatePresence>
+                {modalChar && (
+                    <CharacterDetailModal
+                        character={modalChar}
+                        onClose={() => setModalCharId(null)}
+                    />
+                )}
+            </AnimatePresence>
         </m.div>
     )
 }

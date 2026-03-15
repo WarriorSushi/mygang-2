@@ -2,42 +2,66 @@
 
 import { m } from 'framer-motion'
 import Image from 'next/image'
-import { Sparkles } from 'lucide-react'
+import { Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getCharactersForAvatarStyle } from '@/constants/characters'
 
-const GIFT_PACKS = [
-    {
-        style: 'human' as const,
-        title: 'Human',
-        description: 'Natural, cinematic portraits.',
-    },
-    {
-        style: 'retro' as const,
-        title: 'Retro',
-        description: 'Playful, nostalgic avatars.',
-    },
-]
-
-function PackMiniPreview({ style }: { style: 'human' | 'retro' }) {
-    const characters = getCharactersForAvatarStyle(style).slice(0, 3)
+function MarqueeRow({
+    style,
+    direction = 'left',
+    label,
+}: {
+    style: 'human' | 'retro'
+    direction?: 'left' | 'right'
+    label: string
+}) {
+    const characters = getCharactersForAvatarStyle(style)
+    const items = [...characters, ...characters]
+    const dur = 25
 
     return (
-        <div className="flex -space-x-3">
-            {characters.map((character) => (
-                <div
-                    key={character.id}
-                    className="relative h-11 w-11 overflow-hidden rounded-full border border-background/85 bg-background"
-                >
-                    <Image
-                        src={character.avatar}
-                        alt={character.name}
-                        fill
-                        className="object-cover"
-                        sizes="44px"
-                    />
-                </div>
-            ))}
+        <div className="relative w-full overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <span className="rounded-full bg-background/80 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-foreground/80 backdrop-blur-md shadow-sm border border-border/30">
+                    {label}
+                </span>
+            </div>
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-12 bg-gradient-to-r from-card to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-12 bg-gradient-to-l from-card to-transparent" />
+
+            <m.div
+                className="flex w-max gap-2.5 py-1"
+                animate={{
+                    x: direction === 'left'
+                        ? ['0%', '-50%']
+                        : ['-50%', '0%'],
+                }}
+                transition={{
+                    x: {
+                        repeat: Infinity,
+                        repeatType: 'loop',
+                        duration: dur,
+                        ease: 'linear',
+                    },
+                }}
+            >
+                {items.map((character, i) => (
+                    <div
+                        key={`${character.id}-${i}`}
+                        className="relative h-16 w-12 shrink-0 overflow-hidden rounded-xl border border-white/15 bg-background shadow-[0_4px_16px_-4px_rgba(0,0,0,0.4)] sm:h-20 sm:w-[3.75rem] sm:rounded-2xl"
+                    >
+                        <Image
+                            src={character.avatar}
+                            alt={character.name}
+                            fill
+                            className="object-cover"
+                            sizes="60px"
+                            loading="eager"
+                            priority={i < 14}
+                        />
+                    </div>
+                ))}
+            </m.div>
         </div>
     )
 }
@@ -53,44 +77,69 @@ export function AvatarGiftStep({ onNext }: { onNext: () => void }) {
             data-testid="onboarding-avatar-gift-step"
             className="mx-auto flex min-h-full w-full max-w-xl items-center justify-center px-1 py-2 sm:py-8"
         >
-            <div className="w-full rounded-[1.75rem] border border-border/50 bg-card/88 p-5 text-center shadow-[0_24px_72px_-56px_rgba(15,23,42,0.92)] backdrop-blur-xl sm:p-6">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-[1rem] bg-primary/10 text-primary">
-                    <Sparkles className="h-5 w-5" />
+            <div className="w-full overflow-hidden rounded-[1.75rem] border border-border/50 bg-card/88 text-center shadow-[0_24px_72px_-56px_rgba(15,23,42,0.92)] backdrop-blur-xl">
+                <div className="px-5 pt-5 sm:px-6 sm:pt-6">
+                    <m.div
+                        initial={{ scale: 0, rotate: -20 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ delay: 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400/20 to-emerald-400/20 text-amber-400"
+                    >
+                        <Gift className="h-5 w-5" />
+                    </m.div>
+
+                    <m.h2
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15, duration: 0.4 }}
+                        className="mt-2.5 text-[1.75rem] font-black tracking-tight sm:text-[2.5rem] sm:leading-[0.92]"
+                    >
+                        Free for Life
+                    </m.h2>
+                    <m.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.25 }}
+                        className="mt-1 text-sm font-semibold text-foreground/90 sm:text-base"
+                    >
+                        Gift from us to you.
+                    </m.p>
+                    <m.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-muted-foreground"
+                    >
+                        As an early user, <span className="font-semibold text-foreground">Human and Retro avatar packs are unlocked forever.</span>
+                    </m.p>
                 </div>
 
-                <h2 className="mt-3 text-[2rem] font-black tracking-tight sm:text-[3rem] sm:leading-[0.92]">
-                    Free for Life
-                </h2>
-                <p className="mt-1.5 text-base font-semibold text-foreground/90 sm:text-lg">
-                    Gift from us to you.
-                </p>
-                <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                    As an early user, <span className="font-semibold text-foreground">Human and Retro avatar packs are unlocked forever.</span> Pick the one you want next.
-                </p>
-
-                <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                    {GIFT_PACKS.map((pack) => (
-                        <div
-                            key={pack.style}
-                            className="rounded-[1.35rem] border border-border/45 bg-background/68 px-4 py-4 text-left"
-                        >
-                            <PackMiniPreview style={pack.style} />
-                            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/70">
-                                {pack.title}
-                            </div>
-                            <p className="mt-1 text-sm text-foreground/82">{pack.description}</p>
-                        </div>
-                    ))}
-                </div>
-
-                <Button
-                    size="lg"
-                    onClick={onNext}
-                    data-testid="onboarding-avatar-gift-next"
-                    className="mt-5 w-full rounded-full px-8 py-5 text-base font-semibold sm:w-auto"
+                <m.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.35, duration: 0.5 }}
+                    className="mt-4 flex flex-col gap-2.5 sm:mt-5"
                 >
-                    Choose my style
-                </Button>
+                    <MarqueeRow style="human" direction="left" label="Human" />
+                    <MarqueeRow style="retro" direction="right" label="Retro" />
+                </m.div>
+
+                <div className="px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+                    <m.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.55 }}
+                    >
+                        <Button
+                            size="lg"
+                            onClick={onNext}
+                            data-testid="onboarding-avatar-gift-next"
+                            className="w-full rounded-full px-8 py-5 text-base font-semibold sm:w-auto"
+                        >
+                            Continue
+                        </Button>
+                    </m.div>
+                </div>
             </div>
         </m.section>
     )

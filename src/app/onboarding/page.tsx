@@ -150,7 +150,7 @@ function OnboardingPage() {
                 return previous.filter((characterId) => characterId !== id)
             }
             if (previous.length >= 4) {
-                return previous
+                return [...previous.slice(1), id]
             }
             return [...previous, id]
         })

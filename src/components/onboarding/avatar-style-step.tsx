@@ -148,7 +148,7 @@ export function AvatarStyleStep({ selectedStyle, onSelectStyle, onNext }: Avatar
                                 <div
                                     className={cn(
                                         'relative h-full overflow-hidden rounded-[1.35rem] border bg-card/88 p-2.5 shadow-[0_20px_56px_-48px_rgba(15,23,42,0.92)] transition-all duration-200 sm:rounded-[1.6rem] sm:p-3.5 sm:shadow-[0_24px_72px_-56px_rgba(15,23,42,0.92)]',
-                                        isGiftPack ? 'border-white/10' : '',
+                                        isGiftPack && !isSelected ? 'border-white/10' : '',
                                         isSelected
                                             ? 'border-[3px] border-primary ring-[3px] ring-primary/35'
                                             : 'border-border/45 hover:border-primary/20'
@@ -156,7 +156,13 @@ export function AvatarStyleStep({ selectedStyle, onSelectStyle, onNext }: Avatar
                                 >
                                     {isGiftPack && (
                                         <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-[1.35rem] sm:rounded-[1.6rem]">
-                                            <div className="absolute -right-[3rem] top-[0.85rem] flex h-[1.4rem] w-[12rem] rotate-45 items-center justify-center bg-red-500 text-center text-[10px] font-extrabold uppercase leading-none tracking-wider text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] sm:-right-[2.8rem] sm:top-[1rem] sm:h-[1.6rem] sm:w-[12.5rem] sm:text-[11px]">
+                                            <div
+                                                className="absolute right-0 top-0 flex h-6 w-[200px] items-center justify-center bg-red-500 text-center text-[10px] font-extrabold uppercase leading-none tracking-wider text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] sm:text-[11px]"
+                                                style={{
+                                                    transformOrigin: 'center',
+                                                    transform: 'translate(28%, 80%) rotate(45deg)',
+                                                }}
+                                            >
                                                 Free Gift
                                             </div>
                                         </div>

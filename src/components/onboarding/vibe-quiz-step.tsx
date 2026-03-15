@@ -143,6 +143,7 @@ export function VibeQuizStep({ onNext }: VibeQuizStepProps) {
                                     <h3 className="mt-1.5 max-w-md text-[1.35rem] font-black tracking-tight text-foreground sm:text-[1.6rem] sm:leading-[1.05]">
                                         {currentQuestion.title}
                                     </h3>
+                                    <p className="mt-0.5 text-[11px] text-muted-foreground/60 text-center">Select one</p>
                                 </div>
                                 {currentIndex > 0 && (
                                     <button
@@ -167,7 +168,7 @@ export function VibeQuizStep({ onNext }: VibeQuizStepProps) {
                                             onClick={() => handleSelect(currentQuestion.key, option.value)}
                                             data-testid={`vibe-${currentQuestion.key}-${option.value}`}
                                             className={cn(
-                                                'flex w-full items-center gap-3 rounded-[1.15rem] border px-3.5 py-2.5 text-left transition-all duration-150 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.25)] sm:px-4 sm:py-3',
+                                                'flex w-full items-center gap-3 rounded-[1.15rem] border px-3.5 py-2.5 text-left transition-all duration-150 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.5)] hover:shadow-[0_8px_28px_-4px_rgba(0,0,0,0.6)] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-[0_2px_6px_-2px_rgba(0,0,0,0.4)] sm:px-4 sm:py-3',
                                                 isSelected
                                                     ? 'border-primary/40 bg-primary/8 shadow-[0_2px_12px_-2px_rgba(var(--primary-rgb,99,102,241),0.3)]'
                                                     : 'border-border/45 bg-background/72 hover:border-primary/20 hover:bg-background/88 hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.35)]'
