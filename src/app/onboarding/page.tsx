@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
 import { completeOnboarding } from '@/app/auth/actions'
 import { getCharactersForAvatarStyle } from '@/constants/characters'
+import { getSquadLimit, getTierFromProfile } from '@/lib/billing'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { useChatStore } from '@/stores/chat-store'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -98,6 +99,8 @@ function OnboardingPage() {
     const userId = useChatStore((state) => state.userId)
     const activeGang = useChatStore((state) => state.activeGang)
     const isHydrated = useChatStore((state) => state.isHydrated)
+    const subscriptionTier = useChatStore((state) => state.subscriptionTier)
+    const squadLimit = getSquadLimit(getTierFromProfile(subscriptionTier ?? null))
     const router = useRouter()
     const characters = useMemo(() => getCharactersForAvatarStyle(avatarStylePreference), [avatarStylePreference])
     const isScrollableStep = step === 'SELECTION' || step === 'INTRO' || step === 'AVATAR_STYLE' || step === 'AVATAR_GIFT'
@@ -149,7 +152,7 @@ function OnboardingPage() {
             if (previous.includes(id)) {
                 return previous.filter((characterId) => characterId !== id)
             }
-            if (previous.length >= 4) {
+            if (previous.length >= squadLimit) {
                 return [...previous.slice(1), id]
             }
             return [...previous, id]
@@ -173,9 +176,9 @@ function OnboardingPage() {
     const handleVibeComplete = (vibe: VibeProfile) => {
         setVibeProfile(vibe)
         const ranked = recommendCharacters(vibe)
-        setRecommendedIds(ranked.slice(0, 4))
+        setRecommendedIds(ranked.slice(0, squadLimit))
         if (!isRetake && selectedIds.length === 0) {
-            setSelectedIds(ranked.slice(0, 4))
+            setSelectedIds(ranked.slice(0, squadLimit))
         }
         setStep(isRetake ? 'AVATAR_STYLE' : 'AVATAR_GIFT')
     }
@@ -319,6 +322,7 @@ function OnboardingPage() {
                             toggleCharacter={toggleCharacter}
                             onNext={handleSelectionDone}
                             recommendedIds={recommendedIds}
+                            maxMembers={squadLimit}
                         />
                     )}
 
