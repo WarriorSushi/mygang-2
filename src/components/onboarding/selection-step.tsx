@@ -154,6 +154,9 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                 <h2 className="text-2xl sm:text-4xl font-black tracking-tight">Pick your gang</h2>
                 <p className="text-muted-foreground text-xs sm:text-base mt-1.5">
                     Choose 2–{maxMembers} friends for your gang.
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] sm:text-xs font-bold text-primary">
+                        {selectedIds.length}/{maxMembers}
+                    </span>
                 </p>
             </div>
 
