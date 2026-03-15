@@ -263,10 +263,10 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
         setError(null)
         setIsSaving(true)
         try {
-            const newIds = activeGang.filter((c) => c.id !== characterId).map((c) => c.id)
+            const currentGang = useChatStore.getState().activeGang
+            const newIds = currentGang.filter((c) => c.id !== characterId).map((c) => c.id)
             await saveGang(newIds)
-            const newGang = activeGang.filter((c) => c.id !== characterId)
-            useChatStore.getState().setActiveGang(newGang)
+            useChatStore.getState().setActiveGang(currentGang.filter((c) => c.id !== characterId))
             trackEvent('squad_remove_member', { metadata: { characterId, source: 'settings' } })
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to remove member.')
@@ -280,11 +280,12 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
         setError(null)
         setIsSaving(true)
         try {
-            const newIds = [...activeGang.map((c) => c.id), characterId]
+            const currentGang = useChatStore.getState().activeGang
+            const newIds = [...currentGang.map((c) => c.id), characterId]
             await saveGang(newIds)
             const addedChar = allCharacters.find((c) => c.id === characterId)
             if (addedChar) {
-                useChatStore.getState().setActiveGang([...activeGang, addedChar])
+                useChatStore.getState().setActiveGang([...currentGang, addedChar])
             }
             trackEvent('squad_add_member', { metadata: { characterId, source: 'settings' } })
             setAddModalOpen(false)

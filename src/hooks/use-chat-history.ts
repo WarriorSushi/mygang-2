@@ -264,6 +264,7 @@ export function useChatHistory({
             setHistoryCursor(null)
             setHasMoreHistory(false)
             setHistoryStatus('unknown')
+            olderHistoryLoadedRef.current = false
         }
     }, [userId])
 
