@@ -17,12 +17,12 @@ export function WelcomeStep({ onNext, onLogin }: WelcomeStepProps) {
             initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
-            className="text-center max-w-2xl"
+            className="text-center max-w-2xl my-auto"
         >
-            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent pb-1 leading-tight">
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent pb-1 leading-tight">
                 Your gang just arrived.
             </h1>
-            <p className="text-base sm:text-xl text-muted-foreground mb-8">
+            <p className="text-sm sm:text-lg text-muted-foreground mb-6">
                 Your friends are waiting. 24/7, no drama (mostly), just vibes.
             </p>
             <div className="flex flex-col items-center gap-4">

@@ -35,7 +35,7 @@ export function FriendsIntroStep({
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             className="w-full max-w-5xl mx-auto flex flex-col min-h-0"
         >
-            <div className="text-center pt-8 sm:pt-12 pb-6 px-2">
+            <div className="text-center pt-3 sm:pt-8 pb-4 px-2">
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-primary">
                     <Sparkles className="w-3.5 h-3.5" />
                     Meet your AI friends

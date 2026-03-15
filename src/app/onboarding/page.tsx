@@ -49,7 +49,7 @@ function StepProgress({ current, steps }: { current: Step; steps: Step[] }) {
     const currentIndex = visibleSteps.indexOf(current)
 
     return (
-        <div className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+        <div className="absolute top-[calc(env(safe-area-inset-top)+0.4rem)] left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
             {visibleSteps.map((step, i) => (
                 <div
                     key={step}
@@ -260,10 +260,10 @@ function OnboardingPage() {
         <main
             id="main-content"
             className={cn(
-                'relative flex h-dvh flex-col bg-background pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1.5rem)]',
+                'relative flex h-dvh flex-col bg-background overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1.5rem)]',
                 isScrollableStep
-                    ? 'items-stretch justify-start overflow-y-auto px-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 sm:pt-[calc(env(safe-area-inset-top)+1.5rem)]'
-                    : 'items-center justify-center overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] sm:pt-[calc(env(safe-area-inset-top)+2rem)]'
+                    ? 'items-stretch justify-start px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-6 sm:pt-[calc(env(safe-area-inset-top)+1rem)]'
+                    : 'items-center px-6 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:pt-[calc(env(safe-area-inset-top)+1rem)]'
             )}
         >
             <BackgroundBlobs />
@@ -274,7 +274,7 @@ function OnboardingPage() {
                 <button
                     type="button"
                     onClick={handleBack}
-                    className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] left-4 z-20 flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="absolute top-[calc(env(safe-area-inset-top)+0.4rem)] left-4 z-20 flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                     aria-label="Go back"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>

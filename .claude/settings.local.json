@@ -10,7 +10,12 @@
       "Bash(pnpm next:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx next:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "WebSearch",
+      "WebFetch(domain:css-tricks.com)"
     ]
   }
 }

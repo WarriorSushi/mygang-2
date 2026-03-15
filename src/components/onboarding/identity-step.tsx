@@ -22,9 +22,9 @@ export function IdentityStep({ name, setName, onNext, onLogin }: IdentityStepPro
             initial={prefersReducedMotion ? {} : { opacity: 0, x: 20 }}
             animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
             exit={prefersReducedMotion ? {} : { opacity: 0, x: -20 }}
-            className="w-full max-w-md"
+            className="w-full max-w-md my-auto"
         >
-            <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center">What should they call you?</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center">What should they call you?</h2>
             <div className="space-y-4">
                 <label htmlFor="onboarding-name-input" className="sr-only">Your nickname</label>
                 <Input

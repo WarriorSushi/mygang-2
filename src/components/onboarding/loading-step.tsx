@@ -38,7 +38,7 @@ export function LoadingStep() {
             key="loading"
             initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
+            className="text-center my-auto"
         >
             <div className="relative w-24 h-24 mx-auto mb-10">
                 <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
