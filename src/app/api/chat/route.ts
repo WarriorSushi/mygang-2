@@ -575,7 +575,7 @@ const requestSchema = z.object({
         reaction: z.string().optional(),
         replyToId: z.string().max(128).optional(),
         source: z.enum(['chat', 'wywa', 'system']).optional(),
-    })).max(40),
+    })).max(55),
     activeGangIds: z.array(z.string().min(1).max(32)).max(6).optional(),
     activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(6).optional(),
     userName: z.string().nullable().optional(),
