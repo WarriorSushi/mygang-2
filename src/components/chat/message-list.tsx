@@ -54,7 +54,7 @@ let animationLoadPromise: Promise<void> | null = null
 
 function EmptyStateWelcome() {
     const [animationData, setAnimationData] = useState<object | null>(cachedAnimationData)
-    const [LottiePlayer, setLottiePlayer] = useState<ComponentType<any> | null>(cachedLottieComponent)
+    const [LottiePlayer, setLottiePlayer] = useState<ComponentType<any> | null>(() => cachedLottieComponent)
 
     useEffect(() => {
         if (cachedAnimationData) {
