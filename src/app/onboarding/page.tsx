@@ -153,7 +153,7 @@ function OnboardingPage() {
                 return previous.filter((characterId) => characterId !== id)
             }
             if (previous.length >= squadLimit) {
-                return [...previous.slice(1), id]
+                return previous // at max — do nothing (UI shows limit)
             }
             return [...previous, id]
         })

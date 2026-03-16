@@ -73,3 +73,23 @@ Clicking "Load Earlier Messages" briefly shows older messages then they vanish. 
 ### What Changed
 - `src/stores/chat-store.ts` — `MAX_PERSISTED_MESSAGES` changed from 100 to 200.
 - `src/hooks/use-chat-history.ts` — Added `syncLatestHistoryRef`, replaced all `syncLatestHistory` calls in the polling effect with `syncLatestHistoryRef.current`, removed `syncLatestHistory` from the effect's dependency array.
+
+---
+
+## Task 005: Fix silent character swap at max squad capacity (code review red item)
+- **Date:** 2026-03-16
+- **Commit:** `fix: prevent silent character swap at max squad capacity on onboarding`
+
+### Problem
+On the onboarding selection step, when the user already had the maximum number of characters selected and tapped another one, the code silently dropped the first-selected character and added the new one (`previous.slice(1)`). No feedback was shown — the user's original pick just disappeared.
+
+### Decision
+- Revert to "do nothing" behavior when at max capacity (`return previous`). The UI already shows the selection counter (e.g. "4/4") so the user understands why nothing happens.
+- Silent swap is confusing UX — users don't expect their first pick to vanish without warning.
+- If swap behavior is wanted later, it should come with a toast or animation showing what was replaced.
+
+### What Changed
+- `src/app/onboarding/page.tsx` — `toggleCharacter` now returns `previous` unchanged when at `squadLimit`, instead of `[...previous.slice(1), id]`.
+
+### Also Investigated (False Alarm)
+- **Split message `message_id: undefined`** — Reviewed and confirmed safe. `assignMessageIdsToEvents` (route.ts:665-666) generates a new ID via `createServerEventMessageId()` when `message_id` is undefined/falsy. No DB error possible.
