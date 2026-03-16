@@ -3,6 +3,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BackButton } from './back-button'
 
+export const dynamic = 'force-static'
+
 export const metadata: Metadata = {
   title: 'About',
   description:

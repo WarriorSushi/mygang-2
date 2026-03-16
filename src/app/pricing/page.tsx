@@ -11,7 +11,7 @@ import {
 import { useChatStore } from '@/stores/chat-store'
 import { createClient } from '@/lib/supabase/client'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
-import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { TIER_LIMITS, getTierCopy } from '@/lib/billing'
 
 /* ══════════════════════════════════════════════════════
@@ -233,7 +233,6 @@ export default function PricingPage() {
   const proCopy = getTierCopy('pro')
 
   return (
-    <LazyMotion features={domAnimation}>
     <div className="relative min-h-dvh bg-background text-foreground overflow-x-hidden selection:bg-primary/30">
       <BackgroundBlobs />
 
@@ -715,6 +714,5 @@ export default function PricingPage() {
 
       </main>
     </div>
-    </LazyMotion>
   )
 }

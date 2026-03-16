@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function GET() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const rate = await rateLimit(`push-sub:${user.id}`, 30, 60_000)
+    if (!rate.success) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     const { data, error } = await supabase
@@ -25,6 +31,11 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const rate2 = await rateLimit(`push-sub:${user.id}`, 30, 60_000)
+    if (!rate2.success) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     let body: { endpoint?: string; p256dh?: string; auth?: string }
@@ -74,6 +85,11 @@ export async function DELETE(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const rate3 = await rateLimit(`push-sub:${user.id}`, 30, 60_000)
+    if (!rate3.success) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     let body: { endpoint?: string }

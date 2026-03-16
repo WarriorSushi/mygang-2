@@ -25,7 +25,7 @@ const renderedEventSchema = z.object({
     message_id: z.string().min(1).max(128),
     speaker: z.string().min(1).max(32),
     content: z.string().min(1).max(MAX_EVENT_CONTENT),
-    displayed_at: z.string(),
+    displayed_at: z.string().datetime(),
     reaction: z.string().max(MAX_EVENT_CONTENT).optional().nullable(),
     reply_to_message_id: z.string().max(128).optional().nullable(),
 })

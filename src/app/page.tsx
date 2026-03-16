@@ -23,7 +23,7 @@ const structuredData = {
       logo: `${siteUrl}/logo.webp`,
       contactPoint: {
         '@type': 'ContactPoint',
-        email: 'pashaseenainc@gmail.com',
+        email: 'contact@mygang.ai',
         contactType: 'customer support',
       },
     },

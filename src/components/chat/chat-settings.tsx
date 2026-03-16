@@ -421,7 +421,6 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
     }
 
     return (
-        <LazyMotion features={domAnimation}>
         <Sheet open={isOpen} onOpenChange={handleClose}>
             <SheetContent
                 side="right"
@@ -911,6 +910,5 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                 </div>
             </SheetContent>
         </Sheet>
-        </LazyMotion>
     )
 }

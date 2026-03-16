@@ -398,7 +398,7 @@ export const POST = Webhooks({
 
         // Downgrade to free
         await getAdminClient().from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
-        await getAdminClient().from('subscriptions').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
+        await getAdminClient().from('subscriptions').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending']).order('created_at', { ascending: false }).limit(1)
     },
 
     onDisputeOpened: async (payload) => {
@@ -425,7 +425,7 @@ export const POST = Webhooks({
         if (!isNew) return
 
         await getAdminClient().from('profiles').update({ subscription_tier: 'free', pending_squad_downgrade: true }).eq('id', userId)
-        await getAdminClient().from('subscriptions').update({ status: 'disputed', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending'])
+        await getAdminClient().from('subscriptions').update({ status: 'disputed', updated_at: new Date().toISOString() }).eq('user_id', userId).in('status', ['active', 'cancelled_pending']).order('created_at', { ascending: false }).limit(1)
     },
 
     onSubscriptionPlanChanged: async (payload) => {
