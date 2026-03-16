@@ -8,6 +8,45 @@ export function sanitizeMessageId(value: unknown) {
     return trimmed
 }
 
+// ── Safety patterns ──
+
+const HARD_BLOCK_PATTERNS = [
+    /(?:child|minor)\s*(?:sex|porn|nude)/i,
+    /(?:rape|sexual\s+assault)/i
+]
+
+const SOFT_BLOCK_PATTERNS = [
+    /suicide|self\s*harm|kill\s+myself/i,
+    /harm\s+yourself|kill\s+yourself/i
+]
+
+function normalizeForSafety(text: string): string {
+    return text
+        .normalize('NFKD')
+        .replace(/[\u200B-\u200F\uFEFF]/g, '')
+        .replace(/\s+/g, ' ')
+        .replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e')
+        .replace(/4/g, 'a').replace(/5/g, 's').replace(/@/g, 'a')
+        .toLowerCase()
+}
+
+export function detectUnsafeContent(text: string) {
+    const normalized = normalizeForSafety(text)
+    const hard = HARD_BLOCK_PATTERNS.some((re) => re.test(text)) || HARD_BLOCK_PATTERNS.some((re) => re.test(normalized))
+    const soft = !hard && (SOFT_BLOCK_PATTERNS.some((re) => re.test(text)) || SOFT_BLOCK_PATTERNS.some((re) => re.test(normalized)))
+    return { hard, soft }
+}
+
+// ── Intent detection ──
+
+export function hasOpenFloorIntent(text: string) {
+    const value = text.toLowerCase()
+    return (
+        /you guys talk|talk among yourselves|keep chatting|continue without me|i'?ll listen|i will listen/.test(value)
+        || /just talk|carry on|keep going|go on without me/.test(value)
+    )
+}
+
 export function isMissingHistoryMetadataColumnsError(err: unknown) {
     if (!err || typeof err !== 'object') return false
     const maybeError = err as { code?: unknown; message?: unknown }

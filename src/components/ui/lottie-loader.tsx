@@ -1,7 +1,9 @@
 'use client'
 
-import Lottie from 'lottie-react'
+import dynamic from 'next/dynamic'
 import loaderData from '../../../public/lottie/loader.json'
+
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
 interface LottieLoaderProps {
     size?: number

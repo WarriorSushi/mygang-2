@@ -36,7 +36,7 @@ export function BackgroundBlobs({ isMuted = false, className }: BackgroundBlobsP
             <div
                 className={cn(
                     "absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full will-change-transform",
-                    "bg-primary/20 blur-[100px]",
+                    disableMotion ? "bg-primary/20 opacity-20" : "bg-primary/20 blur-[100px]",
                     !disableMotion && "animate-blob-drift-1"
                 )}
             />
@@ -44,7 +44,7 @@ export function BackgroundBlobs({ isMuted = false, className }: BackgroundBlobsP
             <div
                 className={cn(
                     "absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] rounded-full will-change-transform",
-                    "bg-accent/18 blur-[100px]",
+                    disableMotion ? "bg-accent/18 opacity-20" : "bg-accent/18 blur-[100px]",
                     !disableMotion && "animate-blob-drift-2"
                 )}
             />
@@ -52,7 +52,7 @@ export function BackgroundBlobs({ isMuted = false, className }: BackgroundBlobsP
             <div
                 className={cn(
                     "absolute top-[22%] right-[8%] w-[30%] h-[30%] rounded-full will-change-transform",
-                    "bg-blue-500/10 blur-[90px]",
+                    disableMotion ? "bg-blue-500/10 opacity-20" : "bg-blue-500/10 blur-[90px]",
                     !disableMotion && "animate-blob-drift-3"
                 )}
             />

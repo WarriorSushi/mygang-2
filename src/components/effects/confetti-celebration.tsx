@@ -26,7 +26,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
     if (!show || !animationData) return null
 
     return (
-        <div className="fixed inset-0 z-[300] pointer-events-none overflow-hidden">
+        <div className="fixed inset-0 z-[300] pointer-events-none overflow-hidden" aria-hidden="true">
             <Suspense fallback={null}>
                 <Lottie
                     animationData={animationData}

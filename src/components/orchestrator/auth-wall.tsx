@@ -66,6 +66,10 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!agreedToTerms) {
+            setShowTermsNudge(true)
+            return
+        }
         if (!email || !password) return
 
         setIsLoading(true)
@@ -149,7 +153,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                 </span>
                             </label>
                             {showTermsNudge && !agreedToTerms && (
-                                <p className="text-[11px] text-red-400 pl-6.5 animate-in fade-in duration-200">
+                                <p className="text-[11px] text-red-400 pl-7 animate-in fade-in duration-200">
                                     Please accept the terms to continue
                                 </p>
                             )}

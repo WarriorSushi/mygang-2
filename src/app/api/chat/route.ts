@@ -438,6 +438,7 @@ function maybeSplitAiMessages(
         expanded.push({
             ...event,
             content: second,
+            message_id: undefined,
             delay: Math.min(MAX_DELAY_MS, Math.max(180, Math.round(240 + Math.random() * 360)))
         })
     }
@@ -575,14 +576,12 @@ const requestSchema = z.object({
         reaction: z.string().optional(),
         replyToId: z.string().max(128).optional(),
         source: z.enum(['chat', 'wywa', 'system']).optional(),
-    })).max(40),
+    })).max(60),
     activeGangIds: z.array(z.string().min(1).max(32)).max(6).optional(),
     activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(6).optional(),
-    userName: z.string().nullable().optional(),
-    userNickname: z.string().nullable().optional(),
-    isFirstMessage: z.boolean().optional(),
+    userName: z.string().max(80).nullable().optional(),
+    userNickname: z.string().max(50).nullable().optional(),
     silentTurns: z.number().int().min(0).max(30).optional(),
-    burstCount: z.number().int().min(0).max(3).optional(),
     chatMode: z.enum(['gang_focus', 'ecosystem']).optional(),
     lowCostMode: z.boolean().optional(),
     source: z.enum(['user', 'autonomous', 'autonomous_idle']).optional(),
@@ -699,6 +698,8 @@ async function handlePost(req: Request) {
             source = 'user',
             autonomousIdle = false,
         } = parsed.data
+        const safeUserName = userName?.replace(/[\n\r]/g, ' ').trim() || null
+        const safeUserNickname = userNickname?.replace(/[\n\r]/g, ' ').trim() || null
         const chatMode = requestedChatMode
         const requestStartedAt = Date.now()
         const serverTurnId = createServerTurnId()
@@ -1089,8 +1090,8 @@ ${sessionSummary}
         }
 
         const systemPrompt = buildSystemPrompt({
-            userName: userName || 'User',
-            userNickname: userNickname ?? null,
+            userName: safeUserName || 'User',
+            userNickname: safeUserNickname ?? null,
             characterContext,
             activeIds,
             customNamesDirective,
