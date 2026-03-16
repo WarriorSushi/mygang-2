@@ -326,33 +326,6 @@ async function logChatRouteMetric(
     }
 }
 
-const HARD_BLOCK_PATTERNS = [
-    /(?:child|minor)\s*(?:sex|porn|nude)/i,
-    /(?:rape|sexual\s+assault)/i
-]
-
-const SOFT_BLOCK_PATTERNS = [
-    /suicide|self\s*harm|kill\s+myself/i,
-    /harm\s+yourself|kill\s+yourself/i
-]
-
-function normalizeForSafety(text: string): string {
-    return text
-        .normalize('NFKD')
-        .replace(/[\u200B-\u200F\uFEFF]/g, '')
-        .replace(/\s+/g, ' ')
-        .replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e')
-        .replace(/4/g, 'a').replace(/5/g, 's').replace(/@/g, 'a')
-        .toLowerCase()
-}
-
-function detectUnsafeContent(text: string) {
-    const normalized = normalizeForSafety(text)
-    const hard = HARD_BLOCK_PATTERNS.some((re) => re.test(text)) || HARD_BLOCK_PATTERNS.some((re) => re.test(normalized))
-    const soft = !hard && (SOFT_BLOCK_PATTERNS.some((re) => re.test(text)) || SOFT_BLOCK_PATTERNS.some((re) => re.test(normalized)))
-    return { hard, soft }
-}
-
 function scoreAbuse(text: string, previousUserMessage?: string) {
     let score = 0
     if (!text) return score
@@ -368,14 +341,6 @@ function isSimpleGreeting(text: string) {
     const value = text.toLowerCase().trim()
     if (value.length > 40) return false
     return /^(hey|hi|hello|yo|sup|what'?s up|whats up|hii+|heyy+|wassup|howdy|gm|good morning|good evening)\b/.test(value)
-}
-
-function hasOpenFloorIntent(text: string) {
-    const value = text.toLowerCase()
-    return (
-        /you guys talk|talk among yourselves|keep chatting|continue without me|i'?ll listen|i will listen/.test(value)
-        || /just talk|carry on|keep going|go on without me/.test(value)
-    )
 }
 
 function splitMessageForSecondBubble(content: string): [string, string] | null {
@@ -1511,7 +1476,7 @@ ${sessionSummary}
                 }
 
                 if (retrievedMemoryIds.length > 0) {
-                    await touchMemories(retrievedMemoryIds)
+                    await touchMemories(retrievedMemoryIds, user.id)
                 }
 
                 if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
