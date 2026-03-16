@@ -370,8 +370,14 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                         </div>
                         <div className="flex -space-x-2 sm:hidden" role="group" aria-label={`${activeGang.length} gang members`}>
                             {activeGang.map((char) => (
-                                <Avatar
+                                <button
                                     key={char.id}
+                                    type="button"
+                                    aria-label={`Preview ${char.name}`}
+                                    className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                                    onClick={() => { if (char.avatar) setExpandedAvatar(char) }}
+                                >
+                                <Avatar
                                     className="border-[1.5px] border-background w-8 h-8 sm:w-9 sm:h-9 lg:w-8 lg:h-8"
                                     title={char.name}
                                 >
@@ -388,6 +394,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                     )}
                                     <AvatarFallback className="text-[11px] bg-muted">{char.name?.[0] || '?'}</AvatarFallback>
                                 </Avatar>
+                                </button>
                             ))}
                         </div>
                         {desktopPlanBadge}
