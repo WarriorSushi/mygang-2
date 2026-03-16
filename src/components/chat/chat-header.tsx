@@ -390,7 +390,6 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                 </Avatar>
                             ))}
                         </div>
-                        <h1 className="min-w-0 truncate font-semibold text-sm sm:text-base leading-tight whitespace-nowrap">My Gang</h1>
                         {desktopPlanBadge}
                     </div>
                     <div className="mt-0.5 flex items-center gap-1.5 min-h-[14px] min-w-0 text-[10px] text-muted-foreground/60 whitespace-nowrap">
