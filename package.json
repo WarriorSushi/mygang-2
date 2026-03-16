@@ -21,6 +21,7 @@
     "@ai-sdk/google": "^3.0.20",
     "@dodopayments/nextjs": "^0.3.4",
     "@openrouter/ai-sdk-provider": "^2.2.3",
+    "@sentry/nextjs": "10",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.94.0",
     "@upstash/ratelimit": "^2.0.1",
