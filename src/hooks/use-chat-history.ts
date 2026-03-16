@@ -405,6 +405,10 @@ export function useChatHistory({
         }
     }, [historyBootstrapDone, isBootstrappingHistory, isLoadingOlderHistory, isOnline, setMessages, userId, isGeneratingRef, pendingUserMessagesRef, debounceTimerRef])
 
+    // Stable ref to avoid cascading effect re-runs when isLoadingOlderHistory changes
+    const syncLatestHistoryRef = useRef(syncLatestHistory)
+    syncLatestHistoryRef.current = syncLatestHistory
+
     // Track last user message time for adaptive polling
     const lastUserMessageAtRef = useRef(0)
     useEffect(() => {
@@ -435,7 +439,7 @@ export function useChatHistory({
                 return
             }
             intervalId = setTimeout(() => {
-                void syncLatestHistory(false)
+                void syncLatestHistoryRef.current(false)
                 scheduleNext()
             }, interval)
         }
@@ -446,14 +450,14 @@ export function useChatHistory({
             // P-I3: Skip if a forced sync happened less than 3 seconds ago
             if (Date.now() - lastForceSyncRef.current < 3000) return
             lastForceSyncRef.current = Date.now()
-            void syncLatestHistory(true)
+            void syncLatestHistoryRef.current(true)
         }
         const handleVisibility = () => {
             if (document.visibilityState === 'visible') {
                 // P-I3: Skip if a forced sync happened less than 3 seconds ago
                 if (Date.now() - lastForceSyncRef.current < 3000) return
                 lastForceSyncRef.current = Date.now()
-                void syncLatestHistory(true)
+                void syncLatestHistoryRef.current(true)
                 // Restart adaptive polling when tab becomes visible again
                 if (!intervalId) scheduleNext()
             } else {
@@ -467,14 +471,14 @@ export function useChatHistory({
 
         window.addEventListener('focus', handleFocus)
         document.addEventListener('visibilitychange', handleVisibility)
-        void syncLatestHistory(true)
+        void syncLatestHistoryRef.current(true)
 
         return () => {
             if (intervalId) clearTimeout(intervalId)
             window.removeEventListener('focus', handleFocus)
             document.removeEventListener('visibilitychange', handleVisibility)
         }
-    }, [historyBootstrapDone, isHydrated, syncLatestHistory, userId])
+    }, [historyBootstrapDone, isHydrated, userId])
 
     // Timeline-cleared event
     useEffect(() => {

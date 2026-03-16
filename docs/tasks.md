@@ -33,3 +33,43 @@ In Settings → Custom Nicknames, clicking from one character's rename input to 
 
 ### What Changed
 - `src/components/chat/chat-settings.tsx` — Removed `onBlur` handler from rename input fields (line 884).
+
+---
+
+## Task 003: Fix resume banner staying permanently visible
+- **Date:** 2026-03-16
+- **Commit:** `fix: resume banner persistence and load-earlier-messages vanishing`
+
+### Problem
+The "Resumed your last session" banner shows up and never disappears. It's supposed to auto-dismiss after 6 seconds.
+
+### Root Cause
+The 6-second `setTimeout` was inside a `useEffect` that depends on `[isHydrated, messages]`. Every time `messages` changes (which happens constantly — new messages, typing, syncs), React runs the effect cleanup which **cancels the timer**. The `resumeBannerRef` guard then prevents the effect from scheduling a new timer. Result: timer cancelled, never rescheduled, banner stays forever.
+
+### Decision
+- Separate the dismiss timer into its own `useEffect` that only depends on `showResumeBanner`. This isolates it from `messages` churn entirely.
+- The timer fires exactly once when the banner appears, and nothing else can cancel it.
+
+### What Changed
+- `src/app/chat/page.tsx` — Extracted the 6-second auto-dismiss into a standalone `useEffect` depending only on `showResumeBanner`.
+
+---
+
+## Task 004: Fix "Load Earlier Messages" loading then immediately vanishing
+- **Date:** 2026-03-16
+- **Commit:** `fix: resume banner persistence and load-earlier-messages vanishing`
+
+### Problem
+Clicking "Load Earlier Messages" briefly shows older messages then they vanish. Two bugs working together:
+
+**Bug A:** `setMessages` in the Zustand store does `slice(-MAX_PERSISTED_MESSAGES)` where max was 100. Since the initial bootstrap already loads 100 messages, prepending 40 older ones makes 140, and `slice(-100)` immediately chops off all 40 older messages.
+
+**Bug B:** The polling/sync `useEffect` has `syncLatestHistory` in its dependency array. When `loadOlderHistory` sets `isLoadingOlderHistory` to false, `syncLatestHistory` gets a new function reference (it depends on `isLoadingOlderHistory`), which re-triggers the polling effect, which calls `syncLatestHistory(true)` — overwriting the store with only the latest 40 messages.
+
+### Decision
+- **Bug A fix:** Increase `MAX_PERSISTED_MESSAGES` from 100 to 200. This gives enough room for the initial 100 + multiple pages of older history without silent truncation.
+- **Bug B fix:** Use a stable ref (`syncLatestHistoryRef`) in the polling effect instead of putting `syncLatestHistory` directly in the dependency array. This prevents the effect from re-running every time `isLoadingOlderHistory` changes. The ref is kept up-to-date on every render so it always calls the latest version.
+
+### What Changed
+- `src/stores/chat-store.ts` — `MAX_PERSISTED_MESSAGES` changed from 100 to 200.
+- `src/hooks/use-chat-history.ts` — Added `syncLatestHistoryRef`, replaced all `syncLatestHistory` calls in the polling effect with `syncLatestHistoryRef.current`, removed `syncLatestHistory` from the effect's dependency array.

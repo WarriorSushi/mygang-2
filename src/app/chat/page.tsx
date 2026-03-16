@@ -374,10 +374,15 @@ export default function ChatPage() {
                 setResumeBannerText('Resumed your last session')
             }
             setShowResumeBanner(true)
-            const timer = setTimeout(() => setShowResumeBanner(false), 6000)
-            return () => clearTimeout(timer)
         }
     }, [isHydrated, messages])
+
+    // Auto-dismiss resume banner (isolated from messages churn)
+    useEffect(() => {
+        if (!showResumeBanner) return
+        const timer = setTimeout(() => setShowResumeBanner(false), 6000)
+        return () => clearTimeout(timer)
+    }, [showResumeBanner])
 
     // ── Cooldown countdown ──
     useEffect(() => {
