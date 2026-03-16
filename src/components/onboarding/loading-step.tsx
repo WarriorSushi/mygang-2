@@ -1,8 +1,8 @@
 'use client'
 
 import { m, useReducedMotion } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { LottieLoader } from '@/components/ui/lottie-loader'
 
 const STATUS_MESSAGES = [
     "Waking up Rico...",
@@ -40,14 +40,8 @@ export function LoadingStep() {
             animate={{ opacity: 1, scale: 1 }}
             className="text-center my-auto"
         >
-            <div className="relative w-24 h-24 mx-auto mb-10">
-                <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-                {prefersReducedMotion ? (
-                    <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent" />
-                ) : (
-                    <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                )}
-                <Loader2 className={`w-10 h-10 absolute inset-0 m-auto text-primary${prefersReducedMotion ? '' : ' animate-pulse'}`} />
+            <div className="mx-auto mb-10">
+                <LottieLoader size={96} className="mx-auto" />
             </div>
 
             <h2 className="text-4xl font-bold mb-6 tracking-tight">Summoning the gang...</h2>
