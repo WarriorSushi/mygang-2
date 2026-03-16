@@ -93,3 +93,20 @@ On the onboarding selection step, when the user already had the maximum number o
 
 ### Also Investigated (False Alarm)
 - **Split message `message_id: undefined`** — Reviewed and confirmed safe. `assignMessageIdsToEvents` (route.ts:665-666) generates a new ID via `createServerEventMessageId()` when `message_id` is undefined/falsy. No DB error possible.
+
+---
+
+## Task 006: Add confirmation before removing a squad member
+- **Date:** 2026-03-16
+- **Commit:** `feat: add remove confirmation on squad member in settings`
+
+### Problem
+Users could accidentally remove a squad member with a single tap on the remove button. No warning or confirmation.
+
+### Decision
+- Use an inline two-tap confirm pattern: first tap changes the button from the icon to "Remove?", second tap actually removes.
+- Clicking away (onBlur) resets the confirm state after 200ms.
+- No modal — too heavy for this action. Inline confirm is quick and non-disruptive.
+
+### What Changed
+- `src/components/settings/settings-panel.tsx` — Added `confirmRemoveId` state, two-tap confirm logic on the remove button with visual transition (red highlight + "Remove?" text).

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'
 import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, signOut, saveGang } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
+import { cn } from '@/lib/utils'
 import { getMessagesPerWindow, getSquadLimit, getTierCopy, getTierFromProfile } from '@/lib/billing'
 import { useChatStore } from '@/stores/chat-store'
 import { CHARACTERS, getCharactersForAvatarStyle } from '@/constants/characters'
@@ -249,6 +250,7 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
     const [addModalOpen, setAddModalOpen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
 
     const allCharacters = getCharactersForAvatarStyle(avatarStyle)
     const availableCharacters = allCharacters.filter(
@@ -343,11 +345,28 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
                                     variant="ghost"
                                     size="sm"
                                     disabled={!canRemove || isSaving}
-                                    onClick={() => handleRemove(member.id)}
-                                    className="rounded-full h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                    onClick={() => {
+                                        if (confirmRemoveId === member.id) {
+                                            handleRemove(member.id)
+                                            setConfirmRemoveId(null)
+                                        } else {
+                                            setConfirmRemoveId(member.id)
+                                        }
+                                    }}
+                                    onBlur={() => setTimeout(() => setConfirmRemoveId(null), 200)}
+                                    className={cn(
+                                        'shrink-0 rounded-full transition-all',
+                                        confirmRemoveId === member.id
+                                            ? 'h-8 w-auto px-3 bg-destructive/10 text-destructive hover:bg-destructive/20'
+                                            : 'h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10'
+                                    )}
                                     title={canRemove ? `Remove ${displayName}` : 'Minimum 2 members required'}
                                 >
-                                    <UserMinus className="w-3.5 h-3.5" />
+                                    {confirmRemoveId === member.id ? (
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Remove?</span>
+                                    ) : (
+                                        <UserMinus className="w-3.5 h-3.5" />
+                                    )}
                                 </Button>
                             </div>
                         )
