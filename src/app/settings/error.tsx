@@ -1,38 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
-
-export default function SettingsError({
-    error,
-    reset,
-}: {
-    error: Error & { digest?: string }
-    reset: () => void
-}) {
-    useEffect(() => {
-        console.error('Settings error:', error)
-    }, [error])
-
+export default function SettingsError({ reset }: { reset: () => void }) {
     return (
-        <div className="flex min-h-dvh flex-col items-center justify-center bg-background text-foreground px-6" role="alert">
-            <h1 className="text-xl font-semibold mb-2">Settings error</h1>
-            <p className="text-muted-foreground text-sm mb-6 text-center max-w-md">
-                Could not load settings. Try refreshing.
+        <div className="min-h-dvh flex flex-col items-center justify-center gap-4 p-6 text-center">
+            <h2 className="text-xl font-semibold">Something went wrong</h2>
+            <p className="text-muted-foreground text-sm max-w-sm">
+                We couldn&apos;t load your settings. This is usually temporary.
             </p>
-            <div className="flex gap-3">
-                <button
-                    onClick={reset}
-                    className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-                >
-                    Try again
-                </button>
-                <a
-                    href="/chat"
-                    className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
-                >
-                    Back to chat
-                </a>
-            </div>
+            <button
+                onClick={reset}
+                className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm"
+            >
+                Try again
+            </button>
         </div>
     )
 }
