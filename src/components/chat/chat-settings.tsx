@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { CHAT_WALLPAPERS, type ChatWallpaper } from '@/constants/wallpapers'
 import { createClient } from '@/lib/supabase/client'
-import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 
 type SettingsPanel = 'root' | 'wallpaper' | 'rename'
 

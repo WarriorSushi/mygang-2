@@ -102,7 +102,6 @@ export function DowngradeKeeperModal({
     }
 
     return (
-        <LazyMotion features={domAnimation}>
         <AnimatePresence>
             <m.div
                 ref={modalRef}
@@ -325,6 +324,5 @@ export function DowngradeKeeperModal({
                 </m.div>
             </m.div>
         </AnimatePresence>
-        </LazyMotion>
     )
 }

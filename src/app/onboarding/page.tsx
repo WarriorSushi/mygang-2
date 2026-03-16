@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { completeOnboarding } from '@/app/auth/actions'
 import { getCharactersForAvatarStyle } from '@/constants/characters'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
@@ -282,7 +282,6 @@ function OnboardingPage() {
                 </button>
             )}
 
-            <LazyMotion features={domAnimation}>
                 <AnimatePresence mode="wait" initial={false}>
                     {step === 'WELCOME' && (
                         <WelcomeStep onNext={() => setStep('IDENTITY')} />
@@ -337,7 +336,6 @@ function OnboardingPage() {
                         <LoadingStep />
                     )}
                 </AnimatePresence>
-            </LazyMotion>
         </main>
     )
 }

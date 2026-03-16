@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { X, Brain, Trash2, Edit3, Check, Search, Loader2, Lock, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -184,7 +184,6 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     }, [memories, deferredSearch])
 
     return (
-        <LazyMotion features={domAnimation}>
         <AnimatePresence>
             {isOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-end pointer-events-none">
@@ -437,6 +436,5 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                 </div>
             )}
         </AnimatePresence>
-        </LazyMotion>
     )
 }

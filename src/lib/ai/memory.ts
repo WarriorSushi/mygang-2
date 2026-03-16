@@ -271,6 +271,7 @@ export async function storeMemories(
                         await supabase
                             .from('memories')
                             .delete()
+                            .eq('user_id', userId)
                             .in('id', oldest.map(m => m.id))
                     }
                 }
@@ -565,13 +566,17 @@ export async function retrieveMemoriesHybrid(userId: string, query: string, limi
     return result
 }
 
-export async function touchMemories(memoryIds: string[]) {
+export async function touchMemories(memoryIds: string[], userId?: string) {
     if (memoryIds.length === 0) return
     const supabase = await createClient()
-    const { error } = await supabase
+    let query = supabase
         .from('memories')
         .update({ last_used_at: new Date().toISOString() })
         .in('id', memoryIds)
+    if (userId) {
+        query = query.eq('user_id', userId)
+    }
+    const { error } = await query
 
     if (error) console.error('Error updating memory last_used_at:', error)
 }
@@ -724,8 +729,7 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
                 .eq('user_id', userId)
 
             if (archiveError) {
-                console.error('Error archiving memories:', archiveError)
-                return
+                throw new Error(`Archive failed: ${archiveError.message}`)
             }
 
             // Insert the compacted summaries

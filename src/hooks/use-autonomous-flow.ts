@@ -4,19 +4,12 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
 import { CHARACTER_GREETINGS } from '@/constants/character-greetings'
+import { hasOpenFloorIntent } from '@/lib/chat-utils'
 import type { HistoryStatus } from '@/hooks/use-chat-history'
 
 function pickRandom<T>(items: T[]): T | undefined {
     if (items.length === 0) return undefined
     return items[Math.floor(Math.random() * items.length)]
-}
-
-export function hasOpenFloorIntent(text: string) {
-    const value = text.toLowerCase()
-    return (
-        /you guys talk|talk among yourselves|keep chatting|continue without me|i'?ll listen|i will listen/.test(value)
-        || /just talk|carry on|keep going|go on without me/.test(value)
-    )
 }
 
 interface UseAutonomousFlowArgs {

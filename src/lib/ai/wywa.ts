@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { CHARACTERS } from '@/constants/characters'
 import { TYPING_STYLES } from './wywa-prompt'
 import { sendWywaTeaser } from '@/lib/push/wywa-teaser'
+import { detectUnsafeContent } from '@/lib/chat-utils'
 
 // ── Constants ──
 
@@ -308,14 +309,23 @@ export async function generateWywaForUser(userId: string): Promise<WywaResult> {
         .filter(m => participantSet.has(m.speaker) && m.content.trim().length > 0)
         .slice(0, 5)
 
-    if (validMessages.length === 0) {
+    const safeMessages = validMessages.filter(m => {
+        const unsafeFlag = detectUnsafeContent(m.content)
+        if (unsafeFlag.hard) {
+            console.warn(`[wywa] Blocked unsafe message from ${m.speaker}: hard block`)
+            return false
+        }
+        return true
+    })
+
+    if (safeMessages.length === 0) {
         return { status: 'error', message: 'LLM returned no valid messages' }
     }
 
     const batchId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-    const timestamps = buildStableTimestamps(now, validMessages.length)
+    const timestamps = buildStableTimestamps(now, safeMessages.length)
 
-    const rows = validMessages.map((m, i) => ({
+    const rows = safeMessages.map((m, i) => ({
         user_id: userId,
         gang_id: gangId,
         speaker: m.speaker,

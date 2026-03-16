@@ -5,7 +5,7 @@ import { useChatStore, type Message } from '@/stores/chat-store'
 import { normalizeActivityStatus } from '@/constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { getContextLimit, getTierFromProfile } from '@/lib/billing'
-import { hasOpenFloorIntent } from './use-autonomous-flow'
+import { hasOpenFloorIntent } from '@/lib/chat-utils'
 
 /** Only live-chat messages (source='chat' or legacy/undefined) enter the payload window. */
 export function isLiveChatMessage(m: { source?: string }): boolean {

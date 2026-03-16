@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { LazyMotion, domAnimation, m, useReducedMotion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
+import { m, useReducedMotion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight,
   Users,
@@ -245,7 +245,6 @@ export function LandingPage() {
   }, [isHydrated, router])
 
   return (
-    <LazyMotion features={domAnimation} strict>
     <div id="main-content" className="relative min-h-dvh flex flex-col overflow-hidden bg-background text-foreground">
       <BackgroundBlobs />
 

@@ -127,7 +127,6 @@ export function UpgradePickerModal({
     }
 
     return (
-        <LazyMotion features={domAnimation}>
         <AnimatePresence>
             <m.div
                 ref={modalRef}
@@ -375,6 +374,5 @@ export function UpgradePickerModal({
                 </m.div>
             </m.div>
         </AnimatePresence>
-        </LazyMotion>
     )
 }
