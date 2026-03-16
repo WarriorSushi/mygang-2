@@ -438,7 +438,6 @@ function maybeSplitAiMessages(
         expanded.push({
             ...event,
             content: second,
-            message_id: undefined,
             delay: Math.min(MAX_DELAY_MS, Math.max(180, Math.round(240 + Math.random() * 360)))
         })
     }
@@ -576,7 +575,7 @@ const requestSchema = z.object({
         reaction: z.string().optional(),
         replyToId: z.string().max(128).optional(),
         source: z.enum(['chat', 'wywa', 'system']).optional(),
-    })).max(55),
+    })).max(40),
     activeGangIds: z.array(z.string().min(1).max(32)).max(6).optional(),
     activeGang: z.array(z.object({ id: z.string().min(1).max(32) })).max(6).optional(),
     userName: z.string().nullable().optional(),
@@ -1125,7 +1124,13 @@ ${sessionSummary}
                 ? (autonomousIdle ? LOW_COST_IDLE_HISTORY_LIMIT : LOW_COST_HISTORY_LIMIT)
                 : (autonomousIdle ? Math.min(tierContextLimit, LLM_IDLE_HISTORY_LIMIT) : tierContextLimit)
         const historySlice = chatOnlyMessages.slice(-HISTORY_LIMIT)
-        const compactHistory = formatHistoryForLLM(historySlice, MAX_LLM_MESSAGE_CHARS)
+        // Build reply content lookup from all available messages
+        const messageContentById = new Map(safeMessages.map(m => [m.id, m.content]))
+        const historyWithReplyContent = historySlice.map(m => ({
+            ...m,
+            replyContent: m.replyToId ? (messageContentById.get(m.replyToId) || null) : null,
+        }))
+        const compactHistory = formatHistoryForLLM(historyWithReplyContent, MAX_LLM_MESSAGE_CHARS)
 
         let object: RouteResponseObject = {
             events: [],

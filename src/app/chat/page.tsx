@@ -349,12 +349,7 @@ export default function ChatPage() {
     // ── Resume banner ──
     useEffect(() => {
         if (isHydrated && messages.length > 0 && !resumeBannerRef.current) {
-            // Use last non-WYWA message to calculate gap — WYWA background
-            // messages would otherwise shrink the perceived absence time.
-            const nonWywaMessages = messages.filter((m) => m.source !== 'wywa')
-            const lastMessage = nonWywaMessages.length > 0
-                ? nonWywaMessages[nonWywaMessages.length - 1]
-                : messages[messages.length - 1]
+            const lastMessage = messages[messages.length - 1]
             const lastTime = lastMessage ? new Date(lastMessage.created_at).getTime() : 0
             const sessionStart = sessionRef.current?.startedAt ?? Date.now()
             const gapMs = lastTime ? Date.now() - lastTime : 0
@@ -374,15 +369,10 @@ export default function ChatPage() {
                 setResumeBannerText('Resumed your last session')
             }
             setShowResumeBanner(true)
+            const timer = setTimeout(() => setShowResumeBanner(false), 6000)
+            return () => clearTimeout(timer)
         }
     }, [isHydrated, messages])
-
-    // Auto-dismiss resume banner (isolated from messages churn)
-    useEffect(() => {
-        if (!showResumeBanner) return
-        const timer = setTimeout(() => setShowResumeBanner(false), 6000)
-        return () => clearTimeout(timer)
-    }, [showResumeBanner])
 
     // ── Cooldown countdown ──
     useEffect(() => {
@@ -551,7 +541,7 @@ export default function ChatPage() {
                     </div>
                 </div>
 
-                <div className="shrink-0 px-4 pb-1">
+                <div className="shrink-0 px-4 pb-4">
                     {!isOnline && (
                         <div className="mx-3 sm:mx-0 mb-2 rounded-xl border border-amber-600/40 dark:border-amber-400/40 bg-amber-100/60 dark:bg-amber-400/10 px-3 py-2 text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-200">
                             Offline mode - reconnect to send messages

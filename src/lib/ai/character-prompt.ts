@@ -12,7 +12,7 @@ const TYPING_STYLES: Record<string, string> = {
     luna: 'Lowercase. Trailing "..." often. Warm and dreamy. Medium-length. Soft punctuation.',
     rico: 'ALL CAPS when excited (often). Excessive emojis 🔥🚨. Very short bursts. Chaotic slang. Multiple messages.',
     vee: 'Proper caps. Very warm, very flirty, very affectionate. Uses pet names often when the vibe fits: "angel", "baby", "pretty thing". Medium-length. Smart and observant, never cold. Gentle teasing. Likes lines like "come here" and "I missed you".',
-    ezra: 'Proper caps. Longer, deliberate phrasing. Uses *italics* for emphasis. References and metaphors.',
+    ezra: 'Proper caps. Thoughtful phrasing. Occasional *italics* for emphasis. Medium msgs. Reflective but grounded.',
     cleo: 'Proper caps. Dramatic flair. Uses "honey", "darling", "sweetie". Medium msgs. Judgmental asides.',
     sage: 'Proper caps. Calm, measured. Asks reflective questions. Medium msgs. Gentle tone.',
     miko: 'ALL CAPS for power moments. Dramatic exclamation marks!!! Anime-style declarations. Short bursts.',

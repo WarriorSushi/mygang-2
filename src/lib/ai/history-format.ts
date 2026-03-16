@@ -15,6 +15,7 @@ type HistoryMessage = {
     content: string
     reaction?: boolean | string | null
     replyToId?: string | null
+    replyContent?: string | null
 }
 
 const MAX_REPLY_PREVIEW_CHARS = 120
@@ -37,10 +38,17 @@ function buildReplyPreview(content: string): string {
  */
 function formatLine(m: HistoryMessage, replyPreviewById: Map<string, string>): string {
     const cleanContent = sanitizeContent(m.content)
-    const replyPreview = m.replyToId ? replyPreviewById.get(m.replyToId) : null
-    const replyTarget = m.replyToId
-        ? (replyPreview ? ` |>${m.replyToId}("${replyPreview}")` : ` |>${m.replyToId}`)
-        : ''
+    // Include quoted message content when available (from replyContent or pre-built preview map)
+    let replyTarget = ''
+    if (m.replyToId) {
+        if (m.replyContent) {
+            const quotedSnippet = buildReplyPreview(m.replyContent)
+            replyTarget = ` |>${m.replyToId}("${quotedSnippet}")`
+        } else {
+            const preview = replyPreviewById.get(m.replyToId)
+            replyTarget = preview ? ` |>${m.replyToId}("${preview}")` : ` |>${m.replyToId}`
+        }
+    }
 
     if (m.reaction) {
         return `[${m.id}] ${m.speaker} reacted: ${cleanContent}${replyTarget}`

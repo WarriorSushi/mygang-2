@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { AiDisclaimer } from '@/components/chat/ai-disclaimer'
 import { ArrowRight, X } from 'lucide-react'
 
 interface ReplyTarget {
@@ -109,7 +110,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
     }
 
     return (
-        <div className="px-3 sm:px-0 pt-1 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.1rem)] sm:pb-0 z-20 max-w-3xl mx-auto w-full">
+        <div className="px-3 sm:px-0 pt-1 sm:pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] sm:pb-0 z-20 max-w-3xl mx-auto w-full">
             {replyingTo && (
                 <div role="status" aria-live="polite" className="mb-2 flex items-start justify-between gap-2 rounded-xl border border-border/50 bg-card/90 px-3 py-2">
                     <div className="min-w-0">
@@ -190,6 +191,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
                     Message limit is {MAX_CHARS} characters.
                 </p>
             )}
+            <AiDisclaimer />
         </div>
     )
 })

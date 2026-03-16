@@ -2,9 +2,9 @@
 export type SubscriptionTier = 'free' | 'basic' | 'pro'
 
 export const TIER_LIMITS = {
-  free: { messagesPerWindow: 25, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: 20, memoryInPrompt: 0, squadLimit: 4, contextLimit: 15 },
-  basic: { messagesPerWindow: 40, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: 50, memoryInPrompt: 3, squadLimit: 5, contextLimit: 25 },
-  pro: { messagesPerWindow: null, windowMs: null, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: null, memoryInPrompt: 5, squadLimit: 6, contextLimit: 35 },
+  free: { messagesPerWindow: 25, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: 20, memoryInPrompt: 0, squadLimit: 4, contextLimit: 25 },
+  basic: { messagesPerWindow: 40, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: 50, memoryInPrompt: 3, squadLimit: 5, contextLimit: 40 },
+  pro: { messagesPerWindow: null, windowMs: null, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: null, memoryInPrompt: 5, squadLimit: 6, contextLimit: 50 },
 } as const
 
 export const TIER_COPY = {

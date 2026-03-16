@@ -6,15 +6,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'
-import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, signOut, saveGang } from '@/app/auth/actions'
+import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, signOut } from '@/app/auth/actions'
 import { trackEvent } from '@/lib/analytics'
-import { cn } from '@/lib/utils'
-import { getMessagesPerWindow, getSquadLimit, getTierCopy, getTierFromProfile } from '@/lib/billing'
+import { getMessagesPerWindow, getTierCopy, getTierFromProfile } from '@/lib/billing'
 import { useChatStore } from '@/stores/chat-store'
-import { CHARACTERS, getCharactersForAvatarStyle } from '@/constants/characters'
-import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw, Sparkles, Globe, Palette, PenLine, X, Bell, BellOff, Plus, UserMinus } from 'lucide-react'
+import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw, Sparkles, Globe, Palette, PenLine, X, Bell, BellOff } from 'lucide-react'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
-import Image from 'next/image'
 
 interface SettingsPanelProps {
     username: string | null
@@ -241,236 +238,6 @@ function NotificationsSection() {
     )
 }
 
-function SquadEditorSection({ tier }: { tier: string | null }) {
-    const normalizedTier = getTierFromProfile(tier)
-    const squadLimit = getSquadLimit(normalizedTier)
-    const activeGang = useChatStore((s) => s.activeGang)
-    const avatarStyle = useChatStore((s) => s.avatarStylePreference)
-    const customNames = useChatStore((s) => s.customCharacterNames)
-    const [addModalOpen, setAddModalOpen] = useState(false)
-    const [selectedAddId, setSelectedAddId] = useState<string | null>(null)
-    const [isSaving, setIsSaving] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
-
-    const allCharacters = getCharactersForAvatarStyle(avatarStyle)
-    const availableCharacters = allCharacters.filter(
-        (c) => !activeGang.some((g) => g.id === c.id)
-    )
-
-    const canRemove = activeGang.length > 2
-    const canAdd = activeGang.length < squadLimit
-
-    const handleRemove = async (characterId: string) => {
-        if (!canRemove) return
-        setError(null)
-        setIsSaving(true)
-        try {
-            const currentGang = useChatStore.getState().activeGang
-            const newIds = currentGang.filter((c) => c.id !== characterId).map((c) => c.id)
-            await saveGang(newIds)
-            useChatStore.getState().setActiveGang(currentGang.filter((c) => c.id !== characterId))
-            trackEvent('squad_remove_member', { metadata: { characterId, source: 'settings' } })
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to remove member.')
-        } finally {
-            setIsSaving(false)
-        }
-    }
-
-    const handleAdd = async (characterId: string) => {
-        if (!canAdd) return
-        setError(null)
-        setIsSaving(true)
-        try {
-            const currentGang = useChatStore.getState().activeGang
-            const newIds = [...currentGang.map((c) => c.id), characterId]
-            await saveGang(newIds)
-            const addedChar = allCharacters.find((c) => c.id === characterId)
-            if (addedChar) {
-                useChatStore.getState().setActiveGang([...currentGang, addedChar])
-            }
-            trackEvent('squad_add_member', { metadata: { characterId, source: 'settings' } })
-            setAddModalOpen(false)
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to add member.')
-        } finally {
-            setIsSaving(false)
-        }
-    }
-
-    return (
-        <>
-            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Your Squad</div>
-                        <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
-                            {activeGang.length}/{squadLimit}
-                        </span>
-                    </div>
-                </div>
-
-                {error && (
-                    <p className="text-[11px] text-destructive mb-3">{error}</p>
-                )}
-
-                <div className="space-y-2">
-                    {activeGang.map((member) => {
-                        const displayName = customNames[member.id] || member.name
-                        return (
-                            <div
-                                key={member.id}
-                                className="flex items-center gap-3 rounded-xl bg-background/60 border border-border/30 p-2.5"
-                            >
-                                <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: member.color }}>
-                                    {member.avatar ? (
-                                        <Image
-                                            src={member.avatar}
-                                            alt={displayName}
-                                            width={40}
-                                            height={40}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: member.color }}>
-                                            <span className="text-white text-sm font-bold">{displayName[0]}</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-semibold truncate">{displayName}</div>
-                                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{member.archetype || member.vibe}</div>
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    disabled={!canRemove || isSaving}
-                                    onClick={() => {
-                                        if (confirmRemoveId === member.id) {
-                                            handleRemove(member.id)
-                                            setConfirmRemoveId(null)
-                                        } else {
-                                            setConfirmRemoveId(member.id)
-                                        }
-                                    }}
-                                    onBlur={() => setTimeout(() => setConfirmRemoveId(null), 200)}
-                                    className={cn(
-                                        'shrink-0 rounded-full transition-all',
-                                        confirmRemoveId === member.id
-                                            ? 'h-8 w-auto px-3 bg-destructive/10 text-destructive hover:bg-destructive/20'
-                                            : 'h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10'
-                                    )}
-                                    title={canRemove ? `Remove ${displayName}` : 'Minimum 2 members required'}
-                                >
-                                    {confirmRemoveId === member.id ? (
-                                        <span className="text-[10px] font-semibold uppercase tracking-wider">Remove?</span>
-                                    ) : (
-                                        <UserMinus className="w-3.5 h-3.5" />
-                                    )}
-                                </Button>
-                            </div>
-                        )
-                    })}
-                </div>
-
-                {canAdd && (
-                    <Button
-                        variant="outline"
-                        className="w-full mt-3 rounded-xl text-[11px] uppercase tracking-widest"
-                        disabled={isSaving}
-                        onClick={() => {
-                            setError(null)
-                            setAddModalOpen(true)
-                        }}
-                    >
-                        <Plus className="w-3.5 h-3.5 mr-1.5" />
-                        Add Friend
-                    </Button>
-                )}
-
-                {!canAdd && (
-                    <p className="text-[10px] text-muted-foreground text-center mt-3">
-                        Squad full — upgrade your plan for more slots.
-                    </p>
-                )}
-            </section>
-
-            {/* Add Friend Modal */}
-            <Dialog open={addModalOpen} onOpenChange={(open) => { setAddModalOpen(open); if (!open) setSelectedAddId(null) }}>
-                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-border/30 rounded-[1.5rem] max-h-[80vh] overflow-hidden flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-black text-center">Add a Friend</DialogTitle>
-                        <DialogDescription className="text-center text-sm text-muted-foreground">
-                            Pick someone new for your squad.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="overflow-y-auto flex-1 -mx-2 px-2 pb-2">
-                        {availableCharacters.length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center py-6">No more characters available.</p>
-                        ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {availableCharacters.map((char) => (
-                                    <button
-                                        key={char.id}
-                                        type="button"
-                                        disabled={isSaving}
-                                        onClick={() => setSelectedAddId(selectedAddId === char.id ? null : char.id)}
-                                        className={cn(
-                                            'relative rounded-xl border-2 bg-card/80 overflow-hidden cursor-pointer transition-all group text-left',
-                                            selectedAddId === char.id
-                                                ? 'border-primary shadow-md shadow-primary/20 scale-[1.02]'
-                                                : 'border-transparent hover:border-primary/30 hover:shadow-md hover:shadow-primary/10'
-                                        )}
-                                    >
-                                        {selectedAddId === char.id && (
-                                            <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                                                <Check className="w-3 h-3 text-primary-foreground" />
-                                            </div>
-                                        )}
-                                        <div className="relative w-full aspect-[4/5] overflow-hidden">
-                                            {char.avatar ? (
-                                                <Image
-                                                    src={char.avatar}
-                                                    alt={char.name}
-                                                    width={140}
-                                                    height={175}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                    sizes="140px"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: char.color }}>
-                                                    <span className="text-white text-2xl font-black">{char.name[0]}</span>
-                                                </div>
-                                            )}
-                                            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                                            <div className="absolute bottom-0 left-0 right-0 p-2">
-                                                <h3 className="font-bold text-xs text-white leading-tight">{char.name}</h3>
-                                                <p className="text-[8px] font-semibold uppercase tracking-wider text-white/70 mt-px">{char.archetype}</p>
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    {selectedAddId && (
-                        <div className="pt-2 border-t border-border/30">
-                            <Button
-                                onClick={() => { handleAdd(selectedAddId); setSelectedAddId(null) }}
-                                disabled={isSaving}
-                                className="w-full rounded-xl h-11"
-                            >
-                                {isSaving ? 'Adding...' : `Add ${availableCharacters.find(c => c.id === selectedAddId)?.name || 'Friend'}`}
-                            </Button>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-        </>
-    )
-}
-
 export function SettingsPanel({ username, email, initialSettings, usage }: SettingsPanelProps) {
     const router = useRouter()
     const { setTheme } = useTheme()
@@ -652,9 +419,6 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
             {/* Plan & Upgrade */}
             <UpgradeCard tier={usage.subscriptionTier} />
-
-            {/* Your Squad */}
-            <SquadEditorSection tier={usage.subscriptionTier} />
 
             {/* Usage */}
             <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">

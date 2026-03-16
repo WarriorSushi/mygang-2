@@ -353,6 +353,10 @@
   border-color: rgba(255, 255, 255, 0.08);
 }
 
+/* content-auto removed: content-visibility: auto with fixed contain-intrinsic-size
+   causes scroll jumps in variable-height chat messages when scrolling upward. */
+
+
 /* ── Background blob CSS animations (GPU-composited, zero JS) ── */
 
 @keyframes blob-drift-1 {

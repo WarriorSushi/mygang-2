@@ -430,7 +430,7 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
     const limit = Math.min(Math.max(params?.limit ?? 30, 10), 80)
     let query = supabase
         .from('memories')
-        .select('id, content, created_at, category')
+        .select('id, content, created_at')
         .eq('user_id', user.id)
         .in('kind', ['episodic', 'compacted'])
         .order('created_at', { ascending: false })

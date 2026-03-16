@@ -881,6 +881,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                 type="text"
                                                 value={renameInputs[char.id] || ''}
                                                 onChange={(e) => setRenameInputs((prev) => ({ ...prev, [char.id]: e.target.value }))}
+                                                onBlur={() => handleRenameCharacter(char.id, renameInputs[char.id] || '')}
                                                 placeholder={char.name}
                                                 maxLength={30}
                                                 className="h-11 w-full rounded-xl bg-transparent px-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-primary/30"

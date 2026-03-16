@@ -4,7 +4,7 @@ import type { ChatWallpaper } from '@/constants/wallpapers'
 import { CHARACTERS } from '@/constants/characters'
 import { applyAvatarStyleToGang, DEFAULT_AVATAR_STYLE, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 
-const MAX_PERSISTED_MESSAGES = 200
+const MAX_PERSISTED_MESSAGES = 100
 
 export interface Message {
     id: string
