@@ -238,7 +238,7 @@ function OnboardingPage() {
                     }, error)
                 }
             })() : Promise.resolve(),
-            new Promise((resolve) => setTimeout(resolve, 1500)),
+            new Promise((resolve) => setTimeout(resolve, 3500)),
         ])
 
         router.replace('/chat')
