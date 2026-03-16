@@ -213,6 +213,8 @@ function reconcileMessagesFromHistory(remoteMessages: Message[], localMessages: 
     }
 
     const merged = [...mergedRemote, ...preservedLocalTail]
+    // Sort by timestamp to prevent preserved local messages appearing out of order
+    merged.sort((a, b) => parseMessageCreatedAt(a) - parseMessageCreatedAt(b))
     return collapseLikelyDuplicateMessages(merged)
 }
 
@@ -345,10 +347,12 @@ export function useChatHistory({
         if (!userId || !historyBootstrapDone) return
         if (historySyncInFlightRef.current) return
         if (isBootstrappingHistory || isLoadingOlderHistory) return
+        // Always skip sync while AI is generating or user messages are pending
+        if (isGeneratingRef.current || pendingUserMessagesRef.current) return
         if (!force) {
             if (!isOnline) return
             if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-            if (isGeneratingRef.current || pendingUserMessagesRef.current || debounceTimerRef.current) return
+            if (debounceTimerRef.current) return
             if (Date.now() - lastHistorySyncAtRef.current < 8000) return
         }
 

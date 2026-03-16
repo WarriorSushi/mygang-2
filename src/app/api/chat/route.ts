@@ -438,6 +438,7 @@ function maybeSplitAiMessages(
         expanded.push({
             ...event,
             content: second,
+            message_id: undefined,
             delay: Math.min(MAX_DELAY_MS, Math.max(180, Math.round(240 + Math.random() * 360)))
         })
     }
