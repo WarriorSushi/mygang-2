@@ -41,7 +41,9 @@ export function LoadingStep() {
             className="text-center my-auto"
         >
             <div className="mx-auto mb-10">
-                <LottieLoader size={96} className="mx-auto" />
+                <div className="w-[140px] h-[140px] sm:w-[120px] sm:h-[120px]">
+                    <LottieLoader size={140} className="mx-auto sm:!w-[120px] sm:!h-[120px]" />
+                </div>
             </div>
 
             <h2 className="text-4xl font-bold mb-6 tracking-tight">Summoning the gang...</h2>
