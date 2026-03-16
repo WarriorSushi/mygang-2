@@ -9,7 +9,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { getTierFromProfile, isMemoryEnabled, getContextLimit, getMemoryInPromptLimit, getSquadLimit, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
-import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
+import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, detectUnsafeContent, hasOpenFloorIntent } from '@/lib/chat-utils'
 import { formatHistoryForLLM } from '@/lib/ai/history-format'
 import { isCorrectionOrClarificationTurn, shouldPreserveSingleBubbleTurn } from '@/lib/ai/response-style'
 import { buildSystemPrompt } from '@/lib/ai/system-prompt'
@@ -783,9 +783,6 @@ async function handlePost(req: Request) {
         const previousUserMessage = userMessages[userMessages.length - 2]
         const latestMessage = safeMessages[safeMessages.length - 1]
         const hasFreshUserTurn = latestMessage?.speaker === 'user'
-        const freshUserMessageCount = hasFreshUserTurn
-            ? userMessages.filter((m) => m.id && m.id.startsWith('user-')).length
-            : 0
         const lastUserMsg = lastUserMessage?.content || ''
         const farewellTurn = hasFreshUserTurn && isFarewellMessage(lastUserMsg)
         const correctionOrClarificationTurn = hasFreshUserTurn && isCorrectionOrClarificationTurn(lastUserMsg)
@@ -852,7 +849,7 @@ async function handlePost(req: Request) {
 
         const rateLimitPromises: [Promise<{ success: boolean; remaining: number; reset: number }>, Promise<{ success: boolean; remaining: number; reset: number }> | null] = [
             rateLimit(rateKey, rateLimitMax, 60_000),
-            hasFreshUserTurn && profileTier !== 'pro'
+            profileTier !== 'pro'
                 ? rateLimit(tierWindowKey, tierWindowMax, 60 * 60 * 1000)
                 : null,
         ]
@@ -1420,6 +1417,7 @@ ${sessionSummary}
         }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
 
         // Build response before persistence (non-blocking)
+        // NOTE: Count may slightly overcount — quality filter runs async in persistAsync()
         const memoriesSavedCount = (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) || 0
 
         // Fetch total memory count for free tier badge (cheap count query)

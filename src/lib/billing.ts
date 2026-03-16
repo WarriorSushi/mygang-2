@@ -28,7 +28,7 @@ export const TIER_COPY = {
     usageHeading: '40 messages per hour + memory',
     usageDescription: 'Memory, ecosystem chat, wallpapers, and custom names without monthly caps.',
     memoryLabel: 'Improved longer memory',
-    cooldownLabel: 'None',
+    cooldownLabel: 'After 40 msgs/hr',
     priceLabel: '$14.99/mo',
     comparisonMessagesLabel: '40/hr',
   },

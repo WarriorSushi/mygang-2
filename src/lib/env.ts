@@ -11,6 +11,11 @@ const envSchema = z.object({
     DODO_PRODUCT_BASIC: z.string().min(1),
     DODO_PRODUCT_PRO: z.string().min(1),
     ADMIN_PANEL_SESSION_SECRET: z.string().min(32),
+    DODO_PAYMENTS_ENVIRONMENT: z.enum(['live_mode', 'test_mode']),
+    DODO_PAYMENTS_RETURN_URL: z.string().url(),
+    CRON_SECRET: z.string().min(16),
+    ADMIN_PANEL_EMAIL: z.string().email(),
+    ADMIN_PANEL_PASSWORD_HASH: z.string().min(1),
     // Optional — Redis not required for dev
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),

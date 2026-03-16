@@ -525,7 +525,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
             {expandedAvatar?.avatar && createPortal(
                 <div
                     ref={lightboxRef}
-                    className="fixed inset-0 z-[200] hidden sm:flex items-center justify-center bg-black/70 backdrop-blur-sm"
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm"
                     onClick={() => setExpandedAvatar(null)}
                     tabIndex={-1}
                     role="dialog"

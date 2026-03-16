@@ -364,7 +364,7 @@ export default function PricingPage() {
                   { text: basicCopy.messagesLabel, icon: MessageCircle },
                   { text: basicCopy.memoryLabel, icon: Brain, highlight: true },
                   { text: 'Ecosystem mode — real group chat', icon: Sparkles, highlight: true },
-                  { text: 'No hourly cooldowns', icon: Clock },
+                  { text: '40 msgs/hr rolling window', icon: Clock },
                   { text: 'Wallpapers & custom nicknames', icon: Palette },
                   { text: 'Memory vault access', icon: Brain },
                 ].map((f) => (

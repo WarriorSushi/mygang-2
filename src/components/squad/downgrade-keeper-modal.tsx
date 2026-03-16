@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Check, HeartCrack, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'

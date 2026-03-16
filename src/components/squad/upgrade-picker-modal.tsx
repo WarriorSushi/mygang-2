@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { getCharactersForAvatarStyle } from '@/constants/characters'
 import { CHARACTER_INTRO_MESSAGES } from '@/constants/character-messages'

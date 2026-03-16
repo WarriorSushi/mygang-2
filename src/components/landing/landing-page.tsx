@@ -640,7 +640,6 @@ export function LandingPage() {
         }}
       />
     </div>
-    </LazyMotion>
   )
 }
 
