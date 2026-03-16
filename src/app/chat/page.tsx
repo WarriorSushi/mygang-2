@@ -349,7 +349,12 @@ export default function ChatPage() {
     // ── Resume banner ──
     useEffect(() => {
         if (isHydrated && messages.length > 0 && !resumeBannerRef.current) {
-            const lastMessage = messages[messages.length - 1]
+            // Use last non-WYWA message to calculate gap — WYWA background
+            // messages would otherwise shrink the perceived absence time.
+            const nonWywaMessages = messages.filter((m) => m.source !== 'wywa')
+            const lastMessage = nonWywaMessages.length > 0
+                ? nonWywaMessages[nonWywaMessages.length - 1]
+                : messages[messages.length - 1]
             const lastTime = lastMessage ? new Date(lastMessage.created_at).getTime() : 0
             const sessionStart = sessionRef.current?.startedAt ?? Date.now()
             const gapMs = lastTime ? Date.now() - lastTime : 0
