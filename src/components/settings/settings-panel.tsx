@@ -248,6 +248,7 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
     const avatarStyle = useChatStore((s) => s.avatarStylePreference)
     const customNames = useChatStore((s) => s.customCharacterNames)
     const [addModalOpen, setAddModalOpen] = useState(false)
+    const [selectedAddId, setSelectedAddId] = useState<string | null>(null)
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
@@ -396,7 +397,7 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
             </section>
 
             {/* Add Friend Modal */}
-            <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+            <Dialog open={addModalOpen} onOpenChange={(open) => { setAddModalOpen(open); if (!open) setSelectedAddId(null) }}>
                 <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-border/30 rounded-[1.5rem] max-h-[80vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-black text-center">Add a Friend</DialogTitle>
@@ -414,9 +415,19 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
                                         key={char.id}
                                         type="button"
                                         disabled={isSaving}
-                                        onClick={() => handleAdd(char.id)}
-                                        className="relative rounded-xl border border-border/50 bg-card/80 overflow-hidden cursor-pointer transition-all hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 group text-left"
+                                        onClick={() => setSelectedAddId(selectedAddId === char.id ? null : char.id)}
+                                        className={cn(
+                                            'relative rounded-xl border-2 bg-card/80 overflow-hidden cursor-pointer transition-all group text-left',
+                                            selectedAddId === char.id
+                                                ? 'border-primary shadow-md shadow-primary/20 scale-[1.02]'
+                                                : 'border-transparent hover:border-primary/30 hover:shadow-md hover:shadow-primary/10'
+                                        )}
                                     >
+                                        {selectedAddId === char.id && (
+                                            <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                                <Check className="w-3 h-3 text-primary-foreground" />
+                                            </div>
+                                        )}
                                         <div className="relative w-full aspect-[4/5] overflow-hidden">
                                             {char.avatar ? (
                                                 <Image
@@ -443,6 +454,17 @@ function SquadEditorSection({ tier }: { tier: string | null }) {
                             </div>
                         )}
                     </div>
+                    {selectedAddId && (
+                        <div className="pt-2 border-t border-border/30">
+                            <Button
+                                onClick={() => { handleAdd(selectedAddId); setSelectedAddId(null) }}
+                                disabled={isSaving}
+                                className="w-full rounded-xl h-11"
+                            >
+                                {isSaving ? 'Adding...' : `Add ${availableCharacters.find(c => c.id === selectedAddId)?.name || 'Friend'}`}
+                            </Button>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </>

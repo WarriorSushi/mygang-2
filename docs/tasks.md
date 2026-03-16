@@ -110,3 +110,22 @@ Users could accidentally remove a squad member with a single tap on the remove b
 
 ### What Changed
 - `src/components/settings/settings-panel.tsx` — Added `confirmRemoveId` state, two-tap confirm logic on the remove button with visual transition (red highlight + "Remove?" text).
+
+---
+
+## Task 007: Add visual selection to "Add Friend" modal in settings
+- **Date:** 2026-03-16
+- **Commit:** `feat: add visual selection and confirm button to add-friend modal`
+
+### Problem
+The "Add a Friend" modal in settings instantly added a character on tap — no visual selection, no confirmation. Felt accidental and lacked feedback.
+
+### Decision
+- Tap a card to **select** it (highlighted border + checkmark badge + slight scale-up).
+- Tap again to deselect.
+- "Add [Name]" button appears at the bottom only when a character is selected.
+- Closing the modal resets the selection.
+- Keeps the flow simple: select → confirm → done.
+
+### What Changed
+- `src/components/settings/settings-panel.tsx` — Added `selectedAddId` state, replaced instant-add onClick with toggle selection, added primary border + check badge for selected state, added bottom "Add [Name]" button.
