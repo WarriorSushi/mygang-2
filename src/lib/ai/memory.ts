@@ -163,7 +163,15 @@ export async function storeMemories(
             ...m,
             normalizedContent: m.content.trim().replace(/\s+/g, ' '),
             kind: m.kind || 'episodic',
-        }))
+        })).filter(m => {
+            // Safety net: reject short or gibberish content
+            if (m.normalizedContent.length < 10) return false
+            const realWords = m.normalizedContent.match(/[a-zA-Z\u00C0-\u024F]{3,}/g)
+            if (!realWords || realWords.length < 2) return false
+            return true
+        })
+
+        if (!normalized.length) return
 
         // P-I9: Single query for both duplicate check AND conflict resolution
         const { data: existingRaw } = await supabase

@@ -199,9 +199,9 @@ function buildMemoryRulesBlock(
   - Store as concise, third-person facts. E.g. user says "I'm the developer who built you" -> episodic: "User is the developer who built this app/gang"
   - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
   - If the user corrects a previous fact, store the correction with importance >= 2.
-  - When in doubt about USER facts, STORE IT. But never store what characters did or said.
+  - ONLY store meaningful, readable facts about the user. NEVER store gibberish, random characters, keyboard mashing, test strings, or content that isn't a coherent statement. If the user sends nonsense, there is nothing to remember — skip memory entirely.
   - DEDUPLICATION: Do NOT store memories like "user mentioned X multiple times" or "user reiterated Y". Store the FACT itself once with appropriate importance, not meta-observations about how often they said it.
-  - QUALITY CHECK: Before storing, ask: "Is this a concrete fact about the user that would help a friend remember them?" If not, skip it.
+  - QUALITY CHECK: Before storing, ask: "Is this a concrete, readable fact about the user that would help a friend remember them?" If the answer isn't a clear yes, skip it. Do NOT store descriptions of what the user typed (e.g. "user sent random characters") — that is not a useful memory.
   - IMPORTANCE — ask "would a real friend remember this in two weeks?":
     1 = passing mention (what they had for lunch today)
     2 = explicitly stated fact worth remembering (their job, a hobby, a goal)

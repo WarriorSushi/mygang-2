@@ -1516,9 +1516,19 @@ ${sessionSummary}
                 }
 
                 if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
+                    // Filter out low-quality memories before storage
+                    const qualityMemories = object.memory_updates.episodic.filter((m) => {
+                        const content = m.content?.trim() || ''
+                        if (content.length < 10) return false
+                        // Require at least 2 real words (3+ letter sequences)
+                        const realWords = content.match(/[a-zA-Z\u00C0-\u024F]{3,}/g)
+                        if (!realWords || realWords.length < 2) return false
+                        return true
+                    })
+                    if (qualityMemories.length > 0) {
                     await storeMemories(
                         user.id,
-                        object.memory_updates.episodic.map((m) => ({
+                        qualityMemories.map((m) => ({
                             content: m.content,
                             kind: 'episodic' as const,
                             tags: m.tags || [],
@@ -1532,6 +1542,7 @@ ${sessionSummary}
                         tier
                     )
                     compactMemoriesIfNeeded(user.id, tier).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
+                    }
                 }
             }
 
