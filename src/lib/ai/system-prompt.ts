@@ -198,7 +198,8 @@ function buildMemoryRulesBlock(
   - BAD examples (NEVER store these): "Dash encouraged user's ambition", "Cleo was excited about user's goal", "Vee asked about industries" — these describe AI behavior, not user facts.
   - Store as concise, third-person facts. E.g. user says "I'm the developer who built you" -> episodic: "User is the developer who built this app/gang"
   - Store profile updates for stable identity facts: name, occupation, role, location. Use memory_updates.profile with key-value pairs.
-  - If the user corrects a previous fact, store the correction with importance >= 2.
+  - If the user corrects a previous fact, store the correction with importance >= 3 and the SAME category as the original fact. Use keywords from the original so it replaces it. E.g. if memory says "User's favorite color is blue" and user says "actually my favorite color is green", store: "User's favorite color is green" (importance 3, category: preference).
+  - RETRACTIONS: If the user says "I lied about X", "that was a joke", "actually X isn't true", store the negation with importance >= 3. E.g. "User does NOT have a job interview at Google" (importance 3, same category as original).
   - When in doubt about USER facts, STORE IT. But never store what characters did or said.
   - DEDUPLICATION: Do NOT store memories like "user mentioned X multiple times" or "user reiterated Y". Store the fact itself once with the right importance.
   - QUALITY CHECK: Before storing, ask "Would this help a real friend remember the user better later?" If not, skip it.

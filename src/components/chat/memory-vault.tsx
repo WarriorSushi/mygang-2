@@ -13,6 +13,7 @@ interface Memory {
     id: string
     content: string
     created_at: string
+    category: string | null
 }
 
 interface MemoryVaultProps {
@@ -371,9 +372,16 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                                         </div>
                                                     ) : (
                                                         <div className="mt-3 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
-                                                            <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
-                                                                {new Date(memory.created_at).toLocaleDateString()}
-                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                {memory.category && (
+                                                                    <span className="text-[8px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary/70 border border-primary/20">
+                                                                        {memory.category.replace('_', ' ')}
+                                                                    </span>
+                                                                )}
+                                                                <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
+                                                                    {new Date(memory.created_at).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
                                                             <div className="flex items-center gap-1">
                                                                 <Button
                                                                     variant="ghost"

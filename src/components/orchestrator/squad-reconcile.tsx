@@ -32,15 +32,17 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
     if (!conflict) return null
 
     const { local, remote, localName, remoteName } = conflict
-    const hasGangConflict = local.length >= 2 && remote.length >= 2
+    const hasGangConflict = local.length !== remote.length || local.some((c, i) => remote[i]?.id !== c.id)
     const hasNameConflict = !!localName && !!remoteName && localName !== remoteName
 
     const handleUseLocal = async () => {
         setIsSaving(true)
         setErrorMessage(null)
         try {
-            if (hasGangConflict) {
+            if (hasGangConflict && local.length >= 2) {
                 await saveGang(local.map((c) => c.id))
+                setActiveGang(local)
+            } else if (hasGangConflict && local.length > 0) {
                 setActiveGang(local)
             }
             if (hasNameConflict && userId) {
@@ -68,8 +70,11 @@ export function SquadReconcile({ conflict, onResolve }: SquadReconcileProps) {
         setIsSaving(true)
         setErrorMessage(null)
         try {
-            if (hasGangConflict) {
+            if (hasGangConflict && remote.length >= 2) {
                 await saveGang(remote.map((c) => c.id))
+                setActiveGang(remote)
+            } else if (hasGangConflict && remote.length > 0) {
+                // Remote has members but fewer than 2 — just set local store without persisting
                 setActiveGang(remote)
             }
             if (hasNameConflict && userId) {

@@ -183,11 +183,22 @@ export async function storeMemories(
             category: m.category,
         }))
 
-        // Filter out duplicates
+        // Filter out duplicates (exact match within 10min OR high content similarity anytime)
         const nonDuplicates = normalized.filter(mem => {
-            return !existingNormalized.some(ex =>
+            // Exact recent duplicate
+            if (existingNormalized.some(ex =>
                 ex.recent && ex.kind === mem.kind && ex.content === mem.normalizedContent
-            )
+            )) return false
+            // Near-duplicate anytime: same category + high word overlap
+            if (mem.category && existingNormalized.some(ex => {
+                if (ex.kind === 'archived' || ex.category !== mem.category) return false
+                const newWords = new Set(mem.normalizedContent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2))
+                const exWords = ex.content.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2)
+                if (exWords.length === 0) return false
+                const shared = exWords.filter((w: string) => newWords.has(w)).length
+                return shared >= 2 && shared >= exWords.length * 0.6
+            })) return false
+            return true
         })
 
         if (!nonDuplicates.length) return
@@ -211,10 +222,10 @@ export async function storeMemories(
                                 toArchiveIds.push(ex.id)
                                 continue
                             }
-                            // High word overlap (3+ shared meaningful words)
+                            // High word overlap (2+ shared meaningful words)
                             const existingWords = ex.content.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2)
                             const shared = existingWords.filter((w: string) => newWords.has(w)).length
-                            if (shared >= 3 && shared >= existingWords.length * 0.5) {
+                            if (shared >= 2 && shared >= existingWords.length * 0.4) {
                                 toArchiveIds.push(ex.id)
                             }
                         }

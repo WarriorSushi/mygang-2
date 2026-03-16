@@ -101,17 +101,21 @@
 ### BUG 1: Squad shows 0 members after sync conflict resolution (HIGH)
 **Steps:** Open app with stale localStorage → Sync Conflict dialog appears → Click "Use Cloud Data" → Squad shows "0 gang members" and "0 online" → Sending a message fails with "Invalid gang selection"
 **Fix:** Page reload fixes it. The "Use Cloud Data" path in SquadReconcile doesn't properly populate the Zustand activeGang store.
+**FIXED:** `hasGangConflict` now detects any difference between local and remote (not just when both have >=2 members). `handleUseCloud`/`handleUseLocal` now always set the store, even when one side has <2 members. File: `src/components/orchestrator/squad-reconcile.tsx`
 
 ### BUG 2: Memory duplicates not compacted (MEDIUM)
 **Evidence:** 5 memories about the same event ("user sent random strings") with slightly different wording.
 **Expected:** Compaction should merge these into a single memory.
+**FIXED:** Added broad content-similarity dedup in `storeMemories` — checks word overlap (2+ shared words, 60%+ of existing) across all recent memories in the same category, not just within 10-minute window. File: `src/lib/ai/memory.ts`
 
 ### BUG 3: Memory not updated on contradiction (MEDIUM)
 **Evidence:** "User has a job interview at Google next Tuesday" persists after user explicitly said "I lied about the Google interview. I don't have one."
 **Expected:** Memory should be marked stale or removed when user contradicts it.
+**FIXED:** Two changes: (1) Lowered conflict resolution threshold from 3→2 shared words and 50%→40% overlap so "User has job interview at Google" vs "User does NOT have job interview at Google" archives the old one. (2) Added explicit retraction instructions to system prompt — LLM now told to store negations with importance >=3 and same category when user says "I lied" or "that's not true". Files: `src/lib/ai/memory.ts`, `src/lib/ai/system-prompt.ts`
 
 ### BUG 4: No category labels in Memory Vault UI (LOW)
 **Evidence:** Memory items show content + date + edit/delete buttons, but no category badge.
+**FIXED:** Added `category` to `getMemoriesPage` Supabase query, `Memory` interface, and rendered as a styled pill badge (e.g., "preference", "life event") next to the date. Files: `src/app/auth/actions.ts`, `src/components/chat/memory-vault.tsx`
 **Expected:** Show category (preference, life_event, topic, etc.) as a label/badge for user clarity.
 
 ---
