@@ -129,3 +129,24 @@ The "Add a Friend" modal in settings instantly added a character on tap — no v
 
 ### What Changed
 - `src/components/settings/settings-panel.tsx` — Added `selectedAddId` state, replaced instant-add onClick with toggle selection, added primary border + check badge for selected state, added bottom "Add [Name]" button.
+
+---
+
+## Task 008: Fix Lottie animations blocked by CSP
+- **Date:** 2026-03-16
+- **Commit:** `fix: add unsafe-eval to CSP for lottie-web animation support`
+
+### Problem
+All Lottie animations (confetti celebration, empty state welcome) were silently failing. The browser blocked lottie-web because it internally uses eval, and the CSP script-src directive only allowed 'self' and 'unsafe-inline'.
+
+### Decision
+- Add 'unsafe-eval' back to script-src in the CSP header. It was previously removed with an incorrect comment saying it wasn't needed.
+- Risk is low: all Lottie JSON files are first-party (/lottie/*.json), and no user-supplied code is evaluated.
+
+### Verified
+- Tested locally: eval works without CSP block.
+- /lottie/confetti.json fetches and parses correctly.
+- No console CSP errors.
+
+### What Changed
+- `next.config.ts` — Added 'unsafe-eval' to script-src in CSP header, updated comment.

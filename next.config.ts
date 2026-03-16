@@ -19,9 +19,9 @@ const nextConfig: NextConfig = {
       // unsafe-eval has been removed — it's not needed for production builds.
       // NOTE: Do NOT add 'strict-dynamic' — it overrides 'unsafe-inline' in modern browsers, breaking Next.js hydration.
       // TODO (MED-5): Remove 'unsafe-inline' from script-src once Next.js supports nonce-based CSP.
-      // Lottie animations only load JSON data and would not be affected, but Next.js hydration
-      // scripts break without 'unsafe-inline' unless nonce support is configured.
-      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://*.dodopayments.com; frame-src 'self' https://*.dodopayments.com; frame-ancestors 'none';" },
+      // Lottie-web requires unsafe-eval (uses eval internally for animation expressions).
+      // Risk is low — all Lottie JSON files are first-party, served from /lottie/*.json.
+      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://*.dodopayments.com; frame-src 'self' https://*.dodopayments.com; frame-ancestors 'none';" },
     ]
 
     if (process.env.NODE_ENV === "production") {
