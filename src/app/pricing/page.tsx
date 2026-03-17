@@ -10,9 +10,14 @@ import {
 } from 'lucide-react'
 import { useChatStore } from '@/stores/chat-store'
 import { createClient } from '@/lib/supabase/client'
+import { trackEvent } from '@/lib/analytics'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { m, AnimatePresence } from 'framer-motion'
 import { TIER_LIMITS, getTierCopy } from '@/lib/billing'
+
+// Launch promo: show "80% off" badge until this date
+const LAUNCH_PROMO_END = new Date('2026-06-01T00:00:00Z').getTime()
+const isLaunchPromoActive = () => Date.now() < LAUNCH_PROMO_END
 
 /* ══════════════════════════════════════════════════════
    TYPES & DATA
@@ -164,6 +169,11 @@ export default function PricingPage() {
 
   // Init DodoPayments SDK
   useEffect(() => {
+    trackEvent('pricing_page_view', { metadata: { tier: currentTier } })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     const init = async () => {
       try {
@@ -189,6 +199,7 @@ export default function PricingPage() {
       return
     }
     setLoadingPlan(plan)
+    trackEvent('checkout_started', { metadata: { plan, current_tier: currentTier } })
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
@@ -259,10 +270,12 @@ export default function PricingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
+            {isLaunchPromoActive() && (
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
               <span className="text-xs font-bold uppercase tracking-widest text-primary">Launch pricing — save 80%</span>
             </div>
+            )}
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] max-w-3xl mx-auto">
               Choose your
@@ -422,9 +435,11 @@ export default function PricingPage() {
               </div>
               <div className="flex items-center gap-3 mt-2">
                 <span className="text-sm text-muted-foreground/60" style={{ textDecoration: 'line-through', textDecorationColor: '#f87171', textDecorationThickness: '2px' }}>$99/mo</span>
+                {isLaunchPromoActive() && (
                 <span className="px-2.5 py-0.5 rounded-md bg-red-500/15 text-red-400 text-xs font-bold uppercase tracking-wider border border-red-500/25">
                   Save 80%
                 </span>
+                )}
               </div>
               <p className="text-sm text-muted-foreground mt-2 mb-8">Early adopter launch price</p>
 

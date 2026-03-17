@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sun, Moon, Brain, Settings2, Info, RefreshCw, Crown, Zap, Globe } from 'lucide-react'
 import { Character, useChatStore } from '@/stores/chat-store'
+import { useShallow } from 'zustand/react/shallow'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
 import Image from 'next/image'
@@ -92,9 +93,11 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const avatarTriggerRef = useRef<HTMLButtonElement | null>(null)
     const lightboxRef = useRef<HTMLDivElement>(null)
 
-    const newMemoryCount = useChatStore((s) => s.newMemoryCount)
-    const totalMemoryCount = useChatStore((s) => s.totalMemoryCount)
-    const showUpgradeTour = useChatStore((s) => s.showUpgradeTour)
+    const { newMemoryCount, totalMemoryCount, showUpgradeTour } = useChatStore(useShallow((s) => ({
+        newMemoryCount: s.newMemoryCount,
+        totalMemoryCount: s.totalMemoryCount,
+        showUpgradeTour: s.showUpgradeTour,
+    })))
     const isFreeUser = subscriptionTier === 'free'
     // Free tier: show total (never clears, acts as upgrade nudge)
     // Paid tier: show new unseen (clears on vault open)

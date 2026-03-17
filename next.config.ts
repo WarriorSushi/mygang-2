@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   poweredByHeader: false,
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion', 'lottie-react'],
+    optimizePackageImports: ['lucide-react', 'framer-motion', 'lottie-react', 'radix-ui'],
   },
   images: {
     formats: ['image/avif', 'image/webp'],

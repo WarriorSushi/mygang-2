@@ -24,6 +24,10 @@ interface SettingsPanelProps {
     }
 }
 
+// Launch promo: show "80% off" badge until this date (set to null to disable permanently)
+const LAUNCH_PROMO_END = new Date('2026-06-01T00:00:00Z').getTime()
+const isLaunchPromoActive = () => LAUNCH_PROMO_END !== null && Date.now() < LAUNCH_PROMO_END
+
 function UpgradeCard({ tier }: { tier: string | null }) {
     const normalizedTier = getTierFromProfile(tier)
     const isPro = normalizedTier === 'pro'
@@ -99,7 +103,7 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-accent" />
                     </span>
-                    80% off — launch week
+                    {isLaunchPromoActive() ? '80% off — launch week' : 'Upgrade available'}
                 </div>
 
                 <h3 className="text-xl font-black tracking-tight">

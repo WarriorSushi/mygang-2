@@ -7,6 +7,7 @@ import { getCharactersForAvatarStyle } from '@/constants/characters'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { useChatStore } from '@/stores/chat-store'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { getSquadLimit } from '@/lib/billing'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { trackOperationalError } from '@/lib/operational-telemetry'
 import { cn } from '@/lib/utils'
@@ -144,12 +145,15 @@ function OnboardingPage() {
         }
     }, [isRetake, step])
 
+    const subscriptionTier = useChatStore((s) => s.subscriptionTier)
+    const squadLimit = getSquadLimit(subscriptionTier ?? 'free')
+
     const toggleCharacter = (id: string) => {
         setSelectedIds((previous) => {
             if (previous.includes(id)) {
                 return previous.filter((characterId) => characterId !== id)
             }
-            if (previous.length >= 4) {
+            if (previous.length >= squadLimit) {
                 return [...previous.slice(1), id]
             }
             return [...previous, id]
@@ -317,6 +321,7 @@ function OnboardingPage() {
                             selectedIds={selectedIds}
                             toggleCharacter={toggleCharacter}
                             onNext={handleSelectionDone}
+                            maxMembers={squadLimit}
                             recommendedIds={recommendedIds}
                         />
                     )}

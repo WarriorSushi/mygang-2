@@ -252,6 +252,8 @@ export const POST = Webhooks({
         // Set celebration flag so AI friends congratulate user on next chat
         await updatePurchaseCelebration(userId, plan as 'basic' | 'pro')
 
+        console.log(`[analytics] checkout_completed: user=${userId}, plan=${plan}, subscription=${subscriptionId}`)
+
         // Backfill embeddings for memories stored during free tier (background)
         waitUntil(backfillMemoryEmbeddings(userId, getAdminClient()).catch(err =>
             console.error('[webhook] Memory backfill error (non-fatal):', err)
@@ -451,6 +453,8 @@ export const POST = Webhooks({
         if (!isNew) return
 
         const newTier = productId === process.env.DODO_PRODUCT_PRO ? 'pro' : productId === process.env.DODO_PRODUCT_BASIC ? 'basic' : 'free'
+
+        console.log(`[analytics] subscription_changed: user=${userId}, new_tier=${newTier}, subscription=${subscriptionId}`)
 
         await getAdminClient().from('profiles').update({
             subscription_tier: newTier,
