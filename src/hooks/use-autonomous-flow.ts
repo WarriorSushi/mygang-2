@@ -108,7 +108,7 @@ export function useAutonomousFlow({
         if (idleAutoCountRef.current >= 1) return
 
         clearIdleAutonomousTimer()
-        const delay = 10_000
+        const delay = 45_000
         idleAutonomousTimerRef.current = setTimeout(() => {
             const currentMessages = useChatStore.getState().messages
             const lastMessage = currentMessages[currentMessages.length - 1]
@@ -201,6 +201,7 @@ export function useAutonomousFlow({
             return
         }
         resumeAutonomousTriggeredRef.current = true
+        clearIdleAutonomousTimer()
         const timer = setTimeout(() => {
             if (isGeneratingRef.current || pendingUserMessagesRef.current) return
             if (totalAutoCallsRef.current >= MAX_SESSION_AUTO_CALLS) return
