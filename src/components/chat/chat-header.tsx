@@ -1,6 +1,5 @@
 'use client'
 
-import { createPortal } from 'react-dom'
 import { memo, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -9,13 +8,9 @@ import { Character, useChatStore } from '@/stores/chat-store'
 import { useTheme } from 'next-themes'
 import { updateUserSettings } from '@/app/auth/actions'
 import Image from 'next/image'
-
-export interface TokenUsage {
-    promptChars: number
-    responseChars: number
-    historyCount: number
-    provider: string
-}
+import { truncateText } from '@/lib/utils'
+import type { TokenUsage } from '@/types/shared'
+import { AvatarLightbox } from './avatar-lightbox'
 
 interface ChatHeaderProps {
     activeGang: Character[]
@@ -38,9 +33,7 @@ function formatChars(n: number): string {
 
 function truncatePreviewText(value: string | undefined, maxChars: number) {
     if (!value) return ''
-    const normalized = value.replace(/\s+/g, ' ').trim()
-    if (normalized.length <= maxChars) return normalized
-    return `${normalized.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`
+    return truncateText(value, maxChars).replace(/\u2026$/, '...')
 }
 
 function DevTokenIndicator({ usage }: { usage: TokenUsage }) {
@@ -90,7 +83,6 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const capacityInfoRef = useRef<HTMLDivElement>(null)
     const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const avatarTriggerRef = useRef<HTMLButtonElement | null>(null)
-    const lightboxRef = useRef<HTMLDivElement>(null)
 
     const newMemoryCount = useChatStore((s) => s.newMemoryCount)
     const totalMemoryCount = useChatStore((s) => s.totalMemoryCount)
@@ -155,27 +147,6 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
             }
         }
     }, [])
-
-    useEffect(() => {
-        if (!expandedAvatar || !lightboxRef.current) return
-
-        const previousActiveElement = document.activeElement as HTMLElement | null
-        const focusable = lightboxRef.current.querySelectorAll<HTMLElement>('button, [tabindex="0"]')
-        const firstFocusable = focusable[0]
-        firstFocusable?.focus()
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                setExpandedAvatar(null)
-            }
-        }
-
-        document.addEventListener('keydown', handleKeyDown)
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown)
-            ;(avatarTriggerRef.current ?? previousActiveElement)?.focus?.()
-        }
-    }, [expandedAvatar])
 
     const cancelAvatarHoverClose = () => {
         if (hoverCloseTimerRef.current) {
@@ -522,54 +493,12 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                 )}
             </div>
 
-            {expandedAvatar?.avatar && createPortal(
-                <div
-                    ref={lightboxRef}
-                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm"
-                    onClick={() => setExpandedAvatar(null)}
-                    tabIndex={-1}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label={`${expandedAvatar.name}'s avatar`}
-                >
-                    <div
-                        className="relative flex max-w-[26rem] flex-col items-center gap-3 rounded-[1.75rem] border border-white/10 bg-background/92 p-5 text-center shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <div
-                            className="relative h-72 w-72 overflow-hidden rounded-[1.4rem] shadow-2xl"
-                            style={{ outline: `2px solid ${expandedAvatar.color || '#555'}`, outlineOffset: '2px' }}
-                        >
-                            <Image
-                                src={expandedAvatar.avatar}
-                                alt={expandedAvatar.name}
-                                fill
-                                className="object-cover"
-                                sizes="288px"
-                                priority
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-lg font-semibold text-foreground">{expandedAvatar.name}</p>
-                            {(expandedAvatar.roleLabel || expandedAvatar.archetype) && (
-                                <p className="text-sm text-muted-foreground">
-                                    {expandedAvatar.roleLabel || expandedAvatar.archetype}
-                                </p>
-                            )}
-                            {expandedAvatar.vibe && (
-                                <p className="text-sm text-foreground/80">{expandedAvatar.vibe}</p>
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setExpandedAvatar(null)}
-                            className="mt-1 rounded-full bg-white/8 px-4 py-1.5 text-xs text-foreground/80 transition-colors hover:bg-white/14"
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>,
-                document.body
+            {expandedAvatar?.avatar && (
+                <AvatarLightbox
+                    character={expandedAvatar}
+                    onClose={() => setExpandedAvatar(null)}
+                    triggerRef={avatarTriggerRef}
+                />
             )}
         </header>
     )

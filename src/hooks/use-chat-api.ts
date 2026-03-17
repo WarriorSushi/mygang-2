@@ -6,6 +6,7 @@ import { normalizeActivityStatus } from '@/constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { getContextLimit, getTierFromProfile } from '@/lib/billing'
 import { hasOpenFloorIntent } from '@/lib/chat-utils'
+import type { TokenUsage } from '@/types/shared'
 
 /** Only live-chat messages (source='chat' or legacy/undefined) enter the payload window. */
 export function isLiveChatMessage(m: { source?: string }): boolean {
@@ -26,13 +27,6 @@ type ChatEvent =
     | { type: 'status_update'; character: string; content?: string; delay: number }
     | { type: 'nickname_update'; character: string; content?: string; delay: number }
     | { type: 'typing_ghost'; character: string; content?: string; delay: number }
-
-type TokenUsage = {
-    promptChars: number
-    responseChars: number
-    historyCount: number
-    provider: string
-}
 
 type ChatApiResponse = {
     events: ChatEvent[]

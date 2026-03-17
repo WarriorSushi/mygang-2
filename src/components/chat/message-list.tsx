@@ -137,10 +137,10 @@ function normalizeSpeaker(value: string) {
     return value.toLowerCase().trim()
 }
 
+import { normalizeSource } from '@/lib/utils'
+
 /** Normalize source to 'chat' for legacy/missing rows (mirrors use-chat-history). */
-function normalizeMessageSource(source?: string): string {
-    return source || 'chat'
-}
+const normalizeMessageSource = normalizeSource
 
 /** True when two adjacent messages belong to the same speaker+source group. */
 function isSameGroup(a: Message, b: Message): boolean {
