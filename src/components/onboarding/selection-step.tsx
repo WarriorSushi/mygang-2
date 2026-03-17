@@ -1,6 +1,6 @@
 'use client'
 
-import { type KeyboardEvent, useState } from 'react'
+import { type KeyboardEvent, useState, useEffect, useRef } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import type { CharacterCatalogEntry } from '@/constants/characters'
@@ -24,6 +24,43 @@ function CharacterModal({
     character: CharacterCatalogEntry
     onClose: () => void
 }) {
+    const modalRef = useRef<HTMLDivElement>(null)
+    const previousFocusRef = useRef<HTMLElement | null>(null)
+
+    // Capture previous focus, handle Escape, focus trap, restore on close
+    useEffect(() => {
+        previousFocusRef.current = document.activeElement as HTMLElement | null
+        const el = modalRef.current
+        if (!el) return
+
+        // Focus first focusable element
+        const rafId = requestAnimationFrame(() => {
+            const focusable = el.querySelectorAll<HTMLElement>('button, [href], input, [tabindex]:not([tabindex="-1"])')
+            if (focusable.length > 0) focusable[0].focus()
+        })
+
+        const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+            if (e.key === 'Escape') { onClose(); return }
+            if (e.key !== 'Tab') return
+            const focusable = el.querySelectorAll<HTMLElement>('button, [href], input, [tabindex]:not([tabindex="-1"])')
+            if (focusable.length === 0) return
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+            if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last.focus() }
+            } else {
+                if (document.activeElement === last) { e.preventDefault(); first.focus() }
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown)
+        return () => {
+            cancelAnimationFrame(rafId)
+            document.removeEventListener('keydown', handleKeyDown)
+            previousFocusRef.current?.focus()
+        }
+    }, [onClose])
+
     return (
         <m.div
             initial={{ opacity: 0 }}
@@ -32,15 +69,19 @@ function CharacterModal({
             transition={{ duration: 0.15 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${character.name} details`}
         >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <m.div
+                ref={modalRef}
                 initial={{ opacity: 0, scale: 0.92, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.92, y: 16 }}
                 transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative z-10 w-full max-w-sm max-h-[80dvh] overflow-y-auto rounded-2xl border border-border/50 bg-card shadow-2xl"
+                className="relative z-10 w-full max-w-sm max-h-[80dvh] overflow-y-auto rounded-[2rem] border border-border/50 bg-card shadow-2xl"
             >
                 {/* Hero image */}
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl">
@@ -265,12 +306,7 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
 
             {/* Bottom bar */}
             <div
-                className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] dark:border-white/[0.06]"
-                style={{
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.12) 100%)',
-                    backdropFilter: 'blur(24px) saturate(1.6)',
-                    WebkitBackdropFilter: 'blur(24px) saturate(1.6)',
-                }}
+                className="fixed inset-x-0 bottom-0 z-40 border-t border-border/40 bg-card/90 backdrop-blur-xl"
             >
                 <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -302,11 +338,11 @@ export function SelectionStep({ characters, selectedIds, toggleCharacter, onNext
                                 </button>
                             ))}
                             {selectedIds.length === 0 && (
-                                <span className="text-[11px] text-white/40 pl-1">Pick 2–{maxMembers}</span>
+                                <span className="text-[11px] text-muted-foreground pl-1">Pick 2–{maxMembers}</span>
                             )}
                         </div>
                         {selectedIds.length > 0 && selectedIds.length < 2 && (
-                            <span className="text-[9px] text-white/40 ml-1.5">
+                            <span className="text-[9px] text-muted-foreground ml-1.5">
                                 {2 - selectedIds.length} more
                             </span>
                         )}

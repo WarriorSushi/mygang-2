@@ -770,8 +770,8 @@ function DemoCarousel({ threads }: { threads: DemoThread[] }) {
     <div
       className="max-w-2xl mx-auto"
       onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft') goPrev()
-        if (e.key === 'ArrowRight') goNext()
+        if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev() }
+        if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
       }}
       tabIndex={0}
       role="region"

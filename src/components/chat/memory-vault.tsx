@@ -34,6 +34,8 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+    const [savingId, setSavingId] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
     const drawerRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLElement | null>(null)
 
@@ -143,6 +145,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         const id = pendingDeleteId
         const original = memories.find(m => m.id === id)
         setPendingDeleteId(null)
+        setIsDeleting(true)
         // Optimistic delete
         setMemories(prev => prev.filter(m => m.id !== id))
         try {
@@ -154,6 +157,8 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                 ))
             }
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -166,6 +171,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         if (!editContent.trim()) return
         const previousContent = memories.find(m => m.id === id)?.content
         setEditingId(null)
+        setSavingId(id)
         // Optimistic update
         setMemories(prev => prev.map(m => m.id === id ? { ...m, content: editContent } : m))
         try {
@@ -175,6 +181,8 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
             if (previousContent !== undefined) {
                 setMemories(prev => prev.map(m => m.id === id ? { ...m, content: previousContent } : m))
             }
+        } finally {
+            setSavingId(null)
         }
     }
 
@@ -359,13 +367,22 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <p className="text-sm leading-relaxed pr-8">{memory.content}</p>
+                                                    <div className="relative">
+                                                        <p className="text-sm leading-relaxed pr-8">{memory.content}</p>
+                                                        {savingId === memory.id && (
+                                                            <span className="absolute top-0 right-0 flex items-center gap-1 text-[10px] text-muted-foreground">
+                                                                <Loader2 className="w-3 h-3 animate-spin" /> Saving
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {pendingDeleteId === memory.id ? (
                                                         <div className="mt-3 flex items-center justify-between">
                                                             <span className="text-xs text-destructive font-medium">Delete this memory?</span>
                                                             <div className="flex items-center gap-1.5">
                                                                 <Button variant="ghost" size="sm" onClick={() => setPendingDeleteId(null)} className="text-xs h-7 px-2">Cancel</Button>
-                                                                <Button variant="destructive" size="sm" onClick={handleDeleteConfirm} className="text-xs h-7 px-2">Delete</Button>
+                                                                <Button variant="destructive" size="sm" onClick={handleDeleteConfirm} disabled={isDeleting} className="text-xs h-7 px-2">
+                                                                    {isDeleting ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />Deleting</> : 'Delete'}
+                                                                </Button>
                                                             </div>
                                                         </div>
                                                     ) : (

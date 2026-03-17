@@ -108,7 +108,7 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
             <DialogContent className="sm:max-w-md bg-background/60 backdrop-blur-3xl border-border/50 shadow-2xl p-0 overflow-hidden rounded-[2rem]">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-accent to-primary animate-gradient" />
 
-                <div className="p-8">
+                <div className="p-8 max-h-[90dvh] overflow-y-auto">
                     <DialogHeader className="flex flex-col items-center gap-4 pb-4">
                         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                             <Clock className="w-6 h-6 text-primary" />
