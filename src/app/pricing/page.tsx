@@ -37,7 +37,7 @@ const features: Feature[] = [
   { text: 'Messages', free: getTierCopy('free').comparisonMessagesLabel, basic: getTierCopy('basic').comparisonMessagesLabel, pro: getTierCopy('pro').comparisonMessagesLabel },
   { text: 'Chat memory', free: getTierCopy('free').memoryLabel, basic: getTierCopy('basic').memoryLabel, pro: getTierCopy('pro').memoryLabel },
   { text: 'Cooldowns', free: getTierCopy('free').cooldownLabel, basic: getTierCopy('basic').cooldownLabel, pro: getTierCopy('pro').cooldownLabel },
-  { text: 'Priority response speed', free: false, basic: false, pro: true },
+  { text: 'Extended responses', free: false, basic: false, pro: true },
   { text: 'Ecosystem chat mode', free: false, basic: true, pro: true },
   { text: 'Chat wallpapers', free: false, basic: true, pro: true },
   { text: 'Custom character nicknames', free: false, basic: true, pro: true },
@@ -448,7 +448,7 @@ export default function PricingPage() {
                   { text: `Up to ${TIER_LIMITS.pro.squadLimit} gang members`, icon: Users, highlight: true },
                   { text: `${proCopy.messagesLabel} — no caps`, icon: Infinity, highlight: true },
                   { text: proCopy.memoryLabel, icon: Brain, highlight: true },
-                  { text: 'Priority response speed', icon: Gauge, highlight: true },
+                  { text: 'Extended responses', icon: Gauge, highlight: true },
                   { text: 'Pro badge in chat', icon: Crown },
                   { text: 'Early access to new features', icon: BellRing },
                   { text: 'Everything in Basic', icon: Layers },
@@ -686,7 +686,7 @@ export default function PricingPage() {
               Ready to unlock the full experience?
             </h2>
             <p className="text-lg text-muted-foreground mb-10 max-w-md mx-auto leading-relaxed">
-              Get unlimited messages, full memory, and priority speed. Your gang is waiting.
+              Get unlimited messages, full memory, and extended responses. Your gang is waiting.
             </p>
 
             {!isCurrentPlan('pro') && (

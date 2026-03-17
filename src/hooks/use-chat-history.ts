@@ -517,6 +517,12 @@ export function useChatHistory({
         }
     }, [hasMoreHistory, historyCursor, isBootstrappingHistory, isLoadingOlderHistory, setMessages, userId])
 
+    const retryBootstrap = useCallback(() => {
+        if (historyStatus !== 'error') return
+        setHistoryBootstrapDone(false)
+        setHistoryStatus('unknown')
+    }, [historyStatus])
+
     return {
         historyStatus,
         hasMoreHistory,
@@ -525,5 +531,6 @@ export function useChatHistory({
         loadOlderHistory,
         syncLatestHistory,
         historyBootstrapDone,
+        retryBootstrap,
     }
 }

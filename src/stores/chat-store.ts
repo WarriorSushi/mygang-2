@@ -44,7 +44,7 @@ interface ChatState {
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
     chatMode: 'gang_focus' | 'ecosystem'
-    lowCostMode: boolean
+    lowCostMode: boolean // User-settable via settings + auto-managed by useCapacityManager
     chatWallpaper: ChatWallpaper
     showPersonaRoles: boolean
     customCharacterNames: Record<string, string>

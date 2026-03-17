@@ -204,7 +204,7 @@ export default function ChatPage() {
     // Show toast on history sync failure
     useEffect(() => {
         if (history.historyStatus === 'error') {
-            setToastMessage('Could not load chat history. Try refreshing.')
+            setToastMessage('Could not load chat history.')
         }
     }, [history.historyStatus])
 
@@ -560,9 +560,16 @@ export default function ChatPage() {
                 </div>
             </div>
 
-            <InlineToast message={toastMessage} onClose={() => setToastMessage(null)} />
+            <InlineToast
+                message={toastMessage}
+                onClose={() => setToastMessage(null)}
+                action={history.historyStatus === 'error' ? { label: 'Retry', onClick: () => { setToastMessage(null); history.retryBootstrap() } } : undefined}
+            />
 
-            <MemoryVault isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} tier={subscriptionTier} />
+            <ErrorBoundary>
+                <MemoryVault isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} tier={subscriptionTier} />
+            </ErrorBoundary>
+            <ErrorBoundary>
             <ChatSettings
                 isOpen={isSettingsOpen}
                 onClose={() => {
@@ -572,6 +579,7 @@ export default function ChatPage() {
                 onTakeScreenshot={takeScreenshot}
                 initialPanel={settingsPanelTarget}
             />
+            </ErrorBoundary>
             <SquadReconcile
                 conflict={squadConflict}
                 onResolve={() => setSquadConflict(null)}

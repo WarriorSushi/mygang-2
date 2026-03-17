@@ -10,8 +10,9 @@ import { deleteAccount, deleteAllMessages, deleteAllMemories, resetOnboarding, s
 import { trackEvent } from '@/lib/analytics'
 import { getMessagesPerWindow, getTierCopy, getTierFromProfile } from '@/lib/billing'
 import { useChatStore } from '@/stores/chat-store'
-import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw, Sparkles, Globe, Palette, PenLine, X, Bell, BellOff } from 'lucide-react'
+import { Crown, Zap, Brain, Infinity, ArrowRight, Check, Trash2, AlertTriangle, BarChart3, RotateCcw, Sparkles, Globe, Palette, PenLine, X, Bell, BellOff, Mail, Lock } from 'lucide-react'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
+import { createClient } from '@/lib/supabase/client'
 
 interface SettingsPanelProps {
     username: string | null
@@ -268,10 +269,67 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
     const [isResetting, setIsResetting] = useState(false)
     const [freshMsg, setFreshMsg] = useState<string | null>(null)
 
+    // Change Email state
+    const [showEmailForm, setShowEmailForm] = useState(false)
+    const [newEmail, setNewEmail] = useState('')
+    const [emailLoading, setEmailLoading] = useState(false)
+    const [emailMsg, setEmailMsg] = useState<{ text: string; ok: boolean } | null>(null)
+
+    // Change Password state
+    const [showPasswordForm, setShowPasswordForm] = useState(false)
+    const [newPassword, setNewPassword] = useState('')
+    const [passwordLoading, setPasswordLoading] = useState(false)
+    const [passwordMsg, setPasswordMsg] = useState<{ text: string; ok: boolean } | null>(null)
+
     const handleTheme = (nextTheme: 'light' | 'dark') => {
         setThemeChoice(nextTheme)
         setTheme(nextTheme)
         import('@/app/auth/actions').then(m => m.updateUserSettings({ theme: nextTheme }))
+    }
+
+    const handleChangeEmail = async () => {
+        if (!newEmail.trim()) return
+        setEmailLoading(true)
+        setEmailMsg(null)
+        try {
+            const supabase = createClient()
+            const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
+            if (error) {
+                setEmailMsg({ text: error.message, ok: false })
+            } else {
+                setEmailMsg({ text: 'Confirmation email sent. Check your inbox.', ok: true })
+                trackEvent('email_change_requested', { metadata: { source: 'settings_page' } })
+                setNewEmail('')
+            }
+        } catch {
+            setEmailMsg({ text: 'Something went wrong.', ok: false })
+        } finally {
+            setEmailLoading(false)
+        }
+    }
+
+    const handleChangePassword = async () => {
+        if (!newPassword.trim() || newPassword.length < 6) {
+            setPasswordMsg({ text: 'Password must be at least 6 characters.', ok: false })
+            return
+        }
+        setPasswordLoading(true)
+        setPasswordMsg(null)
+        try {
+            const supabase = createClient()
+            const { error } = await supabase.auth.updateUser({ password: newPassword })
+            if (error) {
+                setPasswordMsg({ text: error.message, ok: false })
+            } else {
+                setPasswordMsg({ text: 'Password updated successfully.', ok: true })
+                trackEvent('password_changed', { metadata: { source: 'settings_page' } })
+                setNewPassword('')
+            }
+        } catch {
+            setPasswordMsg({ text: 'Something went wrong.', ok: false })
+        } finally {
+            setPasswordLoading(false)
+        }
     }
 
     const handleDeleteAllChat = async () => {
@@ -418,6 +476,126 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
                     >
                         Light
                     </Button>
+                </div>
+            </section>
+
+            {/* Account Settings */}
+            <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Account Settings</div>
+                <div className="mt-4 flex flex-col gap-4">
+                    {/* Change Email */}
+                    <div>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <div className="text-sm font-semibold">Change Email</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                    A confirmation will be sent to your new email.
+                                </div>
+                            </div>
+                            {!showEmailForm && (
+                                <Button
+                                    variant="outline"
+                                    className="rounded-full text-[10px] uppercase tracking-widest shrink-0"
+                                    onClick={() => { setShowEmailForm(true); setEmailMsg(null) }}
+                                >
+                                    <Mail className="w-3 h-3 mr-1" />
+                                    Change Email
+                                </Button>
+                            )}
+                        </div>
+                        {showEmailForm && (
+                            <div className="mt-3 space-y-2">
+                                <input
+                                    type="email"
+                                    value={newEmail}
+                                    onChange={(e) => setNewEmail(e.target.value)}
+                                    placeholder="New email address"
+                                    aria-label="New email address"
+                                    className="h-10 w-full rounded-xl border border-border/50 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary"
+                                    autoComplete="email"
+                                />
+                                {emailMsg && (
+                                    <p className={`text-[11px] font-medium ${emailMsg.ok ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                                        {emailMsg.text}
+                                    </p>
+                                )}
+                                <div className="flex gap-2">
+                                    <Button
+                                        className="rounded-full text-[10px] uppercase tracking-widest"
+                                        disabled={emailLoading || !newEmail.trim()}
+                                        onClick={handleChangeEmail}
+                                    >
+                                        {emailLoading ? 'Sending...' : 'Confirm'}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="rounded-full text-[10px] uppercase tracking-widest"
+                                        onClick={() => { setShowEmailForm(false); setNewEmail(''); setEmailMsg(null) }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="h-px bg-border/40" />
+
+                    {/* Change Password */}
+                    <div>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <div className="text-sm font-semibold">Change Password</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                    Must be at least 6 characters.
+                                </div>
+                            </div>
+                            {!showPasswordForm && (
+                                <Button
+                                    variant="outline"
+                                    className="rounded-full text-[10px] uppercase tracking-widest shrink-0"
+                                    onClick={() => { setShowPasswordForm(true); setPasswordMsg(null) }}
+                                >
+                                    <Lock className="w-3 h-3 mr-1" />
+                                    Change Password
+                                </Button>
+                            )}
+                        </div>
+                        {showPasswordForm && (
+                            <div className="mt-3 space-y-2">
+                                <input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="New password"
+                                    aria-label="New password"
+                                    className="h-10 w-full rounded-xl border border-border/50 bg-background/70 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary"
+                                    autoComplete="new-password"
+                                />
+                                {passwordMsg && (
+                                    <p className={`text-[11px] font-medium ${passwordMsg.ok ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                                        {passwordMsg.text}
+                                    </p>
+                                )}
+                                <div className="flex gap-2">
+                                    <Button
+                                        className="rounded-full text-[10px] uppercase tracking-widest"
+                                        disabled={passwordLoading || !newPassword.trim()}
+                                        onClick={handleChangePassword}
+                                    >
+                                        {passwordLoading ? 'Updating...' : 'Update Password'}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="rounded-full text-[10px] uppercase tracking-widest"
+                                        onClick={() => { setShowPasswordForm(false); setNewPassword(''); setPasswordMsg(null) }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </section>
 

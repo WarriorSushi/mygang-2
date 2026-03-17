@@ -228,6 +228,10 @@ export function useAutonomousFlow({
             isMountedRef.current = false
             greetingTimersRef.current.forEach(clearTimeout)
             greetingTimersRef.current = []
+            if (idleAutonomousTimerRef.current) {
+                clearTimeout(idleAutonomousTimerRef.current)
+                idleAutonomousTimerRef.current = null
+            }
         }
     }, [])
 

@@ -5,8 +5,9 @@ import { createPortal } from 'react-dom'
 import { Character, Message } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Heart, Reply } from 'lucide-react'
+import { Heart, Reply, Flag } from 'lucide-react'
 import Image from 'next/image'
+import { trackEvent } from '@/lib/analytics'
 
 // ── Avatar with fallback ──
 
@@ -204,6 +205,7 @@ function MessageItemComponent({
     const isUser = message.speaker === 'user'
     const isReaction = !!message.reaction
     const [liked, setLiked] = useState(false)
+    const [reported, setReported] = useState(false)
     const [showAvatar, setShowAvatar] = useState(false)
     const avatarTriggerRef = useRef<HTMLElement | null>(null)
     const lightboxRef = useRef<HTMLDivElement>(null)
@@ -417,6 +419,26 @@ function MessageItemComponent({
                         >
                             <Reply className="w-3 h-3" />
                         </button>
+                        {!isUser && (
+                            <button
+                                type="button"
+                                aria-label={reported ? 'Message reported' : 'Report message'}
+                                className={cn(
+                                    "p-2 -m-1.5 transition-colors",
+                                    reported
+                                        ? "text-amber-500/80"
+                                        : "text-muted-foreground/50 dark:text-muted-foreground/35 hover:text-muted-foreground/70 dark:hover:text-muted-foreground/50 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                )}
+                                disabled={reported}
+                                onClick={() => {
+                                    if (reported) return
+                                    setReported(true)
+                                    trackEvent('message_reported', { metadata: { messageId: message.id } })
+                                }}
+                            >
+                                <Flag className="w-3 h-3" />
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
