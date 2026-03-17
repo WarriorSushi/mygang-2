@@ -1,6 +1,6 @@
 'use client'
 
-export default function AboutError({ reset }: { error: Error; reset: () => void }) {
+export default function AdminError({ reset }: { error: Error; reset: () => void }) {
     return (
         <div className="flex min-h-dvh items-center justify-center bg-background">
             <div className="text-center space-y-4 px-6">

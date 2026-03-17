@@ -53,7 +53,7 @@ export function CookieConsent() {
                     ref={buttonRef}
                     type="button"
                     onClick={accept}
-                    className="shrink-0 rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="shrink-0 rounded-lg bg-primary px-4 py-1.5 min-h-[44px] text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
                     Got it
                 </button>

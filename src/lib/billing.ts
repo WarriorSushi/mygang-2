@@ -81,11 +81,3 @@ export function getContextLimit(tier: SubscriptionTier): number {
 export function getMessagesPerWindow(tier: SubscriptionTier): number | null {
   return TIER_LIMITS[tier].messagesPerWindow
 }
-
-function getTierUsageHeading(tier: SubscriptionTier): string {
-  return TIER_COPY[tier].usageHeading
-}
-
-function getTierMessagesLabel(tier: SubscriptionTier): string {
-  return TIER_COPY[tier].messagesLabel
-}

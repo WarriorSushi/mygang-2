@@ -5,6 +5,7 @@ import type { ChatWallpaper } from '@/constants/wallpapers'
 import type { Database } from '@/lib/database.types'
 import { normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
+import type { SubscriptionTier } from '@/lib/billing'
 
 export type JourneyProfile = {
     username: string | null
@@ -15,7 +16,7 @@ export type JourneyProfile = {
     preferred_squad: string[] | null
     onboarding_completed: boolean | null
     custom_character_names: Record<string, string> | null
-    subscription_tier: 'free' | 'basic' | 'pro' | null
+    subscription_tier: SubscriptionTier | null
     pending_squad_downgrade: boolean | null
     restored_members_pending: string[] | null
     vibe_profile: Record<string, string> | null

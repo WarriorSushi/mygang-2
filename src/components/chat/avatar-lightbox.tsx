@@ -82,7 +82,7 @@ export function AvatarLightbox({ character, onClose, triggerRef }: AvatarLightbo
                 <button
                     type="button"
                     onClick={onClose}
-                    className="mt-1 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 text-xs transition-colors"
+                    className="mt-1 px-4 py-1.5 min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 text-white/80 text-xs transition-colors"
                 >
                     Close
                 </button>

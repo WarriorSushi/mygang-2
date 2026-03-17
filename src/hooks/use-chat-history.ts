@@ -6,8 +6,6 @@ import { getChatHistoryPage } from '@/app/auth/actions'
 import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
 import { normalizeSource } from '@/lib/utils'
 
-export { normalizeSource }
-
 // ── Pure helpers ──
 
 function normalizeMessageContent(content: string) {
@@ -98,7 +96,7 @@ function shouldPreserveLocalMessage(localMessage: Message, latestRemoteTimestamp
     return localTimestamp >= latestRemoteTimestamp - 5000
 }
 
-export function collapseLikelyDuplicateMessages(messages: Message[]) {
+function collapseLikelyDuplicateMessages(messages: Message[]) {
     if (messages.length <= 1) return messages
 
     const uniqueById: Message[] = []

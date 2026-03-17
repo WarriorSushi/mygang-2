@@ -10,6 +10,7 @@ import { updateUserSettings } from '@/app/auth/actions'
 import Image from 'next/image'
 import { truncateText } from '@/lib/utils'
 import type { TokenUsage } from '@/types/shared'
+import type { SubscriptionTier } from '@/lib/billing'
 import { AvatarLightbox } from './avatar-lightbox'
 
 interface ChatHeaderProps {
@@ -21,7 +22,7 @@ interface ChatHeaderProps {
     memoryActive?: boolean
     autoLowCostActive?: boolean
     tokenUsage?: TokenUsage | null
-    subscriptionTier?: 'free' | 'basic' | 'pro'
+    subscriptionTier?: SubscriptionTier
     chatMode?: 'gang_focus' | 'ecosystem'
 }
 
@@ -345,7 +346,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                                     key={char.id}
                                     type="button"
                                     aria-label={`Preview ${char.name}`}
-                                    className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                                    className="relative rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                                     onClick={() => { if (char.avatar) setExpandedAvatar(char) }}
                                 >
                                 <Avatar

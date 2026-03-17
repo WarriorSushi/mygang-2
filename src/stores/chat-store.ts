@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { ChatWallpaper } from '@/constants/wallpapers'
 import { CHARACTERS } from '@/constants/characters'
 import { applyAvatarStyleToGang, DEFAULT_AVATAR_STYLE, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
+import type { SubscriptionTier } from '@/lib/billing'
 
 const MAX_PERSISTED_MESSAGES = 100
 
@@ -39,7 +40,7 @@ interface ChatState {
     avatarStylePreference: AvatarStyle
     userName: string | null
     userId: string | null
-    subscriptionTier: 'free' | 'basic' | 'pro'
+    subscriptionTier: SubscriptionTier
     userNickname: string | null // For "Nickname Evolution"
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
@@ -62,7 +63,7 @@ interface ChatState {
     setAvatarStylePreference: (style: AvatarStyle) => void
     setUserName: (name: string | null) => void
     setUserId: (id: string | null) => void
-    setSubscriptionTier: (tier: 'free' | 'basic' | 'pro') => void
+    setSubscriptionTier: (tier: SubscriptionTier) => void
     setUserNickname: (nickname: string | null) => void
     setCharacterStatus: (characterId: string, status: string) => void
     setIsHydrated: (isHydrated: boolean) => void
