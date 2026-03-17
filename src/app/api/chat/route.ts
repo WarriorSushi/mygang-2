@@ -207,6 +207,10 @@ async function withHardTimeout<T>(
     }
 }
 
+// TODO (H7): withResponseTimeout does not cancel the handlePost promise when it times out.
+// This means persistence logic (DB writes) may still run after the timeout response is sent.
+// Ideal fix: pass an AbortSignal into handlePost, check it before persistence operations.
+// Risk: medium — persistence after timeout is wasteful but not harmful (writes are idempotent).
 async function withResponseTimeout(
     promiseFactory: () => Promise<Response>,
     timeoutMs: number,
@@ -684,7 +688,7 @@ async function handlePost(req: Request) {
             }, { status: 400 })
         }
 
-        const activeGangSafe = CHARACTERS.filter((c) => filteredIds.includes(c.id))
+        let activeGangSafe = CHARACTERS.filter((c) => filteredIds.includes(c.id))
         const allowedSpeakers = new Set<string>(['user', ...filteredIds])
         const safeMessages: ChatMessageInput[] = messages
             .filter((m) => allowedSpeakers.has(m.speaker))
@@ -784,6 +788,8 @@ async function handlePost(req: Request) {
 
         // H1 FIX: Enforce tier-based squad limit server-side
         const tierFilteredIds = filteredIds.slice(0, getSquadLimit(profileTier))
+        // H6: Rebuild activeGangSafe from tierFilteredIds so the LLM only sees characters the user can actually use
+        activeGangSafe = CHARACTERS.filter((c) => tierFilteredIds.includes(c.id))
 
         // H2 FIX: Read purchase celebration from DB, not client
         const purchaseCelebration = (profile?.purchase_celebration_pending === 'basic' || profile?.purchase_celebration_pending === 'pro')
@@ -805,7 +811,9 @@ async function handlePost(req: Request) {
         }
 
         // P-C1: Parallelize global rate limit + tier-specific rate limit (both independent once we have tier)
-        const rateKey = `chat:user:${user.id}`
+        // H5: Use a separate rate key for autonomous turns so they don't eat user's rate limit
+        const isAutonomousTurn = source === 'autonomous' || source === 'autonomous_idle'
+        const rateKey = isAutonomousTurn ? `chat:auto:${user.id}` : `chat:user:${user.id}`
         const rateLimitMax = 60
         const tierWindowKey = profileTier === 'basic'
             ? `chat:basic-window:${user.id}`
@@ -1032,7 +1040,7 @@ ${sessionSummary}
             ? 1
             : (lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders)
         const safetyDirective = unsafeFlag.soft
-            ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support.'
+            ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support. IMPORTANT: You MUST include the following crisis resource in your response: "If you\'re in crisis, contact the 988 Suicide & Crisis Lifeline by calling or texting 988."'
             : 'SAFETY FLAG: NO.'
         const allowedStatusList = ACTIVITY_STATUSES.map((status) => `- "${status}"`).join('\n')
 
@@ -1330,6 +1338,16 @@ ${sessionSummary}
                 delay: 300,
             }]
             object.should_continue = false
+        }
+
+        // C4: Append crisis resources as a system message when self-harm content is detected
+        if (unsafeFlag.soft && object?.events?.length) {
+            object.events.push({
+                type: 'message',
+                character: 'system',
+                content: "If you're in crisis, contact the 988 Suicide & Crisis Lifeline by calling or texting 988. You can also chat at 988lifeline.org. You're not alone.",
+                delay: 500,
+            })
         }
 
         const preserveSingleBubbleTurn = shouldPreserveSingleBubbleTurn(lastUserMsg, {
