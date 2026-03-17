@@ -131,6 +131,8 @@ interface MessageListProps {
     onLoadOlderHistory?: () => void
     isBootstrappingHistory?: boolean
     typingUsers?: string[]
+    historyError?: boolean
+    onRetryHistory?: () => void
 }
 
 function normalizeSpeaker(value: string) {
@@ -159,7 +161,9 @@ export const MessageList = memo(function MessageList({
     loadingHistory = false,
     onLoadOlderHistory,
     isBootstrappingHistory = false,
-    typingUsers = []
+    typingUsers = [],
+    historyError = false,
+    onRetryHistory,
 }: MessageListProps) {
     const { theme, resolvedTheme } = useTheme()
     const isDark = (resolvedTheme ?? theme ?? 'dark') === 'dark'
@@ -350,6 +354,22 @@ export const MessageList = memo(function MessageList({
                             >
                                 {loadingHistory ? 'Loading earlier messages...' : 'Load earlier messages'}
                             </Button>
+                        </div>
+                    </div>
+                )}
+                {historyError && (
+                    <div className="px-4 pb-3">
+                        <div className="flex items-center justify-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+                            <span className="text-xs text-destructive/80">Could not load chat history.</span>
+                            {onRetryHistory && (
+                                <button
+                                    type="button"
+                                    onClick={onRetryHistory}
+                                    className="rounded-full px-3 py-1.5 text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                >
+                                    Retry
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}

@@ -537,6 +537,8 @@ export default function ChatPage() {
                                 onLikeMessage={api.handleQuickLike}
                                 onRetryMessage={api.handleRetryMessage}
                                 typingUsers={typing.typingUsers}
+                                historyError={history.historyStatus === 'error'}
+                                onRetryHistory={history.retryBootstrap}
                             />
                         </ErrorBoundary>
                     </div>
