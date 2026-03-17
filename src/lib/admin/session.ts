@@ -143,9 +143,10 @@ export async function getAdminSession() {
                 const exists = await redis.exists(`${ADMIN_SESSION_REDIS_PREFIX}${payload.sid}`)
                 if (!exists) return null
             }
-            // If Redis unavailable, fall back to stateless (don't block login)
+            // If Redis unavailable in production, fail closed
         } catch {
-            // Redis error — fall back to stateless validation
+            if (process.env.NODE_ENV === 'production') return null
+            // Dev: fall back to stateless validation
         }
     }
 

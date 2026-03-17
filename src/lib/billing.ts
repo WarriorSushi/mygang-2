@@ -82,10 +82,10 @@ export function getMessagesPerWindow(tier: SubscriptionTier): number | null {
   return TIER_LIMITS[tier].messagesPerWindow
 }
 
-export function getTierUsageHeading(tier: SubscriptionTier): string {
+function getTierUsageHeading(tier: SubscriptionTier): string {
   return TIER_COPY[tier].usageHeading
 }
 
-export function getTierMessagesLabel(tier: SubscriptionTier): string {
+function getTierMessagesLabel(tier: SubscriptionTier): string {
   return TIER_COPY[tier].messagesLabel
 }
