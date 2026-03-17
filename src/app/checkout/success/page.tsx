@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 import { useChatStore } from '@/stores/chat-store'
+import { trackEvent } from '@/lib/analytics'
 
 type ActivationResponse = {
     state: 'activated' | 'pending' | 'invalid'
@@ -115,6 +116,10 @@ function SuccessContent() {
         }
         return () => { cancelledRef.current = true }
     }, [searchParams, router])
+
+    useEffect(() => {
+        trackEvent('checkout_completed')
+    }, [])
 
     if (status === 'activating') {
         return (

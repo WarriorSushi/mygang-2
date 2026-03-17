@@ -18,11 +18,9 @@ const nextConfig: NextConfig = {
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
       // unsafe-inline is required because Next.js injects inline scripts/styles without nonce support by default.
-      // unsafe-eval has been removed — it's not needed for production builds.
+      // unsafe-eval required by lottie-web for animation expressions — all Lottie JSON files are first-party (/lottie/*.json).
       // NOTE: Do NOT add 'strict-dynamic' — it overrides 'unsafe-inline' in modern browsers, breaking Next.js hydration.
       // TODO (MED-5): Remove 'unsafe-inline' from script-src once Next.js supports nonce-based CSP.
-      // Lottie-web requires unsafe-eval (uses eval internally for animation expressions).
-      // Risk is low — all Lottie JSON files are first-party, served from /lottie/*.json.
       { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://xiekctfhbqkhoqplobep.supabase.co wss://xiekctfhbqkhoqplobep.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://*.dodopayments.com https://*.ingest.sentry.io; frame-src 'self' https://*.dodopayments.com; frame-ancestors 'none';" },
     ]
 

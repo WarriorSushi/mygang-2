@@ -367,7 +367,7 @@ function MessageItemComponent({
                         <button
                             type="button"
                             aria-label={liked ? 'Unlike message' : 'Like message'}
-                            className="p-2 -m-1.5 transition-colors"
+                            className="p-2 -m-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
                             onClick={() => setLiked((prev) => !prev)}
                         >
                             <Heart
@@ -382,7 +382,7 @@ function MessageItemComponent({
                         <button
                             type="button"
                             aria-label="Reply to message"
-                            className="p-2 -m-1.5 text-muted-foreground/80 dark:text-muted-foreground/65 hover:text-muted-foreground/90 dark:hover:text-muted-foreground/70 transition-colors"
+                            className="p-2 -m-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground/80 dark:text-muted-foreground/65 hover:text-muted-foreground/90 dark:hover:text-muted-foreground/70 transition-colors"
                             onClick={() => onReply?.(message)}
                         >
                             <Reply className="w-3 h-3" />
@@ -392,7 +392,7 @@ function MessageItemComponent({
                                 type="button"
                                 aria-label={reported ? 'Message reported' : 'Report message'}
                                 className={cn(
-                                    "p-2 -m-1.5 transition-colors",
+                                    "p-2 -m-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors",
                                     reported
                                         ? "text-amber-500/80"
                                         : "text-muted-foreground/50 dark:text-muted-foreground/35 hover:text-muted-foreground/70 dark:hover:text-muted-foreground/50 opacity-0 group-hover:opacity-100 focus:opacity-100"

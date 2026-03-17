@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { trackEvent } from '@/lib/analytics'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { m, AnimatePresence } from 'framer-motion'
-import { TIER_LIMITS, getTierCopy } from '@/lib/billing'
+import { TIER_LIMITS, getTierCopy, type SubscriptionTier } from '@/lib/billing'
 
 // Launch promo: show "80% off" badge until this date
 const LAUNCH_PROMO_END = new Date('2026-06-01T00:00:00Z').getTime()
@@ -23,7 +23,7 @@ const isLaunchPromoActive = () => Date.now() < LAUNCH_PROMO_END
    TYPES & DATA
    ══════════════════════════════════════════════════════ */
 
-type Tier = 'free' | 'basic' | 'pro'
+type Tier = SubscriptionTier
 
 interface Feature {
   text: string

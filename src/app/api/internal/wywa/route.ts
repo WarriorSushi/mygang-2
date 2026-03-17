@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { runWywaBatch } from '@/lib/ai/wywa'
 
 export const runtime = 'nodejs'
@@ -23,7 +24,12 @@ export async function GET(request: Request) {
     }
 
     const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    const expected = `Bearer ${cronSecret}`
+    if (
+        !authHeader ||
+        authHeader.length !== expected.length ||
+        !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))
+    ) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

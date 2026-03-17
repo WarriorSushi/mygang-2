@@ -505,7 +505,15 @@ export default function ChatPage() {
             <div ref={captureRootRef} className="flex-1 flex flex-col w-full relative min-h-0 z-10">
                 <ChatHeader
                     activeGang={activeGang}
-                    onOpenVault={() => setIsVaultOpen(true)}
+                    onOpenVault={() => {
+                        if (subscriptionTier === 'free') {
+                            setPaywallCooldown(0)
+                            setPaywallTier('free')
+                            setPaywallOpen(true)
+                            return
+                        }
+                        setIsVaultOpen(true)
+                    }}
                     onOpenSettings={() => openSettingsPanel('root')}
                     onRefresh={() => history.syncLatestHistory(true)}
                     typingUsers={typing.typingUsers}

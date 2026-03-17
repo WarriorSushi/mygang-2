@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/holographic/glass-card'
 import { getMemoriesPage, deleteMemory, updateMemory } from '@/app/auth/actions'
 import { useChatStore } from '@/stores/chat-store'
+import type { SubscriptionTier } from '@/lib/billing'
 
 interface Memory {
     id: string
@@ -18,7 +19,7 @@ interface Memory {
 interface MemoryVaultProps {
     isOpen: boolean
     onClose: () => void
-    tier?: 'free' | 'basic' | 'pro'
+    tier?: SubscriptionTier
 }
 
 export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps) {
