@@ -17,6 +17,7 @@ import { MessageList } from '@/components/chat/message-list'
 const MemoryVault = dynamic(() => import('@/components/chat/memory-vault').then((m) => m.MemoryVault), { ssr: false })
 const ChatSettings = dynamic(() => import('@/components/chat/chat-settings').then((m) => m.ChatSettings), { ssr: false })
 import { ChatInput } from '@/components/chat/chat-input'
+import { AiDisclaimer } from '@/components/chat/ai-disclaimer'
 import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
 import { InlineToast } from '@/components/chat/inline-toast'
 import { MessagesRemainingBanner } from '@/components/billing/messages-remaining-banner'
@@ -557,6 +558,7 @@ export default function ChatPage() {
                         starterChips={!hasUserSentMessage && shouldShowEmptyStatePrompts ? getStarterChips(userName || '') : []}
                         cooldownPlaceholder={cooldownLabel}
                     />
+                    <AiDisclaimer />
                 </div>
             </div>
 

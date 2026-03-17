@@ -192,6 +192,7 @@ const faq = [
 
 export function LandingPage() {
   const [showAuthWall, setShowAuthWall] = useState(false)
+  const [openFaqIndexes, setOpenFaqIndexes] = useState<number[]>([0])
   const router = useRouter()
   const { theme, resolvedTheme, setTheme } = useTheme()
   const effectiveTheme = resolvedTheme ?? theme ?? 'dark'
@@ -547,7 +548,9 @@ export function LandingPage() {
           }
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {faq.map((item, i) => (
+            {faq.map((item, i) => {
+              const isOpen = openFaqIndexes.includes(i)
+              return (
               <m.details
                 key={item.q}
                 initial={{ opacity: 0, y: 16 }}
@@ -555,16 +558,14 @@ export function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.4 }}
                 className="rounded-2xl border border-border/70 bg-card p-6 text-left shadow-lg shadow-black/10 dark:shadow-black/30 hover:border-primary/30 transition-colors duration-300 group open:border-primary/40"
-                {...(i === 0 ? { open: true } : {})}
+                open={isOpen}
+                onToggle={(e) => {
+                  const open = (e.currentTarget as HTMLDetailsElement).open
+                  setOpenFaqIndexes(prev => open ? [...prev, i] : prev.filter(idx => idx !== i))
+                }}
               >
                 <summary
-                  aria-expanded={i === 0 ? true : undefined}
-                  onClick={(e) => {
-                    const details = (e.currentTarget as HTMLElement).parentElement as HTMLDetailsElement
-                    requestAnimationFrame(() => {
-                      e.currentTarget.setAttribute('aria-expanded', String(details.open))
-                    })
-                  }}
+                  aria-expanded={isOpen}
                   className="text-base font-semibold cursor-pointer list-none flex items-center justify-between [&::-webkit-details-marker]:hidden"
                 >
                   {item.q}
@@ -572,7 +573,8 @@ export function LandingPage() {
                 </summary>
                 <p className="text-sm text-muted-foreground leading-relaxed mt-2">{item.a}</p>
               </m.details>
-            ))}
+              )
+            })}
           </div>
         </Section>
 

@@ -7,7 +7,7 @@ type ErrorLike = {
     message?: unknown
 }
 
-export function getOperationalErrorCode(error: unknown) {
+function getOperationalErrorCode(error: unknown) {
     if (!error || typeof error !== 'object') return null
     const maybeError = error as ErrorLike
     return typeof maybeError.code === 'string' ? maybeError.code : null
