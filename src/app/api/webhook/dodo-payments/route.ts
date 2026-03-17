@@ -175,7 +175,8 @@ export const POST = Webhooks({
         if (!userId) {
             const customerEmail = getWebhookCustomerEmail(data)
             if (customerEmail) {
-                console.log(`[webhook] customer_id=${customerId} not found, trying email fallback: ${customerEmail}`)
+                const maskedEmail = customerEmail.charAt(0) + '***@' + customerEmail.split('@')[1]
+                console.log(`[webhook] customer_id=${customerId} not found, trying email fallback: ${maskedEmail}`)
                 userId = await findUserByEmailFallback(customerEmail, customerId)
             }
         }

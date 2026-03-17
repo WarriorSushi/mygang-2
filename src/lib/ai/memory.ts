@@ -610,6 +610,9 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
 
         if (countError || count === null || count < COMPACTION_THRESHOLD) return
 
+        // H8: Atomic claim via UPDATE ... WHERE kind='episodic' acts as a distributed lock.
+        // If two requests race, only one will claim enough rows (>= threshold) since the
+        // UPDATE is atomic per-row. The loser sees fewer claimed rows and reverts.
         // Atomically claim non-expired episodic memories by marking them as 'compacting'.
         // Expired temporal memories are excluded — compacting them would resurrect temporary
         // states (mood, plans) as permanent compacted summaries.
