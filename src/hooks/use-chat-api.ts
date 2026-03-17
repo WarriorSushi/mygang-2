@@ -229,6 +229,10 @@ export function useChatApi({
     }, [setMessages])
 
     const sendToApi: SendToApiHandler = async ({ isIntro, isAutonomous, autonomousIdle = false, sourceUserMessageId, purchaseCelebration }) => {
+        // Lock immediately to prevent race conditions — concurrent autonomous calls
+        // could slip through the async delay below if this is set after early returns.
+        isGeneratingRef.current = true
+
         const effectiveLowCostModeForCall = lowCostMode || autoLowCostModeRef.current
 
         if (isAutonomous) {
@@ -251,8 +255,6 @@ export function useChatApi({
                 return
             }
         }
-
-        isGeneratingRef.current = true
 
         if (isAutonomous && chatMode === 'ecosystem') {
             triggerActivityPulse()
