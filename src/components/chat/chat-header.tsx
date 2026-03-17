@@ -167,6 +167,18 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 setExpandedAvatar(null)
+                return
+            }
+            if (event.key === 'Tab' && lightboxRef.current) {
+                const focusable = lightboxRef.current.querySelectorAll<HTMLElement>('button, [tabindex="0"]')
+                if (focusable.length === 0) return
+                const first = focusable[0]
+                const last = focusable[focusable.length - 1]
+                if (event.shiftKey) {
+                    if (document.activeElement === first) { event.preventDefault(); last.focus() }
+                } else {
+                    if (document.activeElement === last) { event.preventDefault(); first.focus() }
+                }
             }
         }
 

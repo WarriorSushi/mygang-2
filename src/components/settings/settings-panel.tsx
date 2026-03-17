@@ -660,7 +660,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
             {/* Delete All Chat Confirmation Modal */}
             <Dialog open={chatModalOpen} onOpenChange={setChatModalOpen}>
-                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[1.5rem]">
+                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[2rem]">
                     <DialogHeader className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
                             <AlertTriangle className="w-6 h-6 text-destructive" />
@@ -697,7 +697,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
             {/* Delete All Memories Confirmation Modal */}
             <Dialog open={memoryModalOpen} onOpenChange={setMemoryModalOpen}>
-                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[1.5rem]">
+                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[2rem]">
                     <DialogHeader className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
                             <Brain className="w-6 h-6 text-destructive" />
@@ -734,7 +734,7 @@ export function SettingsPanel({ username, email, initialSettings, usage }: Setti
 
             {/* Start Fresh Confirmation Modal */}
             <Dialog open={freshModalOpen} onOpenChange={setFreshModalOpen}>
-                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[1.5rem]">
+                <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-destructive/20 rounded-[2rem]">
                     <DialogHeader className="flex flex-col items-center gap-3">
                         <div className="p-3 rounded-full bg-destructive/10">
                             <RotateCcw className="w-6 h-6 text-destructive" />
