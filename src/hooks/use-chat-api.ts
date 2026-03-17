@@ -70,6 +70,7 @@ export type HandleSendHandler = (content: string, options?: { replyToId?: string
 const CAPACITY_BACKOFF_MIN_MS = 90_000
 const MAX_DELIVERY_ERROR_CHARS = 140
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MS = 30_000
+let cooldownNotifTimer: ReturnType<typeof setTimeout> | null = null
 
 function withDeliveryError(errorMessage: string) {
     const trimmed = errorMessage.trim()
@@ -187,9 +188,9 @@ export function useChatApi({
         return () => {
             abortControllerRef.current?.abort()
             if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-            if (typeof window !== 'undefined') {
-                const notifTimer = (window as unknown as Record<string, unknown>).__mygangCooldownNotif
-                if (notifTimer) clearTimeout(notifTimer as ReturnType<typeof setTimeout>)
+            if (cooldownNotifTimer) {
+                clearTimeout(cooldownNotifTimer)
+                cooldownNotifTimer = null
             }
         }
     }, [])
@@ -300,7 +301,6 @@ export function useChatApi({
                 activeGangIds: activeGang.map(c => c.id),
                 userName,
                 userNickname,
-                isFirstMessage: currentMessages.length === 0 && isIntro,
                 silentTurns: silentTurnsRef.current,
                 burstCount: burstCountRef.current,
                 chatMode,
@@ -376,15 +376,14 @@ export function useChatApi({
                     }
                     if (cooldownSec > 0) {
                         // Clear any existing cooldown notification timer
-                        const existingTimer = (window as unknown as Record<string, unknown>).__mygangCooldownNotif
-                        if (existingTimer) clearTimeout(existingTimer as ReturnType<typeof setTimeout>)
+                        if (cooldownNotifTimer) clearTimeout(cooldownNotifTimer)
 
-                        const notifTimer = setTimeout(() => {
+                        cooldownNotifTimer = setTimeout(() => {
+                            cooldownNotifTimer = null
                             if (Notification.permission === 'granted') {
                                 new Notification('MyGang', { body: 'Your gang is ready! Come back and chat.' })
                             }
                         }, cooldownSec * 1000)
-                        ;(window as unknown as Record<string, unknown>).__mygangCooldownNotif = notifTimer
                     }
                 }
                 return

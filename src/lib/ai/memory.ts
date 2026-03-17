@@ -1,6 +1,8 @@
 import { google } from '@ai-sdk/google'
 import { embed, generateText } from 'ai'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import type { Database } from '@/lib/database.types'
 import { openRouterModel } from '@/lib/ai/openrouter'
 import { getMemoryMaxCount, getMemoryInPromptLimit, type SubscriptionTier } from '@/lib/billing'
 
@@ -22,6 +24,8 @@ export const CATEGORY_PRIORITY: Record<string, number> = {
 const STOPWORDS = new Set([
     'the','a','an','and','or','but','if','then','else','when','to','of','in','on','for','with','at','by','from','is','are','was','were','be','been','being','i','you','he','she','they','we','me','my','your','our','their','this','that','these','those'
 ])
+
+type MemoryInsert = Database['public']['Tables']['memories']['Insert']
 
 export type MemoryCategory = 'identity' | 'preference' | 'life_event' | 'relationship' | 'inside_joke' | 'routine' | 'mood' | 'topic'
 
@@ -96,14 +100,14 @@ export async function storeMemory(
                     .limit(20)
 
                 if (sameCategory && sameCategory.length > 0) {
-                    const newWords = new Set(normalizedContent.toLowerCase().split(/\s+/).filter(w => w.length > 2))
+                    const newWords = new Set(normalizedContent.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !STOPWORDS.has(w)))
                     const toArchive = sameCategory.filter(m => {
                         if (!m.content) return false
                         const existingNorm = m.content.trim().replace(/\s+/g, ' ')
                         // Exact duplicate
                         if (existingNorm === normalizedContent) return true
                         // High word overlap (3+ shared meaningful words)
-                        const existingWords = existingNorm.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+                        const existingWords = existingNorm.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !STOPWORDS.has(w))
                         const shared = existingWords.filter(w => newWords.has(w)).length
                         return shared >= 3 && shared >= existingWords.length * 0.5
                     })
@@ -121,17 +125,16 @@ export async function storeMemory(
             }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const insertData: any = {
+        const insertData: MemoryInsert = {
             user_id: userId,
             content: normalizedContent,
             embedding: embedding as unknown as string,
             kind,
             tags,
             importance,
+            ...(category ? { category } : {}),
+            ...(expires_at ? { expires_at } : {}),
         }
-        if (category) insertData.category = category
-        if (expires_at) insertData.expires_at = expires_at
 
         const { error } = await supabase.from('memories').insert(insertData)
 
@@ -210,7 +213,7 @@ export async function storeMemories(
                 if (nonArchivedWithCategory.length > 0) {
                     const toArchiveIds: string[] = []
                     for (const newMem of highImportanceWithCategory) {
-                        const newWords = new Set(newMem.normalizedContent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2))
+                        const newWords = new Set(newMem.normalizedContent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2 && !STOPWORDS.has(w)))
                         for (const ex of nonArchivedWithCategory) {
                             if (!ex.content || ex.category !== newMem.category) continue
                             if (toArchiveIds.includes(ex.id)) continue
@@ -220,7 +223,7 @@ export async function storeMemories(
                                 continue
                             }
                             // High word overlap (3+ shared meaningful words)
-                            const existingWords = ex.content.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2)
+                            const existingWords = ex.content.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2 && !STOPWORDS.has(w))
                             const shared = existingWords.filter((w: string) => newWords.has(w)).length
                             if (shared >= 3 && shared >= existingWords.length * 0.5) {
                                 toArchiveIds.push(ex.id)
@@ -292,17 +295,16 @@ export async function storeMemories(
                         console.error('Embedding error for memory:', err)
                     }
                 }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const row: any = {
+                const row: MemoryInsert = {
                     user_id: userId,
                     content: mem.normalizedContent,
                     embedding: embedding as unknown as string,
                     kind: mem.kind,
                     tags: mem.tags || [],
                     importance: mem.importance || 1,
+                    ...(mem.category ? { category: mem.category } : {}),
+                    ...(mem.expires_at ? { expires_at: mem.expires_at } : {}),
                 }
-                if (mem.category) row.category = mem.category
-                if (mem.expires_at) row.expires_at = mem.expires_at
                 return row
             })
         )
@@ -318,7 +320,7 @@ export async function storeMemories(
                     rowsWithEmbeddings.map(async (row) => {
                         try {
                             const { data: similar } = await supabase.rpc('match_memories', {
-                                query_embedding: row.embedding,
+                                query_embedding: row.embedding!,
                                 match_threshold: 0.9,
                                 match_count: 1,
                                 p_user_id: userId,
@@ -654,8 +656,7 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
                 categoryGroups.set(cat, group)
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const compactedInserts: any[] = []
+            const compactedInserts: MemoryInsert[] = []
             const archivedIds: string[] = []
             const skippedIds: string[] = [] // categories with <3 memories — revert to episodic
 
@@ -699,16 +700,15 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
                 }
 
                 archivedIds.push(...groupMemories.map(m => m.id))
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const insertRow: any = {
+                const insertRow: MemoryInsert = {
                     user_id: userId,
                     content: compactedContent,
                     embedding: compactedEmbedding as unknown as string,
                     kind: 'episodic',
                     tags: Array.from(groupTags).slice(0, 10),
                     importance: 3,
+                    ...(category !== 'uncategorized' ? { category } : {}),
                 }
-                if (category !== 'uncategorized') insertRow.category = category
                 compactedInserts.push(insertRow)
             }
 
@@ -777,8 +777,7 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
  */
 export async function backfillMemoryEmbeddings(
     userId: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase: { from: (...args: any[]) => any },
+    supabase: SupabaseClient,
     batchSize = 50,
 ): Promise<{ processed: number; failed: number }> {
     try {
