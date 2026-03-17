@@ -4,13 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { getChatHistoryPage } from '@/app/auth/actions'
 import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
+import { normalizeSource } from '@/lib/utils'
+
+export { normalizeSource }
 
 // ── Pure helpers ──
-
-/** Normalize source to 'chat' for legacy rows (undefined/missing). */
-export function normalizeSource(source?: string): string {
-    return source || 'chat'
-}
 
 function normalizeMessageContent(content: string) {
     return content.replace(/\s+/g, ' ').trim()

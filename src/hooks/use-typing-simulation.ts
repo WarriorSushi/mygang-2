@@ -3,11 +3,7 @@
 import { useRef, useState } from 'react'
 import { useChatStore, type Character } from '@/stores/chat-store'
 import { ACTIVITY_STATUSES } from '@/constants/character-greetings'
-
-function pickRandom<T>(items: T[]): T | undefined {
-    if (items.length === 0) return undefined
-    return items[Math.floor(Math.random() * items.length)]
-}
+import { pickRandom } from '@/lib/utils'
 
 export function useTypingSimulation() {
     const setCharacterStatus = useChatStore((s) => s.setCharacterStatus)

@@ -6,11 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { CHARACTER_GREETINGS } from '@/constants/character-greetings'
 import { hasOpenFloorIntent } from '@/lib/chat-utils'
 import type { HistoryStatus } from '@/hooks/use-chat-history'
-
-function pickRandom<T>(items: T[]): T | undefined {
-    if (items.length === 0) return undefined
-    return items[Math.floor(Math.random() * items.length)]
-}
+import { pickRandom } from '@/lib/utils'
 
 interface UseAutonomousFlowArgs {
     isGeneratingRef: React.RefObject<boolean>
