@@ -492,37 +492,7 @@ export function useChatApi({
             clearTypingUsers()
 
             // == THE SEQUENCER ==
-            // For autonomous responses, filter out events that are too similar to recent messages
-            let filteredEvents = data.events
-            if (isAutonomous) {
-                const recentMessages = useChatStore.getState().messages.slice(-20)
-                filteredEvents = data.events.filter((event) => {
-                    if (event.type !== 'message' || !event.content) return true
-                    const normalizedContent = event.content.replace(/\s+/g, ' ').trim().toLowerCase()
-                    return !recentMessages.some((msg) => {
-                        if (msg.speaker !== event.character) return false
-                        const normalizedMsg = msg.content.replace(/\s+/g, ' ').trim().toLowerCase()
-                        // Exact match
-                        if (normalizedContent === normalizedMsg) return true
-                        // High similarity (one contains the other or >80% overlap)
-                        if (normalizedContent.length > 20 && normalizedMsg.length > 20) {
-                            if (normalizedContent.includes(normalizedMsg) || normalizedMsg.includes(normalizedContent)) return true
-                            // Simple word overlap check
-                            const words1 = new Set(normalizedContent.split(' '))
-                            const words2 = new Set(normalizedMsg.split(' '))
-                            const intersection = [...words1].filter(w => words2.has(w)).length
-                            const overlap = intersection / Math.max(words1.size, words2.size)
-                            if (overlap > 0.75) return true
-                        }
-                        return false
-                    })
-                })
-                if (filteredEvents.length === 0) {
-                    if (process.env.NODE_ENV !== 'production') console.log("Autonomous response filtered: all events too similar to recent messages.")
-                    return
-                }
-            }
-            for (const event of filteredEvents) {
+            for (const event of data.events) {
                 if (pendingUserMessagesRef.current) {
                     if (process.env.NODE_ENV !== 'production') console.log("AI Sequencing interrupted by new user message.")
                     break
