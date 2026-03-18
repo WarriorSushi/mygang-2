@@ -105,6 +105,8 @@ export function useAutonomousFlow({
 
         clearIdleAutonomousTimer()
         const delay = 10_000
+        const ecosystemSpeed = useChatStore.getState().ecosystemSpeed || 'normal'
+        const speedMultiplier = ecosystemSpeed === 'fast' ? 0.5 : ecosystemSpeed === 'relaxed' ? 2 : 1
         idleAutonomousTimerRef.current = setTimeout(() => {
             const currentMessages = useChatStore.getState().messages
             const lastMessage = currentMessages[currentMessages.length - 1]
@@ -123,7 +125,7 @@ export function useAutonomousFlow({
                 autonomousIdle: true,
                 sourceUserMessageId,
             }).catch((err) => console.error('Idle autonomous error:', err))
-        }, delay)
+        }, delay * speedMultiplier)
     }, [canRunIdleAutonomous, clearIdleAutonomousTimer, idleAutoCountRef, isGeneratingRef, lastUserMessageIdRef, pendingUserMessagesRef, sendToApiRef])
 
     const triggerLocalGreeting = useCallback(() => {

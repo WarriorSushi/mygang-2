@@ -258,6 +258,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
     const {
         chatMode,
         setChatMode,
+        ecosystemSpeed,
+        setEcosystemSpeed,
         lowCostMode,
         setLowCostMode,
         clearChat,
@@ -273,6 +275,8 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
     } = useChatStore(useShallow((s) => ({
         chatMode: s.chatMode,
         setChatMode: s.setChatMode,
+        ecosystemSpeed: s.ecosystemSpeed,
+        setEcosystemSpeed: s.setEcosystemSpeed,
         lowCostMode: s.lowCostMode,
         setLowCostMode: s.setLowCostMode,
         clearChat: s.clearChat,
@@ -567,11 +571,44 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                 Ecosystem mode unlocks with Basic or Pro. Your gang talks freely, reacts to each other, and the chat feels alive.
                                             </p>
                                         ) : (
+                                            <>
                                             <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
                                                 {chatMode === 'gang_focus'
                                                     ? 'Replies stay focused on you. Less side chatter.'
                                                     : 'Natural group banter with side conversations.'}
                                             </p>
+                                            {chatMode === 'ecosystem' && (
+                                                <div className="mt-3 pt-3" style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
+                                                    <p className="text-[11px] font-medium text-muted-foreground mb-2">Reply Speed</p>
+                                                    <div className="relative flex rounded-full bg-muted/60 p-[3px]">
+                                                        <div
+                                                            className="absolute top-[3px] bottom-[3px] rounded-full bg-primary transition-all duration-200 ease-out"
+                                                            style={{
+                                                                width: 'calc(33.333% - 2px)',
+                                                                left: ecosystemSpeed === 'fast' ? '3px' : ecosystemSpeed === 'normal' ? 'calc(33.333% + 1px)' : 'calc(66.666% - 1px)',
+                                                            }}
+                                                        />
+                                                        {(['fast', 'normal', 'relaxed'] as const).map((speed) => (
+                                                            <button
+                                                                key={speed}
+                                                                type="button"
+                                                                onClick={() => setEcosystemSpeed(speed)}
+                                                                className={cn(
+                                                                    'relative z-10 flex-1 rounded-full py-1.5 text-[11px] font-semibold capitalize transition-colors',
+                                                                    ecosystemSpeed === speed ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                                                                )}
+                                                                aria-pressed={ecosystemSpeed === speed}
+                                                            >
+                                                                {speed}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground/60 mt-1.5">
+                                                        {ecosystemSpeed === 'fast' ? 'Quick-fire replies, less waiting.' : ecosystemSpeed === 'relaxed' ? 'Slower, more natural pacing.' : 'Default conversation speed.'}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            </>
                                         )}
                                     </SectionCard>
                                 </m.div>

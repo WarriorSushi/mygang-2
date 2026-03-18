@@ -108,6 +108,7 @@ interface UseChatApiArgs {
     userName: string | null
     userNickname: string | null
     chatMode: 'gang_focus' | 'ecosystem'
+    ecosystemSpeed: 'fast' | 'normal' | 'relaxed'
     lowCostMode: boolean
     isOnline: boolean
     autoLowCostModeRef: React.RefObject<boolean>
@@ -133,6 +134,7 @@ export function useChatApi({
     userName,
     userNickname,
     chatMode,
+    ecosystemSpeed,
     lowCostMode,
     isOnline,
     autoLowCostModeRef,
@@ -503,7 +505,8 @@ export function useChatApi({
                         queueTypingUser(event.character)
                         const eventContent = event.content || ''
                         const speedFactor = activeGang.find(c => c.id === event.character)?.typingSpeed || 1
-                        const typingTime = Math.min(3000, Math.max(eventContent.length < 10 ? 400 : 700, eventContent.length * 18 * speedFactor + Math.random() * 300))
+                        const ecosystemMultiplier = ecosystemSpeed === 'fast' ? 0.5 : ecosystemSpeed === 'relaxed' ? 2 : 1
+                        const typingTime = Math.min(3000, Math.max(eventContent.length < 10 ? 400 : 700, eventContent.length * 18 * speedFactor * ecosystemMultiplier + Math.random() * 300))
                         await new Promise(r => setTimeout(r, typingTime))
 
                         if (pendingUserMessagesRef.current) break
@@ -583,7 +586,8 @@ export function useChatApi({
             if (!effectiveLowCostModeForCall && autonomousAllowed && !isAutonomous && chatMode === 'ecosystem' && openFloorIntent && !pendingUserMessagesRef.current && burstCountRef.current < 1) {
                 burstCountRef.current += 1
                 continuationTriggered = true
-                await new Promise((r) => setTimeout(r, 1200))
+                const ecoMultiplier = ecosystemSpeed === 'fast' ? 0.5 : ecosystemSpeed === 'relaxed' ? 2 : 1
+                await new Promise((r) => setTimeout(r, 1200 * ecoMultiplier))
                 isGeneratingRef.current = false
                 const sourceId = sourceUserMessageId || lastUserMessageIdRef.current
                 sendToApiRef.current({ isIntro: false, isAutonomous: true, sourceUserMessageId: sourceId }).catch((err) => console.error('Autonomous continuation error:', err))

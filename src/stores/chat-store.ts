@@ -45,6 +45,7 @@ interface ChatState {
     characterStatuses: Record<string, string> // For "Activity Status"
     isHydrated: boolean // To track if AuthManager has finished initial sync
     chatMode: 'gang_focus' | 'ecosystem'
+    ecosystemSpeed: 'fast' | 'normal' | 'relaxed'
     lowCostMode: boolean // User-settable via settings + auto-managed by useCapacityManager
     chatWallpaper: ChatWallpaper
     showPersonaRoles: boolean
@@ -68,6 +69,7 @@ interface ChatState {
     setCharacterStatus: (characterId: string, status: string) => void
     setIsHydrated: (isHydrated: boolean) => void
     setChatMode: (mode: 'gang_focus' | 'ecosystem') => void
+    setEcosystemSpeed: (speed: 'fast' | 'normal' | 'relaxed') => void
     setLowCostMode: (enabled: boolean) => void
     setChatWallpaper: (wallpaper: ChatWallpaper) => void
     setShowPersonaRoles: (showPersonaRoles: boolean) => void
@@ -104,6 +106,7 @@ export const useChatStore = create<ChatState>()(
             characterStatuses: {},
             isHydrated: false,
             chatMode: 'gang_focus',
+            ecosystemSpeed: 'normal',
             lowCostMode: false,
             chatWallpaper: 'default',
             showPersonaRoles: true,
@@ -169,6 +172,7 @@ export const useChatStore = create<ChatState>()(
             })),
             setIsHydrated: (isHydrated) => set({ isHydrated }),
             setChatMode: (chatMode) => set({ chatMode }),
+            setEcosystemSpeed: (ecosystemSpeed) => set({ ecosystemSpeed }),
             setLowCostMode: (lowCostMode) => set({ lowCostMode }),
             setChatWallpaper: (chatWallpaper) => set({ chatWallpaper }),
             setShowPersonaRoles: (showPersonaRoles) => set({ showPersonaRoles }),
@@ -197,6 +201,7 @@ export const useChatStore = create<ChatState>()(
                 userNickname: state.userNickname,
                 userId: state.userId,
                 chatMode: state.chatMode,
+                ecosystemSpeed: state.ecosystemSpeed,
                 lowCostMode: state.lowCostMode,
                 chatWallpaper: state.chatWallpaper,
                 showPersonaRoles: state.showPersonaRoles,

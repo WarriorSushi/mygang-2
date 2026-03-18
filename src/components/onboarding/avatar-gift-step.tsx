@@ -17,7 +17,6 @@ function MarqueeRow({
 }) {
     const characters = getCharactersForAvatarStyle(style)
     const items = [...characters, ...characters]
-    const dur = 25
 
     return (
         <div className="relative w-full overflow-hidden">
@@ -29,21 +28,10 @@ function MarqueeRow({
             <div className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-12 bg-gradient-to-r from-card to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-12 bg-gradient-to-l from-card to-transparent" />
 
-            <m.div
-                className="flex w-max gap-2.5 py-1"
-                animate={{
-                    x: direction === 'left'
-                        ? ['0%', '-50%']
-                        : ['-50%', '0%'],
-                }}
-                transition={{
-                    x: {
-                        repeat: Infinity,
-                        repeatType: 'loop',
-                        duration: dur,
-                        ease: 'linear',
-                    },
-                }}
+            <div
+                className="flex w-max gap-2.5 py-1 avatar-pack-marquee-track"
+                data-direction={direction === 'right' ? 'reverse' : undefined}
+                style={{ '--avatar-marquee-duration': '25s' } as React.CSSProperties}
             >
                 {items.map((character, i) => (
                     <div
@@ -61,7 +49,7 @@ function MarqueeRow({
                         />
                     </div>
                 ))}
-            </m.div>
+            </div>
         </div>
     )
 }
