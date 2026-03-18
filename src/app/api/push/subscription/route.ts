@@ -54,6 +54,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Endpoint too long' }, { status: 400 })
     }
 
+    if (p256dh.length > 100) {
+        return NextResponse.json({ error: 'p256dh too long' }, { status: 400 })
+    }
+
+    if (auth.length > 50) {
+        return NextResponse.json({ error: 'auth too long' }, { status: 400 })
+    }
+
     const userAgent = request.headers.get('user-agent') || null
 
     const { data, error } = await supabase

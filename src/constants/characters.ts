@@ -205,7 +205,3 @@ export const CHARACTERS = CHARACTER_CATALOG_BY_STYLE[DEFAULT_AVATAR_STYLE]
 export function getCharactersForAvatarStyle(style?: string | null): CharacterCatalogEntry[] {
     return CHARACTER_CATALOG_BY_STYLE[normalizeAvatarStyle(style)]
 }
-
-export function getCharacterById(id: string, style?: string | null): CharacterCatalogEntry | undefined {
-    return getCharactersForAvatarStyle(style).find((character) => character.id === id)
-}

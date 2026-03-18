@@ -38,9 +38,3 @@ export function verifyAdminCredentials(emailInput: string, passwordInput: string
     const derivedKey = crypto.pbkdf2Sync(passwordInput, Buffer.from(salt, 'hex'), 100000, 64, 'sha512').toString('hex')
     return safeEqual(derivedKey, key)
 }
-
-export function generateAdminPasswordHash(password: string): string {
-    const salt = crypto.randomBytes(32).toString('hex')
-    const key = crypto.pbkdf2Sync(password, Buffer.from(salt, 'hex'), 100000, 64, 'sha512').toString('hex')
-    return `${salt}:${key}`
-}

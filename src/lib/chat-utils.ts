@@ -1,4 +1,4 @@
-export const MAX_MESSAGE_ID_CHARS = 128
+const MAX_MESSAGE_ID_CHARS = 128
 
 export function sanitizeMessageId(value: unknown) {
     if (typeof value !== 'string') return ''

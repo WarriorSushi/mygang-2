@@ -18,7 +18,7 @@ export function isSquadTierWriteError(error: unknown) {
     return typeof code === 'string' && code.startsWith('squad_tier_')
 }
 
-export function getOperationalErrorMetadata(error: unknown) {
+function getOperationalErrorMetadata(error: unknown) {
     if (error instanceof Error) {
         return {
             error_code: getOperationalErrorCode(error) || 'unknown_error',

@@ -49,6 +49,6 @@ export async function GET(request: Request) {
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
         console.error('[wywa-cron] Batch failed:', message)
-        return NextResponse.json({ error: 'Batch failed', message }, { status: 500 })
+        return NextResponse.json({ error: 'Batch failed' }, { status: 500 })
     }
 }

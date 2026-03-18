@@ -25,7 +25,7 @@ export function resolveAvatarUrl(characterId: string, style?: string | null): st
         : `/avatars/${characterId}.webp`
 }
 
-export function applyAvatarStyleToCharacter<T extends Pick<Character, 'id'> & Partial<Character>>(
+function applyAvatarStyleToCharacter<T extends Pick<Character, 'id'> & Partial<Character>>(
     character: T,
     style?: string | null
 ): T & { avatar: string } {

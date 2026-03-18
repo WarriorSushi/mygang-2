@@ -642,6 +642,24 @@ function ensureEventMessageIds(
 
 async function handlePost(req: Request) {
     try {
+        // Auth check FIRST — before parsing any input
+        const supabase = await createClient()
+        const [{ data: { user } }, globalLowCostOverride] = await Promise.all([
+            supabase.auth.getUser(),
+            getGlobalLowCostOverride(),
+        ])
+
+        if (!user) {
+            return Response.json({
+                events: [{
+                    type: 'message',
+                    character: 'system',
+                    content: 'Authentication required. Please sign in to use MyGang.',
+                    delay: 200
+                }]
+            }, { status: 401 })
+        }
+
         const body = await req.json()
         const parsed = requestSchema.safeParse(body)
         if (!parsed.success) {
@@ -702,23 +720,6 @@ async function handlePost(req: Request) {
                 source: m.source,
             }))
             .filter((m) => m.content.length > 0)
-
-        const supabase = await createClient()
-        const [{ data: { user } }, globalLowCostOverride] = await Promise.all([
-            supabase.auth.getUser(),
-            getGlobalLowCostOverride(),
-        ])
-
-        if (!user) {
-            return Response.json({
-                events: [{
-                    type: 'message',
-                    character: 'system',
-                    content: 'Authentication required. Please sign in to use MyGang.',
-                    delay: 200
-                }]
-            }, { status: 401 })
-        }
 
         const mockHeader = req.headers.get('x-mock-ai')
         if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_MOCK_AI === 'true' && (mockHeader === '1' || mockHeader === 'true')) {
