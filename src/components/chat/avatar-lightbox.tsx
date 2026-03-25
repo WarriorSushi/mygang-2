@@ -18,6 +18,7 @@ export function AvatarLightbox({ character, onClose, triggerRef }: AvatarLightbo
     useEffect(() => {
         if (!lightboxRef.current) return
         const el = lightboxRef.current
+        const triggerNode = triggerRef?.current
         const focusable = el.querySelectorAll<HTMLElement>('button, [tabindex="0"]')
         if (focusable.length === 0) return
         const first = focusable[0]
@@ -39,7 +40,7 @@ export function AvatarLightbox({ character, onClose, triggerRef }: AvatarLightbo
         el.addEventListener('keydown', handleKeyDown)
         return () => {
             el.removeEventListener('keydown', handleKeyDown)
-            triggerRef?.current?.focus()
+            triggerNode?.focus()
         }
     }, [onClose, triggerRef])
 

@@ -224,7 +224,7 @@ export default function PricingPage() {
     } finally {
       setLoadingPlan(null)
     }
-  }, [sdkReady, userId])
+  }, [currentTier, sdkReady, userId])
 
   // Auto-dismiss checkout error
   useEffect(() => {

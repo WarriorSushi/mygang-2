@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
 const STORAGE_KEY = 'mygang-cookie-consent'
@@ -8,22 +8,24 @@ const STORAGE_KEY = 'mygang-cookie-consent'
 export function CookieConsent() {
     const [visible, setVisible] = useState(false)
     const buttonRef = useRef<HTMLButtonElement>(null)
+    const showConsent = useCallback(() => setVisible(true), [])
 
     useEffect(() => {
         try {
             const accepted = localStorage.getItem(STORAGE_KEY)
             if (!accepted) {
-                setVisible(true)
+                queueMicrotask(showConsent)
             }
         } catch {
             // localStorage unavailable, don't show
         }
-    }, [])
+    }, [showConsent])
 
     // Auto-focus the "Got it" button on mount
     useEffect(() => {
         if (visible) {
-            requestAnimationFrame(() => buttonRef.current?.focus())
+            const rafId = requestAnimationFrame(() => buttonRef.current?.focus())
+            return () => cancelAnimationFrame(rafId)
         }
     }, [visible])
 
@@ -39,7 +41,7 @@ export function CookieConsent() {
     }
 
     return (
-        <div className="fixed inset-x-0 top-auto bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] z-[60] p-4 pointer-events-none">
+        <div className="fixed inset-x-0 top-auto bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] z-40 p-4 pointer-events-none">
             <div
                 role="alertdialog"
                 aria-label="Cookie consent"

@@ -185,8 +185,6 @@ export default function ChatPage() {
         lastUserMessageIdRef: api.lastUserMessageIdRef,
         autoLowCostModeRef: capacity.autoLowCostModeRef,
         autonomousBackoffUntilRef: api.autonomousBackoffUntilRef,
-        silentTurnsRef: api.silentTurnsRef,
-        burstCountRef: api.burstCountRef,
         idleAutoCountRef: api.idleAutoCountRef,
         initialGreetingRef: api.initialGreetingRef,
         queueTypingUser: typing.queueTypingUser,
@@ -320,18 +318,21 @@ export default function ChatPage() {
 
     // ── Cleanup timers ──
     useEffect(() => {
-        const greetingTimers = autonomous.greetingTimersRef.current
-        const statusTimers = typing.statusTimersRef.current
+        const greetingTimersRef = autonomous.greetingTimersRef
+        const idleAutonomousTimerRef = autonomous.idleAutonomousTimerRef
+        const statusTimersRef = typing.statusTimersRef
+        const typingFlushRef = typing.typingFlushRef
+        const fastModeTimerRef = typing.fastModeTimerRef
         return () => {
-            if (typing.typingFlushRef.current) clearTimeout(typing.typingFlushRef.current)
-            if (typing.fastModeTimerRef.current) clearTimeout(typing.fastModeTimerRef.current)
-            greetingTimers.forEach(clearTimeout)
-            Object.values(statusTimers).forEach((timer) => {
+            if (typingFlushRef.current) clearTimeout(typingFlushRef.current)
+            if (fastModeTimerRef.current) clearTimeout(fastModeTimerRef.current)
+            greetingTimersRef.current.forEach(clearTimeout)
+            Object.values(statusTimersRef.current).forEach((timer) => {
                 if (timer) clearTimeout(timer)
             })
-            if (autonomous.idleAutonomousTimerRef.current) clearTimeout(autonomous.idleAutonomousTimerRef.current)
+            if (idleAutonomousTimerRef.current) clearTimeout(idleAutonomousTimerRef.current)
         }
-    }, [])
+    }, [autonomous.greetingTimersRef, autonomous.idleAutonomousTimerRef, typing.fastModeTimerRef, typing.statusTimersRef, typing.typingFlushRef])
 
     // ── Online/offline ──
     useEffect(() => {

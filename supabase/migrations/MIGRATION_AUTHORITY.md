@@ -6,9 +6,19 @@ This directory is forward-only. Do not rename, delete, or rewrite historical mig
 
 Before relying on any audit-era migration pair, verify the exact applied timestamps in the target environment's migration history table. Different environments may have landed different timestamps from the same remediation wave.
 
+## Current drift note
+
+On March 25, 2026, the linked remote project was found to have remote-only applied versions from March 16-17, 2026 that are not present in this repo. See `REMOTE_DRIFT_2026-03-25.md` in this directory before attempting `supabase db push`, `supabase db pull`, or `supabase migration repair` on the shared project.
+
+## Canonical recovery point
+
+`20260324220158_remote_drift_reconciliation.sql` is the forward-only recovery point that makes a fresh replay of this repo converge to the linked remote schema. The March 16-17, 2026 remote-only versions remain acknowledged history and must not be rewritten.
+
 ## Reference pairs
 
 Treat the later file in each pair below as the cleaner reference copy when reading history or preparing follow-up work. The earlier file remains historical and must stay in the repo.
+
+When a later reference copy collides with an earlier already-applied copy during fresh replay, only replay-safety guards may be added to the later file. Do not change intent, rename timestamps, or delete history.
 
 | Earlier file | Later file | Note |
 | --- | --- | --- |

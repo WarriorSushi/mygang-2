@@ -214,7 +214,6 @@ function MenuRow({
     onCloseDrawer,
     destructive,
     chevron,
-    isDark,
     className: extraClass,
 }: {
     children: React.ReactNode
@@ -223,7 +222,6 @@ function MenuRow({
     onCloseDrawer?: () => void
     destructive?: boolean
     chevron?: boolean
-    isDark?: boolean
     className?: string
 }) {
     const cls = cn(
@@ -679,7 +677,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <MenuRow onClick={() => setPanel('wallpaper')} chevron isDark={isDark}>
+                                                    <MenuRow onClick={() => setPanel('wallpaper')} chevron>
                                                         <div className="flex items-center gap-3">
                                                             <IconBox isDark={isDark}>
                                                                 <Paintbrush size={15} className="text-muted-foreground" />
@@ -690,7 +688,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                             </div>
                                                         </div>
                                                     </MenuRow>
-                                                    <MenuRow onClick={() => { setRenameInputs({ ...customCharacterNames }); setPanel('rename') }} chevron isDark={isDark}>
+                                                    <MenuRow onClick={() => { setRenameInputs({ ...customCharacterNames }); setPanel('rename') }} chevron>
                                                         <div className="flex items-center gap-3">
                                                             <IconBox isDark={isDark}>
                                                                 <PenLine size={15} className="text-muted-foreground" />
@@ -703,7 +701,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                     </MenuRow>
                                                 </>
                                             )}
-                                            <MenuRow onClick={async () => { await onTakeScreenshot() }} isDark={isDark}>
+                                            <MenuRow onClick={async () => { await onTakeScreenshot() }}>
                                                 <div className="flex items-center gap-3">
                                                     <IconBox isDark={isDark}>
                                                         <Camera size={15} className="text-muted-foreground" />
@@ -725,7 +723,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                             <SectionLabel>Account</SectionLabel>
                                         </div>
                                         <div>
-                                            <MenuRow href="/settings" onCloseDrawer={onClose} chevron isDark={isDark}>
+                                            <MenuRow href="/settings" onCloseDrawer={onClose} chevron>
                                                 <div className="flex items-center gap-3">
                                                     <IconBox isDark={isDark}>
                                                         <Settings2 size={15} className="text-muted-foreground" />
@@ -736,7 +734,7 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                                     </div>
                                                 </div>
                                             </MenuRow>
-                                            <MenuRow isDark={isDark} onClick={async () => {
+                                            <MenuRow onClick={async () => {
                                                 useChatStore.getState().setUserId(null)
                                                 useChatStore.getState().setActiveGang([])
                                                 useChatStore.getState().clearChat()

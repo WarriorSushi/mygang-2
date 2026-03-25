@@ -14,6 +14,9 @@
     "test:seeded": "playwright test tests/onboarding-auth.spec.ts tests/authenticated-history-restore.spec.ts tests/chat-scroll.spec.ts tests/release-signoff-gaps.spec.ts",
     "test": "pnpm run test:fast && pnpm run test:seeded",
     "guard:supabase-types": "node scripts/check-supabase-types.mjs",
+    "guard:supabase-migration-parity": "node scripts/check-supabase-migration-parity.mjs",
+    "guard:supabase-linked-diff": "node scripts/check-supabase-linked-diff.mjs",
+    "guard:supabase-authority": "pnpm run guard:supabase-types && pnpm run guard:supabase-migration-parity && pnpm run guard:supabase-linked-diff",
     "guard:character-catalog-parity": "node scripts/check-character-catalog-parity --dry-run",
     "guard:data-integrity": "pnpm run guard:supabase-types && pnpm run guard:character-catalog-parity"
   },

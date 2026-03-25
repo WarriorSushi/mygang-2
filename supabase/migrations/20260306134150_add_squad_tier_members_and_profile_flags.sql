@@ -1,4 +1,3 @@
-
 -- Track which characters were added at which subscription tier
 create table if not exists squad_tier_members (
   id uuid primary key default gen_random_uuid(),
@@ -13,21 +12,48 @@ create table if not exists squad_tier_members (
 
 alter table squad_tier_members enable row level security;
 
-create policy "Users can read own squad_tier_members"
-  on squad_tier_members for select
-  using (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'squad_tier_members'
+      AND policyname = 'Users can read own squad_tier_members'
+  ) THEN
+    CREATE POLICY "Users can read own squad_tier_members"
+      ON squad_tier_members FOR SELECT
+      USING (auth.uid() = user_id);
+  END IF;
 
-create policy "Users can insert own squad_tier_members"
-  on squad_tier_members for insert
-  with check (auth.uid() = user_id);
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'squad_tier_members'
+      AND policyname = 'Users can insert own squad_tier_members'
+  ) THEN
+    CREATE POLICY "Users can insert own squad_tier_members"
+      ON squad_tier_members FOR INSERT
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
 
-create policy "Users can update own squad_tier_members"
-  on squad_tier_members for update
-  using (auth.uid() = user_id);
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'squad_tier_members'
+      AND policyname = 'Users can update own squad_tier_members'
+  ) THEN
+    CREATE POLICY "Users can update own squad_tier_members"
+      ON squad_tier_members FOR UPDATE
+      USING (auth.uid() = user_id);
+  END IF;
+END
+$$;
 
-create index idx_squad_tier_members_user on squad_tier_members(user_id);
+create index if not exists idx_squad_tier_members_user on squad_tier_members(user_id);
 
 -- Profile flags for tier transition state
 alter table profiles add column if not exists pending_squad_downgrade boolean default false;
 alter table profiles add column if not exists restored_members_pending text[] default '{}';
-;

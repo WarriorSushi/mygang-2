@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/holographic/glass-card'
 import { getMemoriesPage, deleteMemory, updateMemory } from '@/app/auth/actions'
-import { useChatStore } from '@/stores/chat-store'
 import type { SubscriptionTier } from '@/lib/billing'
 
 interface Memory {

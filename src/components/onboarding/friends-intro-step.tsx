@@ -120,9 +120,9 @@ export function FriendsIntroStep({
             className="w-full max-w-4xl mx-auto flex flex-col min-h-0"
         >
             <div className="text-center pt-2 sm:pt-4 pb-1.5 sm:pb-2 px-2">
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight">Name your gang</h2>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight">Meet your AI friends</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                    Customize or keep defaults. Change anytime in settings.
+                    Customize or keep defaults. Change them later anytime in settings.
                 </p>
             </div>
 

@@ -186,14 +186,12 @@ function MessageItemComponent({
     character,
     isContinued,
     groupPosition = 'single',
-    isFastMode = false,
     quotedMessage = null,
     quotedSpeaker = null,
     seenBy = [],
     showPersonaRoles = true,
     isDark = true,
     onReply,
-    onLike,
     onRetry
 }: MessageItemProps) {
     const isUser = message.speaker === 'user'

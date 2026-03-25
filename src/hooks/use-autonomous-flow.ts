@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
-import { CHARACTER_GREETINGS } from '@/constants/character-greetings'
+import { getCharacterGreetingOptions, type GreetingBeat } from '@/constants/character-greetings'
 import { hasOpenFloorIntent } from '@/lib/chat-utils'
 import type { HistoryStatus } from '@/hooks/use-chat-history'
 import { pickRandom } from '@/lib/utils'
@@ -20,8 +20,6 @@ interface UseAutonomousFlowArgs {
     lastUserMessageIdRef: React.RefObject<string | null>
     autoLowCostModeRef: React.RefObject<boolean>
     autonomousBackoffUntilRef: React.MutableRefObject<number>
-    silentTurnsRef: React.RefObject<number>
-    burstCountRef: React.RefObject<number>
     idleAutoCountRef: React.MutableRefObject<number>
     queueTypingUser: (id: string) => void
     removeTypingUser: (id: string) => void
@@ -39,8 +37,6 @@ export function useAutonomousFlow({
     lastUserMessageIdRef,
     autoLowCostModeRef,
     autonomousBackoffUntilRef,
-    silentTurnsRef,
-    burstCountRef,
     idleAutoCountRef,
     queueTypingUser,
     removeTypingUser,
@@ -71,6 +67,40 @@ export function useAutonomousFlow({
     const isMountedRef = useRef(true)
     const totalAutoCallsRef = useRef(0)
     const MAX_SESSION_AUTO_CALLS = 15
+
+    const getGreetingBeatOrder = useCallback((count: number): GreetingBeat[] => {
+        if (count <= 1) return ['solo_open']
+        if (count === 2) return ['warm_open', 'useful_question']
+        return ['warm_open', 'riff', 'useful_question']
+    }, [])
+
+    const getGreetingLeadDelay = useCallback((beat: GreetingBeat) => {
+        switch (beat) {
+            case 'warm_open':
+                return 220 + Math.random() * 140
+            case 'riff':
+                return 480 + Math.random() * 220
+            case 'useful_question':
+                return 680 + Math.random() * 260
+            case 'solo_open':
+            default:
+                return 260 + Math.random() * 180
+        }
+    }, [])
+
+    const getGreetingTypingDelay = useCallback((beat: GreetingBeat) => {
+        switch (beat) {
+            case 'warm_open':
+                return 820 + Math.random() * 260
+            case 'riff':
+                return 560 + Math.random() * 220
+            case 'useful_question':
+                return 940 + Math.random() * 280
+            case 'solo_open':
+            default:
+                return 900 + Math.random() * 260
+        }
+    }, [])
 
     const scheduleGreeting = (fn: () => void, delay: number) => {
         const timer = setTimeout(() => {
@@ -137,17 +167,21 @@ export function useAutonomousFlow({
         initialGreetingRef.current = true
 
         const nameLabel = state.userNickname || state.userName || 'friend'
-        const speakers = [...state.activeGang].sort(() => 0.5 - Math.random()).slice(0, Math.min(3, state.activeGang.length))
-        let delay = 200
+        const speakers = [...state.activeGang]
+            .sort(() => 0.5 - Math.random())
+            .slice(0, Math.min(3, state.activeGang.length))
+        const beatOrder = getGreetingBeatOrder(speakers.length)
+        let delay = 180
 
-        speakers.forEach((char) => {
+        speakers.forEach((char, index) => {
+            const beat = beatOrder[Math.min(index, beatOrder.length - 1)] || 'solo_open'
             scheduleGreeting(() => {
                 const hasUserMessage = useChatStore.getState().messages.some((m: Message) => m.speaker === 'user')
                 if (hasUserMessage) return
                 queueTypingUser(char.id)
                 pulseStatus(char.id, pickStatusFor(char.id), 1600)
                 const customNames = useChatStore.getState().customCharacterNames || {}
-                let line = (pickRandom(CHARACTER_GREETINGS[char.id] || [`Hey ${nameLabel}, what should we talk about?`]) || `Hey ${nameLabel}, what should we talk about?`)
+                let line = (pickRandom(getCharacterGreetingOptions(char.id, beat)) || `Hey ${nameLabel}, what should we talk about?`)
                     .replace('{name}', nameLabel)
                 // Replace original character name with custom name if user renamed the character
                 if (customNames[char.id] && char.name && customNames[char.id] !== char.name) {
@@ -166,13 +200,15 @@ export function useAutonomousFlow({
                         content: line,
                         created_at: new Date().toISOString(),
                     })
-                }, 700 + Math.random() * 600)
+                }, getGreetingTypingDelay(beat))
             }, delay)
-            delay += 900 + Math.random() * 700
+            delay += getGreetingLeadDelay(beat)
         })
-    }, [historyBootstrapDone, historyStatus, initialGreetingRef, pickStatusFor, pulseStatus, queueTypingUser, removeTypingUser])
+    }, [getGreetingBeatOrder, getGreetingLeadDelay, getGreetingTypingDelay, historyBootstrapDone, historyStatus, initialGreetingRef, pickStatusFor, pulseStatus, queueTypingUser, removeTypingUser])
 
-    triggerLocalGreetingRef.current = triggerLocalGreeting
+    useEffect(() => {
+        triggerLocalGreetingRef.current = triggerLocalGreeting
+    }, [triggerLocalGreetingRef, triggerLocalGreeting])
 
     // Resume autonomous for returning users with open-floor intent
     useEffect(() => {

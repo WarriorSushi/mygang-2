@@ -143,7 +143,7 @@ function OnboardingPage() {
                 },
             })
         }
-    }, [isRetake, step])
+    }, [avatarStylePreference, isRetake, step])
 
     const subscriptionTier = useChatStore((s) => s.subscriptionTier)
     const squadLimit = getSquadLimit(subscriptionTier ?? 'free')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
@@ -46,22 +46,23 @@ const BASIC_TIER_FEATURES = [
 
 export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpenSettings, onOpenMemoryVault, onOpenWallpaper }: PaywallPopupProps) {
     const [secondsLeft, setSecondsLeft] = useState(cooldownSeconds)
+    const [initialCooldown, setInitialCooldown] = useState(cooldownSeconds)
     const isFree = tier === 'free'
     const isBasic = tier === 'basic'
     const tierCopy = getTierCopy(tier === 'basic' ? 'basic' : tier === 'pro' ? 'pro' : 'free')
+    const syncCooldownState = useCallback((nextCooldown: number) => {
+        setSecondsLeft(nextCooldown)
+        if (nextCooldown > 0) {
+            setInitialCooldown(nextCooldown)
+        }
+    }, [])
 
     // Reset countdown when cooldownSeconds changes or dialog opens
     useEffect(() => {
         if (open) {
-            setSecondsLeft(cooldownSeconds)
+            queueMicrotask(() => syncCooldownState(cooldownSeconds))
         }
-    }, [cooldownSeconds, open])
-
-    // Track initial cooldown for "try now" threshold
-    const [initialCooldown, setInitialCooldown] = useState(cooldownSeconds)
-    useEffect(() => {
-        if (open && cooldownSeconds > 0) setInitialCooldown(cooldownSeconds)
-    }, [cooldownSeconds, open])
+    }, [cooldownSeconds, open, syncCooldownState])
 
     // Countdown timer -- M17: removed secondsLeft from deps to prevent interval restart loop
     useEffect(() => {

@@ -8,7 +8,7 @@ import { headers } from 'next/headers'
 import { z } from 'zod'
 import { CHARACTERS } from '@/constants/characters'
 import { AVATAR_STYLES, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
-import { sanitizeMessageId, isMissingHistoryMetadataColumnsError } from '@/lib/chat-utils'
+import { sanitizeMessageId } from '@/lib/chat-utils'
 import { getTierFromProfile, getSquadLimit } from '@/lib/billing'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
 
@@ -750,12 +750,13 @@ export async function saveMemoryManual(content: string) {
 const squadTierTable = (supabase: Awaited<ReturnType<typeof createClient>>) =>
     supabase.from('squad_tier_members')
 
-export async function addSquadTierMembers(characterIds: string[], _tier?: 'basic' | 'pro') {
+export async function addSquadTierMembers(characterIds: string[], requestedTier?: 'basic' | 'pro') {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         throw new SquadPersistenceError('not_authenticated', 'You must be signed in to change paid squad members.')
     }
+    void requestedTier
 
     try {
         const rate = await rateLimit('add-squad-tier:' + user.id, 10, 60_000)

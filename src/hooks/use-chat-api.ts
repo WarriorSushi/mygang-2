@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { normalizeActivityStatus } from '@/constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
-import { getContextLimit, getTierFromProfile } from '@/lib/billing'
+import { getTierFromProfile } from '@/lib/billing'
 import { hasOpenFloorIntent } from '@/lib/chat-utils'
 import type { TokenUsage } from '@/types/shared'
 
@@ -13,12 +13,18 @@ export function isLiveChatMessage(m: { source?: string }): boolean {
     return !m.source || m.source === 'chat'
 }
 
+const PAYLOAD_WINDOW_LIMITS = {
+    free: 15,
+    basic: 25,
+    pro: 35,
+} as const
+
 export function getPayloadWindowLimit(
     subscriptionTier: string | null | undefined,
     lowCostMode: boolean
 ): number {
     if (lowCostMode) return 10
-    return getContextLimit(getTierFromProfile(subscriptionTier ?? null))
+    return PAYLOAD_WINDOW_LIMITS[getTierFromProfile(subscriptionTier ?? null)]
 }
 
 type ChatEvent =
@@ -65,6 +71,139 @@ const CAPACITY_BACKOFF_MIN_MS = 90_000
 const MAX_DELIVERY_ERROR_CHARS = 140
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MS = 30_000
 let cooldownNotifTimer: ReturnType<typeof setTimeout> | null = null
+
+type MessageIntent =
+    | 'micro_ack'
+    | 'playful'
+    | 'question'
+    | 'supportive'
+    | 'reflective'
+    | 'story'
+    | 'default'
+
+function getMessageIntent(text: string): MessageIntent {
+    const trimmed = text.trim()
+    if (!trimmed) return 'default'
+
+    const wordCount = trimmed.split(/\s+/).filter(Boolean).length
+    const sentenceCount = trimmed.split(/[.!?]+/).filter((part) => part.trim().length > 0).length
+    const lower = trimmed.toLowerCase()
+
+    if (
+        wordCount <= 5
+        && /^(lol+|lmao+|omg+|fr|real|same|true|fair|oop|wait|damn|yeah|yep|nah|nope|ok+|okay+|sure|bet|wild|mood|facts)\b/.test(lower)
+    ) {
+        return 'micro_ack'
+    }
+
+    if (
+        /(i'm here|i am here|take your time|that sounds|i'm sorry|i am sorry|proud of you|love that for you|you deserve|breathe|deep breath|we got you|i get why|that feels|that sounds really)/.test(lower)
+    ) {
+        return 'supportive'
+    }
+
+    if (
+        trimmed.endsWith('?')
+        || /^(what|why|how|when|where|who|which|tell me|walk me through|do you|are you|can you|should we|want me to)\b/.test(lower)
+    ) {
+        return 'question'
+    }
+
+    if (
+        /(lol|lmao|haha|hehe|omg|yooo|bro|bestie|iconic|chaos|wild|insane)/.test(lower)
+        || /[!?]{2,}/.test(trimmed)
+    ) {
+        return 'playful'
+    }
+
+    if (wordCount >= 35 || sentenceCount >= 4) {
+        return 'story'
+    }
+
+    if (
+        /(i think|honestly|tbh|feels like|sounds like|my take|if i'm being real|maybe|probably|lowkey|highkey)/.test(lower)
+        || (wordCount >= 18 && sentenceCount >= 2)
+    ) {
+        return 'reflective'
+    }
+
+    return 'default'
+}
+
+function getIntentPacingProfile(intent: MessageIntent) {
+    switch (intent) {
+        case 'micro_ack':
+            return { minTyping: 220, maxTyping: 520, perChar: 6, baseTyping: 180, maxPreDelay: 220, bubbleCap: 900 }
+        case 'playful':
+            return { minTyping: 340, maxTyping: 880, perChar: 10, baseTyping: 260, maxPreDelay: 360, bubbleCap: 1300 }
+        case 'question':
+            return { minTyping: 520, maxTyping: 1400, perChar: 13, baseTyping: 420, maxPreDelay: 520, bubbleCap: 1850 }
+        case 'supportive':
+            return { minTyping: 760, maxTyping: 1900, perChar: 15, baseTyping: 640, maxPreDelay: 700, bubbleCap: 2500 }
+        case 'reflective':
+            return { minTyping: 700, maxTyping: 1800, perChar: 14, baseTyping: 580, maxPreDelay: 620, bubbleCap: 2350 }
+        case 'story':
+            return { minTyping: 840, maxTyping: 2100, perChar: 16, baseTyping: 720, maxPreDelay: 760, bubbleCap: 2900 }
+        case 'default':
+        default:
+            return { minTyping: 460, maxTyping: 1300, perChar: 12, baseTyping: 360, maxPreDelay: 440, bubbleCap: 1700 }
+    }
+}
+
+function getEcosystemPacingMultiplier(ecosystemSpeed: 'fast' | 'normal' | 'relaxed') {
+    if (ecosystemSpeed === 'fast') return 0.72
+    if (ecosystemSpeed === 'relaxed') return 1.2
+    return 1
+}
+
+function getEventPauseMs(
+    eventDelay: number,
+    intent: MessageIntent,
+    ecosystemSpeed: 'fast' | 'normal' | 'relaxed',
+) {
+    const profile = getIntentPacingProfile(intent)
+    const speedMultiplier = getEcosystemPacingMultiplier(ecosystemSpeed)
+    return Math.max(0, Math.min(eventDelay, Math.round(profile.maxPreDelay * speedMultiplier)))
+}
+
+function getTypingDurationMs(args: {
+    content: string
+    intent: MessageIntent
+    speedFactor: number
+    ecosystemSpeed: 'fast' | 'normal' | 'relaxed'
+    preDelayMs: number
+    primedByGhost: boolean
+}) {
+    const { content, intent, speedFactor, ecosystemSpeed, preDelayMs, primedByGhost } = args
+    const profile = getIntentPacingProfile(intent)
+    const speedMultiplier = getEcosystemPacingMultiplier(ecosystemSpeed)
+    const remainingCap = Math.max(primedByGhost ? 220 : profile.minTyping, Math.round(profile.bubbleCap * speedMultiplier) - preDelayMs)
+
+    if (primedByGhost) {
+        return Math.min(remainingCap, Math.max(180, Math.round(220 * speedMultiplier)))
+    }
+
+    const semanticLength = Math.max(0, content.trim().length - 8)
+    const computed = Math.round((profile.baseTyping + semanticLength * profile.perChar * speedFactor) * speedMultiplier)
+    const lowerBound = Math.round(profile.minTyping * speedMultiplier)
+    const upperBound = Math.min(remainingCap, Math.round(profile.maxTyping * speedMultiplier))
+
+    return Math.max(lowerBound, Math.min(computed, upperBound))
+}
+
+function findNextMessageEvent(
+    events: ChatEvent[],
+    startIndex: number,
+    character?: string
+): Extract<ChatEvent, { type: 'message' }> | null {
+    for (let index = startIndex + 1; index < events.length; index += 1) {
+        const event = events[index]
+        if (event.type !== 'message') continue
+        if (character && event.character !== character) continue
+        return event
+    }
+    return null
+}
 
 function withDeliveryError(errorMessage: string) {
     const trimmed = errorMessage.trim()
@@ -489,13 +628,24 @@ export function useChatApi({
             clearTypingUsers()
 
             // == THE SEQUENCER ==
-            for (const event of data.events) {
+            const primedTypingGhosts = new Set<string>()
+            for (let index = 0; index < data.events.length; index += 1) {
+                const event = data.events[index]
                 if (pendingUserMessagesRef.current) {
                     if (process.env.NODE_ENV !== 'production') console.log("AI Sequencing interrupted by new user message.")
                     break
                 }
 
-                await new Promise(r => setTimeout(r, event.delay))
+                const eventIntent = event.type === 'message'
+                    ? getMessageIntent(event.content || '')
+                    : event.type === 'reaction'
+                        ? 'micro_ack'
+                        : 'default'
+                const interEventDelay = event.type === 'message'
+                    ? getEventPauseMs(event.delay, eventIntent, ecosystemSpeed)
+                    : event.delay
+
+                await new Promise(r => setTimeout(r, interEventDelay))
 
                 if (pendingUserMessagesRef.current) break
 
@@ -505,8 +655,14 @@ export function useChatApi({
                         queueTypingUser(event.character)
                         const eventContent = event.content || ''
                         const speedFactor = activeGang.find(c => c.id === event.character)?.typingSpeed || 1
-                        const ecosystemMultiplier = ecosystemSpeed === 'fast' ? 0.5 : ecosystemSpeed === 'relaxed' ? 2 : 1
-                        const typingTime = Math.min(3000, Math.max(eventContent.length < 10 ? 400 : 700, eventContent.length * 18 * speedFactor * ecosystemMultiplier + Math.random() * 300))
+                        const typingTime = getTypingDurationMs({
+                            content: eventContent,
+                            intent: eventIntent,
+                            speedFactor,
+                            ecosystemSpeed,
+                            preDelayMs: interEventDelay,
+                            primedByGhost: primedTypingGhosts.delete(event.character),
+                        })
                         await new Promise(r => setTimeout(r, typingTime))
 
                         if (pendingUserMessagesRef.current) break
@@ -565,9 +721,13 @@ export function useChatApi({
                         break
 
                     case 'typing_ghost':
+                        if (!findNextMessageEvent(data.events, index, event.character)) {
+                            break
+                        }
                         setCharacterStatus(event.character, "")
                         queueTypingUser(event.character)
-                        await new Promise(r => setTimeout(r, 2500))
+                        primedTypingGhosts.add(event.character)
+                        await new Promise(r => setTimeout(r, Math.round(420 * getEcosystemPacingMultiplier(ecosystemSpeed))))
                         removeTypingUser(event.character)
                         break
                 }

@@ -1,11 +1,10 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, type CSSProperties, type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Character, Message, useChatStore } from '@/stores/chat-store'
 import { MessageItem } from './message-item'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CHARACTERS } from '@/constants/characters'
@@ -46,15 +45,22 @@ function ChatSkeleton() {
     )
 }
 
+type LottiePlayerProps = {
+    animationData: object
+    loop?: boolean
+    autoplay?: boolean
+    style?: CSSProperties
+}
+
 // Module-level cache for Lottie assets (persists across mounts)
 let cachedAnimationData: object | null = null
-let cachedLottieComponent: ComponentType<any> | null = null
+let cachedLottieComponent: ComponentType<LottiePlayerProps> | null = null
 let lottieLoadPromise: Promise<void> | null = null
 let animationLoadPromise: Promise<void> | null = null
 
 function EmptyStateWelcome() {
     const [animationData, setAnimationData] = useState<object | null>(cachedAnimationData)
-    const [LottiePlayer, setLottiePlayer] = useState<ComponentType<any> | null>(() => cachedLottieComponent)
+    const [LottiePlayer, setLottiePlayer] = useState<ComponentType<LottiePlayerProps> | null>(() => cachedLottieComponent)
 
     useEffect(() => {
         if (cachedAnimationData) {
@@ -170,11 +176,11 @@ export const MessageList = memo(function MessageList({
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollRafRef = useRef<number | null>(null)
     const animationCleanupRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const animatedMessageIdsRef = useRef<Set<string>>(new Set())
     const didInitialScrollRef = useRef(false)
     const [isAtBottom, setIsAtBottom] = useState(true)
     const [unreadCount, setUnreadCount] = useState(0)
     const [liveAnnouncement, setLiveAnnouncement] = useState('')
+    const [animatedMessageIds, setAnimatedMessageIds] = useState<string[]>([])
     const prevMessagesLength = useRef(messages.length)
     const prevFirstMessageIdRef = useRef<string | null>(messages[0]?.id ?? null)
     const showPersonaRoles = useChatStore((state) => state.showPersonaRoles)
@@ -288,7 +294,7 @@ export const MessageList = memo(function MessageList({
         } else if (isNewMessage) {
             const appendedMessages = messages.slice(previousLength)
             const hasUserMessage = appendedMessages.some((m) => m.speaker === 'user')
-            appendedMessages.forEach((m) => animatedMessageIdsRef.current.add(m.id))
+            setAnimatedMessageIds(appendedMessages.map((message) => message.id))
 
             // Announce new non-user messages for screen readers
             const newAiMessages = appendedMessages.filter(m => m.speaker !== 'user')
@@ -301,7 +307,7 @@ export const MessageList = memo(function MessageList({
                 clearTimeout(animationCleanupRef.current)
             }
             animationCleanupRef.current = setTimeout(() => {
-                animatedMessageIdsRef.current.clear()
+                setAnimatedMessageIds([])
                 animationCleanupRef.current = null
             }, 1200)
 
@@ -391,7 +397,7 @@ export const MessageList = memo(function MessageList({
                             ? characterBySpeaker.get(normalizeSpeaker(quotedMessage.speaker)) ?? null
                             : null
                         const seenBy = seenByMessageId.get(message.id) ?? []
-                        const shouldAnimate = animatedMessageIdsRef.current.has(message.id)
+                        const shouldAnimate = animatedMessageIds.includes(message.id)
                         const isReaction = !!message.reaction
 
                         // WYWA divider: show before the first message of a contiguous wywa batch

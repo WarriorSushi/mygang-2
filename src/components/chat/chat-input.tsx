@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, X } from 'lucide-react'
 
@@ -32,14 +32,15 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
     // P-I4: Debounce ref for localStorage draft saves
     const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const sendThrottleRef = useRef(false)
+    const restoreDraft = useCallback((value: string) => setInput(value), [])
 
     // Restore draft from localStorage after mount (avoids hydration mismatch)
     useEffect(() => {
         if (draftLoadedRef.current) return
         draftLoadedRef.current = true
         const saved = window.localStorage.getItem(DRAFT_STORAGE_KEY)
-        if (saved) setInput(saved.slice(0, MAX_CHARS))
-    }, [])
+        if (saved) queueMicrotask(() => restoreDraft(saved.slice(0, MAX_CHARS)))
+    }, [restoreDraft])
 
     // P-I4: Debounce localStorage draft save (500ms)
     useEffect(() => {

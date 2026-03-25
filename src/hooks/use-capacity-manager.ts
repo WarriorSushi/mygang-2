@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChatStore } from '@/stores/chat-store'
 import { trackEvent } from '@/lib/analytics'
 
@@ -19,6 +19,7 @@ export function useCapacityManager({ onToast }: UseCapacityManagerArgs) {
     const autoLowCostModeRef = useRef(false)
     const capacityErrorTimestampsRef = useRef<number[]>([])
     const successfulUserTurnsSinceCapacityRef = useRef(0)
+    const clearAutoMode = useCallback(() => setAutoLowCostMode(false), [])
 
     // Keep ref in sync with state
     useEffect(() => {
@@ -32,8 +33,8 @@ export function useCapacityManager({ onToast }: UseCapacityManagerArgs) {
         autoLowCostModeRef.current = false
         capacityErrorTimestampsRef.current = []
         successfulUserTurnsSinceCapacityRef.current = 0
-        setAutoLowCostMode(false)
-    }, [lowCostMode])
+        queueMicrotask(clearAutoMode)
+    }, [clearAutoMode, lowCostMode])
 
     const recordCapacityError = (status: number, isUserInitiated: boolean) => {
         if (status !== 429 && status !== 402) return

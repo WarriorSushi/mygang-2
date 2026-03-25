@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 import { useChatStore } from '@/stores/chat-store'
 import { trackEvent } from '@/lib/analytics'
+import Link from 'next/link'
 
 type ActivationResponse = {
     state: 'activated' | 'pending' | 'invalid'
@@ -31,6 +32,10 @@ function SuccessContent() {
     const [resolvedPlan, setResolvedPlan] = useState<'basic' | 'pro' | null>(null)
     const [statusHint, setStatusHint] = useState('Just a moment while we power up your gang')
     const cancelledRef = useRef(false)
+    const markError = useCallback((hint: string) => {
+        setStatus('error')
+        setStatusHint(hint)
+    }, [])
 
     useEffect(() => {
         cancelledRef.current = false
@@ -58,8 +63,7 @@ function SuccessContent() {
             const timeoutMs = 45_000
 
             if (!subscriptionId && !normalizedPlan) {
-                setStatus('error')
-                setStatusHint('We could not confirm your upgrade yet.')
+                markError('We could not confirm your upgrade yet.')
                 return
             }
 
@@ -77,8 +81,7 @@ function SuccessContent() {
                             return
                         }
                         if (data?.state === 'invalid') {
-                            setStatus('error')
-                            setStatusHint('We could not verify your plan yet.')
+                            markError('We could not verify your plan yet.')
                             return
                         }
                         setStatus('pending')
@@ -102,20 +105,18 @@ function SuccessContent() {
                 await new Promise((resolve) => setTimeout(resolve, 2500))
             }
 
-            setStatus('error')
-            setStatusHint('Your payment was received, but activation is still processing.')
+            markError('Your payment was received, but activation is still processing.')
         }
 
         if (subscriptionId || normalizedPlan) {
             pollActivation().catch(() => {
-                setStatus('error')
-                setStatusHint('Your payment was received, but activation is still processing.')
+                markError('Your payment was received, but activation is still processing.')
             })
         } else {
-            setStatus('error')
+            queueMicrotask(() => markError('We could not confirm your upgrade yet.'))
         }
         return () => { cancelledRef.current = true }
-    }, [searchParams, router])
+    }, [markError, router, searchParams])
 
     useEffect(() => {
         trackEvent('checkout_completed')
@@ -142,7 +143,7 @@ function SuccessContent() {
                         Finishing your {resolvedPlan ? resolvedPlan.toUpperCase() : 'new'} upgrade...
                     </h1>
                     <p className="text-muted-foreground">{statusHint}</p>
-                    <p className="text-xs text-muted-foreground/70">We'll send you into chat as soon as your plan is confirmed.</p>
+                    <p className="text-xs text-muted-foreground/70">We&apos;ll send you into chat as soon as your plan is confirmed.</p>
                 </div>
             </div>
         )
@@ -155,12 +156,12 @@ function SuccessContent() {
                     <div className="text-4xl">😕</div>
                     <h1 className="text-2xl font-bold text-foreground">We&apos;re still checking your upgrade</h1>
                     <p className="text-muted-foreground">{statusHint}</p>
-                    <button
-                        onClick={() => router.replace('/chat')}
-                        className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    <Link
+                        href="/chat"
+                        className="mt-4 inline-flex px-6 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
                     >
                         Go to Chat
-                    </button>
+                    </Link>
                 </div>
             </div>
         )
@@ -177,12 +178,12 @@ function SuccessContent() {
                         : 'Welcome to Basic. Your gang can finally keep up with you.'}
                 </p>
                 <p className="text-muted-foreground/70 text-sm">Redirecting to chat in 3 seconds...</p>
-                <button
-                    onClick={() => router.replace('/chat')}
-                    className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                <Link
+                    href="/chat"
+                    className="mt-4 inline-flex px-6 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
                 >
                     Go to Chat
-                </button>
+                </Link>
             </div>
         </div>
     )

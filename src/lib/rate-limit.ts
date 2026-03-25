@@ -36,7 +36,7 @@ function memoryRateLimit(key: string, limit: number, windowMs: number): RateLimi
 
 // Cache Redis singleton at module level to avoid re-instantiation per request
 let _redisInstance: unknown = null
-let _ratelimitCache = new Map<string, unknown>()
+const _ratelimitCache = new Map<string, unknown>()
 
 export async function rateLimit(
   key: string,

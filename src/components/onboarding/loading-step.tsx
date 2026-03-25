@@ -1,7 +1,7 @@
 'use client'
 
 import { m, useReducedMotion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { LottieLoader } from '@/components/ui/lottie-loader'
 
 const STATUS_MESSAGES = [
@@ -18,10 +18,11 @@ const STATUS_MESSAGES = [
 export function LoadingStep() {
     const [status, setStatus] = useState(STATUS_MESSAGES[0])
     const prefersReducedMotion = useReducedMotion()
+    const showReducedMotionStatus = useCallback(() => setStatus('Summoning your gang...'), [])
 
     useEffect(() => {
         if (prefersReducedMotion) {
-            setStatus("Summoning your gang...")
+            queueMicrotask(showReducedMotionStatus)
             return
         }
         const interval = setInterval(() => {
@@ -31,7 +32,7 @@ export function LoadingStep() {
             })
         }, 1200)
         return () => clearInterval(interval)
-    }, [prefersReducedMotion])
+    }, [prefersReducedMotion, showReducedMotionStatus])
 
     return (
         <m.div

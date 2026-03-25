@@ -15,6 +15,49 @@ type ChatRouteMetricMetadata = {
     elapsedMs?: number
 }
 
+type QueryError = {
+    code?: string
+}
+
+type CountQueryResult = {
+    count: number | null
+    error: QueryError | null
+}
+
+type ActiveUserRow = {
+    user_id: string | null
+}
+
+type RecentChatRow = {
+    user_id: string | null
+    speaker: string
+    created_at: string
+}
+
+type RuntimeSettingsRow = {
+    id: string
+    global_low_cost_override: boolean | null
+    updated_by: string | null
+    updated_at: string | null
+}
+
+type RouteMetricRow = {
+    metadata: unknown
+    created_at: string
+}
+
+type AuditRow = {
+    actor_email: string | null
+    action: string
+    details: unknown
+    created_at: string
+}
+
+type DataQueryResult<T> = {
+    data: T | null
+    error: QueryError | null
+}
+
 function formatNumber(value: number | null) {
     return new Intl.NumberFormat('en-US').format(value || 0)
 }
@@ -68,7 +111,6 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
     const messageCode = Array.isArray(messageCodeRaw) ? messageCodeRaw[0] : messageCodeRaw || null
     const notice = getNotice(errorCode, messageCode)
 
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     const results = await Promise.all([
         admin.from('profiles').select('*', { count: 'exact', head: true }),
         admin.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'pro'),
@@ -81,7 +123,19 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
         admin.from('admin_runtime_settings').select('id, global_low_cost_override, updated_by, updated_at').eq('id', 'global').maybeSingle(),
         admin.from('analytics_events').select('metadata, created_at').eq('event', 'chat_route_metrics').gte('created_at', since24h).order('created_at', { ascending: false }).limit(600),
         admin.from('admin_audit_log').select('actor_email, action, details, created_at').order('created_at', { ascending: false }).limit(24),
-    ]) as any[]
+    ]) as [
+        CountQueryResult,
+        CountQueryResult,
+        CountQueryResult,
+        CountQueryResult,
+        CountQueryResult,
+        CountQueryResult,
+        DataQueryResult<ActiveUserRow[]>,
+        DataQueryResult<RecentChatRow[]>,
+        DataQueryResult<RuntimeSettingsRow>,
+        DataQueryResult<RouteMetricRow[]>,
+        DataQueryResult<AuditRow[]>,
+    ]
     const [
         { count: usersCount, error: usersError },
         { count: proUsersCount, error: proUsersError },
@@ -95,7 +149,6 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
         { data: routeMetricRows, error: routeMetricsError },
         { data: auditRows, error: auditError },
     ] = results
-    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     const hasAnyError = !!(
         usersError
@@ -111,7 +164,7 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
         || (auditError && auditError.code !== 'PGRST205' && auditError.code !== '42P01')
     )
 
-    const metrics: ChatRouteMetricMetadata[] = (routeMetricRows || []).map((row: any) => metricFromMetadata(row.metadata))
+    const metrics: ChatRouteMetricMetadata[] = (routeMetricRows || []).map((row) => metricFromMetadata(row.metadata))
     const totalRouteCalls24h = metrics.length
     const capacityBlocked24h = metrics.filter((m) => m.status === 429 && m.providerCapacityBlocked).length
     const hardFailures24h = metrics.filter((m) => m.status === 500).length
@@ -130,8 +183,8 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
 
     const uniqueActiveUsers24h = new Set(
         (activeUsersRows || [])
-            .map((row: any) => row.user_id)
-            .filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+            .map((row) => row.user_id)
+            .filter((value): value is string => typeof value === 'string' && value.length > 0)
     ).size
     const globalLowCostOverride = !!runtimeSettingsRow?.global_low_cost_override
 
@@ -344,7 +397,7 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
                     </div>
                     {recentChatRows && recentChatRows.length > 0 ? (
                         <div className="space-y-1.5">
-                            {recentChatRows.slice(0, 12).map((row: any, index: number) => (
+                            {recentChatRows.slice(0, 12).map((row, index: number) => (
                                 <div key={`${row.user_id}-${row.created_at}-${index}`} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-slate-300/85">
                                     <span className="font-semibold text-slate-100">{row.speaker}</span>
                                     {' '}| user {(row.user_id || 'guest').slice(0, 8)}...
@@ -364,7 +417,7 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
                     </div>
                     {auditRows && auditRows.length > 0 ? (
                         <div className="space-y-1.5">
-                            {auditRows.slice(0, 12).map((row: any, index: number) => (
+                            {auditRows.slice(0, 12).map((row, index: number) => (
                                 <div key={`${row.created_at}-${row.action}-${index}`} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-slate-300/85">
                                     <span className="font-semibold text-slate-100">{row.action}</span>
                                     {' '}| {row.actor_email}

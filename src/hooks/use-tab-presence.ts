@@ -39,7 +39,7 @@ export function buildPresenceTitle(unreadCount: number, baseTitle: string): stri
  */
 export function useTabPresence(messages: Message[]) {
     // Tracks the timestamp when the user last "saw" the chat (tab visible + focused)
-    const seenCutoffRef = useRef(Date.now())
+    const seenCutoffRef = useRef(0)
     const isHiddenRef = useRef(false)
     // Capture the page title that was set before this hook touched it
     const baseTitleRef = useRef('')
@@ -48,6 +48,7 @@ export function useTabPresence(messages: Message[]) {
     useEffect(() => {
         // Snapshot the current title on mount (set by Next metadata)
         baseTitleRef.current = document.title
+        seenCutoffRef.current = Date.now()
 
         const markSeen = () => {
             isHiddenRef.current = false

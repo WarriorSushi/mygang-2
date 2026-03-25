@@ -210,7 +210,10 @@ export function LandingPage() {
   const isHydrated = useChatStore((s) => s.isHydrated)
   const activeGang = useChatStore((s) => s.activeGang)
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const markMounted = useCallback(() => setMounted(true), [])
+  useEffect(() => {
+    queueMicrotask(markMounted)
+  }, [markMounted])
   const ready = mounted && isHydrated
   const isAuthenticated = ready && !!userId
   const hasGang = activeGang.length >= 2

@@ -5,6 +5,7 @@ import { useChatStore, Message } from '@/stores/chat-store'
 import { getChatHistoryPage } from '@/app/auth/actions'
 import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
 import { normalizeSource } from '@/lib/utils'
+export { normalizeSource } from '@/lib/utils'
 
 // ── Pure helpers ──
 
@@ -96,7 +97,7 @@ function shouldPreserveLocalMessage(localMessage: Message, latestRemoteTimestamp
     return localTimestamp >= latestRemoteTimestamp - 5000
 }
 
-function collapseLikelyDuplicateMessages(messages: Message[]) {
+export function collapseLikelyDuplicateMessages(messages: Message[]) {
     if (messages.length <= 1) return messages
 
     const uniqueById: Message[] = []
@@ -111,7 +112,14 @@ function collapseLikelyDuplicateMessages(messages: Message[]) {
     // Keeps the first occurrence, drops later duplicates
     const seenSignatures = new Map<string, number>() // signature → timestamp of first occurrence
     const globalDeduped: Message[] = []
+    let previousSource: string | null = null
     for (const message of uniqueById) {
+        const currentSource = normalizeSource(message.source)
+        if (previousSource !== null && currentSource !== previousSource) {
+            seenSignatures.clear()
+        }
+        previousSource = currentSource
+
         if (message.speaker === 'user') {
             globalDeduped.push(message)
             continue

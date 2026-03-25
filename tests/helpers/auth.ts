@@ -233,13 +233,20 @@ export async function loginWithPassword(page: Page, email: string, password = TE
     await gotoWithRetry(page, '/')
     await dismissCookieConsent(page)
 
-    await page.getByRole('button', { name: 'Log in' }).click()
+    const authWall = page.getByTestId('auth-wall')
+    const openAuthWall = async () => {
+        if (await authWall.isVisible()) return
+        await page.getByRole('button', { name: 'Log in' }).click()
+        await expect(authWall).toBeVisible({ timeout: 10_000 })
+    }
+
+    await openAuthWall()
     const continueWithEmailButton = page.getByRole('button', { name: 'Continue with email' })
     try {
         await continueWithEmailButton.click({ timeout: 10_000 })
     } catch {
         await dismissCookieConsent(page)
-        await page.getByRole('button', { name: 'Log in' }).click()
+        await openAuthWall()
         await continueWithEmailButton.click({ timeout: 10_000 })
     }
     await page.getByRole('checkbox').first().check()

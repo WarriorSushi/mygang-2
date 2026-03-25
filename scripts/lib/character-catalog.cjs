@@ -58,17 +58,23 @@ function writeReportFiles(baseName, report, markdown) {
 function loadShippedCharacterCatalog() {
     const filePath = path.join(process.cwd(), 'src', 'constants', 'characters.ts')
     const source = fs.readFileSync(filePath, 'utf8')
+    const match = source.match(
+        /const BASE_CHARACTERS: BaseCharacterCatalogEntry\[\]\s*=\s*(\[[\s\S]*?\])\s*\r?\n\r?\nconst CHARACTER_CATALOG_BY_STYLE/
+    )
 
-    const executable = source
-        .replace(/^import type[^\r\n]*\r?\n/m, '')
-        .replace(/type CharacterCatalogEntry =[\s\S]*?\r?\n\r?\n/m, '')
-        .replace(/export const CHARACTERS\s*:\s*CharacterCatalogEntry\[\]\s*=\s*/, 'return ')
+    if (!match) {
+        throw new Error('Failed to locate BASE_CHARACTERS in src/constants/characters.ts')
+    }
 
-    const catalog = vm.runInNewContext(`(function () {\n${executable}\n})()`, {}, { filename: filePath })
-    if (!Array.isArray(catalog)) {
+    const baseCatalog = vm.runInNewContext(`(${match[1]})`, {}, { filename: filePath })
+    if (!Array.isArray(baseCatalog)) {
         throw new Error('Failed to load shipped character catalog from src/constants/characters.ts')
     }
-    return catalog
+
+    return baseCatalog.map((entry) => ({
+        ...entry,
+        avatar: `/avatars/${entry.id}.webp`,
+    }))
 }
 
 function buildPromptBlock(entry) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 
 const Lottie = lazy(() => import('lottie-react'))
 
@@ -12,16 +12,17 @@ interface ConfettiCelebrationProps {
 export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebrationProps) {
     const [animationData, setAnimationData] = useState<unknown>(null)
     const [show, setShow] = useState(false)
+    const reveal = useCallback(() => setShow(true), [])
 
     useEffect(() => {
         if (!trigger) return
-        setShow(true)
+        queueMicrotask(reveal)
         // Lazy-load the animation JSON only when needed
         fetch('/lottie/confetti.json')
             .then((res) => res.json())
             .then(setAnimationData)
             .catch(() => {})
-    }, [trigger])
+    }, [reveal, trigger])
 
     if (!show || !animationData) return null
 
