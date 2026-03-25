@@ -142,7 +142,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
 
                         {configMissing && (
                             <div className="mb-4 rounded-xl border border-amber-600/40 dark:border-amber-400/35 bg-amber-100/60 dark:bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-100">
-                                Set `ADMIN_PANEL_EMAIL` and `ADMIN_PANEL_PASSWORD_HASH` (or fallback `ADMIN_PANEL_PASSWORD`) in environment variables.
+                                Set `ADMIN_PANEL_EMAIL`, `ADMIN_PANEL_PASSWORD_HASH`, and `ADMIN_PANEL_SESSION_SECRET` in environment variables.
                             </div>
                         )}
 
@@ -183,7 +183,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                             </button>
                             {configMode === 'hash' && (
                                 <p className="text-[11px] text-muted-foreground">
-                                    Password field accepts your original admin password. It also accepts the exact configured SHA-256 hash if needed.
+                                    Password field accepts the original admin password whose PBKDF2 hash is stored in `ADMIN_PANEL_PASSWORD_HASH`.
                                 </p>
                             )}
                         </form>
