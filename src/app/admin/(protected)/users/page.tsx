@@ -44,6 +44,19 @@ function sanitizeSearch(raw: string | undefined | string[]): string {
     return (value ?? '').replace(/[^a-zA-Z0-9 _@\-]/g, '').trim().slice(0, 100)
 }
 
+function buildUsersReturnTo(page: number, search: string) {
+    const params = new URLSearchParams()
+    if (page > 1) {
+        params.set('page', String(page))
+    }
+    if (search) {
+        params.set('search', search)
+    }
+
+    const query = params.toString()
+    return query ? `/admin/users?${query}` : '/admin/users'
+}
+
 function getNotice(errorCode: string | null, messageCode: string | null) {
     if (errorCode === 'invalid_request') {
         return { tone: 'error', text: 'Request origin check failed. Retry from the admin panel directly.' }
@@ -94,6 +107,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
     const pageRaw = Array.isArray(params.page) ? params.page[0] : params.page
     const currentPage = Math.max(1, parseInt(pageRaw || '1', 10) || 1)
     const search = sanitizeSearch(params.search)
+    const usersReturnTo = buildUsersReturnTo(currentPage, search)
     const offset = (currentPage - 1) * PAGE_SIZE
 
     const since = new Date()
@@ -241,7 +255,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                     </div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <form action={resetAllUserDailyUsage}>
-                            <input type="hidden" name="returnTo" value="/admin/users" />
+                            <input type="hidden" name="returnTo" value={usersReturnTo} />
                             <button
                                 type="submit"
                                 className="flex h-full w-full items-center justify-between gap-2 rounded-xl border border-blue-300/30 bg-blue-400/10 px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-100 transition-colors hover:bg-blue-400/16"
@@ -251,7 +265,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                             </button>
                         </form>
                         <form action={setAllUsersLowCostMode}>
-                            <input type="hidden" name="returnTo" value="/admin/users" />
+                            <input type="hidden" name="returnTo" value={usersReturnTo} />
                             <input type="hidden" name="enabled" value="true" />
                             <button
                                 type="submit"
@@ -262,7 +276,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                             </button>
                         </form>
                         <form action={setAllUsersLowCostMode}>
-                            <input type="hidden" name="returnTo" value="/admin/users" />
+                            <input type="hidden" name="returnTo" value={usersReturnTo} />
                             <input type="hidden" name="enabled" value="false" />
                             <button
                                 type="submit"
@@ -342,7 +356,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
                                 <div className="grid w-full shrink-0 grid-cols-1 gap-2 sm:w-[360px] sm:grid-cols-2">
                                     <form action={setUserSubscriptionTier} className="flex items-center gap-1">
-                                        <input type="hidden" name="returnTo" value="/admin/users" />
+                                        <input type="hidden" name="returnTo" value={usersReturnTo} />
                                         <input type="hidden" name="userId" value={profile.id} />
                                         <select
                                             name="subscriptionTier"
@@ -361,7 +375,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                         </button>
                                     </form>
                                     <form action={setUserLowCostMode}>
-                                        <input type="hidden" name="returnTo" value="/admin/users" />
+                                        <input type="hidden" name="returnTo" value={usersReturnTo} />
                                         <input type="hidden" name="userId" value={profile.id} />
                                         <input type="hidden" name="enabled" value={lowCostEnabled ? 'false' : 'true'} />
                                         <button
@@ -372,7 +386,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                         </button>
                                     </form>
                                     <form action={resetUserDailyUsage}>
-                                        <input type="hidden" name="returnTo" value="/admin/users" />
+                                        <input type="hidden" name="returnTo" value={usersReturnTo} />
                                         <input type="hidden" name="userId" value={profile.id} />
                                         <button
                                             type="submit"
@@ -381,7 +395,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                                             Reset Daily Usage
                                         </button>
                                     </form>
-                                    <DeleteChatHistoryButton userId={profile.id} action={clearUserChatHistory} />
+                                    <DeleteChatHistoryButton userId={profile.id} returnTo={usersReturnTo} action={clearUserChatHistory} />
                                     <WywaTriggerButton userId={profile.id} tier={tier} action={triggerWywaForUser} />
                                 </div>
                             </div>

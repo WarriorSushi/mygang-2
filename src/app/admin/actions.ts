@@ -25,8 +25,44 @@ function buildIpAttemptKey(ip: string) {
 
 function parseReturnTo(formData: FormData, fallback: '/admin/overview' | '/admin/users') {
     const raw = String(formData.get('returnTo') || fallback)
-    if (raw === '/admin/overview' || raw === '/admin/users') return raw
+
+    if (raw === '/admin/overview') return raw
+
+    try {
+        const url = new URL(raw, 'https://admin.local')
+        if (url.pathname !== '/admin/users') return fallback
+
+        const sanitized = new URL('/admin/users', 'https://admin.local')
+        const pageRaw = url.searchParams.get('page')
+        const page = pageRaw ? Number.parseInt(pageRaw, 10) : NaN
+        if (Number.isFinite(page) && page > 1) {
+            sanitized.searchParams.set('page', String(page))
+        }
+
+        const searchRaw = url.searchParams.get('search')
+        if (searchRaw) {
+            const search = searchRaw.replace(/[^a-zA-Z0-9 _@\-]/g, '').trim().slice(0, 100)
+            if (search) {
+                sanitized.searchParams.set('search', search)
+            }
+        }
+
+        return `${sanitized.pathname}${sanitized.search}`
+    } catch {
+        return fallback
+    }
+
     return fallback
+}
+
+function buildRedirectUrl(
+    returnTo: string,
+    kind: 'error' | 'message',
+    value: string,
+) {
+    const url = new URL(returnTo, 'https://admin.local')
+    url.searchParams.set(kind, value)
+    return `${url.pathname}${url.search}`
 }
 
 function isUuid(value: string) {
@@ -147,7 +183,7 @@ export async function setGlobalLowCostOverride(formData: FormData) {
             global_low_cost_override: enabled,
             updated_by: session.email,
             updated_at: nowIso,
-        }, { onConflict: 'id' })
+    }, { onConflict: 'id' })
     if (settingsError) {
         redirect('/admin/overview?error=settings_update_failed')
     }
@@ -163,14 +199,14 @@ export async function setGlobalLowCostOverride(formData: FormData) {
     }, admin)
 
     revalidatePath('/admin/overview')
-    redirect(`${returnTo}?message=override_saved`)
+    redirect(buildRedirectUrl(returnTo, 'message', 'override_saved'))
 }
 
 export async function resetAllUserDailyUsage(formData: FormData) {
     const trustedRequest = await assertTrustedAdminRequest()
     const returnTo = parseReturnTo(formData, '/admin/users')
     if (!trustedRequest) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const session = await requireAdminSession()
@@ -187,7 +223,7 @@ export async function resetAllUserDailyUsage(formData: FormData) {
         .not('id', 'is', null)
     if (error) {
         console.error('Failed to reset all user daily usage:', error)
-        redirect(`${returnTo}?error=bulk_reset_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'bulk_reset_failed'))
     }
 
     await insertAdminAudit('all_users_daily_usage_reset', session.email, {
@@ -200,14 +236,14 @@ export async function resetAllUserDailyUsage(formData: FormData) {
 
     revalidatePath('/admin/users')
     revalidatePath('/admin/overview')
-    redirect(`${returnTo}?message=all_daily_reset_saved`)
+    redirect(buildRedirectUrl(returnTo, 'message', 'all_daily_reset_saved'))
 }
 
 export async function setAllUsersLowCostMode(formData: FormData) {
     const trustedRequest = await assertTrustedAdminRequest()
     const returnTo = parseReturnTo(formData, '/admin/users')
     if (!trustedRequest) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const session = await requireAdminSession()
@@ -223,7 +259,7 @@ export async function setAllUsersLowCostMode(formData: FormData) {
         .not('id', 'is', null)
     if (error) {
         console.error('Failed to toggle low cost mode for all users:', error)
-        redirect(`${returnTo}?error=bulk_low_cost_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'bulk_low_cost_failed'))
     }
 
     await insertAdminAudit('all_users_low_cost_mode_set', session.email, {
@@ -237,14 +273,14 @@ export async function setAllUsersLowCostMode(formData: FormData) {
 
     revalidatePath('/admin/users')
     revalidatePath('/admin/overview')
-    redirect(`${returnTo}?message=all_low_cost_saved`)
+    redirect(buildRedirectUrl(returnTo, 'message', 'all_low_cost_saved'))
 }
 
 export async function setUserSubscriptionTier(formData: FormData) {
     const trustedRequest = await assertTrustedAdminRequest()
     const returnTo = parseReturnTo(formData, '/admin/users')
     if (!trustedRequest) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const session = await requireAdminSession()
@@ -253,7 +289,7 @@ export async function setUserSubscriptionTier(formData: FormData) {
     const userId = String(formData.get('userId') || '')
     const nextTier = sanitizeTier(String(formData.get('subscriptionTier') || ''))
     if (!isUuid(userId) || !nextTier) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const { data: current, error: currentError } = await admin
@@ -263,7 +299,7 @@ export async function setUserSubscriptionTier(formData: FormData) {
         .maybeSingle()
     if (currentError) {
         console.error('Failed reading current subscription tier:', currentError)
-        redirect(`${returnTo}?error=user_update_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'user_update_failed'))
     }
 
     const { error } = await admin
@@ -272,7 +308,7 @@ export async function setUserSubscriptionTier(formData: FormData) {
         .eq('id', userId)
     if (error) {
         console.error('Failed updating user subscription tier:', error)
-        redirect(`${returnTo}?error=user_update_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'user_update_failed'))
     }
 
     await insertAdminAudit('user_subscription_tier_set', session.email, {
@@ -288,14 +324,14 @@ export async function setUserSubscriptionTier(formData: FormData) {
 
     revalidatePath('/admin/users')
     revalidatePath('/admin/overview')
-    redirect(`${returnTo}?message=user_tier_saved`)
+    redirect(buildRedirectUrl(returnTo, 'message', 'user_tier_saved'))
 }
 
 export async function setUserLowCostMode(formData: FormData) {
     const trustedRequest = await assertTrustedAdminRequest()
     const returnTo = parseReturnTo(formData, '/admin/users')
     if (!trustedRequest) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const session = await requireAdminSession()
@@ -304,7 +340,7 @@ export async function setUserLowCostMode(formData: FormData) {
     const userId = String(formData.get('userId') || '')
     const enabled = String(formData.get('enabled') || 'false') === 'true'
     if (!isUuid(userId)) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const { data: current, error: currentError } = await admin
@@ -314,7 +350,7 @@ export async function setUserLowCostMode(formData: FormData) {
         .maybeSingle()
     if (currentError) {
         console.error('Failed reading current low-cost mode:', currentError)
-        redirect(`${returnTo}?error=user_update_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'user_update_failed'))
     }
 
     const { error } = await admin
@@ -323,7 +359,7 @@ export async function setUserLowCostMode(formData: FormData) {
         .eq('id', userId)
     if (error) {
         console.error('Failed updating user low-cost mode:', error)
-        redirect(`${returnTo}?error=user_update_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'user_update_failed'))
     }
 
     await insertAdminAudit('user_low_cost_mode_set', session.email, {
@@ -339,14 +375,14 @@ export async function setUserLowCostMode(formData: FormData) {
 
     revalidatePath('/admin/users')
     revalidatePath('/admin/overview')
-    redirect(`${returnTo}?message=user_low_cost_saved`)
+    redirect(buildRedirectUrl(returnTo, 'message', 'user_low_cost_saved'))
 }
 
 export async function resetUserDailyUsage(formData: FormData) {
     const trustedRequest = await assertTrustedAdminRequest()
     const returnTo = parseReturnTo(formData, '/admin/users')
     if (!trustedRequest) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const session = await requireAdminSession()
@@ -354,7 +390,7 @@ export async function resetUserDailyUsage(formData: FormData) {
     const admin = createAdminClient()
     const userId = String(formData.get('userId') || '')
     if (!isUuid(userId)) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const { data: current, error: currentError } = await admin
@@ -364,7 +400,7 @@ export async function resetUserDailyUsage(formData: FormData) {
         .maybeSingle()
     if (currentError) {
         console.error('Failed reading current daily usage:', currentError)
-        redirect(`${returnTo}?error=user_update_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'user_update_failed'))
     }
 
     const nowIso = new Date().toISOString()
@@ -377,7 +413,7 @@ export async function resetUserDailyUsage(formData: FormData) {
         .eq('id', userId)
     if (error) {
         console.error('Failed resetting user daily usage:', error)
-        redirect(`${returnTo}?error=user_update_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'user_update_failed'))
     }
 
     await insertAdminAudit('user_daily_usage_reset', session.email, {
@@ -395,14 +431,14 @@ export async function resetUserDailyUsage(formData: FormData) {
 
     revalidatePath('/admin/users')
     revalidatePath('/admin/overview')
-    redirect(`${returnTo}?message=user_daily_reset_saved`)
+    redirect(buildRedirectUrl(returnTo, 'message', 'user_daily_reset_saved'))
 }
 
 export async function clearUserChatHistory(formData: FormData) {
     const trustedRequest = await assertTrustedAdminRequest()
     const returnTo = parseReturnTo(formData, '/admin/users')
     if (!trustedRequest) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const session = await requireAdminSession()
@@ -410,7 +446,7 @@ export async function clearUserChatHistory(formData: FormData) {
     const admin = createAdminClient()
     const userId = String(formData.get('userId') || '')
     if (!isUuid(userId)) {
-        redirect(`${returnTo}?error=invalid_request`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'invalid_request'))
     }
 
     const { count: previousCount, error: countError } = await admin
@@ -427,7 +463,7 @@ export async function clearUserChatHistory(formData: FormData) {
         .eq('user_id', userId)
     if (error) {
         console.error('Failed clearing user chat history:', error)
-        redirect(`${returnTo}?error=user_history_delete_failed`)
+        redirect(buildRedirectUrl(returnTo, 'error', 'user_history_delete_failed'))
     }
 
     await insertAdminAudit('user_chat_history_cleared', session.email, {
@@ -442,7 +478,7 @@ export async function clearUserChatHistory(formData: FormData) {
 
     revalidatePath('/admin/users')
     revalidatePath('/admin/overview')
-    redirect(`${returnTo}?message=user_history_deleted`)
+    redirect(buildRedirectUrl(returnTo, 'message', 'user_history_deleted'))
 }
 
 export async function triggerWywaForUser(formData: FormData): Promise<WywaResult> {

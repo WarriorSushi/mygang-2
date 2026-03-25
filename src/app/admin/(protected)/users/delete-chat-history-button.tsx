@@ -4,10 +4,11 @@ import { useRef, useState } from 'react'
 
 type DeleteChatHistoryButtonProps = {
     userId: string
+    returnTo: string
     action: (formData: FormData) => Promise<void>
 }
 
-export function DeleteChatHistoryButton({ userId, action }: DeleteChatHistoryButtonProps) {
+export function DeleteChatHistoryButton({ userId, returnTo, action }: DeleteChatHistoryButtonProps) {
     const [confirming, setConfirming] = useState(false)
     const formRef = useRef<HTMLFormElement>(null)
 
@@ -26,7 +27,7 @@ export function DeleteChatHistoryButton({ userId, action }: DeleteChatHistoryBut
 
     return (
         <form ref={formRef} action={action}>
-            <input type="hidden" name="returnTo" value="/admin/users" />
+            <input type="hidden" name="returnTo" value={returnTo} />
             <input type="hidden" name="userId" value={userId} />
             {confirming ? (
                 <div className="flex gap-1">
