@@ -1686,12 +1686,14 @@ ${sessionSummary}
             }
 
             await Promise.all([profileMemoryBranch(), chatHistoryBranch()])
+            }
 
-            // H2: Clear purchase celebration flag after use
+            // Clear purchase celebration flag SYNCHRONOUSLY (not in background)
+            // to prevent re-triggering on page refresh before persistAsync completes
             if (purchaseCelebration) {
                 await supabase.from('profiles').update({ purchase_celebration_pending: null }).eq('id', user.id)
             }
-            }
+
             waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err instanceof Error ? err.message : 'Unknown error')))
         }
 
