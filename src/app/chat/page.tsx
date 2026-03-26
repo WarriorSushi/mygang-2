@@ -255,6 +255,9 @@ export default function ChatPage() {
         if (purchaseCelebrationTriggeredRef.current) return
         if (api.isGeneratingRef.current) return
 
+        // Already celebrated this session — skip entirely (survives refresh)
+        if (typeof window !== 'undefined' && window.sessionStorage.getItem('mygang_celebration_done')) return
+
         // Check sessionStorage first (fast path)
         const sessionPlan = typeof window !== 'undefined'
             ? window.sessionStorage.getItem('mygang_just_purchased') as 'basic' | 'pro' | null
@@ -265,6 +268,8 @@ export default function ChatPage() {
             setShowConfetti(true)
             if (typeof window !== 'undefined') {
                 window.sessionStorage.removeItem('mygang_just_purchased')
+                // Mark in sessionStorage so refreshes don't re-trigger from DB fallback
+                window.sessionStorage.setItem('mygang_celebration_done', '1')
             }
             // Clear DB flag
             import('@/lib/supabase/client').then(({ createClient }) => {
