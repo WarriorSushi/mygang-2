@@ -364,8 +364,8 @@ export default function PricingPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="relative rounded-3xl border border-blue-500/20 bg-card/50 backdrop-blur-sm p-8 sm:p-10 flex flex-col"
             >
-              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 -mt-1">
-                <Image src="/plan-basic.jpg" alt="Basic Plan — hang with your gang around the campfire" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" priority />
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-6 -mt-1 bg-black/5 dark:bg-white/5">
+                <Image src="/plan-basic.jpg" alt="Basic Plan — hang with your gang around the campfire" fill className="object-contain" sizes="(max-width: 768px) 100vw, 33vw" priority />
               </div>
               <p className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2">Basic</p>
               <div className="flex items-baseline gap-1">
@@ -433,8 +433,8 @@ export default function PricingPage() {
                 </span>
               </div>
 
-              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 -mt-1">
-                <Image src="/plan-pro.jpg" alt="Pro Plan — full squad celebration with your gang" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" priority />
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-6 -mt-1 bg-black/5 dark:bg-white/5">
+                <Image src="/plan-pro.jpg" alt="Pro Plan — full squad celebration with your gang" fill className="object-contain" sizes="(max-width: 768px) 100vw, 33vw" priority />
               </div>
 
               <div className="flex items-baseline gap-1">
