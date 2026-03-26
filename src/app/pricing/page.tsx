@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ArrowLeft, Check, Crown, MessageCircle, Brain,
   Infinity, Clock, Shield, Sparkles, ArrowRight, ChevronDown,
@@ -363,6 +364,9 @@ export default function PricingPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="relative rounded-3xl border border-blue-500/20 bg-card/50 backdrop-blur-sm p-8 sm:p-10 flex flex-col"
             >
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 -mt-1">
+                <Image src="/plan-basic.jpg" alt="Basic Plan — hang with your gang around the campfire" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" priority />
+              </div>
               <p className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2">Basic</p>
               <div className="flex items-baseline gap-1">
                 <h3 className="text-3xl sm:text-4xl font-black tracking-tight">$14.99</h3>
@@ -427,6 +431,10 @@ export default function PricingPage() {
                 <span className="px-5 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-black uppercase tracking-widest whitespace-nowrap shadow-lg shadow-primary/30">
                   Most Popular
                 </span>
+              </div>
+
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 -mt-1">
+                <Image src="/plan-pro.jpg" alt="Pro Plan — full squad celebration with your gang" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" priority />
               </div>
 
               <div className="flex items-baseline gap-1">
