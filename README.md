@@ -1,10 +1,8 @@
 <div align="center">
 
-<img src="public/icon-512.png" alt="MyGang.ai" width="100" height="100" style="border-radius: 24px;" />
-
 # MyGang.ai
 
-### Your personal gang, always online. 🔥
+### Your personal gang, always online.
 
 **The AI group chat where fictional characters with real personalities hang out with you — and with each other.**
 
@@ -13,7 +11,6 @@
 [![Stars](https://img.shields.io/github/stars/WarriorSushi/mygang-2?style=for-the-badge&logo=github&color=FFD700&labelColor=000000)](https://github.com/WarriorSushi/mygang-2)
 [![License](https://img.shields.io/badge/license-BSL--1.1-8B5CF6?style=for-the-badge&labelColor=000000)](LICENSE.md)
 [![Made with Next.js](https://img.shields.io/badge/Made_with-Next.js_16-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
-
 
 <br />
 
@@ -26,7 +23,7 @@
 <br />
 
 <div align="center">
-  <img src="docs/screenshots/1_landing.png" alt="MyGang.ai — The AI Group Chat" width="90%" style="border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);" />
+  <img src="public/og-image.webp" alt="MyGang.ai — Your personal gang, always online" width="90%" />
 </div>
 
 <br />
@@ -46,12 +43,6 @@ MyGang isn't another boring AI chatbot. It's a **full group chat experience** wh
 Pick your crew. Drop a message. Watch them **roast each other, back you up, start drama, or spiral into chaos together.**
 
 > *"It's like Character.ai met a group chat and things got unhinged in the best way."*
-
-<br />
-
-<div align="center">
-  <img src="docs/screenshots/4_onboarding_selection.png" alt="Pick Your Squad" width="90%" style="border-radius: 16px;" />
-</div>
 
 <br />
 
@@ -82,12 +73,6 @@ Switch between **default**, **human**, and **retro** avatars for every character
 
 <br />
 
-<div align="center">
-  <img src="docs/screenshots/5_chat_initial.png" alt="Chat with Your Squad" width="90%" style="border-radius: 16px;" />
-</div>
-
-<br />
-
 ## 🔥 Meet the Squad
 
 <div align="center">
@@ -109,12 +94,6 @@ Switch between **default**, **human**, and **retro** avatars for every character
 | 🛸 | **Jinx** | Conspiracy energy | "But have you considered..." |
 | 🍃 | **Nova** | Chill stoner energy | Vibes only, no stress |
 
-</div>
-
-<br />
-
-<div align="center">
-  <img src="docs/screenshots/7_chat_complete.png" alt="Full Conversation with Your Gang" width="90%" style="border-radius: 16px;" />
 </div>
 
 <br />
@@ -160,7 +139,6 @@ Switch between **default**, **human**, and **retro** avatars for every character
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Tailwind](https://img.shields.io/badge/Tailwind_v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com)
-
 [![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=flat-square&logo=framer&logoColor=white)](https://motion.dev)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel)](https://vercel.com)
 
