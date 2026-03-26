@@ -180,7 +180,7 @@ export default function PricingPage() {
       try {
         const { DodoPayments } = await import('dodopayments-checkout')
         DodoPayments.Initialize({
-          mode: process.env.NEXT_PUBLIC_DODO_ENV === 'live_mode' ? 'live' : 'test',
+          mode: process.env.NEXT_PUBLIC_DODO_ENV?.includes('live') ? 'live' : 'test',
           displayType: 'overlay',
         })
         if (!cancelled) setSdkReady(true)
