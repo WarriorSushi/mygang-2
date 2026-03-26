@@ -79,13 +79,13 @@ export function PaywallPopup({ open, onOpenChange, cooldownSeconds, tier, onOpen
         return () => clearInterval(interval)
     }, [open])
 
-    // Auto-dismiss when countdown reaches 0
+    // Auto-dismiss when a real countdown reaches 0 (not when opened with cooldown=0)
     useEffect(() => {
-        if (open && secondsLeft === 0) {
+        if (open && secondsLeft === 0 && initialCooldown > 0) {
             const timer = setTimeout(() => onOpenChange(false), 1500)
             return () => clearTimeout(timer)
         }
-    }, [open, secondsLeft, onOpenChange])
+    }, [open, secondsLeft, initialCooldown, onOpenChange])
 
     // Progress bar calculations
     const normalizedTier = getTierFromProfile(tier)

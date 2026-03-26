@@ -510,12 +510,6 @@ export default function ChatPage() {
                 <ChatHeader
                     activeGang={activeGang}
                     onOpenVault={() => {
-                        if (subscriptionTier === 'free') {
-                            setPaywallCooldown(0)
-                            setPaywallTier('free')
-                            setPaywallOpen(true)
-                            return
-                        }
                         setIsVaultOpen(true)
                     }}
                     onOpenSettings={() => openSettingsPanel('root')}
