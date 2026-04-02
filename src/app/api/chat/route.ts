@@ -229,12 +229,9 @@ async function withHardTimeout<T>(
     }
 }
 
-// TODO (H7): withResponseTimeout does not cancel the handlePost promise when it times out.
-// This means persistence logic (DB writes) may still run after the timeout response is sent.
-// Ideal fix: pass an AbortSignal into handlePost, check it before persistence operations.
-// Risk: medium — persistence after timeout is wasteful but not harmful (writes are idempotent).
 async function withResponseTimeout(
     promiseFactory: () => Promise<Response>,
+    controller: AbortController,
     timeoutMs: number,
     onTimeout: () => Response | Promise<Response>
 ) {
@@ -243,12 +240,19 @@ async function withResponseTimeout(
         return await Promise.race([
             promiseFactory(),
             new Promise<Response>((resolve) => {
-                timeoutId = setTimeout(async () => resolve(await onTimeout()), timeoutMs)
+                timeoutId = setTimeout(async () => {
+                    controller.abort()
+                    resolve(await onTimeout())
+                }, timeoutMs)
             })
         ])
     } finally {
         if (timeoutId) clearTimeout(timeoutId)
     }
+}
+
+function shouldSkipBackgroundWork(signal?: AbortSignal | null) {
+    return !!signal?.aborted
 }
 
 function toLegacyHistoryRows(rows: ChatHistoryInsertRow[]) {
@@ -675,7 +679,7 @@ function ensureEventMessageIds(
     })
 }
 
-async function handlePost(req: Request) {
+async function handlePost(req: Request, routeSignal?: AbortSignal) {
     try {
         // Auth check FIRST — before parsing any input
         const supabase = await createClient()
@@ -1465,29 +1469,31 @@ ${sessionSummary}
             opening_mode: openingMode,
         }
 
-        logChatRouteMetric(supabase, user?.id ?? null, {
-            source,
-            lowCostMode,
-            globalLowCostOverride,
-            status: 200,
-            providerUsed,
-            providerCapacityBlocked: false,
-            clientMessagesCount: safeMessages.length,
-            llmHistoryCount: historySlice.length,
-            promptChars: llmPromptChars,
-            eventsCount: object.events.length,
-            shouldContinue: !!object.should_continue,
-            turnIntent,
-            questionCount,
-            memoryHits: relevantMemories.length,
-            responderCount: new Set(
-                object.events
-                    .filter((event) => event.type === 'message' || event.type === 'reaction')
-                    .map((event) => event.character)
-            ).size,
-            openingMode,
-            elapsedMs: Date.now() - requestStartedAt
-        }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
+        if (!shouldSkipBackgroundWork(routeSignal)) {
+            logChatRouteMetric(supabase, user?.id ?? null, {
+                source,
+                lowCostMode,
+                globalLowCostOverride,
+                status: 200,
+                providerUsed,
+                providerCapacityBlocked: false,
+                clientMessagesCount: safeMessages.length,
+                llmHistoryCount: historySlice.length,
+                promptChars: llmPromptChars,
+                eventsCount: object.events.length,
+                shouldContinue: !!object.should_continue,
+                turnIntent,
+                questionCount,
+                memoryHits: relevantMemories.length,
+                responderCount: new Set(
+                    object.events
+                        .filter((event) => event.type === 'message' || event.type === 'reaction')
+                        .map((event) => event.character)
+                ).size,
+                openingMode,
+                elapsedMs: Date.now() - requestStartedAt
+            }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
+        }
 
         // Build response before persistence (non-blocking)
         // NOTE: Count may slightly overcount — quality filter runs async in persistAsync()
@@ -1495,7 +1501,7 @@ ${sessionSummary}
 
         // Fetch total memory count for free tier badge (cheap count query)
         let totalMemoryCount: number | null = null
-        if (user && tier === 'free' && hasFreshUserTurn) {
+        if (user && tier === 'free' && hasFreshUserTurn && !shouldSkipBackgroundWork(routeSignal)) {
             const { count } = await supabase
                 .from('memories')
                 .select('*', { count: 'exact', head: true })
@@ -1515,277 +1521,291 @@ ${sessionSummary}
         })
 
         // Fire-and-forget: persist memory, profile, and chat history without blocking the response
-        if (user) {
+        if (user && !shouldSkipBackgroundWork(routeSignal)) {
             const persistAsync = async () => {
-            const nowIso = new Date().toISOString()
-            const profileUpdates: ProfileUpdatesPayload = { last_active_at: nowIso }
-            const relationshipState: Record<string, RelationshipState> = isObject(profileRow?.relationship_state)
-                ? (profileRow?.relationship_state as Record<string, RelationshipState>)
-                : {}
-            const userProfile: Record<string, unknown> = isObject(profileRow?.user_profile)
-                ? profileRow.user_profile
-                : {}
+                if (shouldSkipBackgroundWork(routeSignal)) return
+                const nowIso = new Date().toISOString()
+                const profileUpdates: ProfileUpdatesPayload = { last_active_at: nowIso }
+                const relationshipState: Record<string, RelationshipState> = isObject(profileRow?.relationship_state)
+                    ? (profileRow?.relationship_state as Record<string, RelationshipState>)
+                    : {}
+                const userProfile: Record<string, unknown> = isObject(profileRow?.user_profile)
+                    ? profileRow.user_profile
+                    : {}
 
-            if (allowMemoryUpdates && object?.memory_updates?.profile?.length) {
-                object.memory_updates.profile.forEach((item) => {
-                    userProfile[item.key] = item.value
-                })
-                profileUpdates.user_profile = userProfile as Json
-            }
-
-            if (object?.relationship_updates?.length) {
-                const clamp = (n: number) => Math.max(0, Math.min(100, n))
-                object.relationship_updates.forEach((update) => {
-                    if (!tierFilteredIds.includes(update.character)) return
-                    const current = relationshipState[update.character] || {
-                        affinity: 50,
-                        trust: 50,
-                        banter: 50,
-                        protectiveness: 50,
-                        note: ''
-                    }
-                    const affinity = clamp(current.affinity + (update.affinity_delta || 0))
-                    const trust = clamp(current.trust + (update.trust_delta || 0))
-                    const banter = clamp(current.banter + (update.banter_delta || 0))
-                    const protectiveness = clamp(current.protectiveness + (update.protectiveness_delta || 0))
-                    relationshipState[update.character] = {
-                        affinity,
-                        trust,
-                        banter,
-                        protectiveness,
-                        note: update.note || current.note || ''
-                    }
-                })
-                profileUpdates.relationship_state = relationshipState as unknown as Json
-            }
-
-            if (shouldUpdateSummary && object?.session_summary_update) {
-                profileUpdates.session_summary = object.session_summary_update
-                profileUpdates.summary_turns = 0
-            } else if (hasFreshUserTurn && lastUserMsg) {
-                profileUpdates.summary_turns = summaryTurns + 1
-            }
-            // Calculate increments for atomic update (avoids race conditions)
-            const abuseScoreIncrement = nextAbuseScore !== null ? (nextAbuseScore - (profileRow?.abuse_score ?? 0)) : 0
-
-            // PERF-I1: Run profile/memory branch and chat history branch in parallel
-            const profileMemoryBranch = async () => {
-                try {
-                    await supabase.rpc('increment_profile_counters', {
-                        p_user_id: user.id,
-                        p_daily_msg_increment: 0,
-                        p_abuse_score_increment: abuseScoreIncrement,
-                        p_session_summary: profileUpdates.session_summary || undefined,
-                        p_summary_turns: profileUpdates.summary_turns ?? undefined,
-                        p_user_profile: profileUpdates.user_profile || undefined,
-                        p_relationship_state: profileUpdates.relationship_state || undefined,
-                        p_last_active_at: nowIso,
+                if (allowMemoryUpdates && object?.memory_updates?.profile?.length) {
+                    object.memory_updates.profile.forEach((item) => {
+                        userProfile[item.key] = item.value
                     })
-                } catch (err) {
-                    console.error('Error updating profile state:', err instanceof Error ? err.message : 'Unknown error')
+                    profileUpdates.user_profile = userProfile as Json
                 }
 
-                if (retrievedMemoryIds.length > 0) {
-                    await touchMemories(retrievedMemoryIds, user.id)
-                }
-
-                if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
-                    // Filter out low-quality memories before storage
-                    const qualityMemories = object.memory_updates.episodic.filter((m) => {
-                        const content = m.content?.trim() || ''
-                        if (content.length < 10) return false
-                        // Require at least 2 real words (3+ letter sequences)
-                        const realWords = content.match(/[a-zA-Z\u00C0-\u024F]{3,}/g)
-                        if (!realWords || realWords.length < 2) return false
-                        return true
+                if (object?.relationship_updates?.length) {
+                    const clamp = (n: number) => Math.max(0, Math.min(100, n))
+                    object.relationship_updates.forEach((update) => {
+                        if (!tierFilteredIds.includes(update.character)) return
+                        const current = relationshipState[update.character] || {
+                            affinity: 50,
+                            trust: 50,
+                            banter: 50,
+                            protectiveness: 50,
+                            note: ''
+                        }
+                        const affinity = clamp(current.affinity + (update.affinity_delta || 0))
+                        const trust = clamp(current.trust + (update.trust_delta || 0))
+                        const banter = clamp(current.banter + (update.banter_delta || 0))
+                        const protectiveness = clamp(current.protectiveness + (update.protectiveness_delta || 0))
+                        relationshipState[update.character] = {
+                            affinity,
+                            trust,
+                            banter,
+                            protectiveness,
+                            note: update.note || current.note || ''
+                        }
                     })
-                    if (qualityMemories.length > 0) {
-                    await storeMemories(
-                        user.id,
-                        qualityMemories.map((m) => ({
-                            content: m.content,
-                            kind: 'episodic' as const,
-                            tags: m.tags || [],
-                            importance: m.importance || 1,
-                            category: m.category as MemoryCategory | undefined,
-                            expires_at: (() => {
-                                const h = validateExpiresInHours(m.expires_in_hours)
-                                return h !== null ? new Date(Date.now() + h * 60 * 60 * 1000).toISOString() : null
-                            })(),
-                        })),
-                        tier
-                    )
-                    compactMemoriesIfNeeded(user.id, tier).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
-                    }
+                    profileUpdates.relationship_state = relationshipState as unknown as Json
                 }
-            }
 
-            const chatHistoryBranch = async () => {
-            try {
-                // C11: Single upsert instead of select-then-insert waterfall
-                const { data: gang, error: gangError } = await supabase
-                    .from('gangs')
-                    .upsert({ user_id: user.id }, { onConflict: 'user_id' })
-                    .select('id')
-                    .single()
+                if (shouldUpdateSummary && object?.session_summary_update) {
+                    profileUpdates.session_summary = object.session_summary_update
+                    profileUpdates.summary_turns = 0
+                } else if (hasFreshUserTurn && lastUserMsg) {
+                    profileUpdates.summary_turns = summaryTurns + 1
+                }
+                // Calculate increments for atomic update (avoids race conditions)
+                const abuseScoreIncrement = nextAbuseScore !== null ? (nextAbuseScore - (profileRow?.abuse_score ?? 0)) : 0
 
-                if (!gangError && gang?.id) {
-                    const rows: ChatHistoryInsertRow[] = []
-
-                    const recentUserCandidates = safeMessages
-                        .filter((message) => message.speaker === 'user' && message.content?.trim())
-                        .slice(-4)
-
-                    let recentUserRows: ChatHistoryUserRecentRow[] = []
-                    const recentQueryWithMetadata = await supabase
-                        .from('chat_history')
-                        .select('content, created_at, client_message_id')
-                        .eq('user_id', user.id)
-                        .eq('gang_id', gang.id)
-                        .eq('speaker', 'user')
-                        .order('created_at', { ascending: false })
-                        .limit(8)
-                        .returns<ChatHistoryUserRecentRow[]>()
-                    if (recentQueryWithMetadata.error && isMissingHistoryMetadataColumnsError(recentQueryWithMetadata.error)) {
-                        const recentLegacyQuery = await supabase
-                            .from('chat_history')
-                            .select('content, created_at')
-                            .eq('user_id', user.id)
-                            .eq('gang_id', gang.id)
-                            .eq('speaker', 'user')
-                            .order('created_at', { ascending: false })
-                            .limit(8)
-                        if (recentLegacyQuery.error) {
-                            console.error('Error reading recent user history:', recentLegacyQuery.error)
-                        } else {
-                            recentUserRows = (recentLegacyQuery.data ?? []) as ChatHistoryUserRecentRow[]
-                        }
-                    } else if (recentQueryWithMetadata.error) {
-                        console.error('Error reading recent user history:', recentQueryWithMetadata.error)
-                    } else {
-                        recentUserRows = recentQueryWithMetadata.data ?? []
+                // PERF-I1: Run profile/memory branch and chat history branch in parallel
+                const profileMemoryBranch = async () => {
+                    if (shouldSkipBackgroundWork(routeSignal)) return
+                    try {
+                        await supabase.rpc('increment_profile_counters', {
+                            p_user_id: user.id,
+                            p_daily_msg_increment: 0,
+                            p_abuse_score_increment: abuseScoreIncrement,
+                            p_session_summary: profileUpdates.session_summary || undefined,
+                            p_summary_turns: profileUpdates.summary_turns ?? undefined,
+                            p_user_profile: profileUpdates.user_profile || undefined,
+                            p_relationship_state: profileUpdates.relationship_state || undefined,
+                            p_last_active_at: nowIso,
+                        })
+                        if (shouldSkipBackgroundWork(routeSignal)) return
+                    } catch (err) {
+                        console.error('Error updating profile state:', err instanceof Error ? err.message : 'Unknown error')
                     }
 
-                    const recentClientMessageIds = new Set(
-                        recentUserRows
-                            .map((row) => sanitizeMessageId(row.client_message_id))
-                            .filter(Boolean)
-                    )
+                    if (retrievedMemoryIds.length > 0) {
+                        if (shouldSkipBackgroundWork(routeSignal)) return
+                        await touchMemories(retrievedMemoryIds, user.id)
+                    }
 
-                    for (const candidate of recentUserCandidates) {
-                        const userContent = candidate.content.trim()
-                        const candidateClientMessageId = sanitizeMessageId(candidate.id) || null
-                        if (candidateClientMessageId && recentClientMessageIds.has(candidateClientMessageId)) {
-                            continue
-                        }
-
-                        let shouldInsertUserMessage = true
-                        const candidateMs = candidate.created_at ? new Date(candidate.created_at).getTime() : Date.now()
-                        for (const recent of recentUserRows) {
-                            const recentMs = recent?.created_at ? new Date(recent.created_at).getTime() : 0
-                            if (recent?.content === userContent && Math.abs(candidateMs - recentMs) < 30_000) {
-                                shouldInsertUserMessage = false
-                                break
+                    if (hasFreshUserTurn && allowMemoryUpdates && object?.memory_updates?.episodic?.length) {
+                        if (shouldSkipBackgroundWork(routeSignal)) return
+                        // Filter out low-quality memories before storage
+                        const qualityMemories = object.memory_updates.episodic.filter((m) => {
+                            const content = m.content?.trim() || ''
+                            if (content.length < 10) return false
+                            // Require at least 2 real words (3+ letter sequences)
+                            const realWords = content.match(/[a-zA-Z\u00C0-\u024F]{3,}/g)
+                            if (!realWords || realWords.length < 2) return false
+                            return true
+                        })
+                        if (qualityMemories.length > 0) {
+                            if (shouldSkipBackgroundWork(routeSignal)) return
+                            await storeMemories(
+                                user.id,
+                                qualityMemories.map((m) => ({
+                                    content: m.content,
+                                    kind: 'episodic' as const,
+                                    tags: m.tags || [],
+                                    importance: m.importance || 1,
+                                    category: m.category as MemoryCategory | undefined,
+                                    expires_at: (() => {
+                                        const h = validateExpiresInHours(m.expires_in_hours)
+                                        return h !== null ? new Date(Date.now() + h * 60 * 60 * 1000).toISOString() : null
+                                    })(),
+                                })),
+                                tier
+                            )
+                            if (!shouldSkipBackgroundWork(routeSignal)) {
+                                compactMemoriesIfNeeded(user.id, tier).catch((err) => console.error('Memory compaction error:', err instanceof Error ? err.message : 'Unknown error'))
                             }
                         }
-                        if (shouldInsertUserMessage) {
-                            rows.push({
-                                user_id: user.id,
-                                gang_id: gang.id,
-                                speaker: 'user',
-                                content: userContent,
-                                source: 'chat',
-                                created_at: candidate.created_at || new Date().toISOString(),
-                                client_message_id: candidateClientMessageId,
-                                reply_to_client_message_id: sanitizeMessageId(candidate.replyToId) || null,
-                                reaction: candidate.reaction || null,
-                            })
-                        }
                     }
+                }
 
-                    rows.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                const chatHistoryBranch = async () => {
+                    if (shouldSkipBackgroundWork(routeSignal)) return
+                    try {
+                        // C11: Single upsert instead of select-then-insert waterfall
+                        if (shouldSkipBackgroundWork(routeSignal)) return
+                        const { data: gang, error: gangError } = await supabase
+                            .from('gangs')
+                            .upsert({ user_id: user.id }, { onConflict: 'user_id' })
+                            .select('id')
+                            .single()
 
-                    const dedupedRows: ChatHistoryInsertRow[] = []
-                    const seenClientMessageIds = new Set<string>()
-                    for (const row of rows) {
-                        const rowClientMessageId = sanitizeMessageId(row.client_message_id)
-                        if (rowClientMessageId) {
-                            if (seenClientMessageIds.has(rowClientMessageId)) continue
-                            seenClientMessageIds.add(rowClientMessageId)
-                            row.client_message_id = rowClientMessageId
-                        } else {
-                            row.client_message_id = null
-                        }
-                        row.reply_to_client_message_id = sanitizeMessageId(row.reply_to_client_message_id) || null
-                        row.reaction = typeof row.reaction === 'string' && row.reaction.trim().length > 0
-                            ? row.reaction.trim().slice(0, MAX_EVENT_CONTENT)
-                            : null
-                        dedupedRows.push(row)
-                    }
+                        if (!gangError && gang?.id) {
+                            const rows: ChatHistoryInsertRow[] = []
 
-                    const candidateClientMessageIds = dedupedRows
-                        .map((row) => sanitizeMessageId(row.client_message_id))
-                        .filter(Boolean)
+                            const recentUserCandidates = safeMessages
+                                .filter((message) => message.speaker === 'user' && message.content?.trim())
+                                .slice(-4)
 
-                    let alreadyPersistedIds = new Set<string>()
-                    if (candidateClientMessageIds.length > 0) {
-                        const existingIdsQuery = await supabase
-                            .from('chat_history')
-                            .select('client_message_id')
-                            .eq('user_id', user.id)
-                            .eq('gang_id', gang.id)
-                            .in('client_message_id', candidateClientMessageIds)
-                            .returns<ChatHistoryExistingIdRow[]>()
-                        if (existingIdsQuery.error && !isMissingHistoryMetadataColumnsError(existingIdsQuery.error)) {
-                            console.error('Error checking persisted history IDs:', existingIdsQuery.error)
-                        } else if (!existingIdsQuery.error) {
-                            alreadyPersistedIds = new Set(
-                                (existingIdsQuery.data ?? [])
+                            let recentUserRows: ChatHistoryUserRecentRow[] = []
+                            const recentQueryWithMetadata = await supabase
+                                .from('chat_history')
+                                .select('content, created_at, client_message_id')
+                                .eq('user_id', user.id)
+                                .eq('gang_id', gang.id)
+                                .eq('speaker', 'user')
+                                .order('created_at', { ascending: false })
+                                .limit(8)
+                                .returns<ChatHistoryUserRecentRow[]>()
+                            if (recentQueryWithMetadata.error && isMissingHistoryMetadataColumnsError(recentQueryWithMetadata.error)) {
+                                const recentLegacyQuery = await supabase
+                                    .from('chat_history')
+                                    .select('content, created_at')
+                                    .eq('user_id', user.id)
+                                    .eq('gang_id', gang.id)
+                                    .eq('speaker', 'user')
+                                    .order('created_at', { ascending: false })
+                                    .limit(8)
+                                if (recentLegacyQuery.error) {
+                                    console.error('Error reading recent user history:', recentLegacyQuery.error)
+                                } else {
+                                    recentUserRows = (recentLegacyQuery.data ?? []) as ChatHistoryUserRecentRow[]
+                                }
+                            } else if (recentQueryWithMetadata.error) {
+                                console.error('Error reading recent user history:', recentQueryWithMetadata.error)
+                            } else {
+                                recentUserRows = recentQueryWithMetadata.data ?? []
+                            }
+
+                            const recentClientMessageIds = new Set(
+                                recentUserRows
                                     .map((row) => sanitizeMessageId(row.client_message_id))
                                     .filter(Boolean)
                             )
-                        }
-                    }
 
-                    const rowsToInsert = dedupedRows.filter((row) => {
-                        const rowClientMessageId = sanitizeMessageId(row.client_message_id)
-                        if (!rowClientMessageId) return true
-                        return !alreadyPersistedIds.has(rowClientMessageId)
-                    })
+                            for (const candidate of recentUserCandidates) {
+                                const userContent = candidate.content.trim()
+                                const candidateClientMessageId = sanitizeMessageId(candidate.id) || null
+                                if (candidateClientMessageId && recentClientMessageIds.has(candidateClientMessageId)) {
+                                    continue
+                                }
 
-                    if (rowsToInsert.length > 0) {
-                        const insertWithMetadata = await supabase
-                            .from('chat_history')
-                            .insert(rowsToInsert)
-                        if (insertWithMetadata.error && isMissingHistoryMetadataColumnsError(insertWithMetadata.error)) {
-                            const insertLegacy = await supabase
-                                .from('chat_history')
-                                .insert(toLegacyHistoryRows(rowsToInsert))
-                            if (insertLegacy.error) {
-                                console.error('Error writing legacy chat history:', insertLegacy.error)
+                                let shouldInsertUserMessage = true
+                                const candidateMs = candidate.created_at ? new Date(candidate.created_at).getTime() : Date.now()
+                                for (const recent of recentUserRows) {
+                                    const recentMs = recent?.created_at ? new Date(recent.created_at).getTime() : 0
+                                    if (recent?.content === userContent && Math.abs(candidateMs - recentMs) < 30_000) {
+                                        shouldInsertUserMessage = false
+                                        break
+                                    }
+                                }
+                                if (shouldInsertUserMessage) {
+                                    rows.push({
+                                        user_id: user.id,
+                                        gang_id: gang.id,
+                                        speaker: 'user',
+                                        content: userContent,
+                                        source: 'chat',
+                                        created_at: candidate.created_at || new Date().toISOString(),
+                                        client_message_id: candidateClientMessageId,
+                                        reply_to_client_message_id: sanitizeMessageId(candidate.replyToId) || null,
+                                        reaction: candidate.reaction || null,
+                                    })
+                                }
                             }
-                        } else if (insertWithMetadata.error) {
-                            console.error('Error writing chat history:', insertWithMetadata.error)
-                        }
-                    }
-                } else if (gangError) {
-                    console.error('Error ensuring gang exists:', gangError)
-                }
-            } catch (err) {
-                console.error('Chat history persistence error:', err instanceof Error ? err.message : 'Unknown error')
-            }
-            }
 
-            await Promise.all([profileMemoryBranch(), chatHistoryBranch()])
+                            rows.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+                            const dedupedRows: ChatHistoryInsertRow[] = []
+                            const seenClientMessageIds = new Set<string>()
+                            for (const row of rows) {
+                                const rowClientMessageId = sanitizeMessageId(row.client_message_id)
+                                if (rowClientMessageId) {
+                                    if (seenClientMessageIds.has(rowClientMessageId)) continue
+                                    seenClientMessageIds.add(rowClientMessageId)
+                                    row.client_message_id = rowClientMessageId
+                                } else {
+                                    row.client_message_id = null
+                                }
+                                row.reply_to_client_message_id = sanitizeMessageId(row.reply_to_client_message_id) || null
+                                row.reaction = typeof row.reaction === 'string' && row.reaction.trim().length > 0
+                                    ? row.reaction.trim().slice(0, MAX_EVENT_CONTENT)
+                                    : null
+                                dedupedRows.push(row)
+                            }
+
+                            const candidateClientMessageIds = dedupedRows
+                                .map((row) => sanitizeMessageId(row.client_message_id))
+                                .filter(Boolean)
+
+                            let alreadyPersistedIds = new Set<string>()
+                            if (candidateClientMessageIds.length > 0) {
+                                const existingIdsQuery = await supabase
+                                    .from('chat_history')
+                                    .select('client_message_id')
+                                    .eq('user_id', user.id)
+                                    .eq('gang_id', gang.id)
+                                    .in('client_message_id', candidateClientMessageIds)
+                                    .returns<ChatHistoryExistingIdRow[]>()
+                                if (existingIdsQuery.error && !isMissingHistoryMetadataColumnsError(existingIdsQuery.error)) {
+                                    console.error('Error checking persisted history IDs:', existingIdsQuery.error)
+                                } else if (!existingIdsQuery.error) {
+                                    alreadyPersistedIds = new Set(
+                                        (existingIdsQuery.data ?? [])
+                                            .map((row) => sanitizeMessageId(row.client_message_id))
+                                            .filter(Boolean)
+                                    )
+                                }
+                            }
+
+                            const rowsToInsert = dedupedRows.filter((row) => {
+                                const rowClientMessageId = sanitizeMessageId(row.client_message_id)
+                                if (!rowClientMessageId) return true
+                                return !alreadyPersistedIds.has(rowClientMessageId)
+                            })
+
+                            if (rowsToInsert.length > 0) {
+                                if (shouldSkipBackgroundWork(routeSignal)) return
+                                const insertWithMetadata = await supabase
+                                    .from('chat_history')
+                                    .insert(rowsToInsert)
+                                if (insertWithMetadata.error && isMissingHistoryMetadataColumnsError(insertWithMetadata.error)) {
+                                    if (shouldSkipBackgroundWork(routeSignal)) return
+                                    const insertLegacy = await supabase
+                                        .from('chat_history')
+                                        .insert(toLegacyHistoryRows(rowsToInsert))
+                                    if (insertLegacy.error) {
+                                        console.error('Error writing legacy chat history:', insertLegacy.error)
+                                    }
+                                } else if (insertWithMetadata.error) {
+                                    console.error('Error writing chat history:', insertWithMetadata.error)
+                                }
+                            }
+                        } else {
+                            console.error('Error ensuring gang exists:', gangError)
+                        }
+                    } catch (err) {
+                        console.error('Chat history persistence error:', err instanceof Error ? err.message : 'Unknown error')
+                    }
+                }
+
+                await Promise.all([profileMemoryBranch(), chatHistoryBranch()])
             }
 
             // Clear purchase celebration flag SYNCHRONOUSLY (not in background)
             // to prevent re-triggering on page refresh before persistAsync completes
-            if (purchaseCelebration) {
+            if (purchaseCelebration && !shouldSkipBackgroundWork(routeSignal)) {
                 await supabase.from('profiles').update({ purchase_celebration_pending: null }).eq('id', user.id)
             }
 
-            waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err instanceof Error ? err.message : 'Unknown error')))
+            if (!shouldSkipBackgroundWork(routeSignal)) {
+                waitUntil(persistAsync().catch((err) => console.error('Background persistence error:', err instanceof Error ? err.message : 'Unknown error')))
+            }
         }
 
         return response
@@ -1814,8 +1834,16 @@ ${sessionSummary}
 }
 
 export async function POST(req: Request) {
+    const routeTimeoutController = new AbortController()
+    if (req.signal.aborted) {
+        routeTimeoutController.abort()
+    } else {
+        req.signal.addEventListener('abort', () => routeTimeoutController.abort(), { once: true })
+    }
+
     return withResponseTimeout(
-        () => handlePost(req),
+        () => handlePost(req, routeTimeoutController.signal),
+        routeTimeoutController,
         ROUTE_REQUEST_TIMEOUT_MS,
         () => {
             console.error(`Critical Route Error: chat route timed out after ${ROUTE_REQUEST_TIMEOUT_MS}ms`)
