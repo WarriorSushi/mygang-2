@@ -14,6 +14,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateWywaForUser, type WywaResult } from '@/lib/ai/wywa'
 import type { SubscriptionTier } from '@/lib/billing'
+import { isTurnstileServerEnabled, verifyTurnstileToken } from '@/lib/turnstile'
 
 function buildLoginAttemptKey(email: string, ip: string) {
     return `admin-login:${email.trim().toLowerCase()}:${ip}`
@@ -115,6 +116,16 @@ export async function adminSignIn(formData: FormData) {
     if (lockoutSeconds > 0) {
         await applyFailedLoginDelay(true)
         redirect(`/admin/login?error=locked&retry=${lockoutSeconds}`)
+    }
+
+    if (isTurnstileServerEnabled()) {
+        const captchaToken = String(formData.get('turnstileToken') || '')
+        const verification = await verifyTurnstileToken(captchaToken, { remoteip: ip })
+        if (!verification.ok) {
+            await applyFailedLoginDelay(false)
+            console.warn('[admin] Turnstile verification failed:', verification.errorCode)
+            redirect('/admin/login?error=captcha')
+        }
     }
 
     const valid = verifyAdminCredentials(email, password)

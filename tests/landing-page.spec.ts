@@ -114,6 +114,7 @@ test.describe('Landing Page', () => {
             await emailToggle.click()
             await expect(page.locator('input[type="email"]')).toBeVisible()
             await expect(page.locator('input[type="password"]')).toBeVisible()
+            await expect(page.getByRole('link', { name: /Forgot password\?/i })).toBeVisible()
         }
     })
 

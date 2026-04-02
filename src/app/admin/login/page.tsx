@@ -3,7 +3,8 @@ import { adminSignIn } from '@/app/admin/actions'
 import { getAdminConfigMode } from '@/lib/admin/auth'
 import { getAdminSession } from '@/lib/admin/session'
 import { redirect } from 'next/navigation'
-import { Shield, Sparkles, LockKeyhole, ArrowRight, CircleAlert } from 'lucide-react'
+import { Shield, Sparkles, CircleAlert } from 'lucide-react'
+import { AdminLoginForm } from '@/components/admin-login-form'
 
 type AdminLoginPageProps = {
     searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -46,6 +47,12 @@ function getMessageText(errorCode: string | null, messageCode: string | null, re
             text: `Too many failed attempts. Try again in about ${label}.`,
         }
     }
+    if (errorCode === 'captcha') {
+        return {
+            tone: 'error',
+            text: 'Human verification did not complete. Please try again.',
+        }
+    }
     if (messageCode === 'signed_out') {
         return {
             tone: 'info',
@@ -73,6 +80,10 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
     const notice = getMessageText(errorCode, messageCode, safeRetrySeconds)
     const configMode = getAdminConfigMode()
     const configMissing = configMode === 'missing'
+    const turnstileSiteKeyConfigured = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim())
+    const turnstileSecretConfigured = Boolean(process.env.TURNSTILE_SECRET_KEY?.trim())
+    const turnstileEnabled = turnstileSiteKeyConfigured && turnstileSecretConfigured
+    const turnstileConfigMissing = turnstileSiteKeyConfigured !== turnstileSecretConfigured
 
     return (
         <main className="relative min-h-dvh overflow-hidden bg-[#06090f] text-foreground">
@@ -145,48 +156,22 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                                 Set `ADMIN_PANEL_EMAIL`, `ADMIN_PANEL_PASSWORD_HASH`, and `ADMIN_PANEL_SESSION_SECRET` in environment variables.
                             </div>
                         )}
+                        {turnstileConfigMissing && (
+                            <div className="mb-4 rounded-xl border border-amber-600/40 dark:border-amber-400/35 bg-amber-100/60 dark:bg-amber-400/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-100">
+                                Set both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` to protect admin login with Cloudflare Turnstile.
+                            </div>
+                        )}
 
-                        <form action={adminSignIn} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label htmlFor="admin-email" className="block text-[11px] uppercase tracking-wider text-muted-foreground">Email</label>
-                                <input
-                                    id="admin-email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    className="h-11 w-full rounded-xl border border-white/15 bg-white/[0.03] px-3 text-sm outline-none transition-colors focus:border-primary/60"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label htmlFor="admin-password" className="block text-[11px] uppercase tracking-wider text-muted-foreground">Password</label>
-                                <div className="relative">
-                                    <LockKeyhole size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/75" />
-                                    <input
-                                        id="admin-password"
-                                        name="password"
-                                        type="password"
-                                        autoComplete="current-password"
-                                        required
-                                        className="h-11 w-full rounded-xl border border-white/15 bg-white/[0.03] pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary/60"
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={configMissing}
-                                className="group relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-emerald-300/40 bg-gradient-to-r from-emerald-400/80 via-emerald-300/90 to-cyan-300/85 px-3 text-xs font-black uppercase tracking-[0.18em] text-slate-950 shadow-[0_16px_34px_-18px_rgba(45,212,191,0.9)] transition-all hover:brightness-105 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-45"
-                            >
-                                <span className="relative z-10">Enter Control Room</span>
-                                <ArrowRight size={14} className="relative z-10 transition-transform group-hover:translate-x-0.5" />
-                                <span className="absolute inset-0 bg-[linear-gradient(120deg,transparent_0,rgba(255,255,255,0.28)_48%,transparent_100%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-                            </button>
-                            {configMode === 'hash' && (
-                                <p className="text-[11px] text-muted-foreground">
-                                    Password field accepts the original admin password whose PBKDF2 hash is stored in `ADMIN_PANEL_PASSWORD_HASH`.
-                                </p>
-                            )}
-                        </form>
+                        <AdminLoginForm
+                            action={adminSignIn}
+                            configMissing={configMissing}
+                            turnstileEnabled={turnstileEnabled}
+                        />
+                        {configMode === 'hash' && (
+                            <p className="mt-4 text-[11px] text-muted-foreground">
+                                Password field accepts the original admin password whose PBKDF2 hash is stored in `ADMIN_PANEL_PASSWORD_HASH`.
+                            </p>
+                        )}
 
                         <div className="mt-5 text-center">
                             <Link href="/" className="text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground">

@@ -27,6 +27,7 @@ const validCharacterIds = CHARACTERS.map(c => c.id)
 
 const usernameSchema = z.string().trim().min(1).max(50)
 const memoryContentSchema = z.string().trim().min(1).max(2000)
+const passwordResetEmailSchema = z.string().trim().email('Enter a valid email address.')
 const characterIdsSchema = z.array(z.string()).min(1).max(6).refine(
     ids => ids.every(id => validCharacterIds.includes(id)),
     'Invalid character ID'
@@ -46,6 +47,13 @@ async function getOrigin() {
     return (headerBag.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://mygang.ai').replace(/\/$/, '')
 }
 
+async function getRequestIp() {
+    const headerBag = await headers()
+    return headerBag.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || headerBag.get('x-real-ip')
+        || 'unknown'
+}
+
 function isCredentialErrorMessage(message: string) {
     return (
         message.includes('invalid login credentials') ||
@@ -58,6 +66,8 @@ function isCredentialErrorMessage(message: string) {
 function isEmailConfirmationError(code: string | undefined, message: string) {
     return code === 'email_not_confirmed' || message.includes('not confirmed')
 }
+
+type PasswordAuthIntent = 'auto' | 'sign_up'
 
 export async function signInWithGoogle() {
     const supabase = await createClient()
@@ -80,7 +90,12 @@ export async function signInWithGoogle() {
     }
 }
 
-export async function signInOrSignUpWithPassword(email: string, password: string) {
+export async function signInOrSignUpWithPassword(
+    email: string,
+    password: string,
+    captchaToken?: string,
+    intent: PasswordAuthIntent = 'auto',
+) {
     try {
         const rate = await rateLimit('auth-login:' + email.toLowerCase().trim(), 10, 60_000)
         if (!rate.success) return { ok: false, error: 'Too many attempts. Please wait a moment.' }
@@ -91,29 +106,39 @@ export async function signInOrSignUpWithPassword(email: string, password: string
     const supabase = await createClient()
     const origin = await getOrigin()
 
-    const signInAttempt = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    })
+    if (intent !== 'sign_up') {
+        const signInAttempt = await supabase.auth.signInWithPassword({
+            email,
+            password,
+            options: captchaToken ? { captchaToken } : undefined,
+        })
 
-    if (!signInAttempt.error) {
-        return { ok: true, action: 'signed_in' as const }
-    }
+        if (!signInAttempt.error) {
+            return { ok: true, action: 'signed_in' as const }
+        }
 
-    const signInMessage = signInAttempt.error.message?.toLowerCase() || ''
-    if (isEmailConfirmationError(signInAttempt.error.code, signInMessage)) {
-        return { ok: true, action: 'confirmation_required' as const, email }
-    }
+        const signInMessage = signInAttempt.error.message?.toLowerCase() || ''
+        if (isEmailConfirmationError(signInAttempt.error.code, signInMessage)) {
+            return { ok: true, action: 'confirmation_required' as const, email }
+        }
 
-    const shouldTrySignUp = isCredentialErrorMessage(signInMessage)
-    if (!shouldTrySignUp) {
-        return { ok: false, error: signInAttempt.error.message }
+        const shouldTrySignUp = isCredentialErrorMessage(signInMessage)
+        if (!shouldTrySignUp) {
+            return { ok: false, error: signInAttempt.error.message }
+        }
+
+        // Turnstile tokens are single-use. If sign-in consumed one, the client
+        // needs to fetch a fresh token before we can safely call sign-up.
+        if (captchaToken) {
+            return { ok: false as const, action: 'refresh_captcha_for_signup' as const }
+        }
     }
 
     const signUpAttempt = await supabase.auth.signUp({
         email,
         password,
         options: {
+            ...(captchaToken ? { captchaToken } : {}),
             emailRedirectTo: `${origin}/auth/callback`,
         },
     })
@@ -131,26 +156,66 @@ export async function signInOrSignUpWithPassword(email: string, password: string
         return { ok: true, action: 'signed_up' as const }
     }
 
-    const retrySignIn = await supabase.auth.signInWithPassword({ email, password })
-    if (!retrySignIn.error) {
-        return { ok: true, action: 'signed_in' as const }
+    if (!captchaToken) {
+        const retrySignIn = await supabase.auth.signInWithPassword({ email, password })
+        if (!retrySignIn.error) {
+            return { ok: true, action: 'signed_in' as const }
+        }
+
+        const retryMessage = retrySignIn.error.message?.toLowerCase() || ''
+        if (isEmailConfirmationError(retrySignIn.error.code, retryMessage)) {
+            return { ok: true, action: 'confirmation_required' as const, email }
+        }
     }
 
-    const retryMessage = retrySignIn.error.message?.toLowerCase() || ''
-    if (isEmailConfirmationError(retrySignIn.error.code, retryMessage)) {
-        return { ok: true, action: 'confirmation_required' as const, email }
-    }
-
-    return {
-        ok: false,
-        error: 'If you just created an account, check your email to confirm it. Otherwise, your email or password is incorrect.',
-    }
+    return { ok: true, action: 'confirmation_required' as const, email }
 }
 
 export async function signOut() {
     const supabase = await createClient()
     await supabase.auth.signOut()
     redirect('/')
+}
+
+export async function requestPasswordReset(email: string, captchaToken?: string) {
+    const parsedEmail = passwordResetEmailSchema.safeParse(email)
+    if (!parsedEmail.success) {
+        return { ok: false as const, error: parsedEmail.error.issues[0]?.message || 'Enter a valid email address.' }
+    }
+
+    const normalizedEmail = parsedEmail.data.toLowerCase()
+    const requestIp = await getRequestIp()
+
+    try {
+        const [emailRate, ipRate] = await Promise.all([
+            rateLimit('auth-reset-email:' + normalizedEmail, 5, 15 * 60_000),
+            rateLimit('auth-reset-ip:' + requestIp, 12, 15 * 60_000),
+        ])
+
+        if (!emailRate.success || !ipRate.success) {
+            return { ok: false as const, error: 'Too many reset attempts. Please wait a bit and try again.' }
+        }
+    } catch {
+        return { ok: false as const, error: 'Too many reset attempts. Please wait a bit and try again.' }
+    }
+
+    const supabase = await createClient()
+    const origin = await getOrigin()
+    const redirectTo = `${origin}/auth/callback?next=/reset-password`
+
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo,
+        ...(captchaToken ? { captchaToken } : {}),
+    })
+
+    if (error) {
+        return { ok: false as const, error: error.message || 'Unable to send reset link right now.' }
+    }
+
+    return {
+        ok: true as const,
+        email: normalizedEmail,
+    }
 }
 
 export async function deleteAccount() {

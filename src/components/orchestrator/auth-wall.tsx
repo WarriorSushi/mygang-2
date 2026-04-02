@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,28 @@ import { signInOrSignUpWithPassword, signInWithGoogle } from "@/app/auth/actions
 import { trackEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import Script from 'next/script'
+
+type PasswordAuthIntent = 'auto' | 'sign_up'
+
+type TurnstileRenderOptions = {
+    sitekey: string
+    theme?: 'auto' | 'light' | 'dark'
+    appearance?: 'always' | 'execute' | 'interaction-only'
+    callback?: (token: string) => void
+    'expired-callback'?: () => void
+    'error-callback'?: () => void
+}
+
+declare global {
+    interface Window {
+        turnstile?: {
+            render: (container: HTMLElement, options: TurnstileRenderOptions) => string
+            reset: (widgetId?: string) => void
+            remove: (widgetId?: string) => void
+        }
+    }
+}
 
 interface AuthWallProps {
     isOpen: boolean
@@ -29,15 +51,35 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
+    const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? ''
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string | null>(null)
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+    const [captchaHint, setCaptchaHint] = useState<string | null>(null)
+    const [isTurnstileLoaded, setIsTurnstileLoaded] = useState(false)
     const [showEmailForm, setShowEmailForm] = useState(false)
     const [agreedToTerms, setAgreedToTerms] = useState(false)
     const [showTermsNudge, setShowTermsNudge] = useState(false)
+    const turnstileContainerRef = useRef<HTMLDivElement | null>(null)
+    const turnstileWidgetIdRef = useRef<string | null>(null)
+    const pendingIntentRef = useRef<PasswordAuthIntent | null>(null)
+    const turnstileEnabled = Boolean(turnstileSiteKey) && showEmailForm && !pendingConfirmationEmail
+
+    const handleTurnstileVerification = useEffectEvent((token: string) => {
+        setCaptchaToken(token)
+        setCaptchaHint(null)
+
+        const pendingIntent = pendingIntentRef.current
+        if (pendingIntent) {
+            pendingIntentRef.current = null
+            void runPasswordAuth(pendingIntent, token)
+        }
+    })
+
     useEffect(() => {
         if (isOpen) {
             trackEvent('auth_wall_shown', { metadata: { source: 'auth_wall' } })
@@ -50,8 +92,108 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
             setShowEmailForm(false)
             setErrorMessage(null)
             setPendingConfirmationEmail(null)
+            setCaptchaToken(null)
+            setCaptchaHint(null)
+            pendingIntentRef.current = null
         }
     }, [isOpen])
+
+    useEffect(() => {
+        if (turnstileEnabled && isTurnstileLoaded && turnstileContainerRef.current && window.turnstile && !turnstileWidgetIdRef.current) {
+            setCaptchaHint('We are verifying this request in the background.')
+            turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+                sitekey: turnstileSiteKey,
+                theme: 'auto',
+                appearance: 'interaction-only',
+                callback: (token) => handleTurnstileVerification(token),
+                'expired-callback': () => {
+                    setCaptchaToken(null)
+                    setCaptchaHint('Verification expired. We are refreshing it now.')
+                    if (window.turnstile && turnstileWidgetIdRef.current) {
+                        window.turnstile.reset(turnstileWidgetIdRef.current)
+                    }
+                },
+                'error-callback': () => {
+                    setCaptchaToken(null)
+                    setCaptchaHint(null)
+                    setErrorMessage(
+                        window.location.hostname === 'localhost'
+                            ? 'Turnstile is blocked on localhost. Add localhost to the Cloudflare widget or use Turnstile test keys for local dev.'
+                            : 'Human verification could not start. Please refresh and try again.'
+                    )
+                },
+            })
+        }
+
+        if (!turnstileEnabled && window.turnstile && turnstileWidgetIdRef.current) {
+            window.turnstile.remove(turnstileWidgetIdRef.current)
+            turnstileWidgetIdRef.current = null
+            setCaptchaToken(null)
+            setCaptchaHint(null)
+            pendingIntentRef.current = null
+        }
+    }, [isTurnstileLoaded, turnstileEnabled, turnstileSiteKey])
+
+    const refreshTurnstile = (message: string) => {
+        setCaptchaToken(null)
+        setCaptchaHint(message)
+        if (window.turnstile && turnstileWidgetIdRef.current) {
+            window.turnstile.reset(turnstileWidgetIdRef.current)
+        }
+    }
+
+    const runPasswordAuth = async (intent: PasswordAuthIntent, tokenOverride?: string) => {
+        const activeToken = tokenOverride ?? captchaToken
+        const requiresCaptcha = Boolean(turnstileSiteKey)
+
+        if (requiresCaptcha && !activeToken) {
+            pendingIntentRef.current = intent
+            refreshTurnstile(
+                intent === 'sign_up'
+                    ? 'We are verifying before we create your account.'
+                    : 'Please wait a second while we verify this request.'
+            )
+            return
+        }
+
+        setIsLoading(true)
+        setErrorMessage(null)
+
+        try {
+            const result = await signInOrSignUpWithPassword(email, password, activeToken ?? undefined, intent)
+            if (result?.ok) {
+                if (result.action === 'confirmation_required') {
+                    setPendingConfirmationEmail(result.email)
+                    setPassword('')
+                    return
+                }
+
+                setEmail('')
+                setPassword('')
+                onSuccess()
+                return
+            }
+
+            if (result?.action === 'refresh_captcha_for_signup' && requiresCaptcha) {
+                pendingIntentRef.current = 'sign_up'
+                refreshTurnstile('We are verifying before we create your account.')
+                return
+            }
+
+            setErrorMessage(result?.error || 'Unable to sign in. Please try again.')
+            if (requiresCaptcha && activeToken) {
+                refreshTurnstile('Please verify again to retry.')
+            }
+        } catch (err) {
+            console.error(err)
+            setErrorMessage('Unable to sign in. Please try again.')
+            if (requiresCaptcha && activeToken) {
+                refreshTurnstile('Please verify again to retry.')
+            }
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     const handleGoogleSignIn = async () => {
         setIsGoogleLoading(true)
@@ -74,7 +216,6 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
         }
         if (!email || !password) return
 
-        setIsLoading(true)
         setErrorMessage(null)
         try {
             if (password.length < 6) {
@@ -82,29 +223,22 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                 return
             }
             trackEvent('auth_wall_action', { metadata: { provider: 'password' } })
-            const result = await signInOrSignUpWithPassword(email, password)
-            if (result?.ok) {
-                if (result.action === 'confirmation_required') {
-                    setPendingConfirmationEmail(result.email)
-                    setPassword('')
-                    return
-                }
-                setEmail('')
-                setPassword('')
-                onSuccess()
-                return
-            }
-            setErrorMessage(result?.error || 'Unable to sign in. Please try again.')
+            await runPasswordAuth('auto')
         } catch (err) {
             console.error(err)
             setErrorMessage('Unable to sign in. Please try again.')
-        } finally {
-            setIsLoading(false)
         }
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            {turnstileSiteKey && (
+                <Script
+                    src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                    strategy="afterInteractive"
+                    onLoad={() => setIsTurnstileLoaded(true)}
+                />
+            )}
             <DialogContent data-testid="auth-wall" className="sm:max-w-md bg-background/60 backdrop-blur-3xl border-border/50 shadow-2xl p-0 overflow-hidden rounded-[2rem]">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-accent to-primary animate-gradient" />
 
@@ -266,8 +400,28 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                                                 required
                                                 minLength={6}
                                             />
+                                            <div className="flex justify-end">
+                                                <Link
+                                                    href="/forgot-password"
+                                                    className="text-xs font-medium text-primary/80 transition-colors hover:text-primary"
+                                                >
+                                                    Forgot password?
+                                                </Link>
+                                            </div>
                                             {errorMessage && (
                                                 <div className="text-xs text-red-400">{errorMessage}</div>
+                                            )}
+                                            {turnstileEnabled && (
+                                                <>
+                                                    <div
+                                                        ref={turnstileContainerRef}
+                                                        className="min-h-[1px]"
+                                                        aria-hidden="true"
+                                                    />
+                                                    <p className="text-[11px] text-muted-foreground/70">
+                                                        {captchaHint || 'Human verification stays in the background unless Cloudflare needs extra proof.'}
+                                                    </p>
+                                                </>
                                             )}
                                             <Button
                                                 type="submit"
