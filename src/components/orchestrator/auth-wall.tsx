@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2 } from 'lucide-react'
+import { Loader2, MailCheck } from 'lucide-react'
 import Image from 'next/image'
 import { signInOrSignUpWithPassword, signInWithGoogle } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
@@ -34,6 +34,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string | null>(null)
     const [showEmailForm, setShowEmailForm] = useState(false)
     const [agreedToTerms, setAgreedToTerms] = useState(false)
     const [showTermsNudge, setShowTermsNudge] = useState(false)
@@ -48,6 +49,7 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
         if (!isOpen) {
             setShowEmailForm(false)
             setErrorMessage(null)
+            setPendingConfirmationEmail(null)
         }
     }, [isOpen])
 
@@ -82,6 +84,11 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
             trackEvent('auth_wall_action', { metadata: { provider: 'password' } })
             const result = await signInOrSignUpWithPassword(email, password)
             if (result?.ok) {
+                if (result.action === 'confirmation_required') {
+                    setPendingConfirmationEmail(result.email)
+                    setPassword('')
+                    return
+                }
                 setEmail('')
                 setPassword('')
                 onSuccess()
@@ -115,153 +122,184 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                             Join the gang
                         </DialogTitle>
                         <DialogDescription className="text-center text-base sm:text-lg text-muted-foreground/80 leading-relaxed max-w-[320px]">
-                            Sign in or create an account to start chatting. It&apos;s free.
+                            {pendingConfirmationEmail
+                                ? 'One more step and your account is ready.'
+                                : 'Sign in or create an account to start chatting. It&apos;s free.'}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-4">
-                        {/* Terms & Privacy consent */}
-                        <div className="space-y-1.5">
-                            <label className={cn(
-                                "flex items-start gap-2.5 cursor-pointer select-none group",
-                                showTermsNudge && !agreedToTerms && "animate-[shake_0.5s_ease-in-out]"
-                            )}
-                                onAnimationEnd={() => setShowTermsNudge(false)}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={agreedToTerms}
-                                    onChange={(e) => {
-                                        setAgreedToTerms(e.target.checked)
-                                        if (e.target.checked) setShowTermsNudge(false)
-                                    }}
-                                    className={cn(
-                                        "mt-0.5 h-4 w-4 rounded border-border/60 accent-primary cursor-pointer shrink-0",
-                                        showTermsNudge && !agreedToTerms && "ring-2 ring-red-400/80"
-                                    )}
-                                />
-                                <span className={cn(
-                                    "text-xs leading-relaxed transition-colors",
-                                    showTermsNudge && !agreedToTerms
-                                        ? "text-red-400 font-medium"
-                                        : "text-muted-foreground/70 group-hover:text-muted-foreground/90"
-                                )}>
-                                    I agree to the{' '}
-                                    <Link href="/terms" className="underline text-primary/80 hover:text-primary" target="_blank">Terms of Service</Link>
-                                    {' '}and{' '}
-                                    <Link href="/privacy" className="underline text-primary/80 hover:text-primary" target="_blank">Privacy Policy</Link>
-                                </span>
-                            </label>
-                            {showTermsNudge && !agreedToTerms && (
-                                <p className="text-[11px] text-red-400 pl-7 animate-in fade-in duration-200">
-                                    Please accept the terms to continue
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Google Sign-In Button */}
-                        <Button
-                            type="button"
-                            onClick={() => {
-                                if (!agreedToTerms) {
-                                    setShowTermsNudge(true)
-                                    return
-                                }
-                                handleGoogleSignIn()
-                            }}
-                            disabled={isGoogleLoading || isLoading}
-                            className={cn(
-                                "w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 dark:bg-muted/60 dark:hover:bg-muted/80 dark:text-foreground dark:border-border/60 transition-all active:scale-[0.98] shadow-sm",
-                                !agreedToTerms && "opacity-60"
-                            )}
-                        >
-                            {isGoogleLoading ? (
-                                <Loader2 className="animate-spin h-5 w-5" />
-                            ) : (
-                                <>
-                                    <GoogleIcon className="w-5 h-5 mr-2.5 shrink-0" />
-                                    Continue with Google
-                                </>
-                            )}
-                        </Button>
-
-                        {/* Divider */}
-                        <div className="flex items-center gap-3 my-1">
-                            <div className="flex-1 h-px bg-border/50" />
-                            <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-medium">or</span>
-                            <div className="flex-1 h-px bg-border/50" />
-                        </div>
-
-                        {/* Email Toggle / Form */}
-                        {!showEmailForm ? (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => setShowEmailForm(true)}
-                                className="w-full h-10 sm:h-12 rounded-xl text-sm sm:text-base font-medium text-muted-foreground hover:text-foreground transition-all"
-                            >
-                                Continue with email
-                            </Button>
-                        ) : (
+                        {pendingConfirmationEmail ? (
                             <div
-                                className="animate-in fade-in slide-in-from-top-2 duration-300"
+                                data-testid="auth-email-confirmation-state"
+                                className="rounded-[1.75rem] border border-emerald-500/20 bg-emerald-500/8 px-5 py-6 text-center"
                             >
-                                <form onSubmit={handleSubmit} className="space-y-3">
-                                    <Input
-                                        type="email"
-                                        placeholder="your@email.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        aria-label="Email address"
-                                        className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
-                                        required
-                                        autoFocus
-                                    />
-                                    <Input
-                                        type="password"
-                                        placeholder="Password (6+ characters)"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        aria-label="Password"
-                                        className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
-                                        required
-                                        minLength={6}
-                                    />
-                                    {errorMessage && (
-                                        <div className={cn(
-                                            "text-xs",
-                                            errorMessage.toLowerCase().includes('check your email')
-                                                ? "text-emerald-500 dark:text-emerald-400"
-                                                : "text-red-400"
-                                        )}>{errorMessage}</div>
-                                    )}
-                                    <Button
-                                        type="submit"
-                                        variant="outline"
-                                        disabled={isLoading || isGoogleLoading}
-                                        onClick={(e) => {
-                                            if (!agreedToTerms) {
-                                                e.preventDefault()
-                                                setShowTermsNudge(true)
-                                            }
-                                        }}
-                                        className={cn(
-                                            "w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-border/50 bg-muted/40 hover:bg-muted/60 transition-all active:scale-[0.98]",
-                                            !agreedToTerms && "opacity-60"
-                                        )}
-                                    >
-                                        {isLoading ? (
-                                            <Loader2 className="animate-spin h-5 w-5" />
-                                        ) : (
-                                            <span>Continue</span>
-                                        )}
-                                    </Button>
-                                </form>
+                                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/14 text-emerald-500">
+                                    <MailCheck className="h-7 w-7" />
+                                </div>
+                                <h3 className="text-xl font-bold tracking-tight">Check your email</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                                    We need to verify <span className="font-semibold text-foreground">{pendingConfirmationEmail}</span> before we can finish signing you in.
+                                </p>
+                                <p className="mt-3 text-xs leading-relaxed text-muted-foreground/75">
+                                    Click the confirmation link in your inbox and we&apos;ll bring you back automatically. If you entered the wrong address, go back and try again.
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setPendingConfirmationEmail(null)
+                                        setErrorMessage(null)
+                                        setShowEmailForm(true)
+                                    }}
+                                    className="mt-5 w-full h-12 rounded-xl text-sm font-semibold border-border/60 bg-background/60 hover:bg-background/80"
+                                >
+                                    Use a different email
+                                </Button>
                             </div>
+                        ) : (
+                            <>
+                                {/* Terms & Privacy consent */}
+                                <div className="space-y-1.5">
+                                    <label className={cn(
+                                        "flex items-start gap-2.5 cursor-pointer select-none group",
+                                        showTermsNudge && !agreedToTerms && "animate-[shake_0.5s_ease-in-out]"
+                                    )}
+                                        onAnimationEnd={() => setShowTermsNudge(false)}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={agreedToTerms}
+                                            onChange={(e) => {
+                                                setAgreedToTerms(e.target.checked)
+                                                if (e.target.checked) setShowTermsNudge(false)
+                                            }}
+                                            className={cn(
+                                                "mt-0.5 h-4 w-4 rounded border-border/60 accent-primary cursor-pointer shrink-0",
+                                                showTermsNudge && !agreedToTerms && "ring-2 ring-red-400/80"
+                                            )}
+                                        />
+                                        <span className={cn(
+                                            "text-xs leading-relaxed transition-colors",
+                                            showTermsNudge && !agreedToTerms
+                                                ? "text-red-400 font-medium"
+                                                : "text-muted-foreground/70 group-hover:text-muted-foreground/90"
+                                        )}>
+                                            I agree to the{' '}
+                                            <Link href="/terms" className="underline text-primary/80 hover:text-primary" target="_blank">Terms of Service</Link>
+                                            {' '}and{' '}
+                                            <Link href="/privacy" className="underline text-primary/80 hover:text-primary" target="_blank">Privacy Policy</Link>
+                                        </span>
+                                    </label>
+                                    {showTermsNudge && !agreedToTerms && (
+                                        <p className="text-[11px] text-red-400 pl-7 animate-in fade-in duration-200">
+                                            Please accept the terms to continue
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Google Sign-In Button */}
+                                <Button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!agreedToTerms) {
+                                            setShowTermsNudge(true)
+                                            return
+                                        }
+                                        handleGoogleSignIn()
+                                    }}
+                                    disabled={isGoogleLoading || isLoading}
+                                    className={cn(
+                                        "w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 dark:bg-muted/60 dark:hover:bg-muted/80 dark:text-foreground dark:border-border/60 transition-all active:scale-[0.98] shadow-sm",
+                                        !agreedToTerms && "opacity-60"
+                                    )}
+                                >
+                                    {isGoogleLoading ? (
+                                        <Loader2 className="animate-spin h-5 w-5" />
+                                    ) : (
+                                        <>
+                                            <GoogleIcon className="w-5 h-5 mr-2.5 shrink-0" />
+                                            Continue with Google
+                                        </>
+                                    )}
+                                </Button>
+
+                                {/* Divider */}
+                                <div className="flex items-center gap-3 my-1">
+                                    <div className="flex-1 h-px bg-border/50" />
+                                    <span className="text-xs text-muted-foreground/50 uppercase tracking-widest font-medium">or</span>
+                                    <div className="flex-1 h-px bg-border/50" />
+                                </div>
+
+                                {/* Email Toggle / Form */}
+                                {!showEmailForm ? (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => setShowEmailForm(true)}
+                                        className="w-full h-10 sm:h-12 rounded-xl text-sm sm:text-base font-medium text-muted-foreground hover:text-foreground transition-all"
+                                    >
+                                        Continue with email
+                                    </Button>
+                                ) : (
+                                    <div
+                                        className="animate-in fade-in slide-in-from-top-2 duration-300"
+                                    >
+                                        <form onSubmit={handleSubmit} className="space-y-3">
+                                            <Input
+                                                type="email"
+                                                placeholder="your@email.com"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                aria-label="Email address"
+                                                className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
+                                                required
+                                                autoFocus
+                                            />
+                                            <Input
+                                                type="password"
+                                                placeholder="Password (6+ characters)"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                aria-label="Password"
+                                                className="h-12 sm:h-14 rounded-xl bg-muted/40 border-border/50 text-base sm:text-lg focus-visible:ring-primary/50"
+                                                required
+                                                minLength={6}
+                                            />
+                                            {errorMessage && (
+                                                <div className="text-xs text-red-400">{errorMessage}</div>
+                                            )}
+                                            <Button
+                                                type="submit"
+                                                variant="outline"
+                                                disabled={isLoading || isGoogleLoading}
+                                                onClick={(e) => {
+                                                    if (!agreedToTerms) {
+                                                        e.preventDefault()
+                                                        setShowTermsNudge(true)
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold border-border/50 bg-muted/40 hover:bg-muted/60 transition-all active:scale-[0.98]",
+                                                    !agreedToTerms && "opacity-60"
+                                                )}
+                                            >
+                                                {isLoading ? (
+                                                    <Loader2 className="animate-spin h-5 w-5" />
+                                                ) : (
+                                                    <span>Continue</span>
+                                                )}
+                                            </Button>
+                                        </form>
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         <p className="text-center text-[11px] text-muted-foreground/60">
-                            Your session stays signed in on this device until you log out.
+                            {pendingConfirmationEmail
+                                ? 'If it does not show up right away, check spam and wait a minute before trying again.'
+                                : 'Your session stays signed in on this device until you log out.'}
                         </p>
                     </div>
 

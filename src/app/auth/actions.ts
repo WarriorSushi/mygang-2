@@ -46,6 +46,19 @@ async function getOrigin() {
     return (headerBag.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://mygang.ai').replace(/\/$/, '')
 }
 
+function isCredentialErrorMessage(message: string) {
+    return (
+        message.includes('invalid login credentials') ||
+        message.includes('invalid login') ||
+        message.includes('invalid credentials') ||
+        message.includes('email or password')
+    )
+}
+
+function isEmailConfirmationError(code: string | undefined, message: string) {
+    return code === 'email_not_confirmed' || message.includes('not confirmed')
+}
+
 export async function signInWithGoogle() {
     const supabase = await createClient()
     const origin = await getOrigin()
@@ -88,7 +101,11 @@ export async function signInOrSignUpWithPassword(email: string, password: string
     }
 
     const signInMessage = signInAttempt.error.message?.toLowerCase() || ''
-    const shouldTrySignUp = signInMessage.includes('invalid login') || signInMessage.includes('invalid') || signInMessage.includes('credentials')
+    if (isEmailConfirmationError(signInAttempt.error.code, signInMessage)) {
+        return { ok: true, action: 'confirmation_required' as const, email }
+    }
+
+    const shouldTrySignUp = isCredentialErrorMessage(signInMessage)
     if (!shouldTrySignUp) {
         return { ok: false, error: signInAttempt.error.message }
     }
@@ -119,7 +136,15 @@ export async function signInOrSignUpWithPassword(email: string, password: string
         return { ok: true, action: 'signed_in' as const }
     }
 
-    return { ok: false, error: 'Check your email to confirm your account, then log in.' }
+    const retryMessage = retrySignIn.error.message?.toLowerCase() || ''
+    if (isEmailConfirmationError(retrySignIn.error.code, retryMessage)) {
+        return { ok: true, action: 'confirmation_required' as const, email }
+    }
+
+    return {
+        ok: false,
+        error: 'If you just created an account, check your email to confirm it. Otherwise, your email or password is incorrect.',
+    }
 }
 
 export async function signOut() {
