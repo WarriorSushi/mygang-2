@@ -105,11 +105,21 @@ export function buildPendingArrivalContext(args: {
 export function savePendingArrivalContext(context: PendingArrivalContext) {
     if (typeof window === 'undefined') return
     const payload = JSON.stringify(context)
+    let savedToSession = false
     try {
         window.sessionStorage.setItem(PENDING_ARRIVAL_KEY, payload)
+        savedToSession = true
     } catch {
         // Ignore storage failures; the chat can still fall back to the URL token path.
     }
+
+    if (savedToSession) {
+        try {
+            window.localStorage.removeItem(PENDING_ARRIVAL_FALLBACK_KEY)
+        } catch {}
+        return
+    }
+
     try {
         window.localStorage.setItem(PENDING_ARRIVAL_FALLBACK_KEY, payload)
     } catch {
@@ -158,6 +168,10 @@ export function readPendingArrivalContext(options?: { arrivalToken?: string | nu
     }
     const fallbackContext = readArrivalPayload(fallbackRaw)
     if (fallbackContext && (!token || fallbackContext.arrivalToken === token)) {
+        try {
+            window.sessionStorage.setItem(PENDING_ARRIVAL_KEY, JSON.stringify(fallbackContext))
+            window.localStorage.removeItem(PENDING_ARRIVAL_FALLBACK_KEY)
+        } catch {}
         return fallbackContext
     }
 

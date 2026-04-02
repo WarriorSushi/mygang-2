@@ -11,7 +11,7 @@ import {
 import {
     createMemoryMutationFailure,
     createMemoryMutationSuccess,
-} from '../src/app/auth/actions'
+} from '../src/lib/memory-mutation'
 
 let passed = 0
 let failed = 0

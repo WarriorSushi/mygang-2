@@ -51,6 +51,7 @@ export function AuthManager() {
             clearChat()
             // UF-I8: Clear draft so next user doesn't see previous user's unsent message
             if (typeof window !== 'undefined') {
+                window.sessionStorage.removeItem('mygang-chat-draft')
                 window.localStorage.removeItem('mygang-chat-draft')
             }
             hadSessionRef.current = false

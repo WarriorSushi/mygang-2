@@ -11,6 +11,11 @@ import { AVATAR_STYLES, normalizeAvatarStyle, type AvatarStyle } from '@/lib/ava
 import { sanitizeMessageId } from '@/lib/chat-utils'
 import { getMemoryVaultPreviewLimit, getTierFromProfile, getSquadLimit } from '@/lib/billing'
 import { filterActiveMemories } from '@/lib/ai/memory'
+import {
+    createMemoryMutationFailure,
+    createMemoryMutationSuccess,
+    type MemoryMutationResult,
+} from '@/lib/memory-mutation'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
 
 type ChatHistoryPageRow = {
@@ -42,25 +47,6 @@ const userSettingsSchema = z.object({
     custom_character_names: z.record(z.string().max(30)).refine(v => !v || Object.keys(v).length <= 6, { message: 'Too many custom names' }).optional(),
     avatar_style_preference: z.enum(AVATAR_STYLES).optional(),
 }).strict()
-
-export type MemoryMutationErrorCode =
-    | 'not_authenticated'
-    | 'rate_limited'
-    | 'invalid_content'
-    | 'forbidden'
-    | 'unknown'
-
-export type MemoryMutationResult =
-    | { ok: true }
-    | { ok: false; errorCode: MemoryMutationErrorCode; message: string }
-
-export function createMemoryMutationSuccess(): MemoryMutationResult {
-    return { ok: true }
-}
-
-export function createMemoryMutationFailure(errorCode: MemoryMutationErrorCode, message: string): MemoryMutationResult {
-    return { ok: false, errorCode, message }
-}
 
 async function getOrigin() {
     const headerBag = await headers()

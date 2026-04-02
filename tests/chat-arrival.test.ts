@@ -5,6 +5,7 @@ import {
     buildStarterChips,
     consumePendingArrivalContext,
     readPendingArrivalContext,
+    savePendingArrivalContext,
 } from '../src/lib/chat-arrival'
 
 let passed = 0
@@ -33,6 +34,14 @@ class FakeStorage {
 
     removeItem(key: string) {
         this.values.delete(key)
+    }
+}
+
+class FailingStorage extends FakeStorage {
+    override setItem(key: string, value: string) {
+        void key
+        void value
+        throw new Error('storage unavailable')
     }
 }
 
@@ -87,7 +96,10 @@ console.log('\n2. Session storage wins, local fallback works, and consume clears
             vibeSummary: 'warm, balanced, lively',
         })
 
-        win.sessionStorage.setItem('mygang-pending-arrival', JSON.stringify(context))
+        savePendingArrivalContext(context)
+        assert(win.sessionStorage.getItem('mygang-pending-arrival') !== null, 'save prefers session storage')
+        assert(win.localStorage.getItem('mygang-pending-arrival-fallback') === null, 'save avoids local fallback when session works')
+
         win.localStorage.setItem('mygang-pending-arrival-fallback', JSON.stringify(context))
 
         const fromSession = readPendingArrivalContext({ arrivalToken: context.arrivalToken })
@@ -104,7 +116,34 @@ console.log('\n2. Session storage wins, local fallback works, and consume clears
     })
 }
 
-console.log('\n3. Expired arrivals are ignored')
+console.log('\n3. Local fallback is only used when session storage fails')
+{
+    const globalWindow = globalThis as unknown as { window?: FakeArrivalWindow }
+    const previousWindow = globalWindow.window
+    const fakeWindow: FakeArrivalWindow = {
+        sessionStorage: new FailingStorage(),
+        localStorage: new FakeStorage(),
+    }
+
+    globalWindow.window = fakeWindow
+    try {
+        const context = buildPendingArrivalContext({
+            userName: 'Irfan',
+            squad: [{ id: 'atlas', name: 'Atlas' }],
+        })
+
+        savePendingArrivalContext(context)
+        assert(fakeWindow.localStorage.getItem('mygang-pending-arrival-fallback') !== null, 'fallback cache is written when session storage fails')
+    } finally {
+        if (previousWindow === undefined) {
+            delete globalWindow.window
+        } else {
+            globalWindow.window = previousWindow
+        }
+    }
+}
+
+console.log('\n4. Expired arrivals are ignored')
 {
     withFakeWindow((win) => {
         const expiredContext = {
@@ -122,7 +161,7 @@ console.log('\n3. Expired arrivals are ignored')
     })
 }
 
-console.log('\n4. Arrival copy mentions light recall and feels specific')
+console.log('\n5. Arrival copy mentions light recall and feels specific')
 {
     const context = buildPendingArrivalContext({
         userName: 'Irfan',
@@ -142,7 +181,7 @@ console.log('\n4. Arrival copy mentions light recall and feels specific')
     assert(banner.detail.includes('honest, balanced, calm'), 'banner includes vibe summary')
 }
 
-console.log('\n5. Starter chips are personalized')
+console.log('\n6. Starter chips are personalized')
 {
     const context = buildPendingArrivalContext({
         userName: 'Irfan',

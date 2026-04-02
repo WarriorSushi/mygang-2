@@ -23,35 +23,73 @@ interface ChatInputProps {
 const DRAFT_STORAGE_KEY = 'mygang-chat-draft'
 const MAX_CHARS = 2000
 
+function readDraftFromStorage() {
+    if (typeof window === 'undefined') return null
+
+    const sessionValue = window.sessionStorage.getItem(DRAFT_STORAGE_KEY)
+    if (sessionValue) return sessionValue
+
+    const legacyValue = window.localStorage.getItem(DRAFT_STORAGE_KEY)
+    if (!legacyValue) return null
+
+    try {
+        window.sessionStorage.setItem(DRAFT_STORAGE_KEY, legacyValue)
+    } catch {}
+    try {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY)
+    } catch {}
+
+    return legacyValue
+}
+
+function writeDraftToStorage(value: string) {
+    if (typeof window === 'undefined') return
+
+    if (value.trim()) {
+        window.sessionStorage.setItem(DRAFT_STORAGE_KEY, value)
+    } else {
+        window.sessionStorage.removeItem(DRAFT_STORAGE_KEY)
+    }
+
+    try {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY)
+    } catch {}
+}
+
+function clearDraftFromStorage() {
+    if (typeof window === 'undefined') return
+
+    window.sessionStorage.removeItem(DRAFT_STORAGE_KEY)
+    try {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY)
+    } catch {}
+}
+
 export const ChatInput = memo(function ChatInput({ onSend, disabled, online = true, replyingTo = null, onCancelReply, starterChips = [], cooldownPlaceholder }: ChatInputProps) {
     const [input, setInput] = useState('')
     const draftLoadedRef = useRef(false)
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const limitWarnedRef = useRef(false)
     const [limitNotice, setLimitNotice] = useState(false)
-    // P-I4: Debounce ref for localStorage draft saves
+    // P-I4: Debounce ref for session-scoped draft saves
     const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const sendThrottleRef = useRef(false)
     const restoreDraft = useCallback((value: string) => setInput(value), [])
 
-    // Restore draft from localStorage after mount (avoids hydration mismatch)
+    // Restore draft after mount (avoids hydration mismatch)
     useEffect(() => {
         if (draftLoadedRef.current) return
         draftLoadedRef.current = true
-        const saved = window.localStorage.getItem(DRAFT_STORAGE_KEY)
+        const saved = readDraftFromStorage()
         if (saved) queueMicrotask(() => restoreDraft(saved.slice(0, MAX_CHARS)))
     }, [restoreDraft])
 
-    // P-I4: Debounce localStorage draft save (500ms)
+    // P-I4: Debounce session-scoped draft save (500ms)
     useEffect(() => {
         if (!draftLoadedRef.current) return
         if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current)
         draftSaveTimerRef.current = setTimeout(() => {
-            if (input.trim()) {
-                window.localStorage.setItem(DRAFT_STORAGE_KEY, input)
-            } else {
-                window.localStorage.removeItem(DRAFT_STORAGE_KEY)
-            }
+            writeDraftToStorage(input)
         }, 500)
         return () => {
             if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current)
@@ -74,9 +112,7 @@ export const ChatInput = memo(function ChatInput({ onSend, disabled, online = tr
             onSend(input, { replyToId: replyingTo?.id })
             setInput('')
             onCancelReply?.()
-            if (typeof window !== 'undefined') {
-                window.localStorage.removeItem(DRAFT_STORAGE_KEY)
-            }
+            clearDraftFromStorage()
         }
     }
 

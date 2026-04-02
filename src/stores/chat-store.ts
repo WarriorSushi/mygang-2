@@ -1,11 +1,54 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import type { ChatWallpaper } from '@/constants/wallpapers'
 import { CHARACTERS } from '@/constants/characters'
 import { applyAvatarStyleToGang, DEFAULT_AVATAR_STYLE, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 import type { SubscriptionTier } from '@/lib/billing'
 
 const MAX_PERSISTED_MESSAGES = 100
+const CHAT_STORAGE_KEY = 'mygang-chat-storage'
+
+function createNoopStorage(): StateStorage {
+    return {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+    }
+}
+
+function createSessionFirstStorage(): StateStorage {
+    if (typeof window === 'undefined') return createNoopStorage()
+
+    return {
+        getItem: (name) => {
+            const sessionValue = window.sessionStorage.getItem(name)
+            if (sessionValue !== null) return sessionValue
+
+            const legacyValue = window.localStorage.getItem(name)
+            if (legacyValue === null) return null
+
+            try {
+                window.sessionStorage.setItem(name, legacyValue)
+            } catch {}
+            try {
+                window.localStorage.removeItem(name)
+            } catch {}
+            return legacyValue
+        },
+        setItem: (name, value) => {
+            window.sessionStorage.setItem(name, value)
+            try {
+                window.localStorage.removeItem(name)
+            } catch {}
+        },
+        removeItem: (name) => {
+            window.sessionStorage.removeItem(name)
+            try {
+                window.localStorage.removeItem(name)
+            } catch {}
+        },
+    }
+}
 
 export interface Message {
     id: string
@@ -192,14 +235,13 @@ export const useChatStore = create<ChatState>()(
             },
         }),
         {
-            name: 'mygang-chat-storage',
+            name: CHAT_STORAGE_KEY,
+            storage: createJSONStorage(createSessionFirstStorage),
             partialize: (state) => ({
-                messages: state.messages,
                 activeGang: state.activeGang,
                 avatarStylePreference: state.avatarStylePreference,
                 userName: state.userName,
                 userNickname: state.userNickname,
-                userId: state.userId,
                 chatMode: state.chatMode,
                 ecosystemSpeed: state.ecosystemSpeed,
                 lowCostMode: state.lowCostMode,
@@ -211,6 +253,12 @@ export const useChatStore = create<ChatState>()(
                 showUpgradeTour: state.showUpgradeTour
             }),
             onRehydrateStorage: () => (state) => {
+                if (typeof window !== 'undefined') {
+                    try {
+                        window.localStorage.removeItem(CHAT_STORAGE_KEY)
+                    } catch {}
+                }
+
                 if (state?.messages) {
                     // M5 FIX: Create new objects instead of mutating in-place
                     // (mutation defeats MessageItem memo — same ref = skip re-render)
