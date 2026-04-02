@@ -180,13 +180,41 @@ function OnboardingPage() {
         return next
     }, [customNames, selectedCharacters])
 
+    const vibeSummary = useMemo(() => {
+        if (!vibeProfile) return null
+
+        const intentMap: Record<VibeProfile['primary_intent'], string> = {
+            hype: 'hype and encouragement',
+            honest: 'honest real talk',
+            humor: 'humor and laughs',
+            chill: 'calm, low-pressure energy',
+        }
+        const warmthMap: Record<VibeProfile['warmth_style'], string> = {
+            warm: 'warm',
+            balanced: 'balanced',
+            edgy: 'a little sharp',
+        }
+        const chaosMap: Record<VibeProfile['chaos_level'], string> = {
+            calm: 'calm',
+            lively: 'lively',
+            chaotic: 'chaotic',
+        }
+
+        return [
+            intentMap[vibeProfile.primary_intent],
+            warmthMap[vibeProfile.warmth_style],
+            chaosMap[vibeProfile.chaos_level],
+        ].filter(Boolean).join(', ')
+    }, [vibeProfile])
+
     const arrivalContext = useMemo(
         () => buildPendingArrivalContext({
             userName: name.trim() || null,
             squad: selectedCharacters,
             customNames: normalizedCustomNames,
+            vibeSummary,
         }),
-        [name, normalizedCustomNames, selectedCharacters]
+        [name, normalizedCustomNames, selectedCharacters, vibeSummary]
     )
 
     const handleVibeComplete = (vibe: VibeProfile) => {
@@ -260,7 +288,7 @@ function OnboardingPage() {
         setAvatarStylePreference(avatarStylePreference)
         setUserName(name.trim() || null)
         setCustomCharacterNames(normalizedCustomNames)
-        router.replace('/chat')
+        router.replace(`/chat?arrival=${encodeURIComponent(arrivalContext.arrivalToken)}`)
     }
 
     const showBackButton = isRetake

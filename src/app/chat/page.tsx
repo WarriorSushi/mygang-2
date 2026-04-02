@@ -1,16 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { isSquadTierWriteError, trackOperationalError } from '@/lib/operational-telemetry'
 import { saveGang, deactivateSquadTierMembers } from '@/app/auth/actions'
 import { getCharactersForAvatarStyle } from '@/constants/characters'
-import { buildArrivalBannerCopy, consumePendingArrivalContext, type PendingArrivalContext } from '@/lib/chat-arrival'
+import { buildArrivalBannerCopy, buildStarterChips, consumePendingArrivalContext, readPendingArrivalContext, type PendingArrivalContext } from '@/lib/chat-arrival'
 
 // Modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -36,19 +36,11 @@ import { useAutonomousFlow } from '@/hooks/use-autonomous-flow'
 import { useChatApi } from '@/hooks/use-chat-api'
 import { useTabPresence } from '@/hooks/use-tab-presence'
 
-function getStarterChips(name: string) {
-    const label = name || 'everyone'
-    return [
-        `Hey, I'm ${label}. What kind of people are you?`,
-        "Okay hi. What should we talk about first?",
-        "Need a pep talk, not gonna lie",
-        "Be honest with me for a sec",
-    ]
-}
-
 type SettingsPanelTarget = 'root' | 'wallpaper' | 'rename'
 
 export default function ChatPage() {
+    const searchParams = useSearchParams()
+    const arrivalToken = searchParams.get('arrival')
     const {
         messages,
         activeGang,
@@ -108,7 +100,7 @@ export default function ChatPage() {
     const [arrivalBanner, setArrivalBanner] = useState<{ title: string; body: string } | null>(null)
     const [arrivalContext] = useState<PendingArrivalContext | null>(() => {
         if (typeof window === 'undefined') return null
-        return consumePendingArrivalContext()
+        return readPendingArrivalContext({ arrivalToken })
     })
     const [cooldownUntil, setCooldownUntil] = useState(() => {
         if (typeof window === 'undefined') return 0
@@ -124,8 +116,12 @@ export default function ChatPage() {
     const sessionRef = useRef<{ id: string; startedAt: number } | null>(null)
     const { theme } = useTheme()
     const router = useRouter()
+    const serverArrivalIntroQueuedRef = useRef(false)
+    const arrivalContextConsumedRef = useRef(false)
+    const arrivalDropoffTrackedRef = useRef(false)
 
     const onToast = useCallback((msg: string) => setToastMessage(msg), [])
+    const shouldUseServerArrivalIntro = Boolean(arrivalContext?.preferServerIntro)
 
     const onPaywall = useCallback((cooldownSeconds: number, tier: string) => {
         setPaywallCooldown(cooldownSeconds)
@@ -156,6 +152,7 @@ export default function ChatPage() {
         activeGang,
         userName,
         userNickname,
+        arrivalContext,
         chatMode,
         ecosystemSpeed,
         lowCostMode,
@@ -173,6 +170,11 @@ export default function ChatPage() {
         setReplyingTo,
         onPaywall,
     })
+
+    useLayoutEffect(() => {
+        if (!shouldUseServerArrivalIntro) return
+        api.initialGreetingRef.current = true
+    }, [api.initialGreetingRef, shouldUseServerArrivalIntro])
 
     const history = useChatHistory({
         userId,
@@ -343,10 +345,80 @@ export default function ChatPage() {
     }, [activeGang.length, arrivalContext, isHydrated, userId])
 
     useEffect(() => {
+        if (!shouldUseServerArrivalIntro) return
+        if (!isHydrated || !userId || activeGang.length === 0) return
+        if (!history.historyBootstrapDone || history.historyStatus !== 'empty') return
+        if (hasUserSentMessage || messages.length > 0) return
+        if (serverArrivalIntroQueuedRef.current) return
+
+        serverArrivalIntroQueuedRef.current = true
+        const introTimer = window.setTimeout(() => {
+            if (useChatStore.getState().messages.length > 0) return
+            void api.handleSend('').catch(() => {})
+        }, 120)
+
+        const fallbackTimer = window.setTimeout(() => {
+            const state = useChatStore.getState()
+            if (state.messages.length > 0 || state.messages.some((message) => message.speaker === 'user')) return
+            api.initialGreetingRef.current = false
+            autonomous.triggerLocalGreeting()
+        }, 7600)
+
+        return () => {
+            clearTimeout(introTimer)
+            clearTimeout(fallbackTimer)
+        }
+    }, [
+        activeGang.length,
+        api,
+        autonomous,
+        hasUserSentMessage,
+        history.historyBootstrapDone,
+        history.historyStatus,
+        isHydrated,
+        messages.length,
+        shouldUseServerArrivalIntro,
+        userId,
+    ])
+
+    useEffect(() => {
         if (hasUserSentMessage && arrivalBanner) {
             setArrivalBanner(null)
         }
     }, [arrivalBanner, hasUserSentMessage])
+
+    useEffect(() => {
+        if (!arrivalContext || arrivalContextConsumedRef.current) return
+        const hasSeenTheRoom = messages.length > 0 || hasUserSentMessage || history.historyStatus === 'has_history'
+        if (!hasSeenTheRoom) return
+
+        arrivalContextConsumedRef.current = true
+        consumePendingArrivalContext({ arrivalToken })
+        if (typeof window !== 'undefined' && window.location.search.includes('arrival=')) {
+            router.replace('/chat', { scroll: false })
+        }
+    }, [arrivalContext, arrivalToken, hasUserSentMessage, history.historyStatus, messages.length, router])
+
+    useEffect(() => {
+        if (!arrivalContext || arrivalDropoffTrackedRef.current) return
+        const hasAiWelcome = messages.some((message) => message.speaker !== 'user')
+        if (!hasAiWelcome || hasUserSentMessage) return
+
+        const timer = window.setTimeout(() => {
+            if (useChatStore.getState().messages.some((message) => message.speaker === 'user')) return
+            arrivalDropoffTrackedRef.current = true
+            const session = ensureAnalyticsSession()
+            trackEvent('arrival_first_turn_dropoff_window', {
+                sessionId: session.id,
+                metadata: {
+                    arrivalToken: arrivalContext.arrivalToken,
+                    squadSize: arrivalContext.squad.length,
+                }
+            })
+        }, 45_000)
+
+        return () => clearTimeout(timer)
+    }, [arrivalContext, hasUserSentMessage, messages])
 
     // ── Cleanup timers ──
     useEffect(() => {
@@ -611,7 +683,13 @@ export default function ChatPage() {
                         online={isOnline}
                         replyingTo={replyingToDisplay}
                         onCancelReply={() => setReplyingTo(null)}
-                        starterChips={!hasUserSentMessage && shouldShowEmptyStatePrompts ? getStarterChips(userName || '') : []}
+                        starterChips={!hasUserSentMessage && shouldShowEmptyStatePrompts
+                            ? buildStarterChips(
+                                arrivalContext,
+                                userNickname || userName || '',
+                                arrivalContext?.squad.map((character) => character.displayName) || activeGang.map((character) => character.name),
+                            )
+                            : []}
                         cooldownPlaceholder={cooldownLabel}
                     />
                     <AiDisclaimer />

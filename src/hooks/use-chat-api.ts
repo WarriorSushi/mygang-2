@@ -6,6 +6,7 @@ import { normalizeActivityStatus } from '../constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { getTierFromProfile } from '@/lib/billing'
 import { hasOpenFloorIntent } from '@/lib/chat-utils'
+import type { PendingArrivalContext } from '@/lib/chat-arrival'
 import type { TokenUsage } from '@/types/shared'
 
 /** Only live-chat messages (source='chat' or legacy/undefined) enter the payload window. */
@@ -45,6 +46,13 @@ type ChatApiResponse = {
     memories_saved_count?: number
     total_memory_count?: number
     turn_id?: string
+    meta?: {
+        turn_intent?: string
+        memory_hits?: number
+        question_count?: number
+        continuation_eligible?: boolean
+        opening_mode?: string
+    }
 }
 
 type RenderedChatEventPayload = {
@@ -224,6 +232,24 @@ function isFarewellLikeMessage(text: string) {
     return /\b(goodnight|good night|gn|bye|goodbye|see ya|see you|ttyl|gotta go|later|nighty)\b/i.test(text)
 }
 
+function countPetNames(events: ChatEvent[]) {
+    return events.reduce((count, event) => {
+        if (event.type !== 'message' || !event.content) return count
+        const matches = event.content.match(/\b(baby|babe|angel|pretty thing|gorgeous)\b/gi)
+        return count + (matches?.length || 0)
+    }, 0)
+}
+
+function countIntroLikeMessages(events: ChatEvent[]) {
+    return events.reduce((count, event) => {
+        if (event.type !== 'message' || !event.content) return count
+        if (/\b(i'?m|i am)\b.+\b(here|like|kind of|the one who|the person who)\b/i.test(event.content)) {
+            return count + 1
+        }
+        return count
+    }, 0)
+}
+
 async function persistRenderedEvents(turnId: string, events: RenderedChatEventPayload[]) {
     if (!turnId || events.length === 0) return
 
@@ -246,6 +272,7 @@ interface UseChatApiArgs {
     activeGang: { id: string; name: string; typingSpeed?: number }[]
     userName: string | null
     userNickname: string | null
+    arrivalContext: PendingArrivalContext | null
     chatMode: 'gang_focus' | 'ecosystem'
     ecosystemSpeed: 'fast' | 'normal' | 'relaxed'
     lowCostMode: boolean
@@ -272,6 +299,7 @@ export function useChatApi({
     activeGang,
     userName,
     userNickname,
+    arrivalContext,
     chatMode,
     ecosystemSpeed,
     lowCostMode,
@@ -442,6 +470,7 @@ export function useChatApi({
                 lowCostMode: effectiveLowCostModeForCall,
                 source: autonomousIdle ? 'autonomous_idle' : isAutonomous ? 'autonomous' : 'user',
                 autonomousIdle,
+                ...(isIntro && arrivalContext ? { arrival_context: arrivalContext } : {}),
                 ...(purchaseCelebration ? { purchaseCelebration } : {})
             }
 
@@ -456,7 +485,9 @@ export function useChatApi({
                 }
             }
             lastApiCallAtRef.current = Date.now()
-            const requestTimeoutMs = getChatRequestTimeoutMs()
+            const requestTimeoutMs = isIntro
+                ? Math.min(getChatRequestTimeoutMs(), 6_500)
+                : getChatRequestTimeoutMs()
             abortControllerRef.current?.abort()
             const requestController = new AbortController()
             abortControllerRef.current = requestController
@@ -612,9 +643,34 @@ export function useChatApi({
             if (data.memories_saved_count && data.memories_saved_count > 0) {
                 useChatStore.getState().incrementNewMemoryCount(data.memories_saved_count)
             }
-            // Total memory count for free tier badge (never clears)
+            // Kept for compatibility with any UI that still wants a coarse total count.
             if (data.total_memory_count !== undefined) {
                 useChatStore.getState().setTotalMemoryCount(data.total_memory_count)
+            }
+            if (data.meta) {
+                const aiMessageCount = data.events.filter((event) => event.type === 'message').length
+                const responderCount = new Set(
+                    data.events
+                        .filter((event) => event.type === 'message' || event.type === 'reaction')
+                        .map((event) => event.character)
+                ).size
+                const petNameCount = countPetNames(data.events)
+                const introLikeCount = countIntroLikeMessages(data.events)
+                trackEvent('chat_turn_meta', {
+                    metadata: {
+                        turnIntent: data.meta.turn_intent,
+                        memoryHits: data.meta.memory_hits,
+                        questionCount: data.meta.question_count,
+                        continuationEligible: data.meta.continuation_eligible,
+                        openingMode: data.meta.opening_mode,
+                        responderCount,
+                        aiMessageCount,
+                        petNameCount,
+                        introLikeCount,
+                        repeatedIntro: introLikeCount > 0 && currentMessages.length > 0,
+                        isFirstAiTurn: currentMessages.length === 0,
+                    }
+                })
             }
             // Mark ALL user messages still stuck in 'sending' as 'sent', not just the payload window
             const allSendingIds = useChatStore.getState().messages
@@ -757,9 +813,11 @@ export function useChatApi({
         } catch (err) {
             if (err instanceof DOMException && err.name === 'AbortError') {
                 if (requestTimedOut) {
-                    const timeoutMessage = 'Reply took too long. Please retry.'
-                    updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', timeoutMessage)
-                    onToast(timeoutMessage)
+                    if (!isIntro) {
+                        const timeoutMessage = 'Reply took too long. Please retry.'
+                        updateUserDeliveryStatus(pendingDeliveryIdsForCall, 'failed', timeoutMessage)
+                        onToast(timeoutMessage)
+                    }
                 }
                 // Request was superseded by a newer send or aborted during cleanup.
                 return

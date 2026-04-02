@@ -111,14 +111,14 @@ function UpgradeCard({ tier }: { tier: string | null }) {
                     Unlock the full gang experience
                 </h3>
                 <p className="text-[12px] text-muted-foreground mt-1.5 leading-relaxed max-w-sm">
-                    You&apos;re on the free tier ({freeCopy.shortMessagesLabel}, starter memory). Your gang wants to remember you.
+                    You&apos;re on the free tier ({freeCopy.shortMessagesLabel}, preview memory + light recall). The full vault opens up when you&apos;re ready.
                 </p>
 
                 <div className="mt-4 flex flex-col gap-2">
                     {[
-                        { icon: <Infinity className="w-3 h-3" />, text: 'Unlimited messages' },
-                        { icon: <Brain className="w-3 h-3" />, text: 'Your gang remembers everything' },
-                        { icon: <Zap className="w-3 h-3" />, text: 'Zero cooldowns, ever' },
+                        { icon: <Infinity className="w-3 h-3" />, text: 'Higher message limits' },
+                        { icon: <Brain className="w-3 h-3" />, text: 'Full Memory Vault access' },
+                        { icon: <Zap className="w-3 h-3" />, text: 'Deeper recall and bigger squads' },
                     ].map((f) => (
                         <div key={f.text} className="flex items-center gap-2">
                             <div className="shrink-0 text-primary">

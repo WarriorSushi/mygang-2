@@ -41,6 +41,54 @@ export type StoredMemory = {
     expires_at?: string | null
 }
 
+export function isMemoryExpired(expiresAt: string | null | undefined, nowMs = Date.now()) {
+    if (!expiresAt) return false
+    const expiresAtMs = Date.parse(expiresAt)
+    if (!Number.isFinite(expiresAtMs)) return false
+    return expiresAtMs <= nowMs
+}
+
+export function filterActiveMemories<T extends { expires_at?: string | null }>(memories: T[], nowMs = Date.now()) {
+    return memories.filter((memory) => !isMemoryExpired(memory.expires_at, nowMs))
+}
+
+export function getMemoryRecallLimit(tier: SubscriptionTier): number {
+    return tier === 'free' ? 2 : getMemoryInPromptLimit(tier)
+}
+
+export async function retrieveMemoriesForPrompt(userId: string, query: string, tier: SubscriptionTier, limit: number) {
+    if (limit <= 0) return []
+    if (tier === 'free') return retrieveMemoriesLite(userId, query, limit)
+    return retrieveMemoriesHybrid(userId, query, limit)
+}
+
+type MemorySnapshotEntry = {
+    id?: string
+    content: string
+    category?: string | null
+    expires_at?: string | null
+}
+
+function buildMemoryCategoryBlock(memories: MemorySnapshotEntry[]) {
+    const memoryByCategory = new Map<string, string[]>()
+    for (const memory of memories) {
+        const category = memory.category || 'general'
+        if (!memoryByCategory.has(category)) memoryByCategory.set(category, [])
+        memoryByCategory.get(category)!.push(memory.content.slice(0, 220))
+    }
+
+    return Array.from(memoryByCategory.entries())
+        .map(([category, items]) => `[${category.toUpperCase()}]\n${items.map((content) => `- ${content}`).join('\n')}`)
+        .join('\n')
+}
+
+export function buildLightMemorySnapshot(memories: MemorySnapshotEntry[]) {
+    const activeMemories = filterActiveMemories(memories)
+    if (activeMemories.length === 0) return 'No memory snapshot available.'
+
+    return `\n== MEMORY SNAPSHOT ==\nLIGHT RECALL:\n${buildMemoryCategoryBlock(activeMemories)}\n`
+}
+
 export async function generateEmbedding(text: string) {
     const { embedding } = await embed({
         model: embeddingModel,
@@ -375,7 +423,7 @@ export async function retrieveMemories(userId: string, query: string, limit = 5)
         return []
     }
 
-    return memories as StoredMemory[]
+    return filterActiveMemories(memories as StoredMemory[])
 }
 
 function tokenize(text: string) {
@@ -398,9 +446,9 @@ export async function retrieveMemoriesLite(userId: string, query: string, limit 
     const supabase = await createClient()
     const { data, error } = await supabase
         .from('memories')
-        .select('id, content, created_at, importance, tags')
+        .select('id, content, created_at, importance, tags, category, expires_at')
         .eq('user_id', userId)
-        .eq('kind', 'episodic')
+        .in('kind', ['episodic', 'compacted'])
         .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(50)
@@ -411,7 +459,8 @@ export async function retrieveMemoriesLite(userId: string, query: string, limit 
     }
 
     const queryTokens = tokenize(query)
-    const scored = data.map((m) => ({
+    const activeData = filterActiveMemories(data as StoredMemory[])
+    const scored = activeData.map((m) => ({
         ...m,
         similarity: scoreMemory(queryTokens, m as StoredMemory)
     }))
@@ -468,7 +517,7 @@ export async function retrieveMemoriesHybrid(userId: string, query: string, limi
 
     const recentQueryPromise = supabase
         .from('memories')
-        .select('id, content, created_at, importance, tags, last_used_at, category')
+        .select('id, content, created_at, importance, tags, last_used_at, category, expires_at')
         .eq('user_id', userId)
         .eq('kind', 'episodic')
         .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
@@ -483,13 +532,13 @@ export async function retrieveMemoriesHybrid(userId: string, query: string, limi
     if (recentError) {
         console.error('Hybrid retrieval recency error:', recentError)
     }
-    const recentResults: StoredMemory[] = (recentData || []) as unknown as StoredMemory[]
+    const recentResults: StoredMemory[] = filterActiveMemories((recentData || []) as unknown as StoredMemory[])
 
     // 3. Merge and deduplicate
     const mergedMap = new Map<string, StoredMemory & { _similarity: number; _recency: number }>()
     const now = Date.now()
 
-    for (const mem of embeddingResults) {
+    for (const mem of filterActiveMemories(embeddingResults)) {
         mergedMap.set(mem.id, {
             ...mem,
             _similarity: mem.similarity ?? 0,
@@ -619,14 +668,22 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
         // Expired temporal memories are excluded — compacting them would resurrect temporary
         // states (mood, plans) as permanent compacted summaries.
         // Note: category column may not exist in generated types — use type assertion
-        type ClaimedMemory = { id: string; content: string; importance: number; tags: string[]; created_at: string; category: string | null }
+        type ClaimedMemory = {
+            id: string
+            content: string
+            importance: number
+            tags: string[]
+            created_at: string
+            category: string | null
+            expires_at: string | null
+        }
         const { data: claimedRaw, error: claimError } = await supabase
             .from('memories')
             .update({ kind: 'compacting' })
             .eq('user_id', userId)
             .eq('kind', 'episodic')
             .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
-            .select('id, content, importance, tags, created_at, category')
+            .select('id, content, importance, tags, created_at, category, expires_at')
 
         const claimed = (claimedRaw || []) as unknown as ClaimedMemory[]
 
@@ -642,7 +699,7 @@ export async function compactMemoriesIfNeeded(userId: string, tier: Subscription
             return
         }
 
-        const memories = claimed
+        const memories = filterActiveMemories(claimed)
         const memoryIds = memories.map((m) => m.id)
         const maxCompactedChars = TIER_COMPACTION_MAX_CHARS[tier] || TIER_COMPACTION_MAX_CHARS.basic!
 
@@ -785,7 +842,7 @@ export async function backfillMemoryEmbeddings(
 
         const { data: rows, error } = await supabase
             .from('memories')
-            .select('id, content')
+            .select('id, content, expires_at')
             .eq('user_id', userId)
             .eq('kind', 'episodic')
             .is('embedding', null)
@@ -801,7 +858,7 @@ export async function backfillMemoryEmbeddings(
         let processed = 0
         let failed = 0
 
-        for (const row of rows) {
+        for (const row of filterActiveMemories(rows as StoredMemory[], Date.now())) {
             try {
                 const embedding = await generateEmbedding(row.content)
                 const { error: updateError } = await supabase

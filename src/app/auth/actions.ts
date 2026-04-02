@@ -10,6 +10,7 @@ import { CHARACTERS } from '@/constants/characters'
 import { AVATAR_STYLES, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 import { sanitizeMessageId } from '@/lib/chat-utils'
 import { getMemoryVaultPreviewLimit, getTierFromProfile, getSquadLimit } from '@/lib/billing'
+import { filterActiveMemories } from '@/lib/ai/memory'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
 
 type ChatHistoryPageRow = {
@@ -41,6 +42,25 @@ const userSettingsSchema = z.object({
     custom_character_names: z.record(z.string().max(30)).refine(v => !v || Object.keys(v).length <= 6, { message: 'Too many custom names' }).optional(),
     avatar_style_preference: z.enum(AVATAR_STYLES).optional(),
 }).strict()
+
+export type MemoryMutationErrorCode =
+    | 'not_authenticated'
+    | 'rate_limited'
+    | 'invalid_content'
+    | 'forbidden'
+    | 'unknown'
+
+export type MemoryMutationResult =
+    | { ok: true }
+    | { ok: false; errorCode: MemoryMutationErrorCode; message: string }
+
+export function createMemoryMutationSuccess(): MemoryMutationResult {
+    return { ok: true }
+}
+
+export function createMemoryMutationFailure(errorCode: MemoryMutationErrorCode, message: string): MemoryMutationResult {
+    return { ok: false, errorCode, message }
+}
 
 async function getOrigin() {
     const headerBag = await headers()
@@ -429,9 +449,10 @@ export async function getMemories() {
 
     let query = supabase
         .from('memories')
-        .select('id, content, created_at')
+        .select('id, content, created_at, expires_at')
         .eq('user_id', user.id)
         .in('kind', ['episodic', 'compacted'])
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('created_at', { ascending: false })
 
     query = query.limit(previewLimit ?? 200)
@@ -443,21 +464,23 @@ export async function getMemories() {
         return []
     }
 
-    return data
+    return filterActiveMemories(data ?? [])
 }
 
-export async function deleteMemory(id: string) {
+export async function deleteMemory(id: string): Promise<MemoryMutationResult> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) return createMemoryMutationFailure('not_authenticated', 'Not authenticated.')
 
     const tier = await getSubscriptionTierForUser(supabase, user.id)
-    if (tier === 'free') return
+    if (tier === 'free') return createMemoryMutationFailure('forbidden', 'Memory editing is not available on the free tier.')
 
     try {
         const rate = await rateLimit('delete-memory:' + user.id, 20, 60_000)
-        if (!rate.success) return
-    } catch { return }
+        if (!rate.success) return createMemoryMutationFailure('rate_limited', 'Too many attempts. Please wait.')
+    } catch {
+        return createMemoryMutationFailure('rate_limited', 'Too many attempts. Please wait.')
+    }
 
     const { error } = await supabase
         .from('memories')
@@ -465,32 +488,39 @@ export async function deleteMemory(id: string) {
         .eq('id', id)
         .eq('user_id', user.id)
 
-    if (error) console.error('Error deleting memory:', error)
+    if (error) {
+        console.error('Error deleting memory:', error)
+        return createMemoryMutationFailure('unknown', 'Failed to delete memory. Please try again.')
+    }
+
+    return createMemoryMutationSuccess()
 }
 
-export async function updateMemory(id: string, content: string) {
+export async function updateMemory(id: string, content: string): Promise<MemoryMutationResult> {
     const parsed = memoryContentSchema.safeParse(content)
-    if (!parsed.success) return
+    if (!parsed.success) return createMemoryMutationFailure('invalid_content', parsed.error.issues[0]?.message || 'Invalid memory content.')
 
     const { generateEmbedding } = await import('@/lib/ai/memory')
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) return createMemoryMutationFailure('not_authenticated', 'Not authenticated.')
 
     const tier = await getSubscriptionTierForUser(supabase, user.id)
-    if (tier === 'free') return
+    if (tier === 'free') return createMemoryMutationFailure('forbidden', 'Memory editing is not available on the free tier.')
 
     try {
         const rate = await rateLimit('update-memory:' + user.id, 10, 60_000)
-        if (!rate.success) return
-    } catch { return }
+        if (!rate.success) return createMemoryMutationFailure('rate_limited', 'Too many attempts. Please wait.')
+    } catch {
+        return createMemoryMutationFailure('rate_limited', 'Too many attempts. Please wait.')
+    }
 
     let embedding: number[] = []
     try {
         embedding = await generateEmbedding(parsed.data)
     } catch (err) {
         console.error('Error generating embedding:', err)
-        return
+        return createMemoryMutationFailure('unknown', 'Unable to update memory right now.')
     }
 
     const { error } = await supabase
@@ -499,7 +529,12 @@ export async function updateMemory(id: string, content: string) {
         .eq('id', id)
         .eq('user_id', user.id)
 
-    if (error) console.error('Error updating memory:', error)
+    if (error) {
+        console.error('Error updating memory:', error)
+        return createMemoryMutationFailure('unknown', 'Failed to update memory. Please try again.')
+    }
+
+    return createMemoryMutationSuccess()
 }
 
 export async function getUserSettings() {
@@ -542,6 +577,7 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
 
     const tier = await getSubscriptionTierForUser(supabase, user.id)
     const previewLimit = getMemoryVaultPreviewLimit(tier)
+    const nowIso = new Date().toISOString()
 
     if (previewLimit) {
         const [countResult, pageResult] = await Promise.all([
@@ -549,12 +585,14 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
                 .from('memories')
                 .select('id', { count: 'exact', head: true })
                 .eq('user_id', user.id)
-                .in('kind', ['episodic', 'compacted']),
+                .in('kind', ['episodic', 'compacted'])
+                .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
             supabase
                 .from('memories')
-                .select('id, content, created_at')
+                .select('id, content, created_at, expires_at')
                 .eq('user_id', user.id)
                 .in('kind', ['episodic', 'compacted'])
+                .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
                 .order('created_at', { ascending: false })
                 .limit(previewLimit),
         ])
@@ -577,9 +615,10 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
             }
         }
 
-        const totalCount = countResult.count ?? ((pageResult.data ?? []).length)
+        const activeRows = filterActiveMemories(pageResult.data ?? [], Date.now())
+        const totalCount = countResult.count ?? activeRows.length
         return {
-            items: pageResult.data ?? [],
+            items: activeRows,
             hasMore: false,
             nextBefore: null as string | null,
             totalCount,
@@ -591,19 +630,32 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
     }
 
     const limit = Math.min(Math.max(params?.limit ?? 30, 10), 80)
-    let query = supabase
-        .from('memories')
-        .select('id, content, created_at')
-        .eq('user_id', user.id)
-        .in('kind', ['episodic', 'compacted'])
-        .order('created_at', { ascending: false })
-        .limit(limit + 1)
+    const [countResult, pageResult] = await Promise.all([
+        supabase
+            .from('memories')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .in('kind', ['episodic', 'compacted'])
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
+        (() => {
+            let query = supabase
+                .from('memories')
+                .select('id, content, created_at, expires_at')
+                .eq('user_id', user.id)
+                .in('kind', ['episodic', 'compacted'])
+                .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+                .order('created_at', { ascending: false })
+                .limit(limit + 1)
 
-    if (params?.before) {
-        query = query.lt('created_at', params.before)
-    }
+            if (params?.before) {
+                query = query.lt('created_at', params.before)
+            }
 
-    const { data, error } = await query
+            return query
+        })(),
+    ])
+
+    const { data, error } = pageResult
     if (error) {
         console.error('Error fetching memory page:', error)
         return {
@@ -618,7 +670,7 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
         }
     }
 
-    const safeRows = data ?? []
+    const safeRows = filterActiveMemories(data ?? [], Date.now())
     const hasMore = safeRows.length > limit
     const items = (hasMore ? safeRows.slice(0, limit) : safeRows)
     const nextBefore = hasMore ? items[items.length - 1]?.created_at ?? null : null
@@ -627,7 +679,7 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
         items,
         hasMore,
         nextBefore,
-        totalCount: items.length,
+        totalCount: countResult.count ?? items.length,
         lockedCount: 0,
         previewLimit: 0,
         isPreview: false,

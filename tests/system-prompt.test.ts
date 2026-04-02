@@ -40,6 +40,8 @@ function makeCtx(overrides: Partial<BuildSystemPromptInput> = {}): BuildSystemPr
         allowedStatusList: '- "is reading your message"\n- "saw your message"',
         silentTurns: 0,
         maxResponders: 2,
+        questionBudget: 1,
+        turnIntent: 'small_talk',
         isInactive: false,
         farewellTurn: false,
         openFloorRequested: false,
@@ -52,16 +54,19 @@ console.log('=== System Prompt Regression Tests ===\n')
 
 console.log('1. Baseline prompt contains the current humanized sections')
 {
-    const prompt = buildSystemPrompt(makeCtx({ greetingOnly: true }))
+    const prompt = buildSystemPrompt(makeCtx({ greetingOnly: true, turnIntent: 'greeting' }))
     assert(prompt.startsWith('You are the hidden "Director" of the MyGang group chat.'), 'starts with identity line')
     assertContains(prompt, 'TEXTING TENDENCIES', 'typing section label')
     assertContains(prompt, 'SUBTEXT', 'depth section label')
     assertContains(prompt, 'Default composition: one main responder', 'responder restraint rule')
     assertContains(prompt, 'Persona is a baseline, not a costume', 'anti-costume rule')
+    assertContains(prompt, 'VOICE REGISTERS', 'register guidance header')
+    assertContains(prompt, 'TURN INTENT REGISTER: greeting', 'intent register is present')
     assertContains(prompt, 'ANSWER FIRST', 'answer-first rule')
     assertContains(prompt, 'SMALL TALK', 'small-talk rule')
     assertContains(prompt, 'DIRECT INTROS', 'direct intros rule')
     assertContains(prompt, 'SELF-DISCLOSURE', 'self-disclosure rule')
+    assertContains(prompt, 'PLANNING:', 'planning block is present')
     assertContains(prompt, 'ANTI-REPETITION', 'anti-repetition rule')
     assertContains(prompt, 'NO META-TALK', 'no-meta rule')
     assertContains(prompt, 'NO LOOPS', 'no-loops rule')

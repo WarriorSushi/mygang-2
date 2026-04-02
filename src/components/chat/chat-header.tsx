@@ -86,13 +86,10 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const avatarTriggerRef = useRef<HTMLButtonElement | null>(null)
 
     const newMemoryCount = useChatStore((s) => s.newMemoryCount)
-    const totalMemoryCount = useChatStore((s) => s.totalMemoryCount)
     const showUpgradeTour = useChatStore((s) => s.showUpgradeTour)
     const isFreeUser = subscriptionTier === 'free'
     const memoryStatusLabel = isFreeUser ? 'Starter memory' : 'Memory active'
-    // Free tier: show total (never clears, acts as upgrade nudge)
-    // Paid tier: show new unseen (clears on vault open)
-    const memoryBadgeCount = isFreeUser ? totalMemoryCount : newMemoryCount
+    const memoryBadgeCount = newMemoryCount
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [showRefreshed, setShowRefreshed] = useState(false)
     const devToolsEnabled = process.env.NODE_ENV === 'development'
@@ -445,7 +442,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                            if (subscriptionTier !== 'free') useChatStore.getState().setNewMemoryCount(0)
+                            if (useChatStore.getState().newMemoryCount > 0) useChatStore.getState().setNewMemoryCount(0)
                             onOpenVault()
                         }}
                         title="Memory Vault"

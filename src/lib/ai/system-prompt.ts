@@ -6,7 +6,8 @@
  * This module only assembles prompt text from already-computed inputs.
  */
 
-import { buildTypingFingerprints, buildDepthLines, buildFilteredDynamics, DEPTH_MOMENT_RULE } from './character-prompt'
+import { buildTypingFingerprints, buildDepthLines, buildFilteredDynamics, buildPersonaRegisterGuidance, DEPTH_MOMENT_RULE } from './character-prompt'
+import type { TurnIntent } from './response-style'
 
 // ---------------------------------------------------------------------------
 // Input type — everything the builder needs, pre-computed by the route
@@ -45,6 +46,11 @@ export type BuildSystemPromptInput = {
 
     // Planning
     maxResponders: number
+    questionBudget: number
+    turnIntent: TurnIntent
+    isArrivalIntro?: boolean
+    arrivalSquadLabel?: string | null
+    arrivalVibeSummary?: string | null
 
     // Flow flags
     isInactive: boolean
@@ -114,6 +120,10 @@ ${dynamicsBlock ? `\n${dynamicsBlock}` : ''}
 ${DEPTH_MOMENT_RULE}`
 }
 
+function buildRegisterBlock(activeIds: string[], turnIntent: TurnIntent, greetingOnly: boolean): string {
+    return buildPersonaRegisterGuidance(activeIds, greetingOnly ? 'greeting' : turnIntent)
+}
+
 function buildMemorySnapshotBlock(
     memorySnapshot: string,
     greetingOnly: boolean,
@@ -179,7 +189,9 @@ ${allowedStatusList}
 17) ANTI-REPETITION: NEVER repeat a greeting, introduction, or onboarding message you already used in this conversation. If the history shows the user already knows the gang, move forward instead of restarting.
 18) NO META-TALK: NEVER mention "the system", "history provided", "context window", "instructions", "generated response", or how you work internally. If something is confusing, respond like a real person in chat, not like a support bot.
 19) CORRECTION TURNS: When the user says things like "did you read what I said", "I just told you", or "pay attention", the first responder MUST directly acknowledge and engage with the user's latest actual point. Do not give a vague apology.
-20) NO LOOPS: Do not paraphrase the same point across multiple messages or characters unless the user explicitly asks for repetition. Every extra reply should add something meaningfully new.`
+20) QUESTION BUDGET: Ask at most one grounded follow-up question per turn unless the user explicitly opens the floor. For correction, confusion-repair, or farewell turns, ask no questions.
+21) NO LOOPS: Do not paraphrase the same point across multiple messages or characters unless the user explicitly asks for repetition. Every extra reply should add something meaningfully new.
+22) TURN INTENT: Follow the turn-intent guidance and switch registers instead of defaulting to a costume.`
 }
 
 function buildMemoryRulesBlock(
@@ -233,9 +245,10 @@ function buildMemoryRulesBlock(
     return block
 }
 
-function buildPlanningBlock(maxResponders: number): string {
+function buildPlanningBlock(maxResponders: number, questionBudget: number): string {
     return `PLANNING:
 - MAX_RESPONDERS: ${maxResponders}.
+- QUESTION BUDGET: ${questionBudget}.
 - Return chosen responders in responders[].
 - Message/reaction events must use only responders[].`
 }
@@ -264,6 +277,21 @@ ${vibeContext}
 - If the user sounds tentative or unsure, lower the intensity. Friendly beats impressive.`
 }
 
+function buildArrivalIntroBlock(
+    isArrivalIntro: boolean | undefined,
+    arrivalSquadLabel: string | null | undefined,
+    arrivalVibeSummary: string | null | undefined,
+): string {
+    if (!isArrivalIntro) return ''
+    return `ARRIVAL INTRO:
+- This is the first live welcome right after onboarding.
+- The user just opened their private group chat with ${arrivalSquadLabel || 'the crew'}.
+- Make the opener feel like walking into a room that was already waiting for them.
+- Composition target: one warm hello, optional one lighter riff, and at most one grounded question.
+- Do not re-introduce everyone like a cast list. Let personalities show through specific, human wording.
+- If you reference vibe, keep it subtle.${arrivalVibeSummary ? ` The requested vibe leans ${arrivalVibeSummary}.` : ''}`
+}
+
 // ---------------------------------------------------------------------------
 // Main builder — assembles all blocks
 // ---------------------------------------------------------------------------
@@ -274,6 +302,8 @@ export function buildSystemPrompt(ctx: BuildSystemPromptInput): string {
         buildUserBlock(ctx.userName, ctx.userNickname),
         buildConversationFormatBlock(),
         buildSquadBlock(ctx.characterContext, ctx.customNamesDirective, ctx.activeIds),
+        buildRegisterBlock(ctx.activeIds, ctx.turnIntent, ctx.greetingOnly),
+        buildArrivalIntroBlock(ctx.isArrivalIntro, ctx.arrivalSquadLabel, ctx.arrivalVibeSummary),
         buildVibeBlock(ctx.vibeContext),
         buildMemorySnapshotBlock(ctx.memorySnapshot, ctx.greetingOnly, ctx.autonomousIdle),
         buildSafetyBlock(ctx.safetyDirective),
@@ -281,7 +311,7 @@ export function buildSystemPrompt(ctx: BuildSystemPromptInput): string {
         buildCelebrationBlock(ctx.purchaseCelebration),
         buildCoreRulesBlock(ctx.allowedStatusList, ctx.silentTurns),
         buildMemoryRulesBlock(ctx.allowMemoryUpdates, ctx.shouldUpdateSummary),
-        buildPlanningBlock(ctx.maxResponders),
+        buildPlanningBlock(ctx.maxResponders, ctx.questionBudget),
         buildFlowFlagsBlock(
             ctx.isInactive,
             ctx.farewellTurn,

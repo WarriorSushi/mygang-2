@@ -1,6 +1,7 @@
 import { FREE_MEMORY_VAULT_PREVIEW_LIMIT } from '@/lib/billing'
 
 const PENDING_ARRIVAL_KEY = 'mygang-pending-arrival'
+const PENDING_ARRIVAL_FALLBACK_KEY = 'mygang-pending-arrival-fallback'
 const PENDING_ARRIVAL_MAX_AGE_MS = 10 * 60 * 1000
 
 type CharacterArrivalHint = {
@@ -14,8 +15,11 @@ type CharacterArrivalHint = {
 
 export type PendingArrivalContext = {
     createdAt: string
+    arrivalToken: string
     userName: string | null
     memoryPreviewLimit: number
+    vibeSummary: string | null
+    preferServerIntro: boolean
     squad: CharacterArrivalHint[]
 }
 
@@ -46,14 +50,24 @@ function isArrivalContext(value: unknown): value is PendingArrivalContext {
     if (!value || typeof value !== 'object') return false
     const candidate = value as PendingArrivalContext
     return typeof candidate.createdAt === 'string'
+        && typeof candidate.arrivalToken === 'string'
         && Array.isArray(candidate.squad)
         && typeof candidate.memoryPreviewLimit === 'number'
+        && typeof candidate.preferServerIntro === 'boolean'
 }
 
 function joinNames(names: string[]) {
     if (names.length <= 1) return names[0] ?? 'your people'
     if (names.length === 2) return `${names[0]} and ${names[1]}`
     return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
+
+function createArrivalToken() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID()
+    }
+
+    return `arrival_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
 }
 
 export function buildPendingArrivalContext(args: {
@@ -66,13 +80,17 @@ export function buildPendingArrivalContext(args: {
         avatar?: string
     }>
     customNames?: Record<string, string>
+    vibeSummary?: string | null
 }): PendingArrivalContext {
     const customNames = args.customNames ?? {}
 
     return {
         createdAt: new Date().toISOString(),
+        arrivalToken: createArrivalToken(),
         userName: args.userName,
         memoryPreviewLimit: FREE_MEMORY_VAULT_PREVIEW_LIMIT,
+        vibeSummary: args.vibeSummary ?? null,
+        preferServerIntro: true,
         squad: args.squad.map((character) => ({
             id: character.id,
             name: character.name,
@@ -86,41 +104,129 @@ export function buildPendingArrivalContext(args: {
 
 export function savePendingArrivalContext(context: PendingArrivalContext) {
     if (typeof window === 'undefined') return
-    window.sessionStorage.setItem(PENDING_ARRIVAL_KEY, JSON.stringify(context))
+    const payload = JSON.stringify(context)
+    try {
+        window.sessionStorage.setItem(PENDING_ARRIVAL_KEY, payload)
+    } catch {
+        // Ignore storage failures; the chat can still fall back to the URL token path.
+    }
+    try {
+        window.localStorage.setItem(PENDING_ARRIVAL_FALLBACK_KEY, payload)
+    } catch {
+        // Ignore storage failures; the chat can still arrive without the fallback cache.
+    }
 }
 
-export function readPendingArrivalContext() {
-    if (typeof window === 'undefined') return null
-
-    const raw = window.sessionStorage.getItem(PENDING_ARRIVAL_KEY)
+function readArrivalPayload(raw: string | null) {
     if (!raw) return null
 
     try {
         const parsed = JSON.parse(raw) as unknown
-        if (!isArrivalContext(parsed)) {
-            window.sessionStorage.removeItem(PENDING_ARRIVAL_KEY)
-            return null
-        }
+        if (!isArrivalContext(parsed)) return null
 
         const createdAtMs = Date.parse(parsed.createdAt)
         if (!Number.isFinite(createdAtMs) || Date.now() - createdAtMs > PENDING_ARRIVAL_MAX_AGE_MS) {
-            window.sessionStorage.removeItem(PENDING_ARRIVAL_KEY)
             return null
         }
 
         return parsed
     } catch {
-        window.sessionStorage.removeItem(PENDING_ARRIVAL_KEY)
         return null
     }
 }
 
-export function consumePendingArrivalContext() {
-    const context = readPendingArrivalContext()
-    if (typeof window !== 'undefined') {
+export function readPendingArrivalContext(options?: { arrivalToken?: string | null }) {
+    if (typeof window === 'undefined') return null
+
+    const token = options?.arrivalToken?.trim() || null
+    let sessionRaw: string | null = null
+    try {
+        sessionRaw = window.sessionStorage.getItem(PENDING_ARRIVAL_KEY)
+    } catch {
+        sessionRaw = null
+    }
+    const sessionContext = readArrivalPayload(sessionRaw)
+    if (sessionContext && (!token || sessionContext.arrivalToken === token)) {
+        return sessionContext
+    }
+
+    let fallbackRaw: string | null = null
+    try {
+        fallbackRaw = window.localStorage.getItem(PENDING_ARRIVAL_FALLBACK_KEY)
+    } catch {
+        fallbackRaw = null
+    }
+    const fallbackContext = readArrivalPayload(fallbackRaw)
+    if (fallbackContext && (!token || fallbackContext.arrivalToken === token)) {
+        return fallbackContext
+    }
+
+    if (sessionRaw) {
         window.sessionStorage.removeItem(PENDING_ARRIVAL_KEY)
     }
+    if (fallbackRaw) {
+        window.localStorage.removeItem(PENDING_ARRIVAL_FALLBACK_KEY)
+    }
+
+    return null
+}
+
+export function consumePendingArrivalContext(options?: { arrivalToken?: string | null }) {
+    const context = readPendingArrivalContext(options)
+    if (typeof window !== 'undefined') {
+        try {
+            window.sessionStorage.removeItem(PENDING_ARRIVAL_KEY)
+        } catch {}
+        try {
+            window.localStorage.removeItem(PENDING_ARRIVAL_FALLBACK_KEY)
+        } catch {}
+    }
     return context
+}
+
+function summarizeVibe(vibeSummary: string | null) {
+    if (!vibeSummary) return null
+    return vibeSummary.replace(/\s+/g, ' ').trim()
+}
+
+export function buildStarterChips(context: PendingArrivalContext | null, fallbackName: string, squadNames: string[]) {
+    const userLabel = fallbackName || 'you'
+    const squadLabel = joinNames(squadNames.filter(Boolean).slice(0, 2))
+    const vibeSummary = summarizeVibe(context?.vibeSummary ?? null)
+
+    if (vibeSummary?.toLowerCase().includes('honest')) {
+        return [
+            `okay, give me the honest version of this crew`,
+            `start with what i should know about ${squadLabel || 'everyone'} first`,
+            `be real with me about what this room is like`,
+            `i'm easing in, keep it honest with me`,
+        ]
+    }
+
+    if (vibeSummary?.toLowerCase().includes('chill')) {
+        return [
+            `keep it easy for me`,
+            `give me the soft version of the vibe with ${squadLabel || 'everyone'}`,
+            `i'm just settling in, point me to the easiest place to start`,
+            `start gentle with me`,
+        ]
+    }
+
+    if (vibeSummary?.toLowerCase().includes('hype')) {
+        return [
+            `okay, give me the fun version of this crew`,
+            `start with the most chaotic one here`,
+            `tell me what i should know about ${squadLabel || 'you all'} first`,
+            `give me the good-energy version of this room`,
+        ]
+    }
+
+    return [
+        `give me the honest version of ${squadLabel || 'this crew'}`,
+        `start with whoever feels easiest to talk to`,
+        `set the vibe for me, ${userLabel}`,
+        `i'm just getting settled, keep it easy`,
+    ]
 }
 
 export function buildArrivalLoaderSteps(context: PendingArrivalContext): ArrivalStep[] {
@@ -131,6 +237,7 @@ export function buildArrivalLoaderSteps(context: PendingArrivalContext): Arrival
     const leadName = leadCharacter?.displayName ?? 'your crew'
     const leadSetupLine = leadCharacter ? CHARACTER_SETUP_LINES[leadCharacter.id] : 'Your crew is settling in.'
     const secondarySetupLine = secondaryCharacter ? CHARACTER_SETUP_LINES[secondaryCharacter.id] : 'Everybody is finding their footing.'
+    const vibeSummary = summarizeVibe(context.vibeSummary)
 
     return [
         {
@@ -139,19 +246,21 @@ export function buildArrivalLoaderSteps(context: PendingArrivalContext): Arrival
             caption: `${context.userName || 'You'} are about to land with people who already feel picked on purpose.`,
         },
         {
-            title: 'Making the first hello feel right',
+            title: 'Making the first hello feel human',
             detail: leadSetupLine,
             caption: 'No abrupt drop-in. This should feel like walking into a room that was waiting for you.',
         },
         {
             title: 'Teaching the room your pace',
             detail: secondarySetupLine,
-            caption: 'Warm, curious, and human beats loud, generic, and scripted.',
+            caption: vibeSummary
+                ? `Your onboarding vibe is ${vibeSummary}. The opener should lean into that without sounding scripted.`
+                : 'Warm, curious, and human beats loud, generic, and scripted.',
         },
         {
             title: 'Unlocking your first memories',
             detail: `Your first ${context.memoryPreviewLimit} memories are open in Memory Vault from day one.`,
-            caption: 'The good stuff can start stacking right away. Anything beyond that becomes a teaser, not a dead end.',
+            caption: 'Free users get preview plus light recall. Anything beyond that becomes a teaser, not a dead end.',
         },
         {
             title: 'Almost there',
@@ -162,8 +271,12 @@ export function buildArrivalLoaderSteps(context: PendingArrivalContext): Arrival
 }
 
 export function buildArrivalBannerCopy(context: PendingArrivalContext) {
+    const squadNames = joinNames(context.squad.map((character) => character.displayName))
+    const vibeSummary = summarizeVibe(context.vibeSummary)
+
     return {
         title: 'Your private crew chat is live',
-        detail: `${joinNames(context.squad.map((character) => character.displayName))} are in. Your first ${context.memoryPreviewLimit} memories are unlocked in Memory Vault.`,
+        detail: `${squadNames} are in and ready to get to know you. Your first ${context.memoryPreviewLimit} memories are visible here from day one, and free gets a small light-recall preview so the room can remember a little with you.${vibeSummary ? ` Your vibe leans ${vibeSummary}.` : ''}`,
+        vibe: vibeSummary,
     }
 }

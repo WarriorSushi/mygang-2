@@ -4,6 +4,8 @@
  * All builders filter to active squad only.
  */
 
+import type { TurnIntent } from './response-style'
+
 /** Per-character typing style constraints. Short, reliable habits the model can follow. */
 const TYPING_STYLES: Record<string, string> = {
     kael: 'Confident, upbeat, stylish. Medium-length. Hypes people up without turning every line into a slogan. Emojis only when they truly fit.',
@@ -62,6 +64,81 @@ const SQUAD_ALLIANCES: [string, string, string][] = [
     ['kael', 'dash', 'hype and hustle'],
 ]
 
+const CHARACTER_REGISTER_DEFAULTS: Record<string, { primary: string; secondary: string }> = {
+    atlas: { primary: 'practical', secondary: 'direct' },
+    cleo: { primary: 'playful', secondary: 'direct' },
+    dash: { primary: 'practical', secondary: 'direct' },
+    ezra: { primary: 'reflective', secondary: 'casual' },
+    jinx: { primary: 'curious', secondary: 'direct' },
+    kael: { primary: 'playful', secondary: 'casual' },
+    luna: { primary: 'tender', secondary: 'casual' },
+    miko: { primary: 'playful', secondary: 'casual' },
+    nova: { primary: 'casual', secondary: 'tender' },
+    nyx: { primary: 'casual', secondary: 'direct' },
+    rico: { primary: 'playful', secondary: 'casual' },
+    sage: { primary: 'repair', secondary: 'tender' },
+    vee: { primary: 'playful', secondary: 'casual' },
+    zara: { primary: 'direct', secondary: 'repair' },
+}
+
+const TURN_INTENT_REGISTERS: Record<TurnIntent, { primary: string; secondary: string; note: string }> = {
+    greeting: {
+        primary: 'casual',
+        secondary: 'playful',
+        note: 'Lead with warmth, not a pitch.',
+    },
+    small_talk: {
+        primary: 'casual',
+        secondary: 'playful',
+        note: 'Sound like a real group chat, not a status update.',
+    },
+    intro_request: {
+        primary: 'casual',
+        secondary: 'direct',
+        note: 'Give concrete preferences, habits, and tiny stories instead of mission statements.',
+    },
+    self_disclosure: {
+        primary: 'direct',
+        secondary: 'casual',
+        note: 'Answer with lived-in detail: likes, routines, quirks, and opinions.',
+    },
+    practical_question: {
+        primary: 'practical',
+        secondary: 'direct',
+        note: 'Answer first, keep it useful, and ask at most one grounded follow-up.',
+    },
+    memory_recall: {
+        primary: 'reflective',
+        secondary: 'grounded',
+        note: 'Anchor the reply in what the user actually shared or the gang remembers.',
+    },
+    confusion_repair: {
+        primary: 'repair',
+        secondary: 'direct',
+        note: 'Drop the bit, rephrase simply, and make the next step obvious.',
+    },
+    correction: {
+        primary: 'repair',
+        secondary: 'direct',
+        note: 'Acknowledge the correction plainly before anything else.',
+    },
+    vulnerable: {
+        primary: 'tender',
+        secondary: 'repair',
+        note: 'Validate first, soften the energy, and avoid flipping into cheerleader mode.',
+    },
+    farewell: {
+        primary: 'warm',
+        secondary: 'casual',
+        note: 'Keep it short, human, and non-performative.',
+    },
+    open_floor: {
+        primary: 'casual',
+        secondary: 'playful',
+        note: 'Let one main voice lead and one supporting voice react naturally.',
+    },
+}
+
 /**
  * Build typing fingerprint block for active squad only.
  */
@@ -102,6 +179,66 @@ export function buildFilteredDynamics(activeIds: string[]): string {
     if (alliances.length > 0) parts.push(`Alliances:\n${alliances.join('\n')}`)
     if (parts.length === 0) return ''
     return parts.join('\n')
+}
+
+export type CharacterContextRow = {
+    id: string
+    name: string
+    archetype?: string | null
+    voice_description?: string | null
+    typing_style?: string | null
+    sample_line?: string | null
+    personality_prompt?: string | null
+    prompt_block?: string | null
+}
+
+export function buildCharacterContextEntry(row: CharacterContextRow): string {
+    const richFields = [
+        `ID: "${row.id}"`,
+        `Name: "${row.name}"`,
+        row.archetype ? `Archetype: "${row.archetype}"` : '',
+        row.voice_description ? `Voice: "${row.voice_description}"` : '',
+        row.typing_style ? `Typing: "${row.typing_style}"` : '',
+        row.sample_line ? `Sample: "${row.sample_line}"` : '',
+        row.personality_prompt ? `Personality: "${row.personality_prompt}"` : '',
+    ].filter(Boolean)
+
+    if (richFields.length > 2) {
+        return `- ${richFields.join(' | ')}`
+    }
+
+    if (row.prompt_block?.trim()) {
+        return row.prompt_block.trim()
+    }
+
+    return `- ID: "${row.id}", Name: "${row.name}", Archetype: "${row.archetype || 'friend'}"`
+}
+
+export function buildPersonaRegisterGuidance(activeIds: string[], turnIntent: TurnIntent): string {
+    const activeRegisters = activeIds
+        .map((id) => {
+            const defaults = CHARACTER_REGISTER_DEFAULTS[id]
+            if (!defaults) return null
+            return `- ${id}: ${defaults.primary}/${defaults.secondary}`
+        })
+        .filter((line): line is string => Boolean(line))
+
+    const intent = TURN_INTENT_REGISTERS[turnIntent]
+    const lines = [
+        `TURN INTENT REGISTER: ${turnIntent}`,
+        `- Primary register: ${intent.primary}.`,
+        `- Secondary register: ${intent.secondary}.`,
+        `- ${intent.note}`,
+        '- Switch registers by need, not by catchphrase. A character can be playful, practical, tender, direct, or repair-focused in the same conversation.',
+        '- Keep one main responder in the lead register and let support voices stay lighter.',
+    ]
+
+    if (activeRegisters.length > 0) {
+        lines.push('ACTIVE CHARACTER DEFAULTS:')
+        lines.push(...activeRegisters)
+    }
+
+    return `VOICE REGISTERS:\n${lines.join('\n')}`
 }
 
 /** Depth-moment rule for vulnerable user turns. */

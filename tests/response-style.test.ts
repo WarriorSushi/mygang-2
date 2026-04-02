@@ -1,4 +1,10 @@
-import { isCorrectionOrClarificationTurn, shouldPreserveSingleBubbleTurn } from '../src/lib/ai/response-style'
+import {
+    classifyTurnIntent,
+    enforceQuestionBudget,
+    getTurnPolicy,
+    isCorrectionOrClarificationTurn,
+    shouldPreserveSingleBubbleTurn,
+} from '../src/lib/ai/response-style'
 
 let passed = 0
 let failed = 0
@@ -48,6 +54,53 @@ assert(
     isCorrectionOrClarificationTurn('No, make it one concrete action only. No intro, no multiple suggestions.'),
     'detects concise correction request'
 )
+
+console.log('\n6. Turn intent classifier maps common user turns to balanced-human buckets')
+assert(
+    classifyTurnIntent('introduce yourselves', {
+        farewellTurn: false,
+        openFloorRequested: false,
+        softSafetyFlag: false,
+    }) === 'intro_request',
+    'intro request bucket'
+)
+assert(
+    classifyTurnIntent('?', {
+        farewellTurn: false,
+        openFloorRequested: false,
+        softSafetyFlag: false,
+    }) === 'confusion_repair',
+    'confusion repair bucket'
+)
+assert(
+    classifyTurnIntent('what are you guys up to', {
+        farewellTurn: false,
+        openFloorRequested: false,
+        softSafetyFlag: false,
+    }) === 'small_talk',
+    'small talk bucket'
+)
+assert(
+    classifyTurnIntent('i am overwhelmed and spiraling', {
+        farewellTurn: false,
+        openFloorRequested: false,
+        softSafetyFlag: true,
+    }) === 'vulnerable',
+    'vulnerable bucket'
+)
+
+console.log('\n7. Question budget trims stacked questions without flattening the whole reply')
+const budgeted = enforceQuestionBudget(
+    [
+        { type: 'message', content: 'what do you want to do?' },
+        { type: 'message', content: 'and what kind of vibe should we bring?' },
+        { type: 'message', content: 'cool.' },
+    ],
+    1
+)
+assert(budgeted[0].content === 'what do you want to do?', 'keeps the first question')
+assert(budgeted[1].content === 'and what kind of vibe should we bring.', 'neutralizes later questions')
+assert(getTurnPolicy('confusion_repair').questionBudget === 0, 'confusion repair gets zero question budget')
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
 process.exit(failed > 0 ? 1 : 0)

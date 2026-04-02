@@ -49,6 +49,8 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     const [isDeleting, setIsDeleting] = useState(false)
     const [lockedPreviewCount, setLockedPreviewCount] = useState(0)
     const [previewLimit, setPreviewLimit] = useState(FREE_MEMORY_VAULT_PREVIEW_LIMIT)
+    const [totalCount, setTotalCount] = useState(0)
+    const [actionError, setActionError] = useState<string | null>(null)
     const drawerRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLElement | null>(null)
 
@@ -114,6 +116,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         if (reset) {
             setLoading(true)
             setLoadError(null)
+            setActionError(null)
         } else {
             setLoadingMore(true)
         }
@@ -121,6 +124,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
             const page = await getMemoriesPage({ before, limit: 30 }) as MemoryPageResponse
             setLockedPreviewCount(page.lockedCount ?? 0)
             setPreviewLimit(page.previewLimit || FREE_MEMORY_VAULT_PREVIEW_LIMIT)
+            setTotalCount(page.totalCount ?? 0)
             let appendedCount = 0
             setMemories((prev) => {
                 const incoming = page.items as Memory[]
@@ -148,12 +152,14 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
             setCursor(null)
             setHasMore(false)
             setSearchQuery('')
+            setActionError(null)
             loadMemories({ reset: true, before: null })
         } else {
             setEditingId(null)
             setPendingDeleteId(null)
+            setActionError(null)
         }
-    }, [isOpen, loadMemories])
+    }, [isOpen, loadMemories, tier])
 
     const handleDeleteConfirm = async () => {
         if (!pendingDeleteId) return
@@ -161,10 +167,21 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         const original = memories.find(m => m.id === id)
         setPendingDeleteId(null)
         setIsDeleting(true)
+        setActionError(null)
         // Optimistic delete
         setMemories(prev => prev.filter(m => m.id !== id))
+        setTotalCount((current) => Math.max(0, current - 1))
         try {
-            await deleteMemory(id)
+            const result = await deleteMemory(id)
+            if (!result.ok) {
+                if (original) {
+                    setMemories(prev => [...prev, original].sort((a, b) =>
+                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    ))
+                }
+                setTotalCount((current) => current + 1)
+                setActionError(result.message)
+            }
         } catch {
             // Rollback on failure
             if (original) {
@@ -172,6 +189,8 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                 ))
             }
+            setTotalCount((current) => current + 1)
+            setActionError('Could not delete this memory. Please try again.')
         } finally {
             setIsDeleting(false)
         }
@@ -187,15 +206,23 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         const previousContent = memories.find(m => m.id === id)?.content
         setEditingId(null)
         setSavingId(id)
+        setActionError(null)
         // Optimistic update
         setMemories(prev => prev.map(m => m.id === id ? { ...m, content: editContent } : m))
         try {
-            await updateMemory(id, editContent)
+            const result = await updateMemory(id, editContent)
+            if (!result.ok) {
+                if (previousContent !== undefined) {
+                    setMemories(prev => prev.map(m => m.id === id ? { ...m, content: previousContent } : m))
+                }
+                setActionError(result.message)
+            }
         } catch {
             // Rollback on failure
             if (previousContent !== undefined) {
                 setMemories(prev => prev.map(m => m.id === id ? { ...m, content: previousContent } : m))
             }
+            setActionError('Could not update this memory. Please try again.')
         } finally {
             setSavingId(null)
         }
@@ -239,13 +266,19 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                 </div>
                                 <div>
                                     <h2 className="font-bold text-lg">Memory Vault</h2>
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">AI Long-term Awareness</p>
+                                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">What the gang remembers</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label="Close memory vault">
                                 <X size={20} />
                             </Button>
                         </div>
+
+                        {actionError && (
+                            <div className="mx-4 mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs leading-5 text-amber-100">
+                                {actionError}
+                            </div>
+                        )}
 
                         {isFree ? (
                         <div className="flex-1 flex flex-col min-h-0">
@@ -258,9 +291,12 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                 <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
                                     <div className="rounded-[1.4rem] border border-emerald-400/18 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(20,184,166,0.06),rgba(255,255,255,0.02))] px-4 py-4">
                                         <p className="text-[10px] uppercase tracking-[0.28em] text-emerald-300/75">Starter memory preview</p>
-                                        <p className="mt-1 text-sm font-semibold text-foreground">Your first {previewLimit} memories stay readable here.</p>
+                                        <p className="mt-1 text-sm font-semibold text-foreground">Your first {previewLimit} memories stay readable here, and the gang can lightly recall a couple when it matters.</p>
                                         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                            Keep chatting and the vault starts filling in. Once you go past {previewLimit}, the rest of the memories blur into the full upgrade wall.
+                                            Keep talking and this starts to feel more like shared history. After {previewLimit}, the rest stays blurred until you unlock the full vault.
+                                        </p>
+                                        <p className="mt-3 text-[10px] uppercase tracking-[0.24em] text-white/45">
+                                            {visibleFreeMemories.length} visible / {totalCount} active memories
                                         </p>
                                     </div>
 
@@ -323,7 +359,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                                                 {lockedPreviewCount} more memor{lockedPreviewCount === 1 ? 'y is' : 'ies are'} waiting in the full vault
                                                             </p>
                                                             <p className="text-xs leading-5 text-muted-foreground">
-                                                                The preview stays readable. Upgrade when you want the whole archive and the richer memory layer behind it.
+                                                                The preview stays readable. Upgrade when you want the whole archive and for the gang to remember you more deeply.
                                                             </p>
                                                             <Link
                                                                 href="/pricing?upgrade=basic"
@@ -377,6 +413,9 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                     className="w-full bg-muted/40 border border-border/50 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                 />
                             </div>
+                            <p className="mt-3 text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                                {totalCount} active memories
+                            </p>
                         </div>
 
                         {/* List */}

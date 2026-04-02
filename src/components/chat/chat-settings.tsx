@@ -120,7 +120,7 @@ function UpgradeJewel({ tier, onClose, isDark }: { tier: 'free' | 'basic'; onClo
                                 Unlock memory & unlimited messages
                             </p>
                             <p className="text-[12px] text-white/70 mt-1.5 leading-relaxed">
-                                Your gang wants to remember you. From $14.99/mo.
+                                Free includes preview memory plus light recall. Upgrade when you want the full vault and deeper recall.
                             </p>
                             <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-[11px] font-semibold group-hover:bg-white/30 transition-colors">
                                 <span>See plans</span>

@@ -26,19 +26,31 @@ assert(
 console.log('\n2. Timeout fallback prefers a concrete advice voice when available')
 const directiveFallback = buildTimeoutFallbackTurn(
     'No, make it one concrete action only. No intro, no multiple suggestions.',
-    ['kael', 'nyx', 'vee', 'cleo']
+    ['kael', 'nyx', 'vee', 'cleo'],
+    'correction'
 )
-assert(directiveFallback.responders[0] === 'vee', 'chooses vee for concrete action fallback')
+assert(directiveFallback.responders[0] === 'nyx', 'chooses a grounded correction fallback speaker')
 assert(directiveFallback.events.length === 1, 'produces exactly one message event')
 assert(!/\n/.test(directiveFallback.events[0].content), 'keeps fallback to a single bubble')
+assert(!/angel|baby/i.test(directiveFallback.events[0].content), 'avoids over-flirty fallback language')
 
 console.log('\n3. Timeout fallback stays concrete for overwhelmed prompts')
 const overwhelmedFallback = buildTimeoutFallbackTurn(
     'Give me one concrete step for tonight if I feel overwhelmed. No intro, no meta, just practical advice.',
-    ['kael', 'nyx', 'vee', 'cleo']
+    ['kael', 'nyx', 'vee', 'cleo'],
+    'vulnerable'
 )
 assert(/five-minute timer|next smallest task/i.test(overwhelmedFallback.events[0].content), 'returns a specific concrete action')
 assert(!/sorry|as an ai|meta/i.test(overwhelmedFallback.events[0].content), 'avoids meta fallback language')
+
+console.log('\n4. Confusion repair fallback is plain and grounded')
+const confusionFallback = buildTimeoutFallbackTurn(
+    '??? what do you mean',
+    ['atlas', 'zara', 'sage'],
+    'confusion_repair'
+)
+assert(confusionFallback.responders[0] === 'atlas' || confusionFallback.responders[0] === 'zara', 'chooses a grounded repair speaker')
+assert(/plain|restate|say that again|cleaner/i.test(confusionFallback.events[0].content), 'gives a plain repair response')
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`)
 process.exit(failed > 0 ? 1 : 0)

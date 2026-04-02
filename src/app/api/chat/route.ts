@@ -1,6 +1,6 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
-import { retrieveMemoriesHybrid, storeMemories, touchMemories, compactMemoriesIfNeeded, validateExpiresInHours } from '@/lib/ai/memory'
+import { buildLightMemorySnapshot, getMemoryRecallLimit, retrieveMemoriesForPrompt, storeMemories, touchMemories, compactMemoriesIfNeeded, validateExpiresInHours } from '@/lib/ai/memory'
 import type { MemoryCategory } from '@/lib/ai/memory'
 import { openRouterModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
@@ -11,12 +11,20 @@ import { CHARACTERS } from '@/constants/characters'
 import { ACTIVITY_STATUSES, normalizeActivityStatus } from '../../../constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, detectUnsafeContent, hasOpenFloorIntent } from '@/lib/chat-utils'
 import { formatHistoryForLLM } from '@/lib/ai/history-format'
-import { isCorrectionOrClarificationTurn, shouldPreserveSingleBubbleTurn } from '@/lib/ai/response-style'
+import {
+    classifyTurnIntent,
+    countQuestionBearingMessages,
+    enforceQuestionBudget,
+    getTurnPolicy,
+    isCorrectionOrClarificationTurn,
+    shouldPreserveSingleBubbleTurn,
+} from '@/lib/ai/response-style'
 import { buildSystemPrompt } from '@/lib/ai/system-prompt'
 import { buildTimeoutFallbackTurn, shouldUseFastTimeoutFallback } from '@/lib/ai/timeout-fallback'
 import type { Json } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { waitUntil } from '@vercel/functions'
+import { buildCharacterContextEntry } from '@/lib/ai/character-prompt'
 
 export const maxDuration = 45
 
@@ -88,8 +96,10 @@ type DbCharacterPromptRow = {
     prompt_block: string | null
     name: string
     archetype: string
-    voice_description: string
-    sample_line: string
+    voice_description: string | null
+    typing_style: string | null
+    sample_line: string | null
+    personality_prompt: string | null
 }
 
 type RelationshipState = {
@@ -132,6 +142,11 @@ type ChatRouteMetric = {
     promptChars: number
     eventsCount?: number
     shouldContinue?: boolean
+    turnIntent?: string
+    questionCount?: number
+    memoryHits?: number
+    responderCount?: number
+    openingMode?: string
     elapsedMs: number
 }
 
@@ -169,6 +184,13 @@ type ChatHistoryExistingIdRow = {
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function sanitizePromptScalar(value: string | null | undefined, maxLength = 160) {
+    if (!value) return null
+    const normalized = value.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim()
+    if (!normalized) return null
+    return normalized.slice(0, maxLength)
 }
 
 function createServerTurnId() {
@@ -247,7 +269,7 @@ async function getDbPromptBlocks(supabase: SupabaseClient) {
     try {
         const { data, error } = await supabase
             .from('characters')
-            .select('id, prompt_block, name, archetype, voice_description, sample_line')
+            .select('id, prompt_block, name, archetype, voice_description, typing_style, sample_line, personality_prompt')
             .returns<DbCharacterPromptRow[]>()
 
         if (error || !data) {
@@ -257,10 +279,7 @@ async function getDbPromptBlocks(supabase: SupabaseClient) {
 
         const map: Record<string, string> = {}
         data.forEach((row) => {
-            const block = row.prompt_block
-                ? row.prompt_block
-                : `- ID: "${row.id}", Name: "${row.name}", Archetype: "${row.archetype}", Voice: "${row.voice_description}", Style: "${row.sample_line}"`
-            map[row.id] = block
+            map[row.id] = buildCharacterContextEntry(row)
         })
         cachedDbPromptBlocks = { value: map, expiresAtMs: Date.now() + 5 * 60_000 }
         return map
@@ -555,6 +574,22 @@ const requestSchema = z.object({
     lowCostMode: z.boolean().optional(),
     source: z.enum(['user', 'autonomous', 'autonomous_idle']).optional(),
     autonomousIdle: z.boolean().optional(),
+    arrival_context: z.object({
+        createdAt: z.string().max(64),
+        arrivalToken: z.string().min(1).max(128),
+        userName: z.string().max(80).nullable().optional(),
+        memoryPreviewLimit: z.number().int().min(0).max(20),
+        vibeSummary: z.string().max(160).nullable().optional(),
+        preferServerIntro: z.boolean().optional(),
+        squad: z.array(z.object({
+            id: z.string().min(1).max(32),
+            name: z.string().min(1).max(80),
+            displayName: z.string().min(1).max(80),
+            roleLabel: z.string().max(80).optional(),
+            archetype: z.string().max(120).optional(),
+            avatar: z.string().max(400).optional(),
+        })).max(6),
+    }).optional(),
 })
 
 function getStatusCodeFromError(err: unknown, depth = 0): number | null {
@@ -684,9 +719,10 @@ async function handlePost(req: Request) {
             lowCostMode: requestedLowCostMode = false,
             source = 'user',
             autonomousIdle = false,
+            arrival_context: arrivalContext = null,
         } = parsed.data
-        const safeUserName = userName?.replace(/[\n\r]/g, ' ').trim() || null
-        const safeUserNickname = userNickname?.replace(/[\n\r]/g, ' ').trim() || null
+        const safeUserName = sanitizePromptScalar(userName ?? null, 80)
+        const safeUserNickname = sanitizePromptScalar(userNickname ?? null, 50)
         const chatMode = requestedChatMode
         const requestStartedAt = Date.now()
         const serverTurnId = createServerTurnId()
@@ -753,6 +789,12 @@ async function handlePost(req: Request) {
         const previousUserMessage = userMessages[userMessages.length - 2]
         const latestMessage = safeMessages[safeMessages.length - 1]
         const hasFreshUserTurn = latestMessage?.speaker === 'user'
+        const isArrivalIntro = Boolean(
+            arrivalContext?.preferServerIntro
+            && !hasFreshUserTurn
+            && safeMessages.length === 0
+            && source === 'user'
+        )
         const lastUserMsg = lastUserMessage?.content || ''
         const farewellTurn = hasFreshUserTurn && isFarewellMessage(lastUserMsg)
         const correctionOrClarificationTurn = hasFreshUserTurn && isCorrectionOrClarificationTurn(lastUserMsg)
@@ -761,10 +803,16 @@ async function handlePost(req: Request) {
         const inactiveMinutes = lastUserMsgAt ? (Date.now() - lastUserMsgAt) / (1000 * 60) : 0
         const isInactive = inactiveMinutes > 5
         const unsafeFlag = detectUnsafeContent(lastUserMsg)
-        const allowLongReplies = shouldAllowLongReplies(lastUserMsg, unsafeFlag.soft)
         const openFloorRequested = hasFreshUserTurn && !farewellTurn && hasOpenFloorIntent(lastUserMsg)
         const abuseDelta = scoreAbuse(lastUserMsg, previousUserMessage?.content)
-        const greetingOnly = isSimpleGreeting(lastUserMsg)
+        const greetingOnly = isArrivalIntro || isSimpleGreeting(lastUserMsg)
+        const turnIntent = isArrivalIntro ? 'greeting' : classifyTurnIntent(lastUserMsg, {
+            farewellTurn,
+            openFloorRequested,
+            softSafetyFlag: unsafeFlag.soft,
+        })
+        const turnPolicy = getTurnPolicy(turnIntent)
+        const allowLongReplies = turnPolicy.allowLongReplies || shouldAllowLongReplies(lastUserMsg, unsafeFlag.soft)
 
         if (unsafeFlag.hard) {
             return Response.json({
@@ -812,9 +860,8 @@ async function handlePost(req: Request) {
         }
 
         // P-C1: Parallelize global rate limit + tier-specific rate limit (both independent once we have tier)
-        // H5: Use a separate rate key for autonomous turns so they don't eat user's rate limit
-        const isAutonomousTurn = source === 'autonomous' || source === 'autonomous_idle'
-        const rateKey = isAutonomousTurn ? `chat:auto:${user.id}` : `chat:user:${user.id}`
+        // Use one request bucket for all chat traffic so clients cannot self-label requests to escape the shared cap.
+        const rateKey = `chat:req:${user.id}`
         const rateLimitMax = 60
         const tierWindowKey = profileTier === 'basic'
             ? `chat:basic-window:${user.id}`
@@ -844,7 +891,7 @@ async function handlePost(req: Request) {
         }
 
         // 1. Retrieve Memories + Profile State
-        let relevantMemories: { id: string; content: string; category?: string }[] = []
+        let relevantMemories: { id: string; content: string; category?: MemoryCategory | null }[] = []
         let retrievedMemoryIds: string[] = []
         let memorySnapshot = 'No memory snapshot available.'
         let shouldUpdateSummary = false
@@ -919,59 +966,65 @@ async function handlePost(req: Request) {
                 // All tiers can extract/store memories (free tier saves but doesn't inject into prompt)
                 allowMemoryUpdates = hasFreshUserTurn && !greetingOnly && !autonomousIdle && memoryEnabled
 
-                // Memory retrieval: all tiers save memories, but only basic+ get them in prompt
+                // Memory retrieval: all tiers save memories; free gets a tiny non-embedding recall window.
                 const memoryInPromptLimit = fastTimeoutFallbackTurn
                     ? 0
                     : correctionOrClarificationTurn
                         ? Math.min(2, getMemoryInPromptLimit(tier))
                         : getMemoryInPromptLimit(tier)
-                if (memoryEnabled && lastUserMsg.trim() && !greetingOnly && !autonomousIdle && memoryInPromptLimit > 0) {
-                    // CRIT-1: Use hybrid embedding+recency retrieval instead of lite keyword matching
-                    const memories = await retrieveMemoriesHybrid(user.id, lastUserMsg, memoryInPromptLimit)
+                const memoryRecallLimit = fastTimeoutFallbackTurn
+                    ? 0
+                    : tier === 'free'
+                        ? getMemoryRecallLimit(tier)
+                        : memoryInPromptLimit
+                if (memoryEnabled && lastUserMsg.trim() && !greetingOnly && !autonomousIdle && memoryRecallLimit > 0) {
+                    const memories = await retrieveMemoriesForPrompt(user.id, lastUserMsg, tier, memoryRecallLimit)
                     relevantMemories = memories.map((m) => ({
                         id: m.id,
                         content: m.content,
-                        category: (m.category as string) || undefined,
+                        category: m.category ?? null,
                     }))
                     // CRIT-3: touchMemories moved to deferred persistAsync block below
                     // Store memory IDs to touch later without blocking the response
                     retrievedMemoryIds = memories.map((m) => m.id)
                 }
 
-                // Only build memory snapshot for paid tiers (memoryInPromptLimit > 0)
-                // Free tier still stores memories but doesn't inject them into the prompt
-                if (memoryInPromptLimit > 0) {
-                    const userProfile = isObject(profile?.user_profile) ? profile.user_profile : {}
-                    const relationshipState = isObject(profile?.relationship_state) ? (profile.relationship_state as Record<string, RelationshipState>) : {}
-                    const sessionSummary = (profile?.session_summary || 'No summary yet.').slice(0, MAX_SESSION_SUMMARY_CHARS)
+                // Paid tiers get the full structured snapshot; free gets a tiny light-recall snapshot.
+                if (memoryRecallLimit > 0) {
+                    if (tier === 'free') {
+                        memorySnapshot = buildLightMemorySnapshot(relevantMemories)
+                    } else {
+                        const userProfile = isObject(profile?.user_profile) ? profile.user_profile : {}
+                        const relationshipState = isObject(profile?.relationship_state) ? (profile.relationship_state as Record<string, RelationshipState>) : {}
+                        const sessionSummary = (profile?.session_summary || 'No summary yet.').slice(0, MAX_SESSION_SUMMARY_CHARS)
 
-                    const relationshipBoard = activeGangSafe.map((c) => {
-                        const state = relationshipState?.[c.id] || { affinity: 50, trust: 50, banter: 50, protectiveness: 50, note: '' }
-                        const note = state.note ? ` | ${state.note}` : ''
-                        return `- ${c.id}: aff${state.affinity} tru${state.trust} ban${state.banter} pro${state.protectiveness}${note}`
-                    }).join('\n')
+                        const relationshipBoard = activeGangSafe.map((c) => {
+                            const state = relationshipState?.[c.id] || { affinity: 50, trust: 50, banter: 50, protectiveness: 50, note: '' }
+                            const note = state.note ? ` | ${state.note}` : ''
+                            return `- ${c.id}: aff${state.affinity} tru${state.trust} ban${state.banter} pro${state.protectiveness}${note}`
+                        }).join('\n')
 
-                    const profileLines = Object.keys(userProfile).length > 0
-                        ? Object.entries(userProfile)
-                            .slice(0, MAX_PROFILE_LINES)
-                            .map(([k, v]) => `- ${k}: ${String(v).slice(0, MAX_PROFILE_VALUE_CHARS)}`)
-                            .join('\n')
-                        : 'No profile facts yet.'
+                        const profileLines = Object.keys(userProfile).length > 0
+                            ? Object.entries(userProfile)
+                                .slice(0, MAX_PROFILE_LINES)
+                                .map(([k, v]) => `- ${k}: ${String(v).slice(0, MAX_PROFILE_VALUE_CHARS)}`)
+                                .join('\n')
+                            : 'No profile facts yet.'
 
-                    // Structured memory format: organize by category
-                    const memoryByCategory = new Map<string, string[]>()
-                    for (const m of relevantMemories) {
-                        const cat = m.category || 'general'
-                        if (!memoryByCategory.has(cat)) memoryByCategory.set(cat, [])
-                        memoryByCategory.get(cat)!.push(m.content.slice(0, MAX_MEMORY_CONTENT_CHARS))
-                    }
-                    const structuredMemories = relevantMemories.length > 0
-                        ? Array.from(memoryByCategory.entries())
-                            .map(([cat, items]) => `[${cat.toUpperCase()}]\n${items.map(c => `- ${c}`).join('\n')}`)
-                            .join('\n')
-                        : 'No memories yet.'
+                        // Structured memory format: organize by category
+                        const memoryByCategory = new Map<string, string[]>()
+                        for (const m of relevantMemories) {
+                            const cat = m.category || 'general'
+                            if (!memoryByCategory.has(cat)) memoryByCategory.set(cat, [])
+                            memoryByCategory.get(cat)!.push(m.content.slice(0, MAX_MEMORY_CONTENT_CHARS))
+                        }
+                        const structuredMemories = relevantMemories.length > 0
+                            ? Array.from(memoryByCategory.entries())
+                                .map(([cat, items]) => `[${cat.toUpperCase()}]\n${items.map(c => `- ${c}`).join('\n')}`)
+                                .join('\n')
+                            : 'No memories yet.'
 
-                    memorySnapshot = `
+                        memorySnapshot = `
 == MEMORY SNAPSHOT ==
 USER PROFILE:
 ${profileLines}
@@ -985,6 +1038,7 @@ ${relationshipBoard || 'No relationship data yet.'}
 SESSION SUMMARY:
 ${sessionSummary}
 `
+                    }
                 }
             } catch (err) {
                 console.error('Error retrieving memory/profile state:', err instanceof Error ? err.message : 'Unknown error')
@@ -1017,38 +1071,25 @@ ${sessionSummary}
         const customNameEntries = Object.entries(customNames).filter(([id]) => tierFilteredIds.includes(id))
         const customNamesDirective = customNameEntries.length > 0
             ? `\nCUSTOM NAMES (user renamed these characters — ALWAYS use the custom name, NEVER the original):\n${customNameEntries.map(([id, name]) => {
-                const original = activeGangSafe.find((c) => c.id === id)?.name || id
-                return `- "${id}" is called "${name}" (not "${original}"). Refer to yourself and each other using ONLY the custom name.`
+                const original = sanitizePromptScalar(activeGangSafe.find((c) => c.id === id)?.name || id, 60) || id
+                const safeCustomName = sanitizePromptScalar(name, 60) || original
+                return `- "${id}" is called "${safeCustomName}" (not "${original}"). Refer to yourself and each other using ONLY the custom name.`
             }).join('\n')}\n`
             : ''
 
         const isGangFocusMode = chatMode === 'gang_focus'
-        // Max responders: gang_focus uses smaller limit, ecosystem uses squad-size limit
+        // Balanced-human policy: the turn intent sets the upper bound, then tier/cost clamps it.
         const tierMaxRespGangFocus: Record<string, number> = { free: 1, basic: 2, pro: 2 }
         const tierMaxRespEcosystem: Record<string, number> = { free: 2, basic: 3, pro: 3 }
         const tierMaxResp = isGangFocusMode
             ? (tierMaxRespGangFocus[tier] ?? 1)
             : (tierMaxRespEcosystem[tier] ?? 2)
-        const shortTurn = lastUserMsg.trim().length < 48
-        const selfDisclosureTurn = /\b(introduce yourself|introduce yourselves|tell me about yourself|tell me about yourselves|who are you|what are you like)\b/i.test(lastUserMsg)
-        const baseResponders = fastTimeoutFallbackTurn
-            ? 1
-            : correctionOrClarificationTurn
-            ? 1
-            : Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, tierFilteredIds.length)
-        const maxResponders = fastTimeoutFallbackTurn
-            ? 1
-            : correctionOrClarificationTurn
-            ? 1
-            : autonomousIdle
-            ? 1
-            : openFloorRequested
-            ? Math.min(3, baseResponders)
-            : isGangFocusMode
-            ? 1
-            : selfDisclosureTurn || greetingOnly || shortTurn
-            ? Math.min(2, baseResponders)
-            : Math.min(3, baseResponders)
+        const maxResponders = Math.min(
+            turnPolicy.maxResponders,
+            lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp,
+            tierFilteredIds.length,
+        )
+        const questionBudget = turnPolicy.questionBudget
         const safetyDirective = unsafeFlag.soft
             ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support. IMPORTANT: You MUST include the following crisis resource in your response: "If you\'re in crisis, contact the 988 Suicide & Crisis Lifeline by calling or texting 988."'
             : 'SAFETY FLAG: NO.'
@@ -1068,6 +1109,20 @@ ${sessionSummary}
                 .filter(Boolean)
             if (lines.length > 0) vibeContext = lines.map(l => `- ${l}`).join('\n')
         }
+        const safeArrivalVibeSummary = sanitizePromptScalar(arrivalContext?.vibeSummary ?? null, 160)
+        if (!vibeContext && safeArrivalVibeSummary) {
+            vibeContext = `- Requested vibe: ${safeArrivalVibeSummary}`
+        }
+
+        const arrivalSquadLabel = arrivalContext?.squad
+            ?.map((character) => (
+                sanitizePromptScalar(character.displayName, 60)
+                || sanitizePromptScalar(character.name, 60)
+                || sanitizePromptScalar(character.id, 32)
+            ))
+            .filter(Boolean)
+            .slice(0, 3)
+            .join(', ') || null
 
         const systemPrompt = buildSystemPrompt({
             userName: safeUserName || 'User',
@@ -1087,6 +1142,11 @@ ${sessionSummary}
             allowedStatusList,
             silentTurns,
             maxResponders,
+            questionBudget,
+            turnIntent,
+            isArrivalIntro,
+            arrivalSquadLabel,
+            arrivalVibeSummary: safeArrivalVibeSummary,
             isInactive,
             farewellTurn,
             openFloorRequested,
@@ -1120,7 +1180,7 @@ ${sessionSummary}
         }
         // Use messages array for structural role separation (prompt injection defense).
         // Gemini uses implicit prompt caching automatically (prefix-match, no annotations needed).
-        const conversationPayload = "RECENT CONVERSATION:\n" + compactHistory
+        const conversationPayload = "RECENT CONVERSATION:\n" + (compactHistory || '(no messages yet)')
         const llmPromptChars = systemPrompt.length + conversationPayload.length
         let providerUsed: 'openrouter' | 'fallback' = 'fallback'
         const tierOutputTokens = TIER_MAX_OUTPUT_TOKENS[tier] ?? LLM_MAX_OUTPUT_TOKENS
@@ -1134,7 +1194,7 @@ ${sessionSummary}
         const llmTimeoutMs = fastTimeoutFallbackTurn ? FAST_TURN_LLM_TIMEOUT_MS : LLM_REQUEST_TIMEOUT_MS
 
         if (fastTimeoutFallbackTurn) {
-            object = buildTimeoutFallbackTurn(lastUserMsg, tierFilteredIds)
+            object = buildTimeoutFallbackTurn(lastUserMsg, tierFilteredIds, turnIntent)
             providerUsed = 'fallback'
         } else {
             const llmController = new AbortController()
@@ -1262,6 +1322,10 @@ ${sessionSummary}
             object.events = sanitized
         }
 
+        if (object?.events?.length) {
+            object.events = enforceQuestionBudget(object.events, questionBudget)
+        }
+
         // Output content filtering — drop AI-generated messages that trip safety patterns
         if (object?.events?.length) {
             object.events = object.events.filter((event) => {
@@ -1319,24 +1383,8 @@ ${sessionSummary}
             })
         }
 
-        if (isInactive) {
-            object.should_continue = false
-        }
-        if (unsafeFlag.soft) {
-            object.should_continue = false
-        }
-        if (lowCostMode) {
-            object.should_continue = false
-        }
-        if (autonomousIdle) {
-            object.should_continue = false
-        }
-        // Only set should_continue for explicit open-floor requests
-        if (!lowCostMode && !isGangFocusMode && openFloorRequested && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0) {
-            object.should_continue = true
-        } else {
-            object.should_continue = false
-        }
+        const continuationEligible = turnPolicy.shouldContinue && !lowCostMode && !isGangFocusMode && !isInactive && !unsafeFlag.soft && !autonomousIdle && object.events.length > 0
+        object.should_continue = continuationEligible
 
         // Fallback: if AI returned zero usable events, inject a retry nudge
         if (!object?.events?.length || object.events.length === 0) {
@@ -1344,7 +1392,15 @@ ${sessionSummary}
             object.events = [{
                 type: 'message',
                 character: fallbackSpeaker,
-                content: 'Hmm, my brain glitched for a sec. Say that again?',
+                content: isArrivalIntro
+                    ? `hey${safeUserName ? ` ${safeUserName}` : ''}. you made it in. we're here now, so take your time settling in.`
+                    : turnIntent === 'confusion_repair'
+                    ? 'okay, fair. let me say that cleaner: what i mean is...'
+                    : turnIntent === 'correction'
+                        ? 'fair catch. let me restate that plainly.'
+                        : turnIntent === 'memory_recall'
+                            ? 'yeah, let me pull that together from what i remember.'
+                            : 'okay, let me try that again in a cleaner way.',
                 delay: 300,
             }]
             object.should_continue = false
@@ -1360,7 +1416,7 @@ ${sessionSummary}
             })
         }
 
-        const preserveSingleBubbleTurn = selfDisclosureTurn || shouldPreserveSingleBubbleTurn(lastUserMsg, {
+        const preserveSingleBubbleTurn = turnPolicy.preserveSingleBubbleTurn || shouldPreserveSingleBubbleTurn(lastUserMsg, {
             allowLongReplies,
             farewellTurn,
         })
@@ -1393,6 +1449,21 @@ ${sessionSummary}
             object.should_continue = false
         }
         object.events = ensureEventMessageIds(object.events, serverTurnId)
+        const questionCount = countQuestionBearingMessages(object.events)
+        const openingMode = fastTimeoutFallbackTurn
+            ? 'timeout_fallback'
+            : isArrivalIntro
+                ? 'arrival_intro'
+            : greetingOnly
+                ? 'greeting'
+                : turnIntent
+        const meta = {
+            turn_intent: turnIntent,
+            memory_hits: relevantMemories.length,
+            question_count: questionCount,
+            continuation_eligible: continuationEligible,
+            opening_mode: openingMode,
+        }
 
         logChatRouteMetric(supabase, user?.id ?? null, {
             source,
@@ -1406,6 +1477,15 @@ ${sessionSummary}
             promptChars: llmPromptChars,
             eventsCount: object.events.length,
             shouldContinue: !!object.should_continue,
+            turnIntent,
+            questionCount,
+            memoryHits: relevantMemories.length,
+            responderCount: new Set(
+                object.events
+                    .filter((event) => event.type === 'message' || event.type === 'reaction')
+                    .map((event) => event.character)
+            ).size,
+            openingMode,
             elapsedMs: Date.now() - requestStartedAt
         }).catch((err) => console.error('Metric log error:', err instanceof Error ? err.message : 'Unknown error'))
 
@@ -1421,6 +1501,7 @@ ${sessionSummary}
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', user.id)
                 .in('kind', ['episodic', 'compacted'])
+                .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
             totalMemoryCount = count ?? 0
         }
 
@@ -1430,6 +1511,7 @@ ${sessionSummary}
             ...(messagesRemaining !== null ? { messages_remaining: messagesRemaining } : {}),
             ...(memoriesSavedCount > 0 ? { memories_saved_count: memoriesSavedCount } : {}),
             ...(totalMemoryCount !== null ? { total_memory_count: totalMemoryCount } : {}),
+            meta,
         })
 
         // Fire-and-forget: persist memory, profile, and chat history without blocking the response

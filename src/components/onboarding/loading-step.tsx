@@ -7,7 +7,7 @@ import { LottieLoader } from '@/components/ui/lottie-loader'
 import { buildArrivalLoaderSteps, type PendingArrivalContext } from '@/lib/chat-arrival'
 import { cn } from '@/lib/utils'
 
-const STEP_DURATION_MS = 1500
+const STEP_DURATION_MS = 1600
 
 interface LoadingStepProps {
     arrivalContext: PendingArrivalContext
@@ -183,7 +183,7 @@ export function LoadingStep({ arrivalContext }: LoadingStepProps) {
                             First session perk
                         </p>
                         <p className="mt-2 text-sm leading-6 text-white/74">
-                            Memory Vault starts open with your first {arrivalContext.memoryPreviewLimit} memories visible, so the app feels like it is learning you from day one.
+                            Memory Vault starts open with your first {arrivalContext.memoryPreviewLimit} memories visible, and free users get a tiny light-recall preview so the app feels like it is learning you from day one.
                         </p>
                     </div>
                 </aside>
