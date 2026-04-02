@@ -1,5 +1,6 @@
 // Tier definitions
 export type SubscriptionTier = 'free' | 'basic' | 'pro'
+export const FREE_MEMORY_VAULT_PREVIEW_LIMIT = 5
 
 export const TIER_LIMITS = {
   free: { messagesPerWindow: 25, windowMs: 60 * 60 * 1000, monthlyLimit: null, memoryEnabled: true, memoryMaxCount: 20, memoryInPrompt: 0, squadLimit: 4, contextLimit: 25 },
@@ -14,8 +15,8 @@ export const TIER_COPY = {
     messagesLabel: '25 messages per hour',
     shortMessagesLabel: '25/hr',
     usageHeading: '25 messages per hour',
-    usageDescription: 'Starter access with squad chat and saved memories that do not enter prompt context.',
-    memoryLabel: 'Starter memory',
+    usageDescription: 'Starter access with squad chat, a 5-memory vault preview, and warm first-touch onboarding.',
+    memoryLabel: '5-memory preview',
     cooldownLabel: '60 min when capped',
     priceLabel: '$0',
     comparisonMessagesLabel: '25/hr',
@@ -68,6 +69,10 @@ export function getMemoryInPromptLimit(tier: SubscriptionTier): number {
 /** Max stored memories (null = unlimited) */
 export function getMemoryMaxCount(tier: SubscriptionTier): number | null {
   return TIER_LIMITS[tier].memoryMaxCount
+}
+
+export function getMemoryVaultPreviewLimit(tier: SubscriptionTier): number | null {
+  return tier === 'free' ? FREE_MEMORY_VAULT_PREVIEW_LIMIT : null
 }
 
 export function getSquadLimit(tier: SubscriptionTier): number {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
-import { normalizeActivityStatus } from '@/constants/character-greetings'
+import { normalizeActivityStatus } from '../constants/character-greetings'
 import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { getTierFromProfile } from '@/lib/billing'
 import { hasOpenFloorIntent } from '@/lib/chat-utils'

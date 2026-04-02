@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { CHARACTERS } from '@/constants/characters'
 import { AVATAR_STYLES, normalizeAvatarStyle, type AvatarStyle } from '@/lib/avatar-style'
 import { sanitizeMessageId } from '@/lib/chat-utils'
-import { getTierFromProfile, getSquadLimit } from '@/lib/billing'
+import { getMemoryVaultPreviewLimit, getTierFromProfile, getSquadLimit } from '@/lib/billing'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
 
 type ChatHistoryPageRow = {
@@ -424,13 +424,19 @@ export async function getMemories() {
 
     if (!user) return []
 
-    const { data, error } = await supabase
+    const tier = await getSubscriptionTierForUser(supabase, user.id)
+    const previewLimit = getMemoryVaultPreviewLimit(tier)
+
+    let query = supabase
         .from('memories')
         .select('id, content, created_at')
         .eq('user_id', user.id)
         .in('kind', ['episodic', 'compacted'])
         .order('created_at', { ascending: false })
-        .limit(200)
+
+    query = query.limit(previewLimit ?? 200)
+
+    const { data, error } = await query
 
     if (error) {
         console.error('Error fetching memories:', error)
@@ -444,6 +450,9 @@ export async function deleteMemory(id: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    const tier = await getSubscriptionTierForUser(supabase, user.id)
+    if (tier === 'free') return
 
     try {
         const rate = await rateLimit('delete-memory:' + user.id, 20, 60_000)
@@ -467,6 +476,9 @@ export async function updateMemory(id: string, content: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    const tier = await getSubscriptionTierForUser(supabase, user.id)
+    if (tier === 'free') return
 
     try {
         const rate = await rateLimit('update-memory:' + user.id, 10, 60_000)
@@ -513,9 +525,70 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return { items: [], hasMore: false, nextBefore: null as string | null }
+    if (!user) {
+        return {
+            items: [],
+            hasMore: false,
+            nextBefore: null as string | null,
+            totalCount: 0,
+            lockedCount: 0,
+            previewLimit: 0,
+            isPreview: false,
+            canManage: false,
+        }
+    }
 
     await rateLimit('get-memories:' + user.id, 30, 60_000)
+
+    const tier = await getSubscriptionTierForUser(supabase, user.id)
+    const previewLimit = getMemoryVaultPreviewLimit(tier)
+
+    if (previewLimit) {
+        const [countResult, pageResult] = await Promise.all([
+            supabase
+                .from('memories')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .in('kind', ['episodic', 'compacted']),
+            supabase
+                .from('memories')
+                .select('id, content, created_at')
+                .eq('user_id', user.id)
+                .in('kind', ['episodic', 'compacted'])
+                .order('created_at', { ascending: false })
+                .limit(previewLimit),
+        ])
+
+        if (countResult.error) {
+            console.error('Error counting memory preview:', countResult.error)
+        }
+
+        if (pageResult.error) {
+            console.error('Error fetching memory preview:', pageResult.error)
+            return {
+                items: [],
+                hasMore: false,
+                nextBefore: null as string | null,
+                totalCount: 0,
+                lockedCount: 0,
+                previewLimit,
+                isPreview: true,
+                canManage: false,
+            }
+        }
+
+        const totalCount = countResult.count ?? ((pageResult.data ?? []).length)
+        return {
+            items: pageResult.data ?? [],
+            hasMore: false,
+            nextBefore: null as string | null,
+            totalCount,
+            lockedCount: Math.max(totalCount - previewLimit, 0),
+            previewLimit,
+            isPreview: true,
+            canManage: false,
+        }
+    }
 
     const limit = Math.min(Math.max(params?.limit ?? 30, 10), 80)
     let query = supabase
@@ -533,7 +606,16 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
     const { data, error } = await query
     if (error) {
         console.error('Error fetching memory page:', error)
-        return { items: [], hasMore: false, nextBefore: null as string | null }
+        return {
+            items: [],
+            hasMore: false,
+            nextBefore: null as string | null,
+            totalCount: 0,
+            lockedCount: 0,
+            previewLimit: 0,
+            isPreview: false,
+            canManage: true,
+        }
     }
 
     const safeRows = data ?? []
@@ -545,7 +627,29 @@ export async function getMemoriesPage(params?: { before?: string | null; limit?:
         items,
         hasMore,
         nextBefore,
+        totalCount: items.length,
+        lockedCount: 0,
+        previewLimit: 0,
+        isPreview: false,
+        canManage: true,
     }
+}
+
+async function getSubscriptionTierForUser(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    userId: string,
+) {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', userId)
+        .maybeSingle()
+
+    if (error) {
+        console.error('Error fetching subscription tier for memory access:', error)
+    }
+
+    return getTierFromProfile(data?.subscription_tier ?? null)
 }
 
 export async function getChatHistoryPage(params?: { before?: string | null; limit?: number }) {

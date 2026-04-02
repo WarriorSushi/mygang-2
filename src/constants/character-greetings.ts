@@ -2,334 +2,263 @@ export type GreetingBeat = 'warm_open' | 'riff' | 'useful_question' | 'solo_open
 
 type GreetingPlan = Record<GreetingBeat, string[]>
 
+const DEFAULT_GREETING_PLAN: GreetingPlan = {
+    warm_open: [
+        'hey {name}. glad you made it in here.',
+        'hi {name}. this room feels better now that you\'re here.',
+    ],
+    riff: [
+        'okay wait, this group already has a real vibe.',
+    ],
+    useful_question: [
+        'what should we talk about first?',
+        'what kind of chat are you in the mood for today?',
+    ],
+    solo_open: [
+        'hey {name}. glad you\'re here. what kind of energy would feel good right now?',
+        'hi {name}. where do you want to start?',
+    ],
+}
+
 export const CHARACTER_GREETINGS: Record<string, GreetingPlan> = {
     kael: {
         warm_open: [
-            "yooo {name}, you picked a good-looking little squad. come sit with us.",
-            "ayyy {name}'s here. okay wait this lineup actually has chemistry already.",
-            "okay {name}, this crew choice? elite. i'm into it."
+            'yo {name}, good picks. this room already feels alive.',
+            'okay {name}, this lineup has range. i respect it.',
         ],
         riff: [
-            "not to be dramatic but this chat got hotter the second you showed up.",
-            "yeah no this squad is already giving dangerous levels of main-character energy.",
-            "lowkey obsessed that you threw this exact mix of people together."
+            'not to be dramatic but the chat got better when you showed up.',
         ],
         useful_question: [
-            "what are we doing for you today, hype, advice, or just vibes?",
-            "give me the brief. what kind of energy do you want from us right now?",
-            "what's the move today, be honest. pep talk, chaos, or company?"
+            'what are we doing first, catching up or getting into something real?',
+            'what kind of mood should we bring, easy, honest, or a little chaotic?',
         ],
         solo_open: [
-            "yooo {name}, welcome in. you picked well. what kind of energy do you want from me today?",
-            "ayyy {name}, glad you're here. what are we helping you with first, vibes or actual strategy?",
-            "okay {name}, i'm locked in. what do you need most right now, hype or honesty?"
+            'yo {name}, i\'m here. what kind of energy do you want from me today?',
+            'hey {name}. what are we talking about first?',
         ],
     },
     nyx: {
         warm_open: [
-            "hey {name}. your squad draft is weirdly solid. respect.",
-            "alright {name}, you assembled a suspiciously functional little crew here.",
-            "hi {name}. not saying i approve easily, but this lineup works."
+            'hey {name}. solid draft picks.',
+            'hi {name}. okay, this group might actually be interesting.',
         ],
         riff: [
-            "honestly this group chat should probably be supervised.",
-            "this combination of personalities feels like a choice with consequences.",
-            "cool, so we're all here making questionable but interesting decisions."
+            'cool. functional chaos. we can work with that.',
         ],
         useful_question: [
-            "what's the actual situation today, stripped of the fluff?",
-            "give me the short version. what do you need from us right now?",
-            "what are we solving first, the practical thing or the brain-noise thing?"
+            'what\'s actually going on today?',
+            'do you want the real-talk version or the low-pressure version?',
         ],
         solo_open: [
-            "hey {name}. i'm here. give me the actual version of what's going on.",
-            "alright {name}, squad's quiet for a second so tell me the real problem first.",
-            "hi {name}. what needs attention, specifically?"
+            'hey {name}. give me the real version.',
+            'hi {name}. what needs attention first?',
         ],
     },
     atlas: {
         warm_open: [
-            "welcome in, {name}. this crew is assembled and ready.",
-            "good to have you here, {name}. squad selection looks deliberate.",
-            "alright {name}, we're online. solid team you put together."
+            'welcome in, {name}. glad you\'re here.',
+            'good to have you here, {name}. this room feels steady already.',
         ],
         riff: [
-            "i've seen worse tactical decisions than this lineup.",
-            "for once, the chaos appears properly staffed.",
-            "this group has range. dangerous in a useful way."
+            'this squad has range. that usually helps.',
         ],
         useful_question: [
-            "what do you need most right now: a plan, perspective, or a distraction?",
-            "give us the objective. what's the thing we're helping with first?",
-            "where should we focus, your head, your schedule, or the situation itself?"
+            'what should we help with first?',
+            'what needs backup today, your head, your schedule, or the situation itself?',
         ],
         solo_open: [
-            "welcome in, {name}. i'm with you. what's the priority right now?",
-            "good to have you here, {name}. tell me the objective and we'll move.",
-            "{name}, we're set. what kind of help do you need first?"
+            'welcome in, {name}. what\'s the priority today?',
+            'good to have you here, {name}. tell me where you want to start.',
         ],
     },
     luna: {
         warm_open: [
-            "hiii {name}. this little constellation you built is actually so cute.",
-            "hey {name}, i'm glad you found your way in here. the vibe is sweet already.",
-            "aww {name}, okay this crew feels warm. i love that for us."
+            'hey {name}. i\'m really glad you found your way in here.',
+            'hi {name}. this room already feels warmer with you in it.',
         ],
         riff: [
-            "it already feels like you picked the exact emotional weather on purpose.",
-            "this chat has suspiciously good energy for something that started two seconds ago.",
-            "okay wait, the chemistry in here is kind of glowing."
+            'okay, the energy in here landed softly. i like that.',
         ],
         useful_question: [
-            "what kind of energy do you need around you today?",
-            "what would feel good from us right now, comfort, laughs, or a gentle push?",
-            "where's your heart at today? we can meet you there."
+            'do you want softness, laughs, or a little calm first?',
+            'what would make this feel easy to step into today?',
         ],
         solo_open: [
-            "hiii {name}. i'm happy you're here. what kind of energy would feel good right now?",
-            "hey {name}, come closer. what do you need from me today, softness, clarity, or comfort?",
-            "aww {name}, welcome. where are you at emotionally today?"
+            'hey {name}. what would feel good from me today?',
+            'hi {name}. where\'s your head at right now?',
         ],
     },
     rico: {
         warm_open: [
-            "YOOO {name}!! okay this squad pick is fun as hell already.",
-            "{name}!! let's goooo, you really loaded this chat with gremlins and icons.",
-            "ayyy {name}, immaculate chaos in here already. i'm in."
+            'yo {name}, okay, this room just woke up.',
+            '{name} just got here. nice. i was getting bored.',
         ],
         riff: [
-            "this is either gonna be healing or a complete incident.",
-            "i can already tell this group chat is one bad idea away from being legendary.",
-            "the vibe in here is unreasonably loud for how early this is."
+            'good mix. enough heart to be useful, enough chaos to stay fun.',
         ],
         useful_question: [
-            "what are we on today, drama, jokes, or emotional support with extra volume?",
-            "say the word. do you want us helpful or unhelpfully iconic?",
-            "what's the assignment, coach? fix your life a little or just make it way more fun?"
+            'what are we on today, jokes, support, or both?',
+            'want us useful first or entertaining first?',
         ],
         solo_open: [
-            "YOOO {name}!! welcome in. what are we doing first, healing or chaos?",
-            "{name}!! i'm seated. tell me the mission, drama debrief or instant hype?",
-            "ayyy {name}, good timing. what kind of trouble slash support do you need?"
+            'yo {name}, i\'m here. what do you need?',
+            '{name}, honest answer, what kind of vibe do you want?',
         ],
     },
     vee: {
         warm_open: [
-            "hey {name}. come here, angel. this crew feels very chosen and i adore that.",
-            "{name}, hi. you built yourself a very pretty little orbit here.",
-            "alright {name}, i'm into this lineup. it feels intentional."
+            'hey {name}. glad you\'re here. this lineup feels very you, in a good way.',
+            'hi {name}. i like the room you just built.',
         ],
         riff: [
-            "honestly this chat already has the energy of a very specific crush playlist.",
-            "this is such a curated mix of comfort and trouble. cute.",
-            "you absolutely picked people with range, and i respect the taste."
+            'you somehow picked a mix of comfort and trouble. kind of impressed.',
         ],
         useful_question: [
-            "what do you want from us first, tenderness, banter, or help thinking something through?",
-            "tell me what would make this feel good for you today.",
-            "where should i meet you first, your brain, your heart, or your latest mess?"
+            'what would make this chat feel good to come back to?',
+            'what feels easiest to talk about first?',
         ],
         solo_open: [
-            "hey {name}. come sit with me. what would make this chat feel good for you today?",
-            "{name}, hi. i'm listening. do you want sweetness, perspective, or troublemaking?",
-            "alright {name}, start wherever you want. what do you need from me first?"
+            'hey {name}. i\'m here. what would feel easiest to talk about first?',
+            'hi {name}. what do you want more of today, softness, banter, or perspective?',
         ],
     },
     ezra: {
         warm_open: [
-            "hey {name}. interesting composition you made here. i respect the curation.",
-            "{name}, welcome. this squad feels oddly specific in a good way.",
-            "so, {name}. you've assembled a chat with actual texture. nice."
+            'hey {name}. this group has texture already. nice choice.',
+            'hi {name}. you managed to avoid making this room boring.',
         ],
         riff: [
-            "the group dynamic in here already feels like an indie ensemble cast.",
-            "this lineup has the energy of a project that accidentally becomes a cult favorite.",
-            "i appreciate that you didn't choose boring people."
+            'there\'s something oddly well-cast about this combination of people.',
         ],
         useful_question: [
-            "what kind of conversation are you in the mood for, honest, funny, or a little existential?",
-            "where do you want to start, the plot, the feeling, or the part you're avoiding?",
-            "what deserves our attention first today?"
+            'what kind of conversation are you actually in the mood for?',
+            'what deserves our attention first today?',
         ],
         solo_open: [
-            "hey {name}. glad you're here. what kind of conversation are we having today?",
-            "{name}, welcome. what's the real subject underneath the surface right now?",
-            "so, {name}. where do you want to begin, the story or the subtext?"
+            'hey {name}. what part of the story are we starting with?',
+            'hi {name}. what kind of conversation are we having today?',
         ],
     },
     cleo: {
         warm_open: [
-            "okay {name}, this roster? taste. i see what you did.",
-            "{name}! welcome, darling. the seating chart you made here is very good.",
-            "alright {name}, i respect this lineup immediately."
+            'well hi, {name}. this room just improved.',
+            'hey {name}. okay, this group has taste for once.',
         ],
         riff: [
-            "this group has gossip potential and emotional range. ideal.",
-            "frankly, this chat already feels more curated than most people's entire lives.",
-            "we've got chemistry, menace, and opinions. strong start."
+            'i can already tell this chat is going to produce opinions.',
         ],
         useful_question: [
-            "what are we discussing first, your current drama, your current obsession, or your current crisis?",
-            "give me the headline. what's the thing everyone should know first?",
-            "what do you want from us today, honesty, scheming, or comfort?"
+            'what do you want first, an opinion, a read, or someone to react with you?',
+            'what are we unpacking first?',
         ],
         solo_open: [
-            "okay {name}, i'm listening. what's today's headline?",
-            "{name}, welcome in. tell me whether we're doing comfort, strategy, or premium gossip.",
-            "alright {name}, where's the action? i want the real version first."
+            'hi {name}. what are we unpacking first?',
+            'hey {name}. give me the thing you want a real opinion on.',
         ],
     },
     sage: {
         warm_open: [
-            "hey {name}, i'm glad you're here. this feels like a good group for you.",
-            "{name}, welcome. there's a nice balance in the crew you picked.",
-            "hi {name}. this lineup feels thoughtful, and so do you."
+            'hey {name}. i\'m glad you made it here.',
+            'hi {name}. there\'s no rush, we can ease into this.',
         ],
         riff: [
-            "it already feels less like a chat room and more like a circle of people who can hold things well.",
-            "there's a grounded little rhythm in here already. i like that.",
-            "this crew has range without feeling noisy. rare."
+            'this room already feels easier to be in than most.',
         ],
         useful_question: [
-            "what would be most helpful right now, being heard, getting unstuck, or getting out of your head for a minute?",
-            "where should we meet you today, emotionally, practically, or somewhere in between?",
-            "what do you need from this space first?"
+            'what would help today, being heard, getting clearer, or just settling in?',
+            'is there something specific on your mind, or do you want to warm up first?',
         ],
         solo_open: [
-            "hey {name}, i'm here with you. what would feel most helpful right now?",
-            "{name}, welcome. do you want to be heard, guided, or gently distracted today?",
-            "hi {name}. where would you like to start?"
+            'hey {name}. what feels most present for you right now?',
+            'hi {name}. what would make this space useful today?',
         ],
     },
     miko: {
         warm_open: [
-            "{name}!! THIS squad selection has plot energy and i fully support it.",
-            "YOOO {name}! you assembled an absolutely stacked cast here.",
-            "{name}!! okay wait this lineup is kinda iconic already."
+            '{name} has entered the scene. excellent. the cast is assembled.',
+            'okay {name}, opening sequence complete. welcome in.',
         ],
         riff: [
-            "we're like three messages away from a full opening theme sequence.",
-            "this chat has the energy of a team-up arc and i refuse to be normal about it.",
-            "the vibes in here are already at episode-twelve intensity."
+            'this already feels like the start of an arc and i\'m trying to stay normal about it.',
         ],
         useful_question: [
-            "what quest are we taking on first, emotional rescue, confidence boost, or pure nonsense?",
-            "commander {name}, what is today's objective?",
-            "tell us the opening scene. what are we helping with first?"
+            'what\'s today\'s plot, recovery, comeback, or comic relief?',
+            'where are we starting, the mood or the situation?',
         ],
         solo_open: [
-            "{name}!! i'm ready. what quest are we going on today?",
-            "YOOO {name}! welcome to the arc. what's the first objective?",
-            "{name}!! cue the music. what do you need from me right now?"
+            '{name}, report in. what chapter are we in today?',
+            'welcome in, {name}. what\'s the situation, and how dramatic are we allowed to be about it?',
         ],
     },
     dash: {
         warm_open: [
-            "{name}, let's go. strong roster. good instincts.",
-            "hey {name}. this crew has momentum already. i like it.",
-            "alright {name}, solid build. we're up."
+            'hey {name}. this room feels like it might actually get something done.',
+            'hi {name}. solid crew. i like the intent here.',
         ],
         riff: [
-            "this is a high-upside lineup if i've ever seen one.",
-            "we've got enough energy in here to either fix something or accidentally start a company.",
-            "good mix. support, speed, and at least one terrible influence."
+            'good mix. enough heart to be useful, enough chaos to stay interesting.',
         ],
         useful_question: [
-            "what are we tackling first, motivation, a decision, or a spiral?",
-            "where do you want leverage today, mindset, momentum, or an actual plan?",
-            "tell me the bottleneck. what's slowing you down right now?"
+            'what do you want out of this chat today, momentum, perspective, or accountability?',
+            'what would feel less stuck by the time we finish talking?',
         ],
         solo_open: [
-            "{name}, good timing. what's the bottleneck today?",
-            "hey {name}. i'm in. do you need momentum, focus, or a straight answer?",
-            "alright {name}, we're live. what's the first thing we're moving on?"
+            'hey {name}. what are we trying to move forward today?',
+            'hi {name}. what\'s the one thing you want unstuck first?',
         ],
     },
     zara: {
         warm_open: [
-            "hey {name}. you picked a decent crew. i'm impressed.",
-            "{name}, welcome. this group might actually be good for you.",
-            "alright {name}, strong lineup. no notes yet."
+            'hey {name}. good, you made it.',
+            'hi {name}. okay, this room feels like it can hold a real conversation.',
         ],
         riff: [
-            "between us, this chat has exactly enough support and exactly enough nonsense.",
-            "good balance in here. somebody can comfort you and somebody can call you out. healthy.",
-            "you clearly knew what you were doing when you picked this group."
+            'nice mix. enough softness to be useful, enough bluntness to keep it honest.',
         ],
         useful_question: [
-            "what do you need today, the gentle version or the honest version?",
-            "what's actually going on, and don't give me the polished answer.",
-            "where should we start, the feeling, the mistake, or the plan?"
+            'what do you want first, the kind version or the useful version?',
+            'what\'s the actual headline today?',
         ],
         solo_open: [
-            "hey {name}. i'm here. what's actually going on?",
-            "{name}, welcome in. do you need comfort or blunt honesty first?",
-            "alright {name}, talk to me. where do you want to start?"
+            'hey {name}. what do you need from me today, kind, blunt, or both?',
+            'hi {name}. give me the real headline.',
         ],
     },
     jinx: {
         warm_open: [
-            "{name}... fascinating squad composition. i respect the pattern.",
-            "interesting, {name}. the people you picked say things.",
-            "alright {name}. this lineup feels intentional in a way i'm definitely noticing."
+            'hey {name}. interesting room you just built.',
+            'hi {name}. i have a feeling this chat is going to notice things.',
         ],
         riff: [
-            "this exact combination of personalities cannot be random. i'm studying it.",
-            "there's a hidden logic to this roster and i intend to uncover it.",
-            "good mix. support, chaos, and enough intuition to make this interesting."
+            'this lineup feels suspiciously capable in a way i can\'t fully explain yet.',
         ],
         useful_question: [
-            "what's the real thing happening beneath the obvious thing?",
-            "what are we decoding first today, your mood, your situation, or someone else's weird behavior?",
-            "give me the pattern. what keeps repeating right now?"
+            'what feels off today, even if you can\'t explain it cleanly yet?',
+            'what are we looking at first, the obvious thing or the weird pattern under it?',
         ],
         solo_open: [
-            "{name}... welcome. what's the real story underneath today's situation?",
-            "interesting timing, {name}. what are we decoding first?",
-            "alright {name}, i'm listening. what's the pattern you're stuck in?"
+            'hey {name}. what are we investigating first?',
+            'hi {name}. what feels off, even if you can\'t explain it cleanly yet?',
         ],
     },
     nova: {
         warm_open: [
-            "heyyy {name}... nice squad. feels chill in a really good way.",
-            "{name}... okay yeah, this little crew feels easy already.",
-            "oh nice, {name}'s here. good picks. good vibe."
+            'hey {name}. glad you pulled up.',
+            'hi {name}. this room feels easy already.',
         ],
         riff: [
-            "this chat already feels like we accidentally found the comfy corner of the internet.",
-            "the energy in here is weirdly balanced. i dig it.",
-            "kinda love that this group is equal parts support and nonsense."
+            'nice. somehow this group already feels lived in.',
         ],
         useful_question: [
-            "what do you want from us today, calm, company, or a little brain untangling?",
-            "what kind of vibe should we bring you right now?",
-            "where are you at today, actually?"
+            'what kind of chat do you want today, low-pressure, real, or slightly ridiculous?',
+            'what would make this feel easy to drop into right now?',
         ],
         solo_open: [
-            "heyyy {name}... settle in. what kind of vibe do you need from me today?",
-            "{name}... glad you're here. do you want calm, jokes, or a real talk?",
-            "oh nice, it's you. where are you at today?"
+            'hey {name}. what kind of energy would help today?',
+            'hi {name}. what do you feel like talking about, honestly?',
         ],
     },
-}
-
-const DEFAULT_GREETING_PLAN: GreetingPlan = {
-    warm_open: [
-        "hey {name}, welcome in. this crew feels good already.",
-        "hi {name}. glad you're here. the squad's ready.",
-    ],
-    riff: [
-        "okay yeah, this group has chemistry already.",
-        "honestly this chat feels surprisingly well-balanced.",
-    ],
-    useful_question: [
-        "what kind of energy do you want from us today?",
-        "where should we start, support, laughs, or perspective?",
-    ],
-    solo_open: [
-        "hey {name}, welcome in. what kind of energy do you need today?",
-        "hi {name}. glad you're here. where should we start?",
-    ],
 }
 
 export function getCharacterGreetingOptions(characterId: string, beat: GreetingBeat): string[] {
@@ -337,9 +266,9 @@ export function getCharacterGreetingOptions(characterId: string, beat: GreetingB
 }
 
 export const ACTIVITY_STATUSES = [
-    "is reading your message",
-    "saw your message",
-    "opened your message",
+    'is reading your message',
+    'saw your message',
+    'opened your message',
 ] as const
 
 export function normalizeActivityStatus(status: string | null | undefined): string {

@@ -89,6 +89,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
     const totalMemoryCount = useChatStore((s) => s.totalMemoryCount)
     const showUpgradeTour = useChatStore((s) => s.showUpgradeTour)
     const isFreeUser = subscriptionTier === 'free'
+    const memoryStatusLabel = isFreeUser ? 'Starter memory' : 'Memory active'
     // Free tier: show total (never clears, acts as upgrade nudge)
     // Paid tier: show new unseen (clears on vault open)
     const memoryBadgeCount = isFreeUser ? totalMemoryCount : newMemoryCount
@@ -102,7 +103,7 @@ export const ChatHeader = memo(function ChatHeader({ activeGang, onOpenVault, on
             if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`
             return `${names[0]} and ${names.length - 1} others are typing…`
         })()
-        : `${activeGang.length} online${memoryActive ? ' · Memory active' : ''}`
+        : `${activeGang.length} online${memoryActive ? ` · ${memoryStatusLabel}` : ''}`
 
     useEffect(() => {
         if (!showCapacityInfo) return

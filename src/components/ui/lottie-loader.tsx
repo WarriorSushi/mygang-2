@@ -8,13 +8,14 @@ const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 interface LottieLoaderProps {
     size?: number
     className?: string
+    loop?: boolean
 }
 
-export function LottieLoader({ size = 120, className = '' }: LottieLoaderProps) {
+export function LottieLoader({ size = 120, className = '', loop = true }: LottieLoaderProps) {
     return (
         <Lottie
             animationData={loaderData}
-            loop={false}
+            loop={loop}
             autoplay
             style={{ width: size, height: size }}
             className={className}

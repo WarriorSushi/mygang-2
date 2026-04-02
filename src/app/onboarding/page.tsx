@@ -13,6 +13,7 @@ import { trackOperationalError } from '@/lib/operational-telemetry'
 import { cn } from '@/lib/utils'
 import { recommendCharacters } from '@/lib/ai/character-recommendation'
 import type { VibeProfile } from '@/lib/ai/character-recommendation'
+import { buildPendingArrivalContext, savePendingArrivalContext } from '@/lib/chat-arrival'
 
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { IdentityStep } from '@/components/onboarding/identity-step'
@@ -110,10 +111,11 @@ function OnboardingPage() {
     }, [isHydrated, router, userId])
 
     useEffect(() => {
+        if (step === 'LOADING') return
         if (isHydrated && !isRetake && activeGang.length >= 2) {
             router.replace('/chat')
         }
-    }, [activeGang.length, isHydrated, isRetake, router])
+    }, [activeGang.length, isHydrated, isRetake, router, step])
 
     useEffect(() => {
         const session = ensureAnalyticsSession()
@@ -160,9 +162,13 @@ function OnboardingPage() {
         })
     }
 
+    const selectedCharacters = useMemo(
+        () => characters.filter((character) => selectedIds.includes(character.id)),
+        [characters, selectedIds]
+    )
+
     const normalizedCustomNames = useMemo(() => {
         const next: Record<string, string> = {}
-        const selectedCharacters = characters.filter((character) => selectedIds.includes(character.id))
 
         selectedCharacters.forEach((character) => {
             const trimmed = (customNames[character.id] || '').trim().slice(0, 30)
@@ -172,7 +178,16 @@ function OnboardingPage() {
         })
 
         return next
-    }, [characters, customNames, selectedIds])
+    }, [customNames, selectedCharacters])
+
+    const arrivalContext = useMemo(
+        () => buildPendingArrivalContext({
+            userName: name.trim() || null,
+            squad: selectedCharacters,
+            customNames: normalizedCustomNames,
+        }),
+        [name, normalizedCustomNames, selectedCharacters]
+    )
 
     const handleVibeComplete = (vibe: VibeProfile) => {
         setVibeProfile(vibe)
@@ -208,12 +223,8 @@ function OnboardingPage() {
     }
 
     const handleFinishOnboarding = async () => {
-        const selectedCharacters = characters.filter((character) => selectedIds.includes(character.id))
-        setActiveGang(selectedCharacters)
-        setAvatarStylePreference(avatarStylePreference)
-        setUserName(name)
-        setCustomCharacterNames(normalizedCustomNames)
         setStep('LOADING')
+        savePendingArrivalContext(arrivalContext)
 
         const session = ensureAnalyticsSession()
         trackEvent(isRetake ? 'vibe_retake_completed' : 'onboarding_completed', {
@@ -242,9 +253,13 @@ function OnboardingPage() {
                     }, error)
                 }
             })() : Promise.resolve(),
-            new Promise((resolve) => setTimeout(resolve, 3500)),
+            new Promise((resolve) => setTimeout(resolve, isRetake ? 3600 : 8000)),
         ])
 
+        setActiveGang(selectedCharacters)
+        setAvatarStylePreference(avatarStylePreference)
+        setUserName(name.trim() || null)
+        setCustomCharacterNames(normalizedCustomNames)
         router.replace('/chat')
     }
 
@@ -338,7 +353,7 @@ function OnboardingPage() {
                     )}
 
                     {step === 'LOADING' && (
-                        <LoadingStep />
+                        <LoadingStep arrivalContext={arrivalContext} />
                     )}
                 </AnimatePresence>
         </main>

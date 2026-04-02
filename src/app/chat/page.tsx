@@ -10,6 +10,7 @@ import { ensureAnalyticsSession, trackEvent } from '@/lib/analytics'
 import { isSquadTierWriteError, trackOperationalError } from '@/lib/operational-telemetry'
 import { saveGang, deactivateSquadTierMembers } from '@/app/auth/actions'
 import { getCharactersForAvatarStyle } from '@/constants/characters'
+import { buildArrivalBannerCopy, consumePendingArrivalContext, type PendingArrivalContext } from '@/lib/chat-arrival'
 
 // Modular components
 import { ChatHeader } from '@/components/chat/chat-header'
@@ -38,10 +39,10 @@ import { useTabPresence } from '@/hooks/use-tab-presence'
 function getStarterChips(name: string) {
     const label = name || 'everyone'
     return [
-        `Hey! I'm ${label}, what's good?`,
-        "What's up guys?",
-        "Hype me up rn",
-        "Roast me lol",
+        `Hey, I'm ${label}. What kind of people are you?`,
+        "Okay hi. What should we talk about first?",
+        "Need a pep talk, not gonna lie",
+        "Be honest with me for a sec",
     ]
 }
 
@@ -104,6 +105,11 @@ export default function ChatPage() {
     const [paywallCooldown, setPaywallCooldown] = useState(0)
     const [paywallTier, setPaywallTier] = useState('free')
     const [showConfetti, setShowConfetti] = useState(false)
+    const [arrivalBanner, setArrivalBanner] = useState<{ title: string; body: string } | null>(null)
+    const [arrivalContext] = useState<PendingArrivalContext | null>(() => {
+        if (typeof window === 'undefined') return null
+        return consumePendingArrivalContext()
+    })
     const [cooldownUntil, setCooldownUntil] = useState(() => {
         if (typeof window === 'undefined') return 0
         const saved = window.sessionStorage.getItem('mygang-cooldown-until')
@@ -193,6 +199,7 @@ export default function ChatPage() {
         pickStatusFor: typing.pickStatusFor,
         historyBootstrapDone: history.historyBootstrapDone,
         historyStatus: history.historyStatus,
+        arrivalContext,
     })
 
     // Patch autonomous callbacks into API hook bridge refs (read at call time via .current)
@@ -320,6 +327,26 @@ export default function ChatPage() {
             if (dbTimer) clearTimeout(dbTimer)
         }
     }, [isHydrated, userId, activeGang.length, api.isGeneratingRef, api.sendToApiRef])
+
+    // ── Fresh arrival hint after onboarding ──
+    useEffect(() => {
+        if (!isHydrated || !userId || activeGang.length === 0 || !arrivalContext) return
+        const banner = buildArrivalBannerCopy(arrivalContext)
+
+        setArrivalBanner({
+            title: banner.title,
+            body: banner.detail,
+        })
+
+        const timer = setTimeout(() => setArrivalBanner(null), 9000)
+        return () => clearTimeout(timer)
+    }, [activeGang.length, arrivalContext, isHydrated, userId])
+
+    useEffect(() => {
+        if (hasUserSentMessage && arrivalBanner) {
+            setArrivalBanner(null)
+        }
+    }, [arrivalBanner, hasUserSentMessage])
 
     // ── Cleanup timers ──
     useEffect(() => {
@@ -520,7 +547,7 @@ export default function ChatPage() {
                     onOpenSettings={() => openSettingsPanel('root')}
                     onRefresh={() => history.syncLatestHistory(true)}
                     typingUsers={typing.typingUsers}
-                    memoryActive={true}
+                    memoryActive={subscriptionTier !== 'free'}
                     autoLowCostActive={capacity.autoLowCostMode && !lowCostMode}
                     tokenUsage={api.lastTokenUsageRef.current}
                     subscriptionTier={subscriptionTier}
@@ -529,6 +556,22 @@ export default function ChatPage() {
 
                 <div className="flex-1 flex flex-col min-h-0 relative">
                     <div className="px-4 max-w-3xl mx-auto w-full">
+                        {arrivalBanner && (
+                            <div className="mb-2 flex items-start justify-between gap-3 rounded-[1.35rem] border border-emerald-400/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(20,184,166,0.08),rgba(255,255,255,0.02))] px-4 py-3 text-left shadow-[0_12px_40px_-24px_rgba(16,185,129,0.75)] backdrop-blur-xl">
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-[0.28em] text-emerald-200/70">Fresh arrival</p>
+                                    <p className="mt-1 text-sm font-semibold text-foreground">{arrivalBanner.title}</p>
+                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{arrivalBanner.body}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsVaultOpen(true)}
+                                    className="shrink-0 rounded-full border border-white/12 bg-white/7 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-100 transition-colors hover:bg-white/12"
+                                >
+                                    Open vault
+                                </button>
+                            </div>
+                        )}
                         {showResumeBanner && (
                             <div className="mb-2 rounded-full border border-border/50 bg-muted/40 px-4 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                                 {resumeBannerText}

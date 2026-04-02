@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useChatStore, type Character } from '@/stores/chat-store'
-import { ACTIVITY_STATUSES } from '@/constants/character-greetings'
+import { ACTIVITY_STATUSES } from '../constants/character-greetings'
 import { pickRandom } from '@/lib/utils'
 
 export function useTypingSimulation() {

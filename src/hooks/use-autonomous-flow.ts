@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useChatStore, type Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
-import { getCharacterGreetingOptions, type GreetingBeat } from '@/constants/character-greetings'
+import { getCharacterGreetingOptions, type GreetingBeat } from '../constants/character-greetings'
 import { hasOpenFloorIntent } from '@/lib/chat-utils'
 import type { HistoryStatus } from '@/hooks/use-chat-history'
+import type { PendingArrivalContext } from '@/lib/chat-arrival'
 import { pickRandom } from '@/lib/utils'
 
 interface UseAutonomousFlowArgs {
@@ -28,6 +29,7 @@ interface UseAutonomousFlowArgs {
     initialGreetingRef: React.MutableRefObject<boolean>
     historyBootstrapDone: boolean
     historyStatus: HistoryStatus
+    arrivalContext: PendingArrivalContext | null
 }
 
 export function useAutonomousFlow({
@@ -45,6 +47,7 @@ export function useAutonomousFlow({
     initialGreetingRef,
     historyBootstrapDone,
     historyStatus,
+    arrivalContext,
 }: UseAutonomousFlowArgs) {
     const {
         activeGang,
@@ -68,10 +71,11 @@ export function useAutonomousFlow({
     const totalAutoCallsRef = useRef(0)
     const MAX_SESSION_AUTO_CALLS = 15
 
-    const getGreetingBeatOrder = useCallback((count: number): GreetingBeat[] => {
+    const getGreetingBeatOrder = useCallback((count: number, isFreshArrival: boolean): GreetingBeat[] => {
         if (count <= 1) return ['solo_open']
-        if (count === 2) return ['warm_open', 'useful_question']
-        return ['warm_open', 'riff', 'useful_question']
+        return isFreshArrival
+            ? ['warm_open', 'riff']
+            : ['warm_open', 'useful_question']
     }, [])
 
     const getGreetingLeadDelay = useCallback((beat: GreetingBeat) => {
@@ -166,12 +170,12 @@ export function useAutonomousFlow({
         if (state.activeGang.length === 0 || state.messages.length > 0) return
         initialGreetingRef.current = true
 
-        const nameLabel = state.userNickname || state.userName || 'friend'
-        const speakers = [...state.activeGang]
-            .sort(() => 0.5 - Math.random())
-            .slice(0, Math.min(3, state.activeGang.length))
-        const beatOrder = getGreetingBeatOrder(speakers.length)
-        let delay = 180
+        const nameLabel = arrivalContext?.userName || state.userNickname || state.userName || 'friend'
+        const speakers = arrivalContext
+            ? state.activeGang.slice(0, Math.min(2, state.activeGang.length))
+            : [...state.activeGang].sort(() => 0.5 - Math.random()).slice(0, Math.min(2, state.activeGang.length))
+        const beatOrder = getGreetingBeatOrder(speakers.length, Boolean(arrivalContext))
+        let delay = arrivalContext ? 760 : 180
 
         speakers.forEach((char, index) => {
             const beat = beatOrder[Math.min(index, beatOrder.length - 1)] || 'solo_open'
@@ -204,7 +208,7 @@ export function useAutonomousFlow({
             }, delay)
             delay += getGreetingLeadDelay(beat)
         })
-    }, [getGreetingBeatOrder, getGreetingLeadDelay, getGreetingTypingDelay, historyBootstrapDone, historyStatus, initialGreetingRef, pickStatusFor, pulseStatus, queueTypingUser, removeTypingUser])
+    }, [arrivalContext, getGreetingBeatOrder, getGreetingLeadDelay, getGreetingTypingDelay, historyBootstrapDone, historyStatus, initialGreetingRef, pickStatusFor, pulseStatus, queueTypingUser, removeTypingUser])
 
     useEffect(() => {
         triggerLocalGreetingRef.current = triggerLocalGreeting

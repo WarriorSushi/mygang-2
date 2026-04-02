@@ -115,10 +115,10 @@ function EmptyStateWelcome() {
             )}
             <div className="relative z-10">
                 <h3 className="text-base sm:text-lg font-bold text-foreground/90 mb-1.5">
-                    Welcome to your gang!
+                    Your gang is here.
                 </h3>
                 <p className="text-sm text-muted-foreground/70 max-w-[240px] mx-auto leading-relaxed">
-                    They&apos;re warming up. Say hi to get things going!
+                    They&apos;re pulling their chairs in. Say hi when you&apos;re ready.
                 </p>
             </div>
         </div>

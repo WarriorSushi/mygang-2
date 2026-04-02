@@ -7,12 +7,23 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/holographic/glass-card'
 import { getMemoriesPage, deleteMemory, updateMemory } from '@/app/auth/actions'
-import type { SubscriptionTier } from '@/lib/billing'
+import { FREE_MEMORY_VAULT_PREVIEW_LIMIT, type SubscriptionTier } from '@/lib/billing'
 
 interface Memory {
     id: string
     content: string
     created_at: string
+}
+
+interface MemoryPageResponse {
+    items: Memory[]
+    hasMore: boolean
+    nextBefore: string | null
+    totalCount: number
+    lockedCount: number
+    previewLimit: number
+    isPreview: boolean
+    canManage: boolean
 }
 
 interface MemoryVaultProps {
@@ -36,6 +47,8 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
     const [savingId, setSavingId] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [lockedPreviewCount, setLockedPreviewCount] = useState(0)
+    const [previewLimit, setPreviewLimit] = useState(FREE_MEMORY_VAULT_PREVIEW_LIMIT)
     const drawerRef = useRef<HTMLDivElement>(null)
     const triggerRef = useRef<HTMLElement | null>(null)
 
@@ -105,7 +118,9 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
             setLoadingMore(true)
         }
         try {
-            const page = await getMemoriesPage({ before, limit: 30 })
+            const page = await getMemoriesPage({ before, limit: 30 }) as MemoryPageResponse
+            setLockedPreviewCount(page.lockedCount ?? 0)
+            setPreviewLimit(page.previewLimit || FREE_MEMORY_VAULT_PREVIEW_LIMIT)
             let appendedCount = 0
             setMemories((prev) => {
                 const incoming = page.items as Memory[]
@@ -190,6 +205,7 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
         const query = deferredSearch.toLowerCase()
         return memories.filter((m) => m.content.toLowerCase().includes(query))
     }, [memories, deferredSearch])
+    const visibleFreeMemories = filteredMemories.slice(0, previewLimit)
 
     return (
         <AnimatePresence>
@@ -238,68 +254,111 @@ export function MemoryVault({ isOpen, onClose, tier = 'free' }: MemoryVaultProps
                                     <Loader2 className="animate-spin" size={24} />
                                     <span className="text-xs font-medium uppercase tracking-tighter">Syncing Neural Links...</span>
                                 </div>
-                            ) : memories.length === 0 ? (
-                                /* No memories saved yet -- show classic locked state */
-                                <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-5">
-                                    <div className="relative">
-                                        <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border/40 flex items-center justify-center">
-                                            <Brain className="text-muted-foreground/40" size={28} />
-                                        </div>
-                                        <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-background border border-border/50 flex items-center justify-center">
-                                            <Lock className="text-muted-foreground/60" size={13} />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <h3 className="text-sm font-semibold text-foreground/90">Memories are a paid feature</h3>
-                                        <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
-                                            The gang can&apos;t remember your conversations on the free plan. Upgrade so they never forget what matters to you.
+                            ) : (
+                                <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+                                    <div className="rounded-[1.4rem] border border-emerald-400/18 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(20,184,166,0.06),rgba(255,255,255,0.02))] px-4 py-4">
+                                        <p className="text-[10px] uppercase tracking-[0.28em] text-emerald-300/75">Starter memory preview</p>
+                                        <p className="mt-1 text-sm font-semibold text-foreground">Your first {previewLimit} memories stay readable here.</p>
+                                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                            Keep chatting and the vault starts filling in. Once you go past {previewLimit}, the rest of the memories blur into the full upgrade wall.
                                         </p>
                                     </div>
-                                    <Link
-                                        href="/pricing"
-                                        onClick={onClose}
-                                        className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-[1.03] active:scale-[0.98]"
-                                    >
-                                        <Sparkles size={15} className="opacity-80 group-hover:opacity-100 transition-opacity" />
-                                        <span>Unlock Memories — 80% off</span>
-                                    </Link>
-                                    <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest">Limited time offer</p>
-                                </div>
-                            ) : (
-                                /* Ghost memories: blurred memories with upgrade overlay */
-                                <div className="flex-1 relative overflow-hidden">
-                                    <div className="blur-sm pointer-events-none opacity-60 p-4 sm:p-6 space-y-4" aria-hidden="true">
-                                        {memories.slice(0, 8).map((memory) => (
-                                            <GlassCard key={memory.id} className="p-4 border-border/50">
-                                                <p className="text-sm leading-relaxed">{memory.content}</p>
-                                                <div className="mt-3 flex items-center justify-between opacity-50">
-                                                    <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
-                                                        {new Date(memory.created_at).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                            </GlassCard>
-                                        ))}
-                                    </div>
-                                    <div className="absolute inset-0 flex items-center justify-center bg-background/20">
-                                        <div className="bg-card/90 backdrop-blur-sm rounded-xl p-5 text-center space-y-3 border border-border shadow-lg max-w-[280px]">
-                                            <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                                <Lock className="w-5 h-5 text-primary" />
-                                            </div>
-                                            <p className="text-sm font-semibold text-foreground">
-                                                Your gang has stored {memories.length} memor{memories.length === 1 ? 'y' : 'ies'} about you
-                                            </p>
-                                            <p className="text-xs text-muted-foreground leading-relaxed">
-                                                They remember things, but can&apos;t use them on the free plan. Upgrade to unlock memory-powered conversations.
-                                            </p>
-                                            <Link
-                                                href="/pricing?upgrade=basic"
-                                                onClick={onClose}
-                                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-full text-xs font-semibold shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-[1.03] active:scale-[0.98]"
-                                            >
-                                                <Sparkles size={13} />
-                                                Unlock Memories
-                                            </Link>
+
+                                    {visibleFreeMemories.length === 0 ? (
+                                        <div className="space-y-3">
+                                            {Array.from({ length: previewLimit }).map((_, index) => (
+                                                <GlassCard key={`memory-slot-${index}`} className="border-border/40 bg-card/55 p-4">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="text-sm font-medium text-foreground/88">Memory slot {index + 1}</p>
+                                                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                                                Empty for now. The gang will start saving the small personal things you share.
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/40 bg-background/55 text-muted-foreground/70">
+                                                            <Brain className="h-4 w-4" />
+                                                        </div>
+                                                    </div>
+                                                </GlassCard>
+                                            ))}
                                         </div>
+                                    ) : (
+                                        <>
+                                            {visibleFreeMemories.map((memory) => (
+                                                <GlassCard key={memory.id} className="p-4 border-border/50">
+                                                    <p className="text-sm leading-relaxed">{memory.content}</p>
+                                                    <div className="mt-3 flex items-center justify-between opacity-60">
+                                                        <span className="text-[9px] uppercase tracking-tighter text-muted-foreground">
+                                                            {new Date(memory.created_at).toLocaleDateString()}
+                                                        </span>
+                                                        <span className="text-[9px] uppercase tracking-[0.24em] text-emerald-300/70">
+                                                            Preview
+                                                        </span>
+                                                    </div>
+                                                </GlassCard>
+                                            ))}
+
+                                            {lockedPreviewCount > 0 && (
+                                                <div className="relative overflow-hidden rounded-[1.6rem] border border-border/50 bg-card/60">
+                                                    <div className="space-y-3 p-4 opacity-55 blur-[3px] pointer-events-none" aria-hidden="true">
+                                                        {Array.from({ length: Math.min(lockedPreviewCount, 3) }).map((_, index) => (
+                                                            <GlassCard key={`locked-memory-${index}`} className="p-4 border-border/40">
+                                                                <p className="text-sm leading-relaxed">
+                                                                    Locked memory preview {index + 1}
+                                                                </p>
+                                                                <div className="mt-3 flex items-center justify-between opacity-50">
+                                                                    <span className="text-[9px] uppercase tracking-[0.24em] text-muted-foreground">
+                                                                        Upgrade to reveal
+                                                                    </span>
+                                                                </div>
+                                                            </GlassCard>
+                                                        ))}
+                                                    </div>
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-background/72 px-5 text-center">
+                                                        <div className="max-w-[280px] space-y-3 rounded-2xl border border-border/60 bg-card/92 p-5 shadow-lg">
+                                                            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                                                                <Lock className="h-5 w-5 text-primary" />
+                                                            </div>
+                                                            <p className="text-sm font-semibold text-foreground">
+                                                                {lockedPreviewCount} more memor{lockedPreviewCount === 1 ? 'y is' : 'ies are'} waiting in the full vault
+                                                            </p>
+                                                            <p className="text-xs leading-5 text-muted-foreground">
+                                                                The preview stays readable. Upgrade when you want the whole archive and the richer memory layer behind it.
+                                                            </p>
+                                                            <Link
+                                                                href="/pricing?upgrade=basic"
+                                                                onClick={onClose}
+                                                                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:scale-[1.03] hover:shadow-violet-500/40 active:scale-[0.98]"
+                                                            >
+                                                                <Sparkles size={13} />
+                                                                Unlock full memory
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {lockedPreviewCount === 0 && memories.length < previewLimit && (
+                                                <div className="rounded-2xl border border-dashed border-border/50 bg-background/35 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                                                    {previewLimit - memories.length} starter slot{previewLimit - memories.length === 1 ? '' : 's'} still open.
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-center">
+                                        <p className="text-sm font-semibold text-foreground">Want the full vault?</p>
+                                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                            Upgrade to unlock the entire archive, better recall, and longer-running memory behavior.
+                                        </p>
+                                        <Link
+                                            href="/pricing?upgrade=basic"
+                                            onClick={onClose}
+                                            className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:scale-[1.03] hover:shadow-violet-500/40 active:scale-[0.98]"
+                                        >
+                                            <Sparkles size={13} />
+                                            Upgrade for full memory
+                                        </Link>
                                     </div>
                                 </div>
                             )}

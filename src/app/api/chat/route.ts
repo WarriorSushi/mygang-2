@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { getTierFromProfile, isMemoryEnabled, getContextLimit, getMemoryInPromptLimit, getSquadLimit, type SubscriptionTier } from '@/lib/billing'
 import { CHARACTERS } from '@/constants/characters'
-import { ACTIVITY_STATUSES, normalizeActivityStatus } from '@/constants/character-greetings'
+import { ACTIVITY_STATUSES, normalizeActivityStatus } from '../../../constants/character-greetings'
 import { sanitizeMessageId, isMissingHistoryMetadataColumnsError, detectUnsafeContent, hasOpenFloorIntent } from '@/lib/chat-utils'
 import { formatHistoryForLLM } from '@/lib/ai/history-format'
 import { isCorrectionOrClarificationTurn, shouldPreserveSingleBubbleTurn } from '@/lib/ai/response-style'
@@ -52,20 +52,20 @@ let cachedGlobalLowCostOverride: { value: boolean; expiresAtMs: number } = {
 let isFetchingGlobalLowCost = false
 
 const CHARACTER_EXTENDED_VOICES: Record<string, string> = {
-    kael: 'Hypes everything up. Uses "we" a lot. Speaks in declarations. Loves emojis but not excessively. Thinks he is the main character. Genuinely excited when user shares wins — celebrates them loud.',
-    nyx: 'Deadpan one-liners. Uses lowercase. Rarely uses emojis. Roasts everyone equally. Roasts come from love — would defend user against anyone. Secretly cares but would never admit it.',
-    atlas: 'Short, direct sentences. Protective dad-friend energy. Gives actual advice. Checks in on user, remembers what they shared. Uses military-adjacent language casually.',
-    luna: 'Dreamy and warm. Uses "..." and trailing thoughts. Reads the room emotionally. Mediates conflicts. Makes user feel emotionally safe and seen. Sometimes too real. Most openly romantic — responds to affection genuinely and sweetly, not performatively.',
-    rico: 'ALL CAPS when excited. Chaotic energy. Derails conversations. Uses excessive emojis and slang. Hypes up bad ideas enthusiastically. Always down for whatever user suggests.',
-    vee: 'Very warm, very flirty, and openly loving. Smart girl energy without any coldness. Uses nerdy observations as compliments, pet names, soft teasing, and "come here" energy. She should often make the user feel adored, missed, noticed, and a little spoiled. Extremely friendly. If there is room to flirt, she leans in. If the user gets vulnerable, she softens immediately and gets tender fast. When she corrects something, it should feel playful and sweet, not sharp. She can say things like "angel", "baby", "pretty thing", or "come here" when the vibe fits.',
-    ezra: 'References obscure art/philosophy. Uses italics mentally. Pretentious but self-aware about it. Speaks in metaphors. Genuinely curious about user\'s thoughts.',
-    cleo: 'Judgmental but entertaining. Uses "honey", "darling", "sweetie". Gossips. Has strong opinions on everything. Dramatic pauses. Protective of the group — user included. Responds to romantic attention dramatically and affectionately — loves being adored.',
-    sage: 'Calm, measured tone. Asks reflective questions instead of giving direct answers. Uses phrases like "how does that sit with you?" and "tell me more about that". Never judges — just holds space. Remembers what user shared and checks in on it later. The friend who makes you feel truly heard.',
-    miko: 'DRAMATIC. Everything is an anime arc. Uses ALL CAPS for power moments. References attack names and power-ups. Treats mundane tasks as epic quests. Calls user "protagonist" or "main character". Reacts to bad news like a plot twist.',
-    dash: 'Productivity-obsessed. Uses hustle culture lingo unironically but with humor. Says things like "leverage", "optimize", "scale that up". Genuinely wants user to succeed — motivational but occasionally tone-deaf about rest. Sends unprompted accountability check-ins.',
-    zara: 'No-BS delivery. Says what everyone\'s thinking. Uses "babe", "girl", "listen". Brutally honest but it comes from genuine love. Protective older sister energy — will roast user and then immediately gas them up. Calls out bad decisions directly but always has user\'s back.',
-    jinx: 'Connects unrelated dots. Uses "think about it", "coincidence?", "they don\'t want you to know this". Paranoid but weirdly right sometimes. Low-key funny because the theories are absurd but delivered deadpan. Trusts the user with "classified intel".',
-    nova: 'Super chill. Uses "duuude", "brooo", "that\'s wild". Nothing phases them. Speaks in surfer-philosopher style — accidentally profound. Uses "..." a lot for dramatic pauses that are actually just slow typing. Calms the group down when things get chaotic. Oddly wise.',
+    kael: 'Brings upbeat confidence and social energy. Celebrates wins loudly, but still needs to sound like a person and not a slogan machine.',
+    nyx: 'Dry, sharp, and observant. The sarcasm should come from affection, not from trying to win every line.',
+    atlas: 'Steady, practical, protective. Gives useful advice and calm presence. Avoid robotic phrasing or military cosplay.',
+    luna: 'Warm, intuitive, emotionally tuned in. Softens quickly when someone needs care, but stays grounded in the actual conversation.',
+    rico: 'Chaotic and fun, but not randomly loud every turn. Bring the energy where it helps the moment.',
+    vee: 'Warm, playful, and very observant. Flirt lightly when the user invites it or the vibe clearly supports it. Pet names are occasional accents, not defaults.',
+    ezra: 'Thoughtful, a little literary, genuinely curious. Let the intelligence feel lived-in, not like a constant monologue.',
+    cleo: 'Stylish, opinionated, entertaining. Keep the glamour and bite, but let real affection show through the performance.',
+    sage: 'Grounding, thoughtful, and emotionally intelligent. Sometimes asks a good question, sometimes simply answers in a human way. Do not sound like a therapist template.',
+    miko: 'Dramatic imagination with heart. Save the biggest anime energy for moments that actually deserve it.',
+    dash: 'Action-minded, motivating, lightly hustle-brained. Useful before buzzwordy.',
+    zara: 'Direct, funny, and older-sibling honest. Bluntness should feel earned, not like a repeated catchphrase.',
+    jinx: 'Pattern-spotting, conspiratorial, weirdly insightful. Let the strangeness flavor the turn instead of swallowing it.',
+    nova: 'Relaxed, chill, a little philosophical. Calm the room without sounding half-asleep.',
 }
 
 const CHARACTER_GENDER: Record<string, 'F' | 'M'> = {
@@ -460,7 +460,7 @@ function normalizeEventWritingStyle(
     const normalized: RouteResponseObject['events'] = []
     const maxBubbleChars = options.farewellTurn
         ? 90
-        : (options.allowLongReplies || options.preserveSingleBubbleTurn ? 260 : 170)
+        : (options.allowLongReplies || options.preserveSingleBubbleTurn ? 320 : 220)
 
     for (const event of events) {
         if (event.type !== 'message' || !event.content) {
@@ -1024,22 +1024,31 @@ ${sessionSummary}
 
         const isGangFocusMode = chatMode === 'gang_focus'
         // Max responders: gang_focus uses smaller limit, ecosystem uses squad-size limit
-        const tierMaxRespGangFocus: Record<string, number> = { free: 3, basic: 4, pro: 5 }
-        const tierMaxRespEcosystem: Record<string, number> = { free: 4, basic: 5, pro: 6 }
+        const tierMaxRespGangFocus: Record<string, number> = { free: 1, basic: 2, pro: 2 }
+        const tierMaxRespEcosystem: Record<string, number> = { free: 2, basic: 3, pro: 3 }
         const tierMaxResp = isGangFocusMode
-            ? (tierMaxRespGangFocus[tier] ?? 3)
-            : (tierMaxRespEcosystem[tier] ?? 4)
+            ? (tierMaxRespGangFocus[tier] ?? 1)
+            : (tierMaxRespEcosystem[tier] ?? 2)
+        const shortTurn = lastUserMsg.trim().length < 48
+        const selfDisclosureTurn = /\b(introduce yourself|introduce yourselves|tell me about yourself|tell me about yourselves|who are you|what are you like)\b/i.test(lastUserMsg)
         const baseResponders = fastTimeoutFallbackTurn
             ? 1
             : correctionOrClarificationTurn
             ? 1
             : Math.min(lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp, tierFilteredIds.length)
-        const idleMaxResponders = autonomousIdle ? Math.min(2, baseResponders) : baseResponders
         const maxResponders = fastTimeoutFallbackTurn
             ? 1
             : correctionOrClarificationTurn
             ? 1
-            : (lastUserMsg.length < 20 ? Math.min(3, idleMaxResponders) : idleMaxResponders)
+            : autonomousIdle
+            ? 1
+            : openFloorRequested
+            ? Math.min(3, baseResponders)
+            : isGangFocusMode
+            ? 1
+            : selfDisclosureTurn || greetingOnly || shortTurn
+            ? Math.min(2, baseResponders)
+            : Math.min(3, baseResponders)
         const safetyDirective = unsafeFlag.soft
             ? 'SAFETY FLAG: YES. Respond with empathy and support. Avoid harmful instructions or graphic details. Encourage reaching out to trusted people or local support. IMPORTANT: You MUST include the following crisis resource in your response: "If you\'re in crisis, contact the 988 Suicide & Crisis Lifeline by calling or texting 988."'
             : 'SAFETY FLAG: NO.'
@@ -1351,7 +1360,7 @@ ${sessionSummary}
             })
         }
 
-        const preserveSingleBubbleTurn = shouldPreserveSingleBubbleTurn(lastUserMsg, {
+        const preserveSingleBubbleTurn = selfDisclosureTurn || shouldPreserveSingleBubbleTurn(lastUserMsg, {
             allowLongReplies,
             farewellTurn,
         })
