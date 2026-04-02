@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
       // unsafe-eval required by lottie-web for animation expressions — all Lottie JSON files are first-party (/lottie/*.json).
       // NOTE: Do NOT add 'strict-dynamic' — it overrides 'unsafe-inline' in modern browsers, breaking Next.js hydration.
       // TODO (MED-5): Remove 'unsafe-inline' from script-src once Next.js supports nonce-based CSP.
-      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.dodopayments.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://xiekctfhbqkhoqplobep.supabase.co wss://xiekctfhbqkhoqplobep.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://*.dodopayments.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io; frame-src 'self' https://*.dodopayments.com; frame-ancestors 'none';" },
+      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.dodopayments.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://xiekctfhbqkhoqplobep.supabase.co wss://xiekctfhbqkhoqplobep.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai https://*.dodopayments.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io; frame-src 'self' https://*.dodopayments.com https://challenges.cloudflare.com; frame-ancestors 'none';" },
     ]
 
     if (process.env.NODE_ENV === "production") {
