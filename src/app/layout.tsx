@@ -26,6 +26,7 @@ const outfit = Outfit({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mygang.ai";
+const socialImage = "/og-image.png";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -59,9 +60,10 @@ export const metadata: Metadata = {
     siteName: "MyGang.ai",
     images: [
       {
-        url: "/og-image.webp",
+        url: socialImage,
         width: 1200,
         height: 630,
+        type: "image/png",
         alt: "MyGang.ai — Your Premium AI Group Chat"
       }
     ]
@@ -71,7 +73,12 @@ export const metadata: Metadata = {
     title: "MyGang.ai | Your Premium AI Group Chat",
     description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
     creator: "@mygang_ai",
-    images: ["/og-image.webp"]
+    images: [
+      {
+        url: socialImage,
+        alt: "MyGang.ai — Your Premium AI Group Chat",
+      },
+    ]
   },
   icons: {
     icon: [
