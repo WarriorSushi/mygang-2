@@ -258,6 +258,34 @@ export default function AlternativePage() {
             Try MyGang.ai Free →
           </Link>
         </section>
+
+        {/* Related Articles — Internal Linking for SEO */}
+        <section className="py-12 border-t border-border/30">
+          <h2 className="text-xl font-bold mb-6">Learn More About AI Group Chat</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Link
+              href="/blog/what-is-ai-group-chat"
+              className="rounded-xl border border-border/50 p-4 hover:border-primary/30 hover:bg-muted/30 transition-all"
+            >
+              <h3 className="font-semibold text-sm mb-1">What Is AI Group Chat?</h3>
+              <p className="text-xs text-muted-foreground">The next evolution of AI companions explained.</p>
+            </Link>
+            <Link
+              href="/blog/ai-group-chat-vs-individual"
+              className="rounded-xl border border-border/50 p-4 hover:border-primary/30 hover:bg-muted/30 transition-all"
+            >
+              <h3 className="font-semibold text-sm mb-1">Group Chat vs 1-on-1 AI</h3>
+              <p className="text-xs text-muted-foreground">Why group dynamics beat solo chatbots.</p>
+            </Link>
+            <Link
+              href="/blog/ai-companions-loneliness-research"
+              className="rounded-xl border border-border/50 p-4 hover:border-primary/30 hover:bg-muted/30 transition-all"
+            >
+              <h3 className="font-semibold text-sm mb-1">AI &amp; Loneliness Research</h3>
+              <p className="text-xs text-muted-foreground">What every major 2026 study says.</p>
+            </Link>
+          </div>
+        </section>
       </div>
     </main>
   )
