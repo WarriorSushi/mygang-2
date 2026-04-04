@@ -41,11 +41,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "MyGang.ai | Your Premium AI Group Chat",
+    default: "MyGang.ai — The First AI Group Chat | AI Friends That Talk to Each Other",
     template: "%s | MyGang.ai"
   },
-  description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
-  keywords: ["AI Chat", "Group Chat", "Personal AI", "MyGang", "AI Friends", "Digital Gang"],
+  description: "The first AI group chat — hang out with multiple AI friends who talk to you AND each other. Not a chatbot. A whole friend group, always online. Free to try.",
+  keywords: ["AI group chat", "AI companion", "AI friends", "Character AI alternative", "AI chat app", "AI friend group", "virtual friends", "AI characters", "group chat AI", "loneliness", "MyGang", "AI companion app"],
   applicationName: "MyGang.ai",
   authors: [{ name: "MyGang Team" }],
   creator: "MyGang.ai",
@@ -55,10 +55,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: siteUrl,
-    title: "MyGang.ai | Your Premium AI Group Chat",
-    description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
+    title: "MyGang.ai — The First AI Group Chat",
+    description: "Hang out with multiple AI friends who talk to you AND each other. Not a chatbot — a whole friend group, always online.",
     siteName: "MyGang.ai",
-    images: [
       {
         url: socialImage,
         width: 1200,
@@ -70,8 +69,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "MyGang.ai | Your Premium AI Group Chat",
-    description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
+    title: "MyGang.ai — The First AI Group Chat",
+    description: "Hang out with multiple AI friends who talk to you AND each other. Not a chatbot — a whole friend group, always online.",
     creator: "@mygang_ai",
     images: [
       {
