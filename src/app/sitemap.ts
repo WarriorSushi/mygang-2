@@ -23,6 +23,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${siteUrl}/blog`,
+      lastModified: new Date('2026-04-05'),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/blog/ai-group-chat-vs-individual`,
+      lastModified: new Date('2026-04-05'),
+      changeFrequency: 'monthly',
+      priority: 0.85,
+    },
+    {
       url: `${siteUrl}/about`,
       lastModified: new Date('2026-03-16'),
       changeFrequency: 'monthly',
