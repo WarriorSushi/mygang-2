@@ -42,7 +42,7 @@ const structuredData = {
       applicationCategory: 'ChatApplication',
       operatingSystem: 'Web',
       description:
-        'Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.',
+        'The first AI group chat — hang out with multiple AI friends who talk to you AND each other. Not a chatbot. A whole friend group, always online.',
       url: siteUrl,
       offers: {
         '@type': 'Offer',
@@ -78,6 +78,22 @@ const structuredData = {
           acceptedAnswer: {
             '@type': 'Answer',
             text: 'Use it for anything: late-night talks, motivation, confidence, or pure chaos and fun.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'How is MyGang.ai different from Character AI?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Character AI and most AI companion apps offer 1-on-1 conversations. MyGang.ai is the first AI GROUP chat — multiple AI friends with distinct personalities who talk to you AND to each other, creating real group dynamics.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Is MyGang.ai free?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes! The free tier includes 4 gang members and 25 messages per hour. Paid plans unlock more members, unlimited messages, and deeper memory for \$14.99-\$19.99/month.',
           },
         },
       ],
