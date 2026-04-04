@@ -123,7 +123,7 @@ export default function AlternativePage() {
             <ul className="list-disc pl-6 space-y-2">
               <li><strong className="text-foreground">Content filters</strong> — Many conversations get cut off by aggressive NSFW filters, even in normal contexts.</li>
               <li><strong className="text-foreground">Memory limitations</strong> — Characters often forget previous conversations, breaking immersion.</li>
-              <li><strong className="text-foreground">1-on-1 only</strong> — Every conversation is isolated. You can&apos;t have group dynamics with multiple characters.</li>
+              <li><strong className="text-foreground">1-on-1 only</strong> — Every conversation is isolated. Character.AI previously had multi-bot rooms (group chat) but <strong>quietly removed the feature</strong>, leaving users frustrated and searching for alternatives that support group dynamics.</li>
               <li><strong className="text-foreground">Pricing</strong> — Character.AI Plus costs $9.99/month for faster responses and priority access.</li>
             </ul>
           </div>
