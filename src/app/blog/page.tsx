@@ -21,6 +21,15 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: 'ai-companions-loneliness-research',
+    title: 'The Research on AI Companions and Loneliness (2026)',
+    description:
+      'A roundup of every major study on AI companions and loneliness — from George Mason University, MIT, the APA, and the Ada Lovelace Institute.',
+    date: '2026-04-05',
+    readTime: '6 min read',
+    tags: ['Research', 'Loneliness', 'Studies'],
+  },
+  {
     slug: 'ai-group-chat-vs-individual',
     title: 'Why AI Group Chat Is Better Than 1-on-1 AI Companions',
     description:
