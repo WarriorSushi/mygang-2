@@ -7,7 +7,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import {
     Trash2,
-    Camera,
+    Share2,
     ChevronRight,
     ArrowLeft,
     Paintbrush,
@@ -704,11 +704,11 @@ export function ChatSettings({ isOpen, onClose, onTakeScreenshot, initialPanel =
                                             <MenuRow onClick={async () => { await onTakeScreenshot() }}>
                                                 <div className="flex items-center gap-3">
                                                     <IconBox isDark={isDark}>
-                                                        <Camera size={15} className="text-muted-foreground" />
+                                                        <Share2 size={15} className="text-muted-foreground" />
                                                     </IconBox>
                                                     <div>
-                                                        <p className="text-[13px] font-medium">Capture Moment</p>
-                                                        <p className="text-[11px] text-muted-foreground">Save chat as image</p>
+                                                        <p className="text-[13px] font-medium">Share Moment</p>
+                                                        <p className="text-[11px] text-muted-foreground">Share or save chat as image</p>
                                                     </div>
                                                 </div>
                                             </MenuRow>
