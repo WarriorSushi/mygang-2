@@ -589,6 +589,32 @@ export default function ChatPage() {
             const link = document.createElement('a')
             link.download = `mygang-moment-${Date.now()}.png`
             link.href = dataUrl
+
+            // Try Web Share API first (mobile + modern browsers)
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const response = await fetch(dataUrl)
+                    const blob = await response.blob()
+                    const file = new File([blob], link.download, { type: 'image/png' })
+                    const shareData = {
+                        title: 'MyGang.ai moment',
+                        text: 'Check out this conversation from my AI friend group \u2014 mygang.ai',
+                        files: [file],
+                    }
+                    if (navigator.canShare(shareData)) {
+                        await navigator.share(shareData)
+                        setToastMessage('Shared!')
+                        return
+                    }
+                } catch (shareErr) {
+                    // User cancelled or share failed — fall through to download
+                    if ((shareErr as DOMException)?.name === 'AbortError') {
+                        return // User cancelled, don't show any toast
+                    }
+                }
+            }
+
+            // Fallback: download the image
             link.click()
             setToastMessage('Moment captured.')
         } catch (err) {
