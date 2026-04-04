@@ -17,6 +17,7 @@ interface UseAutonomousFlowArgs {
         isAutonomous: boolean
         autonomousIdle?: boolean
         sourceUserMessageId?: string | null
+        recentTopics?: string[]
     }) => Promise<void>>
     lastUserMessageIdRef: React.RefObject<string | null>
     autoLowCostModeRef: React.RefObject<boolean>
@@ -137,6 +138,14 @@ export function useAutonomousFlow({
         if (!canRunIdleAutonomous()) return
         if (idleAutoCountRef.current >= 1) return
 
+        // Additional guard: check if last AI message was very recent (prevent rapid-fire)
+        const currentMsgs = useChatStore.getState().messages
+        const lastAiMsg = [...currentMsgs].reverse().find((m: Message) => m.speaker !== 'user')
+        if (lastAiMsg?.created_at) {
+            const sinceLastAi = Date.now() - new Date(lastAiMsg.created_at).getTime()
+            if (sinceLastAi < 5_000) return // Don't schedule if AI just spoke <5s ago
+        }
+
         clearIdleAutonomousTimer()
         const delay = 10_000
         const ecosystemSpeed = useChatStore.getState().ecosystemSpeed || 'normal'
@@ -239,6 +248,12 @@ export function useAutonomousFlow({
             return
         }
         resumeAutonomousTriggeredRef.current = true
+        // Build a set of recent AI message contents to pass as "do not repeat" context
+        const recentAiContents = messages
+            .filter((m: Message) => m.speaker !== 'user')
+            .slice(-5)
+            .map((m: Message) => m.content?.slice(0, 100))
+            .filter(Boolean)
         const timer = setTimeout(() => {
             if (isGeneratingRef.current || pendingUserMessagesRef.current) return
             if (totalAutoCallsRef.current >= MAX_SESSION_AUTO_CALLS) return
@@ -247,6 +262,7 @@ export function useAutonomousFlow({
                 isIntro: false,
                 isAutonomous: true,
                 sourceUserMessageId: lastUserMessage?.id ?? null,
+                recentTopics: recentAiContents,
             })
         }, 700)
         return () => clearTimeout(timer)
