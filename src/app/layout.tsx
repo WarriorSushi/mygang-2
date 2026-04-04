@@ -44,8 +44,8 @@ export const metadata: Metadata = {
     default: "MyGang.ai | Your Premium AI Group Chat",
     template: "%s | MyGang.ai"
   },
-  description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
-  keywords: ["AI Chat", "Group Chat", "Personal AI", "MyGang", "AI Friends", "Digital Gang"],
+  description: "The first AI group chat — your AI friend group that's always online. 10+ unique characters who talk to you AND each other. A Character AI alternative built for real group dynamics.",
+  keywords: ["Character AI alternative", "AI companion app", "AI group chat", "AI friend group", "AI friends", "talk to AI characters", "AI chat app", "group chat AI", "Character.AI alternative", "Replika alternative", "AI companion", "virtual friends", "AI social", "MyGang"],
   applicationName: "MyGang.ai",
   authors: [{ name: "MyGang Team" }],
   creator: "MyGang.ai",
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: siteUrl,
     title: "MyGang.ai | Your Premium AI Group Chat",
-    description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
+    description: "The first AI group chat — your AI friend group that's always online. 10+ unique characters who talk to you AND each other. A Character AI alternative built for real group dynamics.",
     siteName: "MyGang.ai",
     images: [
       {
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "MyGang.ai | Your Premium AI Group Chat",
-    description: "Experience the group chat that never sleeps. Unique AI friends ready to roar, roast, and vibe with you 24/7.",
+    description: "The first AI group chat — your AI friend group that's always online. 10+ unique characters who talk to you AND each other. A Character AI alternative built for real group dynamics.",
     creator: "@mygang_ai",
     images: [
       {
