@@ -21,6 +21,15 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: 'what-is-ai-group-chat',
+    title: 'What Is AI Group Chat? The Next Evolution of AI Companions',
+    description:
+      'AI group chat is a new category where multiple AI characters interact with you and each other. Learn how it works and why it matters.',
+    date: '2026-04-05',
+    readTime: '5 min read',
+    tags: ['Explainer', 'AI Group Chat', 'Product'],
+  },
+  {
     slug: 'ai-companions-loneliness-research',
     title: 'The Research on AI Companions and Loneliness (2026)',
     description:

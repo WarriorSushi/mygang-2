@@ -41,6 +41,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.85,
     },
     {
+      url: `${siteUrl}/blog/what-is-ai-group-chat`,
+      lastModified: new Date('2026-04-05'),
+      changeFrequency: 'monthly',
+      priority: 0.85,
+    },
+    {
       url: `${siteUrl}/about`,
       lastModified: new Date('2026-03-16'),
       changeFrequency: 'monthly',
