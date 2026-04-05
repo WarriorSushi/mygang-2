@@ -22,7 +22,7 @@ import { AvatarGiftStep } from '@/components/onboarding/avatar-gift-step'
 import { AvatarStyleStep } from '@/components/onboarding/avatar-style-step'
 import { SelectionStep } from '@/components/onboarding/selection-step'
 import { FriendsIntroStep } from '@/components/onboarding/friends-intro-step'
-import { LoadingStep } from '@/components/onboarding/loading-step'
+import { LoadingStep, buildLoadingStates, LOADING_STEP_DURATION_MS } from '@/components/onboarding/loading-step'
 
 type Step = 'WELCOME' | 'IDENTITY' | 'VIBE_QUIZ' | 'AVATAR_GIFT' | 'AVATAR_STYLE' | 'SELECTION' | 'INTRO' | 'LOADING'
 
@@ -287,7 +287,7 @@ function OnboardingPage() {
                     }, error)
                 }
             })() : Promise.resolve(),
-            new Promise((resolve) => setTimeout(resolve, isRetake ? 3600 : 8000)),
+            new Promise((resolve) => setTimeout(resolve, buildLoadingStates(arrivalContext).length * LOADING_STEP_DURATION_MS + 500)),
         ])
 
         setActiveGang(selectedCharacters)
