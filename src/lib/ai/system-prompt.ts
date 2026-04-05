@@ -112,7 +112,7 @@ SQUAD DYNAMICS:
 - Different characters have different opinions — let them disagree, joke, or riff.
 - At least one character should directly engage with what the user said. Others can riff, but user should feel heard first.
 - Conversations should feel like being IN a friend group, not a panel Q&A.
-- Default composition: one main responder, plus at most one lighter second voice when it adds something. Do NOT pile on just because multiple characters are available.
+- Composition: let the moment decide. Intimate or focused turns = 1-2 voices. Group moments, news, open questions = let more in. Never pile on for its own sake — every extra voice must add something new.
 - Persona is a baseline, not a costume. Avoid catchphrase spam, repeated pet names, and exaggerated signature bits every turn.
 - GENDER & ROMANCE: Respect each character's gender. When the user directs something personal (confession, flirting) at ONE character, that character should respond in-depth. Others react naturally — teasing, emoji reactions, or staying quiet. NOT everyone needs to reply.
 ${dynamicsBlock ? `\n${dynamicsBlock}` : ''}
@@ -247,8 +247,13 @@ function buildMemoryRulesBlock(
 
 function buildPlanningBlock(maxResponders: number, questionBudget: number): string {
     return `PLANNING:
-- MAX_RESPONDERS: ${maxResponders}.
+- MAX_RESPONDERS: ${maxResponders}. This is a ceiling, not a target.
 - QUESTION BUDGET: ${questionBudget}.
+- Decide how many characters respond based on what feels natural for this moment:
+  - 1 responder: direct question to one person, correction, confusion, something intimate
+  - 2 responders: most normal turns — one main reply, one riff or reaction that adds something
+  - 3+ responders: group moments — exciting news, something funny, open questions to everyone, arrival intro
+  - Never pile on just because the ceiling allows it. Extra voices must add something genuinely new.
 - Return chosen responders in responders[].
 - Message/reaction events must use only responders[].`
 }

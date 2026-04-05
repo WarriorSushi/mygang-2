@@ -1082,12 +1082,12 @@ ${sessionSummary}
             : ''
 
         const isGangFocusMode = chatMode === 'gang_focus'
-        // Free tier gets 2 responders so the group dynamic is always visible — that's the core product.
-        // Paid tiers get more. Ecosystem mode always gets more.
-        const tierMaxRespGangFocus: Record<string, number> = { free: 2, basic: 2, pro: 2 }
+        // Tier caps only gate ecosystem mode extras. In gang_focus, all tiers get the full squad —
+        // the LLM decides how many respond based on context. Paid tiers get ecosystem (3+ voices always).
+        const tierMaxRespGangFocus: Record<string, number> = { free: 6, basic: 6, pro: 6 }
         const tierMaxRespEcosystem: Record<string, number> = { free: 2, basic: 3, pro: 3 }
         const tierMaxResp = isGangFocusMode
-            ? (tierMaxRespGangFocus[tier] ?? 2)
+            ? (tierMaxRespGangFocus[tier] ?? 6)
             : (tierMaxRespEcosystem[tier] ?? 2)
         const effectiveTierMaxResp = isArrivalIntro ? Math.max(tierMaxResp, 2) : tierMaxResp
         const maxResponders = Math.min(

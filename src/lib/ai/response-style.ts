@@ -71,7 +71,7 @@ function isSmallTalkTurn(text: string): boolean {
 
 const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
     greeting: {
-        maxResponders: 2,
+        maxResponders: 4,
         questionBudget: 1,
         allowLongReplies: false,
         preserveSingleBubbleTurn: false,
@@ -79,7 +79,7 @@ const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
         shouldContinue: false,
     },
     small_talk: {
-        maxResponders: 2,
+        maxResponders: 4,
         questionBudget: 1,
         allowLongReplies: false,
         preserveSingleBubbleTurn: false,
@@ -87,7 +87,7 @@ const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
         shouldContinue: false,
     },
     intro_request: {
-        maxResponders: 2,
+        maxResponders: 4,
         questionBudget: 1,
         allowLongReplies: true,
         preserveSingleBubbleTurn: true,
@@ -95,7 +95,7 @@ const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
         shouldContinue: false,
     },
     self_disclosure: {
-        maxResponders: 2,
+        maxResponders: 4,
         questionBudget: 1,
         allowLongReplies: true,
         preserveSingleBubbleTurn: true,
@@ -103,7 +103,7 @@ const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
         shouldContinue: false,
     },
     practical_question: {
-        maxResponders: 2,
+        maxResponders: 3,
         questionBudget: 1,
         allowLongReplies: true,
         preserveSingleBubbleTurn: false,
@@ -135,7 +135,7 @@ const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
         shouldContinue: false,
     },
     vulnerable: {
-        maxResponders: 2,
+        maxResponders: 3,
         questionBudget: 1,
         allowLongReplies: true,
         preserveSingleBubbleTurn: true,
@@ -143,7 +143,7 @@ const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
         shouldContinue: false,
     },
     farewell: {
-        maxResponders: 2,
+        maxResponders: 3,
         questionBudget: 0,
         allowLongReplies: false,
         preserveSingleBubbleTurn: true,
@@ -151,7 +151,7 @@ const TURN_POLICY: Record<TurnIntent, TurnPolicy> = {
         shouldContinue: false,
     },
     open_floor: {
-        maxResponders: 3,
+        maxResponders: 6,
         questionBudget: 1,
         allowLongReplies: false,
         preserveSingleBubbleTurn: false,
