@@ -17,6 +17,7 @@ import {
     type MemoryMutationResult,
 } from '@/lib/memory-mutation'
 import { persistGangMembership, SquadPersistenceError } from '@/lib/supabase/squad-persistence'
+import { generateEventId, buildCompleteRegistrationEvent, sendCAPIEvent } from '@/lib/meta'
 
 type ChatHistoryPageRow = {
     id: string
@@ -159,6 +160,20 @@ export async function signInOrSignUpWithPassword(
     }
 
     if (signUpAttempt.data?.session) {
+        // Fire CAPI CompleteRegistration (non-blocking)
+        void (async () => {
+            try {
+                const headerBag = await headers()
+                const ip = headerBag.get('x-forwarded-for')?.split(',')[0]?.trim()
+                    || headerBag.get('x-real-ip')
+                    || 'unknown'
+                const userAgent = headerBag.get('user-agent') || ''
+                const eventId = generateEventId()
+                await sendCAPIEvent([
+                    buildCompleteRegistrationEvent({ eventId, email, ip, userAgent }),
+                ])
+            } catch { /* non-fatal */ }
+        })()
         return { ok: true, action: 'signed_up' as const }
     }
 

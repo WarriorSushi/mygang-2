@@ -5,6 +5,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import type { Database } from '@/lib/database.types'
 import { getDodoClient } from '@/lib/billing-server'
 import type { SubscriptionTier } from '@/lib/billing'
+import { generateEventId, buildPurchaseEvent, sendCAPIEvent } from '@/lib/meta'
 
 const activateSchema = z.object({
     subscription_id: z.string().min(1).max(256),
@@ -190,6 +191,33 @@ export async function POST(req: Request) {
             console.error('[activate] Subscription upsert failed:', subError)
             return jsonResponse(500, { state: 'invalid', reason: 'subscription_upsert_failed' })
         }
+
+        // Fire CAPI Purchase event (non-blocking)
+        void (async () => {
+            try {
+                const { headers } = await import('next/headers')
+                const headerBag = await headers()
+                const ip = headerBag.get('x-forwarded-for')?.split(',')[0]?.trim()
+                    || headerBag.get('x-real-ip')
+                    || 'unknown'
+                const userAgent = headerBag.get('user-agent') || ''
+                const planValue = plan === 'pro' ? 9.99 : 4.99
+                const eventId = generateEventId()
+                await sendCAPIEvent([
+                    buildPurchaseEvent({
+                        eventId,
+                        userId: user.id,
+                        email: user.email ?? '',
+                        plan,
+                        value: planValue,
+                        currency: 'USD',
+                        ip,
+                        userAgent,
+                        sourceUrl: 'https://mygang.ai/pricing',
+                    }),
+                ])
+            } catch { /* non-fatal */ }
+        })()
 
         return jsonResponse(200, {
             state: 'activated',

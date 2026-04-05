@@ -12,6 +12,7 @@ import {
 import { useChatStore } from '@/stores/chat-store'
 import { createClient } from '@/lib/supabase/client'
 import { trackEvent } from '@/lib/analytics'
+import { pixelTrack } from '@/components/meta-pixel'
 import { BackgroundBlobs } from '@/components/holographic/background-blobs'
 import { m, AnimatePresence } from 'framer-motion'
 import { TIER_LIMITS, getTierCopy, type SubscriptionTier } from '@/lib/billing'
@@ -171,6 +172,7 @@ export default function PricingPage() {
   // Init DodoPayments SDK
   useEffect(() => {
     trackEvent('pricing_page_view', { metadata: { tier: currentTier } })
+    pixelTrack('ViewContent', { content_name: 'pricing', content_type: 'page' })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -201,6 +203,7 @@ export default function PricingPage() {
     }
     setLoadingPlan(plan)
     trackEvent('checkout_started', { metadata: { plan, current_tier: currentTier } })
+    pixelTrack('InitiateCheckout', { content_name: plan, content_type: 'subscription', value: plan === 'pro' ? 9.99 : 4.99, currency: 'USD' })
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',

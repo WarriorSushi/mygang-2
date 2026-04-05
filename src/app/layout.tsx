@@ -6,7 +6,8 @@ import { AuthManager } from "@/components/orchestrator/auth-manager";
 import { PerfMonitor } from "@/components/orchestrator/perf-monitor";
 import { SwRegister } from "@/components/orchestrator/sw-register";
 import { PwaInstallPrompt } from "@/components/ui/pwa-install-prompt";
-import { LazyMotionProvider } from "@/components/lazy-motion-provider";
+import { LazyMotionProvider } from "@/components/lazy-motion-provider"
+import { MetaPixel } from "@/components/meta-pixel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -133,6 +134,7 @@ export default function RootLayout({
           <SwRegister />
           <LazyMotionProvider>{children}</LazyMotionProvider>
           <PwaInstallPrompt />
+          <MetaPixel />
         </ThemeProvider>
       </body>
     </html>
