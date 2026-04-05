@@ -64,5 +64,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
+    {
+      url: `${siteUrl}/refund`,
+      lastModified: new Date('2026-03-16'),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
   ]
 }

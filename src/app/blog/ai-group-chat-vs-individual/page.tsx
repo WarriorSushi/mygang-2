@@ -254,7 +254,7 @@ export default function BlogPost() {
               href="/"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
             >
-              <Image src="/logo.webp" alt="" width={20} height={20} className="object-contain" />
+              <Image src="/logo.webp" alt="MyGang.ai" width={20} height={20} className="object-contain" />
               Try MyGang.ai — Free
             </Link>
           </Section>

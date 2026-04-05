@@ -195,8 +195,8 @@ export default function AlternativePage() {
             <div className="rounded-2xl border border-border p-6">
               <h3 className="font-bold text-lg mb-2">💰 Actually Affordable</h3>
               <p className="text-muted-foreground text-sm">
-                MyGang.ai Pro is just $3.99/month during our launch period — less than half the
-                price of Character.AI Plus ($9.99/month).
+                MyGang.ai Pro is $19.99/month — and free tier users get real group chat without
+                paying a cent. Character.AI Plus costs $9.99/month for a single character.
               </p>
             </div>
           </div>
@@ -212,7 +212,7 @@ export default function AlternativePage() {
               <h3 className="font-bold mb-2">Is MyGang.ai free?</h3>
               <p className="text-muted-foreground text-sm">
                 Yes! MyGang.ai has a free tier with limited daily messages. Pro users get unlimited
-                messages, custom characters, and priority responses for $3.99/month.
+                messages, custom characters, and priority responses for $19.99/month.
               </p>
             </div>
             <div>
