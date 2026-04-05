@@ -265,13 +265,19 @@ function OnboardingPage() {
         await Promise.all([
             userId ? (async () => {
                 try {
-                    await completeOnboarding({
-                        username: name,
-                        characterIds: selectedIds,
-                        customCharacterNames: normalizedCustomNames,
-                        vibeProfile: vibeProfile as unknown as Record<string, string> | undefined,
-                        avatarStylePreference,
-                    })
+                    const timeoutPromise = new Promise<void>((_, reject) =>
+                        setTimeout(() => reject(new Error('onboarding_timeout')), 15000)
+                    )
+                    await Promise.race([
+                        completeOnboarding({
+                            username: name,
+                            characterIds: selectedIds,
+                            customCharacterNames: normalizedCustomNames,
+                            vibeProfile: vibeProfile as unknown as Record<string, string> | undefined,
+                            avatarStylePreference,
+                        }),
+                        timeoutPromise,
+                    ])
                 } catch (error) {
                     console.error('Failed to auto-save to cloud:', error)
                     trackOperationalError('squad_write_failed', {
