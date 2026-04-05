@@ -1083,14 +1083,16 @@ ${sessionSummary}
 
         const isGangFocusMode = chatMode === 'gang_focus'
         // Balanced-human policy: the turn intent sets the upper bound, then tier/cost clamps it.
+        // On arrival intro, always allow 2 responders regardless of tier so new users see the group dynamic immediately.
         const tierMaxRespGangFocus: Record<string, number> = { free: 1, basic: 2, pro: 2 }
         const tierMaxRespEcosystem: Record<string, number> = { free: 2, basic: 3, pro: 3 }
         const tierMaxResp = isGangFocusMode
             ? (tierMaxRespGangFocus[tier] ?? 1)
             : (tierMaxRespEcosystem[tier] ?? 2)
+        const effectiveTierMaxResp = isArrivalIntro ? Math.max(tierMaxResp, 2) : tierMaxResp
         const maxResponders = Math.min(
             turnPolicy.maxResponders,
-            lowCostMode ? Math.min(2, tierMaxResp) : tierMaxResp,
+            lowCostMode ? Math.min(2, effectiveTierMaxResp) : effectiveTierMaxResp,
             tierFilteredIds.length,
         )
         const questionBudget = turnPolicy.questionBudget
