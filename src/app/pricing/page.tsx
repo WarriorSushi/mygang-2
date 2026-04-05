@@ -736,7 +736,6 @@ export default function PricingPage() {
         </section>
 
       </main>
-    </div>
       <div className="text-center pb-10 text-xs text-muted-foreground/50 space-x-4">
         <Link href="/faq" className="hover:text-muted-foreground transition-colors underline underline-offset-4">Full FAQ</Link>
         <Link href="/privacy" className="hover:text-muted-foreground transition-colors underline underline-offset-4">Privacy</Link>

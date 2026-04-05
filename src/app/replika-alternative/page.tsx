@@ -45,7 +45,7 @@ const comparisonRows = [
 
 const reasons = [
   {
-    title: 'One companion isn't enough',
+    title: "One companion isn't enough",
     body: 'Replika is built around a single AI partner — one relationship, one voice. MyGang gives you 2 to 6 characters in the same conversation, all with different personalities, opinions, and vibes. It feels like a real group chat, not a chatbot.',
   },
   {

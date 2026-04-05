@@ -42,7 +42,7 @@ const structuredData = {
       applicationCategory: 'ChatApplication',
       operatingSystem: 'Web',
       description:
-        'The first AI group chat — your AI friend group that's always online. 10+ unique characters who talk to you AND each other. A Character AI alternative built for real group dynamics.',
+        "The first AI group chat — your AI friend group that's always online. 10+ unique characters who talk to you AND each other. A Character AI alternative built for real group dynamics.",
       url: siteUrl,
       offers: {
         '@type': 'Offer',
