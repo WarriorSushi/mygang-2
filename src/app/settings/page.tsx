@@ -1,21 +1,40 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsPanel } from '@/components/settings/settings-panel'
+import { LottieLoader } from '@/components/ui/lottie-loader'
 
-export default async function SettingsPage() {
+async function SettingsPanelData() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-        redirect('/')
-    }
+    if (!user) redirect('/')
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('username, theme, subscription_tier')
         .eq('id', user.id)
         .single()
+
+    return (
+        <SettingsPanel
+            username={profile?.username ?? null}
+            email={user.email ?? null}
+            initialSettings={{
+                theme: (profile?.theme as 'light' | 'dark') || 'dark',
+            }}
+            usage={{
+                subscriptionTier: profile?.subscription_tier ?? 'free'
+            }}
+        />
+    )
+}
+
+export default async function SettingsPage() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/')
 
     return (
         <main id="main-content" className="min-h-dvh bg-background text-foreground px-4 sm:px-6 lg:px-10 py-10 pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-[calc(env(safe-area-inset-bottom)+2.5rem)]">
@@ -33,16 +52,13 @@ export default async function SettingsPage() {
                     </Link>
                 </div>
 
-                <SettingsPanel
-                    username={profile?.username ?? null}
-                    email={user.email ?? null}
-                    initialSettings={{
-                        theme: (profile?.theme as 'light' | 'dark') || 'dark',
-                    }}
-                    usage={{
-                        subscriptionTier: profile?.subscription_tier ?? 'free'
-                    }}
-                />
+                <Suspense fallback={
+                    <div className="flex items-center justify-center py-24">
+                        <LottieLoader size={80} />
+                    </div>
+                }>
+                    <SettingsPanelData />
+                </Suspense>
 
                 <section className="rounded-3xl border border-border/50 bg-muted/40 p-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Legal & Info</div>

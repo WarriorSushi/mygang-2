@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore, Message } from '@/stores/chat-store'
 import { useShallow } from 'zustand/react/shallow'
+import { LottieLoader } from '@/components/ui/lottie-loader'
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -16,7 +17,14 @@ import { buildArrivalBannerCopy, buildStarterChips, consumePendingArrivalContext
 import { ChatHeader } from '@/components/chat/chat-header'
 import { MessageList } from '@/components/chat/message-list'
 const MemoryVault = dynamic(() => import('@/components/chat/memory-vault').then((m) => m.MemoryVault), { ssr: false })
-const ChatSettings = dynamic(() => import('@/components/chat/chat-settings').then((m) => m.ChatSettings), { ssr: false })
+const ChatSettings = dynamic(() => import('@/components/chat/chat-settings').then((m) => m.ChatSettings), {
+    ssr: false,
+    loading: () => (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+            <LottieLoader size={72} />
+        </div>
+    ),
+})
 import { ChatInput } from '@/components/chat/chat-input'
 import { AiDisclaimer } from '@/components/chat/ai-disclaimer'
 import { ErrorBoundary } from '@/components/orchestrator/error-boundary'
