@@ -330,19 +330,7 @@ export default function ChatPage() {
         }
     }, [isHydrated, userId, activeGang.length, api.isGeneratingRef, api.sendToApiRef])
 
-    // ── Fresh arrival hint after onboarding ──
-    useEffect(() => {
-        if (!isHydrated || !userId || activeGang.length === 0 || !arrivalContext) return
-        const banner = buildArrivalBannerCopy(arrivalContext)
-
-        setArrivalBanner({
-            title: banner.title,
-            body: banner.detail,
-        })
-
-        const timer = setTimeout(() => setArrivalBanner(null), 9000)
-        return () => clearTimeout(timer)
-    }, [activeGang.length, arrivalContext, isHydrated, userId])
+    // ── Fresh arrival hint after onboarding — removed (was showing "Open Vault" banner on first visit) ──
 
     useEffect(() => {
         if (!shouldUseServerArrivalIntro) return

@@ -34,7 +34,6 @@ export function buildLoadingStates(arrivalContext: PendingArrivalContext) {
         { text: `${allNames} are waiting for you` },
         { text: userName ? `they already know your name, ${userName}` : `they already know your name` },
         { text: `these friendships are about to feel very real` },
-        { text: `no scripts. no bots. just vibes` },
         { text: `they'll remember everything you tell them` },
         { text: `they're going to have opinions about each other too` },
         { text: `your gang chat is ready` },
