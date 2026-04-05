@@ -21,6 +21,33 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: 'ai-companion-app-pricing',
+    title: 'The Real Cost of AI Companion Apps in 2026 — Are They Worth It?',
+    description:
+      'A transparent breakdown of what you\'re actually paying for with Replika, Character.AI, Chai, MyGang, and more. Which app gives the most for your money?',
+    date: '2026-04-06',
+    readTime: '6 min read',
+    tags: ['Pricing', 'Comparison', 'AI Companions'],
+  },
+  {
+    slug: 'best-replika-alternatives',
+    title: 'Best Replika Alternatives in 2026 (Ranked & Compared)',
+    description:
+      'The top Replika alternatives ranked by group dynamics, memory depth, personality variety, and free tier. Find the AI companion app that fits your life.',
+    date: '2026-04-06',
+    readTime: '7 min read',
+    tags: ['Replika', 'Alternatives', 'Comparison'],
+  },
+  {
+    slug: 'chai-ai-alternative',
+    title: "Why People Are Leaving Chai AI — And What to Try Instead",
+    description:
+      "Chai AI's limitations are pushing users to look for alternatives in 2026. Here's an honest breakdown of what's missing and what the best alternatives offer.",
+    date: '2026-04-06',
+    readTime: '6 min read',
+    tags: ['Chai AI', 'Alternatives', 'Comparison'],
+  },
+  {
     slug: 'what-is-ai-group-chat',
     title: 'What Is AI Group Chat? The Next Evolution of AI Companions',
     description:

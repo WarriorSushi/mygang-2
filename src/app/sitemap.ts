@@ -23,10 +23,40 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${siteUrl}/replika-alternative`,
+      lastModified: new Date('2026-04-06'),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/faq`,
+      lastModified: new Date('2026-04-06'),
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
+    {
       url: `${siteUrl}/blog`,
-      lastModified: new Date('2026-04-05'),
+      lastModified: new Date('2026-04-06'),
       changeFrequency: 'weekly',
       priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/blog/ai-companion-app-pricing`,
+      lastModified: new Date('2026-04-06'),
+      changeFrequency: 'monthly',
+      priority: 0.85,
+    },
+    {
+      url: `${siteUrl}/blog/best-replika-alternatives`,
+      lastModified: new Date('2026-04-06'),
+      changeFrequency: 'monthly',
+      priority: 0.85,
+    },
+    {
+      url: `${siteUrl}/blog/chai-ai-alternative`,
+      lastModified: new Date('2026-04-06'),
+      changeFrequency: 'monthly',
+      priority: 0.85,
     },
     {
       url: `${siteUrl}/blog/ai-group-chat-vs-individual`,
