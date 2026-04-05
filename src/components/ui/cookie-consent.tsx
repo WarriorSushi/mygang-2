@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 const STORAGE_KEY = 'mygang-cookie-consent'
 
-export function CookieConsent() {
+export function CookieConsent({ delayMs = 0 }: { delayMs?: number }) {
     const [visible, setVisible] = useState(false)
     const buttonRef = useRef<HTMLButtonElement>(null)
     const showConsent = useCallback(() => setVisible(true), [])
@@ -14,12 +14,17 @@ export function CookieConsent() {
         try {
             const accepted = localStorage.getItem(STORAGE_KEY)
             if (!accepted) {
-                queueMicrotask(showConsent)
+                if (delayMs > 0) {
+                    const timer = setTimeout(showConsent, delayMs)
+                    return () => clearTimeout(timer)
+                } else {
+                    queueMicrotask(showConsent)
+                }
             }
         } catch {
             // localStorage unavailable, don't show
         }
-    }, [showConsent])
+    }, [showConsent, delayMs])
 
     // Auto-focus the "Got it" button on mount
     useEffect(() => {
