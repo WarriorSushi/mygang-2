@@ -161,6 +161,7 @@ export async function signInOrSignUpWithPassword(
 
     if (signUpAttempt.data?.session) {
         // Fire CAPI CompleteRegistration (non-blocking)
+        const eventId = generateEventId()
         void (async () => {
             try {
                 const headerBag = await headers()
@@ -168,13 +169,12 @@ export async function signInOrSignUpWithPassword(
                     || headerBag.get('x-real-ip')
                     || 'unknown'
                 const userAgent = headerBag.get('user-agent') || ''
-                const eventId = generateEventId()
                 await sendCAPIEvent([
                     buildCompleteRegistrationEvent({ eventId, email, ip, userAgent }),
                 ])
             } catch { /* non-fatal */ }
         })()
-        return { ok: true, action: 'signed_up' as const }
+        return { ok: true, action: 'signed_up' as const, eventId }
     }
 
     if (!captchaToken) {

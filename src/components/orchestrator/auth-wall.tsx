@@ -8,6 +8,7 @@ import { Loader2, MailCheck } from 'lucide-react'
 import Image from 'next/image'
 import { signInOrSignUpWithPassword, signInWithGoogle } from "@/app/auth/actions"
 import { trackEvent } from '@/lib/analytics'
+import { pixelTrack } from '@/components/meta-pixel'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import Script from 'next/script'
@@ -166,6 +167,10 @@ export function AuthWall({ isOpen, onClose, onSuccess }: AuthWallProps) {
                     setPendingConfirmationEmail(result.email)
                     setPassword('')
                     return
+                }
+
+                if (result.action === 'signed_up' && result.eventId) {
+                    pixelTrack('CompleteRegistration', {}, result.eventId)
                 }
 
                 setEmail('')
