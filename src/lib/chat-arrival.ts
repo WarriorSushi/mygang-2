@@ -204,42 +204,40 @@ function summarizeVibe(vibeSummary: string | null) {
 }
 
 export function buildStarterChips(context: PendingArrivalContext | null, fallbackName: string, squadNames: string[]) {
-    const userLabel = fallbackName || 'you'
-    const squadLabel = joinNames(squadNames.filter(Boolean).slice(0, 2))
     const vibeSummary = summarizeVibe(context?.vibeSummary ?? null)
 
     if (vibeSummary?.toLowerCase().includes('honest')) {
         return [
-            `okay, give me the honest version of this crew`,
-            `start with what i should know about ${squadLabel || 'everyone'} first`,
-            `be real with me about what this room is like`,
-            `i'm easing in, keep it honest with me`,
+            `what's everyone like here?`,
+            `be real with me, no sugarcoating`,
+            `who should I talk to first?`,
+            `give me the lowdown`,
         ]
     }
 
     if (vibeSummary?.toLowerCase().includes('chill')) {
         return [
-            `keep it easy for me`,
-            `give me the soft version of the vibe with ${squadLabel || 'everyone'}`,
-            `i'm just settling in, point me to the easiest place to start`,
-            `start gentle with me`,
+            `hey everyone 👋`,
+            `what are we getting into today?`,
+            `anyone free to chat?`,
+            `just vibing, what's good?`,
         ]
     }
 
     if (vibeSummary?.toLowerCase().includes('hype')) {
         return [
-            `okay, give me the fun version of this crew`,
-            `start with the most chaotic one here`,
-            `tell me what i should know about ${squadLabel || 'you all'} first`,
-            `give me the good-energy version of this room`,
+            `okay I'm here, let's go`,
+            `who's the most chaotic one here`,
+            `hype me up`,
+            `what did I miss?`,
         ]
     }
 
     return [
-        `give me the honest version of ${squadLabel || 'this crew'}`,
-        `start with whoever feels easiest to talk to`,
-        `set the vibe for me, ${userLabel}`,
-        `i'm just getting settled, keep it easy`,
+        `hey, I just got here`,
+        `what's everyone up to?`,
+        `introduce yourselves`,
+        `who should I talk to first?`,
     ]
 }
 
