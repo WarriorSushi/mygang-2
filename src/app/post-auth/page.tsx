@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LottieLoader } from '@/components/ui/lottie-loader'
 import { addSquadTierMembers } from '@/app/auth/actions'
 import { createClient } from '@/lib/supabase/client'
@@ -11,6 +11,7 @@ import { normalizeAvatarStyle } from '@/lib/avatar-style'
 import { useChatStore } from '@/stores/chat-store'
 import { trackOperationalError, trackOperationalEvent } from '@/lib/operational-telemetry'
 import { getTierFromProfile } from '@/lib/billing'
+import { pixelTrack } from '@/components/meta-pixel'
 
 const DEFAULT_POST_AUTH_TIMEOUT_MS = 8_000
 
@@ -23,8 +24,9 @@ function getPostAuthTimeoutMs() {
     return Math.min(parsed, 30_000)
 }
 
-export default function PostAuthPage() {
+function PostAuthContent() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const setUserId = useChatStore((s) => s.setUserId)
     const setUserName = useChatStore((s) => s.setUserName)
     const setActiveGang = useChatStore((s) => s.setActiveGang)
@@ -38,6 +40,12 @@ export default function PostAuthPage() {
         const supabase = createClient()
         setShowRetryState(false)
         setLastErrorMessage(null)
+
+        // Fire Pixel CompleteRegistration for OAuth signups (CAPI already fired server-side)
+        const regEventId = searchParams.get('reg_event_id')
+        if (regEventId) {
+            pixelTrack('CompleteRegistration', {}, regEventId)
+        }
 
         router.prefetch('/chat')
         router.prefetch('/onboarding')
@@ -216,7 +224,7 @@ export default function PostAuthPage() {
             clearTimeout(retryTimer)
             clearTimeout(timeout)
         }
-    }, [retryNonce, router, setActiveGang, setAvatarStylePreference, setUserId, setUserName])
+    }, [retryNonce, router, searchParams, setActiveGang, setAvatarStylePreference, setUserId, setUserName])
 
     const [showSlowHint, setShowSlowHint] = useState(false)
     useEffect(() => {
@@ -269,5 +277,17 @@ export default function PostAuthPage() {
                 )}
             </div>
         </main>
+    )
+}
+
+export default function PostAuthPage() {
+    return (
+        <Suspense fallback={
+            <main id="main-content" className="min-h-dvh flex items-center justify-center bg-background text-foreground px-6">
+                <LottieLoader size={64} className="mx-auto" />
+            </main>
+        }>
+            <PostAuthContent />
+        </Suspense>
     )
 }
