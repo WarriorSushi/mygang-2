@@ -167,11 +167,6 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                             configMissing={configMissing}
                             turnstileEnabled={turnstileEnabled}
                         />
-                        {configMode === 'hash' && (
-                            <p className="mt-4 text-[11px] text-muted-foreground">
-                                Password field accepts the original admin password whose PBKDF2 hash is stored in `ADMIN_PANEL_PASSWORD_HASH`.
-                            </p>
-                        )}
 
                         <div className="mt-5 text-center">
                             <Link href="/" className="text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground">
