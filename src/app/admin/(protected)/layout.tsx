@@ -8,7 +8,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
     const session = await requireAdminSession()
 
     return (
-        <div className="relative min-h-dvh bg-[#06090f] text-foreground flex">
+        <div className="admin-shell relative min-h-dvh bg-[#06090f] text-foreground flex">
             {/* Ambient background */}
             <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_0%_0%,rgba(29,78,216,0.18),transparent_40%),radial-gradient(ellipse_at_100%_5%,rgba(16,185,129,0.12),transparent_40%)]" />
 

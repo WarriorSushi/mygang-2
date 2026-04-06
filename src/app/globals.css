@@ -437,7 +437,16 @@
   }
 }
 
-.pb-safe {
+/* ── Admin dashboard: satisfying button press on all buttons ── */
+
+.admin-shell button:not(:disabled) {
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.admin-shell button:not(:disabled):active {
+  transform: scale(0.94);
+  filter: brightness(0.88);
+}
   padding-bottom: env(safe-area-inset-bottom);
 }
 
