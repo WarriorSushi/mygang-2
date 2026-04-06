@@ -64,6 +64,7 @@ next-env.d.ts
 
 # Claude worktrees
 .claude/worktrees/
+.claude/settings.local.json
 
 # Sentry Config File
 .env.sentry-build-plugin
