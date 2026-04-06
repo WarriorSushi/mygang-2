@@ -81,7 +81,7 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
         admin.from('chat_history').select('*', { count: 'exact', head: true }).gte('created_at', since24h),
         admin.from('memories').select('*', { count: 'exact', head: true }),
         admin.from('chat_history').select('user_id').gte('created_at', since24h).limit(4000),
-        admin.from('chat_history').select('user_id, speaker, created_at').order('created_at', { ascending: false }).limit(20),
+        admin.from('chat_history').select('user_id, speaker, created_at').eq('speaker', 'user').order('created_at', { ascending: false }).limit(20),
         admin.from('admin_runtime_settings').select('id, global_low_cost_override, updated_by, updated_at').eq('id', 'global').maybeSingle(),
         admin.from('analytics_events').select('metadata, created_at').eq('event', 'chat_route_metrics').gte('created_at', since24h).order('created_at', { ascending: false }).limit(600),
         admin.from('admin_audit_log').select('actor_email, action, details, created_at').order('created_at', { ascending: false }).limit(20),
@@ -345,12 +345,8 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
                             <div className="space-y-1">
                                 {recentChatRows.slice(0, 15).map((row, i) => (
                                     <div key={`${row.user_id}-${row.created_at}-${i}`} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
-                                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[10px] font-bold text-slate-400">
-                                            {row.speaker.slice(0, 1).toUpperCase()}
-                                        </div>
                                         <div className="flex-1 min-w-0">
-                                            <span className="text-xs font-semibold text-slate-300">{row.speaker}</span>
-                                            <span className="text-xs text-slate-600 ml-2 font-mono">{(row.user_id || '').slice(0, 8)}</span>
+                                            <span className="text-xs font-mono text-slate-400">{(row.user_id || 'unknown').slice(0, 12)}…</span>
                                         </div>
                                         <span className="text-[11px] text-slate-600 shrink-0">{relativeTime(row.created_at)}</span>
                                     </div>
