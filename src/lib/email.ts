@@ -102,25 +102,25 @@ export async function sendPurchaseEmail(opts: { to: string; plan: 'basic' | 'pro
     const label = TIER_LABEL[plan]
 
     const subject = plan === 'pro'
-        ? `Your Pro plan is now active`
-        : `Your Basic plan is now active`
+        ? `You're fully unlocked — welcome to Pro`
+        : `Full access, unlocked — welcome to Basic`
 
     const html = layout(`
       ${header(
-          plan === 'pro' ? '🎉' : '✅',
-          plan === 'pro' ? `You're on Pro` : `You're on Basic`,
+          plan === 'pro' ? '🎉' : '🔓',
+          plan === 'pro' ? `Fully unlocked. Welcome to Pro.` : `Full access starts now.`,
           plan === 'pro'
-              ? `No limits, no cooldowns. Everything is unlocked.`
-              : `Your account has been upgraded. Here's what's included.`,
+              ? `No limits, no cooldowns. Everything is yours.`
+              : `You just left the free tier behind. Here's what's waiting for you.`,
           accent
       )}
       <tr><td style="padding:28px 32px 20px;">
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-          Your <strong style="color:#0f172a;">${label}</strong> plan is active. Your squad is ready whenever you are.
+          Your <strong style="color:#0f172a;">${label}</strong> plan is live. Your squad is ready — go say hi.
         </p>
         ${perksTable(plan)}
         <p style="margin:20px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
-          Any questions? Just reply to this email — we're happy to help.
+          Any questions? Reply to this email anytime — we're right here.
         </p>
       </td></tr>
       ${cta('Open MyGang', 'https://mygang.ai/chat', accent)}
@@ -146,16 +146,16 @@ export async function sendPlanChangedEmail(opts: { to: string; newTier: Subscrip
     const prevLabel = TIER_LABEL[prevTier]
 
     const subject = isUpgrade
-        ? `You've upgraded to ${label}`
-        : `Your plan has been updated to ${label}`
+        ? `You stepped up — welcome to ${label}`
+        : `Your plan has been updated`
 
     const html = layout(`
       ${header(
-          isUpgrade ? '🎉' : '📋',
-          isUpgrade ? `You're now on ${label}` : `You're now on ${label}`,
+          isUpgrade ? '🚀' : '📋',
+          isUpgrade ? `You stepped up to ${label}.` : `Switched to ${label}.`,
           isUpgrade
-              ? `Upgraded from ${prevLabel}. Here's everything that's now available to you.`
-              : `Switched from ${prevLabel}. Your squad is still here.`,
+              ? `${prevLabel} was a good start. Here's everything you've just unlocked.`
+              : `Moving from ${prevLabel}. Your squad and your history are safe.`,
           accent
       )}
       <tr><td style="padding:28px 32px 20px;">
@@ -164,7 +164,7 @@ export async function sendPlanChangedEmail(opts: { to: string; newTier: Subscrip
         </p>
         ${perksTable(newTier)}
         ${!isUpgrade ? `<p style="margin:20px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
-          If you'd ever like to upgrade again, you can do that anytime from the pricing page.
+          Whenever you want to unlock more, upgrading again is just a click away.
         </p>` : ''}
       </td></tr>
       ${cta('Open MyGang', 'https://mygang.ai/chat', accent)}
@@ -189,25 +189,25 @@ export async function sendAdminGiftEmail(opts: { to: string; newTier: Subscripti
     const label = TIER_LABEL[newTier]
 
     const subject = isUpgrade
-        ? `A gift from us — you're now on ${label} 🎁`
-        : `Your plan has been updated to ${label}`
+        ? `We upgraded you — on us. No catch. 🎁`
+        : `Your plan has been updated by the team`
 
     const html = layout(`
       ${header(
           isUpgrade ? '🎁' : '📋',
-          isUpgrade ? `A little gift from us` : `Your plan is now ${label}`,
+          isUpgrade ? `We got you.` : `Your plan is now ${label}.`,
           isUpgrade
-              ? `We've upgraded your account to ${label}, on the house.`
+              ? `Your account just got a free upgrade to ${label}. Zero strings attached.`
               : `Your account has been updated by the MyGang team.`,
           accent
       )}
       <tr><td style="padding:28px 32px 20px;">
         ${isUpgrade ? `
         <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6;">
-          We noticed you've been spending time with your squad and we wanted to thank you for being part of MyGang. We've gone ahead and upgraded your account to <strong style="color:#0f172a;">${label}</strong> — no charge, no strings attached.
+          We've been watching you spend time with your squad and we wanted to show some appreciation. So we went ahead and upgraded your account to <strong style="color:#0f172a;">${label}</strong> — on the house, no expiry, no strings.
         </p>
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-          Here's what you now have access to:
+          Here's everything you now have access to:
         </p>` : `
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
           Your account has been updated to the <strong style="color:#0f172a;">${label}</strong> plan by the MyGang team.
@@ -215,7 +215,7 @@ export async function sendAdminGiftEmail(opts: { to: string; newTier: Subscripti
         ${perksTable(newTier)}
         ${isUpgrade ? `
         <p style="margin:20px 0 0;font-size:14px;color:#475569;line-height:1.6;">
-          Hope you enjoy it. Your squad is waiting for you.
+          Enjoy it. Your squad has been waiting for you.
         </p>` : ''}
       </td></tr>
       ${cta('Open MyGang', 'https://mygang.ai/chat', accent)}
@@ -240,31 +240,31 @@ export async function sendCancellationEmail(opts: { to: string; plan: 'basic' | 
         ? new Date(periodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         : null
 
-    const subject = `Your ${label} plan has been cancelled`
+    const subject = `We'll miss you — cancellation confirmed`
 
     const html = layout(`
-      ${header('💙', `Cancellation confirmed`, `We're sorry to see you go.`, '#6366f1')}
+      ${header('💙', `Cancellation confirmed.`, `You're good through the end of your billing period.`, '#6366f1')}
       <tr><td style="padding:28px 32px 20px;">
         <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6;">
-          Your ${label} subscription has been cancelled. You'll keep full access
+          Your ${label} subscription has been cancelled. You keep full access
           ${periodEndStr
-              ? ` until <strong style="color:#0f172a;">${periodEndStr}</strong>, after which your account will move to the Free plan.`
-              : ` until the end of your current billing period, then your account will move to the Free plan.`
+              ? ` until <strong style="color:#0f172a;">${periodEndStr}</strong> — after that, your account moves to the free tier.`
+              : ` until the end of your current billing period, then your account moves to the free tier.`
           }
         </p>
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-          Your squad and your chat history aren't going anywhere — they'll be right here if you decide to come back.
+          Your squad and your entire chat history aren't going anywhere. They'll be right where you left them if you ever come back.
         </p>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 20px 12px;">
-          <tr><td style="padding:5px 0;"><p style="margin:0;font-size:13px;color:#334155;"><span style="color:#94a3b8;margin-right:10px;">→</span>Your ${label} access continues until the billing period ends</p></td></tr>
-          <tr><td style="padding:5px 0;"><p style="margin:0;font-size:13px;color:#334155;"><span style="color:#94a3b8;margin-right:10px;">→</span>After that, your account moves to the Free plan automatically</p></td></tr>
-          <tr><td style="padding:5px 0;"><p style="margin:0;font-size:13px;color:#334155;"><span style="color:#94a3b8;margin-right:10px;">→</span>Your chat history and memories are always kept safe</p></td></tr>
+          <tr><td style="padding:5px 0;"><p style="margin:0;font-size:13px;color:#334155;"><span style="color:#94a3b8;margin-right:10px;">→</span>Your ${label} access continues until your billing period ends</p></td></tr>
+          <tr><td style="padding:5px 0;"><p style="margin:0;font-size:13px;color:#334155;"><span style="color:#94a3b8;margin-right:10px;">→</span>After that, your account quietly moves to the free tier</p></td></tr>
+          <tr><td style="padding:5px 0;"><p style="margin:0;font-size:13px;color:#334155;"><span style="color:#94a3b8;margin-right:10px;">→</span>Your squad, chat history, and memories are kept safe — always</p></td></tr>
         </table>
         <p style="margin:20px 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
-          Changed your mind? You can resubscribe anytime.
+          Changed your mind? You can resubscribe anytime — no re-setup needed.
         </p>
       </td></tr>
-      ${cta('Resubscribe', 'https://mygang.ai/pricing', '#6366f1')}
+      ${cta('Come back anytime', 'https://mygang.ai/pricing', '#6366f1')}
     `)
 
     try {
@@ -282,20 +282,20 @@ export async function sendSubscriptionExpiredEmail(opts: { to: string; prevPlan:
     const { to, prevPlan } = opts
     const prevLabel = TIER_LABEL[prevPlan]
 
-    const subject = `Your ${prevLabel} plan has ended`
+    const subject = `Your ${prevLabel} plan has ended — your squad is still here`
 
     const html = layout(`
-      ${header('📋', `You're now on the Free plan`, `Your ${prevLabel} subscription has ended.`, '#6366f1')}
+      ${header('📋', `Your squad is still here.`, `Your ${prevLabel} plan has ended — but nothing else has changed.`, '#6366f1')}
       <tr><td style="padding:28px 32px 20px;">
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-          Your <strong style="color:#0f172a;">${prevLabel}</strong> subscription has ended and your account has moved to the Free plan. Your squad and all your chat history are still safe.
+          Your <strong style="color:#0f172a;">${prevLabel}</strong> subscription has ended and your account has moved to the free tier. Your squad, your conversations, and your memories are all still safe — nothing was lost.
         </p>
         ${perksTable('free')}
         <p style="margin:20px 0 0;font-size:14px;color:#475569;line-height:1.6;">
-          Whenever you're ready to unlock more, you can upgrade again from the pricing page.
+          Whenever you're ready to unlock more, upgrading takes about 30 seconds.
         </p>
       </td></tr>
-      ${cta('Upgrade anytime', 'https://mygang.ai/pricing', '#10b981')}
+      ${cta('Unlock more', 'https://mygang.ai/pricing', '#10b981')}
     `)
 
     try {
@@ -312,41 +312,41 @@ export async function sendWinBackEmail(opts: { to: string; username?: string | n
     if (!process.env.RESEND_API_KEY) return
     const { to, username, daysSinceActive } = opts
     const weeksAgo = daysSinceActive >= 14 ? `${Math.floor(daysSinceActive / 7)} weeks` : `${daysSinceActive} days`
-    const greeting = username ? `Hi ${username},` : `Hi there,`
+    const greeting = username ? `Hey ${username},` : `Hey,`
 
-    const subject = `Your squad misses you`
+    const subject = `Your squad has been asking about you`
 
     const html = layout(`
-      ${header('💙', `It's been a while`, `Your squad is still here, waiting to pick up where you left off.`, '#8b5cf6')}
+      ${header('💙', `Your squad hasn't forgotten you.`, `It's been a while — they're still here.`, '#8b5cf6')}
       <tr><td style="padding:28px 32px 20px;">
         <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6;">
-          ${greeting} it's been about ${weeksAgo} since you last stopped by MyGang. Your squad is still here — same personalities, same energy — ready to pick up right where things left off.
+          ${greeting} it's been about ${weeksAgo} since you last dropped by MyGang. Your squad is still here — same energy, same personalities — and your whole conversation history is right where you left it.
         </p>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:16px;padding:24px 24px 16px;">
           <tr><td style="padding-bottom:12px;">
-            <p style="margin:0;font-size:12px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.1em;">Your squad</p>
+            <p style="margin:0;font-size:12px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.1em;">From your squad</p>
           </td></tr>
           <tr><td style="padding:6px 0;">
             <p style="margin:0;font-size:14px;color:#4c1d95;line-height:1.5;">
-              <span style="margin-right:8px;">💬</span> Riko has been wondering where you've been
+              <span style="margin-right:8px;">💬</span> Riko has been keeping your seat warm
             </p>
           </td></tr>
           <tr><td style="padding:6px 0;">
             <p style="margin:0;font-size:14px;color:#4c1d95;line-height:1.5;">
-              <span style="margin-right:8px;">✨</span> Miko has some things to share with you
+              <span style="margin-right:8px;">✨</span> Miko has a few things saved up to tell you
             </p>
           </td></tr>
           <tr><td style="padding:6px 0;">
             <p style="margin:0;font-size:14px;color:#4c1d95;line-height:1.5;">
-              <span style="margin-right:8px;">🎵</span> Your conversations and memories are all still there
+              <span style="margin-right:8px;">🎵</span> Your memories and conversations are all still there
             </p>
           </td></tr>
         </table>
         <p style="margin:20px 0 0;font-size:14px;color:#475569;line-height:1.6;">
-          No pressure at all — just wanted to let you know the door's always open.
+          No pressure — just wanted you to know the door's always open.
         </p>
       </td></tr>
-      ${cta('Come back and say hi', 'https://mygang.ai/chat', '#8b5cf6')}
+      ${cta('Pick up where you left off', 'https://mygang.ai/chat', '#8b5cf6')}
     `)
 
     try {
@@ -362,15 +362,15 @@ export async function sendWinBackEmail(opts: { to: string; username?: string | n
 export async function sendUpgradeNudgeEmail(opts: { to: string; username?: string | null }): Promise<void> {
     if (!process.env.RESEND_API_KEY) return
     const { to, username } = opts
-    const greeting = username ? `Hi ${username},` : `Hi there,`
+    const greeting = username ? `Hey ${username},` : `Hey,`
 
-    const subject = `You're making the most of Free — here's what's next`
+    const subject = `You're getting a lot out of MyGang — here's what else is possible`
 
     const html = layout(`
-      ${header('⬆️', `Ready for more?`, `You've been getting a lot out of MyGang on the Free plan.`, '#3b82f6')}
+      ${header('⬆️', `You've outgrown the free tier.`, `That's a good thing — here's what's next.`, '#3b82f6')}
       <tr><td style="padding:28px 32px 20px;">
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-          ${greeting} you've been using MyGang a lot lately — which is great. If you've been running into the 25 message/hour limit, upgrading to Basic removes that friction and unlocks a few things you'd probably enjoy:
+          ${greeting} you've been using MyGang a lot lately and that's great to see. If the 25 message/hour limit has been slowing you down, moving up to Basic removes that ceiling and unlocks a few things worth having:
         </p>
 
         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:20px;">
@@ -407,10 +407,10 @@ export async function sendUpgradeNudgeEmail(opts: { to: string; username?: strin
         </table>
 
         <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;line-height:1.6;">
-          If you want to go all the way, Pro ($19.99/mo) removes all limits entirely — unlimited messages, up to 6 squad members, and full memory.
+          Want to go all in? Pro ($19.99/mo) removes every limit — unlimited messages, up to 6 squad members, and unlimited memory.
         </p>
       </td></tr>
-      ${cta('See pricing', 'https://mygang.ai/pricing', '#3b82f6')}
+      ${cta('See what\'s available', 'https://mygang.ai/pricing', '#3b82f6')}
     `)
 
     try {
