@@ -49,8 +49,8 @@ function layout(inner: string) {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden;">
-        <tr><td style="padding:24px 32px 0;">
-          <img src="https://mygang.ai/logo.webp" alt="MyGang" width="120" style="display:block;height:auto;border:0;" />
+        <tr><td style="padding:0;border-radius:20px 20px 0 0;overflow:hidden;">
+          <img src="https://mygang.ai/og-image.webp" alt="MyGang" width="520" style="display:block;width:100%;height:auto;border:0;" />
         </td></tr>
         ${inner}
         <tr><td style="padding:20px 32px;border-top:1px solid #f1f5f9;">
