@@ -1,7 +1,9 @@
-import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resetAllUserDailyUsage, setAllUsersLowCostMode, setGlobalLowCostOverride } from '@/app/admin/actions'
-import { Activity, Gauge, Zap, Shield, UsersRound, ArrowRight, Clock4 } from 'lucide-react'
+import {
+    Activity, Zap, Shield, UsersRound, Clock4, AlertTriangle,
+    CheckCircle2, CircleAlert, TrendingUp, Server, Radio
+} from 'lucide-react'
 
 type OverviewPageProps = {
     searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -14,88 +16,49 @@ type ChatRouteMetricMetadata = {
     providerCapacityBlocked?: boolean
     elapsedMs?: number
 }
+type QueryError = { code?: string }
+type CountQueryResult = { count: number | null; error: QueryError | null }
+type ActiveUserRow = { user_id: string | null }
+type RecentChatRow = { user_id: string | null; speaker: string; created_at: string }
+type RuntimeSettingsRow = { id: string; global_low_cost_override: boolean | null; updated_by: string | null; updated_at: string | null }
+type RouteMetricRow = { metadata: unknown; created_at: string }
+type AuditRow = { actor_email: string | null; action: string; details: unknown; created_at: string }
+type DataQueryResult<T> = { data: T | null; error: QueryError | null }
 
-type QueryError = {
-    code?: string
-}
-
-type CountQueryResult = {
-    count: number | null
-    error: QueryError | null
-}
-
-type ActiveUserRow = {
-    user_id: string | null
-}
-
-type RecentChatRow = {
-    user_id: string | null
-    speaker: string
-    created_at: string
-}
-
-type RuntimeSettingsRow = {
-    id: string
-    global_low_cost_override: boolean | null
-    updated_by: string | null
-    updated_at: string | null
-}
-
-type RouteMetricRow = {
-    metadata: unknown
-    created_at: string
-}
-
-type AuditRow = {
-    actor_email: string | null
-    action: string
-    details: unknown
-    created_at: string
-}
-
-type DataQueryResult<T> = {
-    data: T | null
-    error: QueryError | null
-}
-
-function formatNumber(value: number | null) {
+function fmt(value: number | null) {
     return new Intl.NumberFormat('en-US').format(value || 0)
+}
+
+function relativeTime(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    return `${Math.floor(hrs / 24)}d ago`
 }
 
 function metricFromMetadata(metadata: unknown): ChatRouteMetricMetadata {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {}
-    const value = metadata as Record<string, unknown>
+    const v = metadata as Record<string, unknown>
     return {
-        source: typeof value.source === 'string' ? value.source as ChatRouteMetricMetadata['source'] : undefined,
-        status: typeof value.status === 'number' ? value.status : undefined,
-        providerUsed: typeof value.providerUsed === 'string' ? value.providerUsed as ChatRouteMetricMetadata['providerUsed'] : undefined,
-        providerCapacityBlocked: typeof value.providerCapacityBlocked === 'boolean' ? value.providerCapacityBlocked : undefined,
-        elapsedMs: typeof value.elapsedMs === 'number' ? value.elapsedMs : undefined,
+        source: typeof v.source === 'string' ? v.source as ChatRouteMetricMetadata['source'] : undefined,
+        status: typeof v.status === 'number' ? v.status : undefined,
+        providerUsed: typeof v.providerUsed === 'string' ? v.providerUsed as ChatRouteMetricMetadata['providerUsed'] : undefined,
+        providerCapacityBlocked: typeof v.providerCapacityBlocked === 'boolean' ? v.providerCapacityBlocked : undefined,
+        elapsedMs: typeof v.elapsedMs === 'number' ? v.elapsedMs : undefined,
     }
 }
 
 function getNotice(errorCode: string | null, messageCode: string | null) {
-    if (errorCode === 'settings_update_failed') {
-        return { tone: 'error', text: 'Could not update admin runtime settings. Check logs and retry.' }
-    }
-    if (errorCode === 'invalid_request') {
-        return { tone: 'error', text: 'Request origin check failed. Retry from the admin dashboard.' }
-    }
-    if (errorCode === 'bulk_reset_failed') {
-        return { tone: 'error', text: 'Could not reset daily usage for all users.' }
-    }
-    if (errorCode === 'bulk_low_cost_failed') {
-        return { tone: 'error', text: 'Could not update low-cost mode for all users.' }
-    }
-    if (messageCode === 'override_saved') {
-        return { tone: 'info', text: 'Global low-cost override updated.' }
-    }
-    if (messageCode === 'all_daily_reset_saved') {
-        return { tone: 'info', text: 'All user daily counters were reset.' }
-    }
-    if (messageCode === 'all_low_cost_saved') {
-        return { tone: 'info', text: 'Low-cost mode was updated for all users.' }
-    }
+    if (errorCode === 'settings_update_failed') return { tone: 'error', text: 'Could not update runtime settings.' }
+    if (errorCode === 'invalid_request') return { tone: 'error', text: 'Request origin check failed.' }
+    if (errorCode === 'bulk_reset_failed') return { tone: 'error', text: 'Could not reset daily usage for all users.' }
+    if (errorCode === 'bulk_low_cost_failed') return { tone: 'error', text: 'Could not update low-cost mode.' }
+    if (messageCode === 'override_saved') return { tone: 'info', text: 'Global low-cost override updated.' }
+    if (messageCode === 'all_daily_reset_saved') return { tone: 'info', text: 'All daily counters reset.' }
+    if (messageCode === 'all_low_cost_saved') return { tone: 'info', text: 'Low-cost mode updated for all users.' }
     return null
 }
 
@@ -105,331 +68,323 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
     since.setHours(since.getHours() - 24)
     const since24h = since.toISOString()
     const params = await searchParams
-    const errorCodeRaw = params.error
-    const messageCodeRaw = params.message
-    const errorCode = Array.isArray(errorCodeRaw) ? errorCodeRaw[0] : errorCodeRaw || null
-    const messageCode = Array.isArray(messageCodeRaw) ? messageCodeRaw[0] : messageCodeRaw || null
+    const errorCode = Array.isArray(params.error) ? params.error[0] : params.error || null
+    const messageCode = Array.isArray(params.message) ? params.message[0] : params.message || null
     const notice = getNotice(errorCode, messageCode)
 
     const results = await Promise.all([
         admin.from('profiles').select('*', { count: 'exact', head: true }),
         admin.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'pro'),
+        admin.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'basic'),
         admin.from('profiles').select('*', { count: 'exact', head: true }).eq('low_cost_mode', true),
         admin.from('chat_history').select('*', { count: 'exact', head: true }),
         admin.from('chat_history').select('*', { count: 'exact', head: true }).gte('created_at', since24h),
         admin.from('memories').select('*', { count: 'exact', head: true }),
         admin.from('chat_history').select('user_id').gte('created_at', since24h).limit(4000),
-        admin.from('chat_history').select('user_id, speaker, created_at').order('created_at', { ascending: false }).limit(24),
+        admin.from('chat_history').select('user_id, speaker, created_at').order('created_at', { ascending: false }).limit(20),
         admin.from('admin_runtime_settings').select('id, global_low_cost_override, updated_by, updated_at').eq('id', 'global').maybeSingle(),
         admin.from('analytics_events').select('metadata, created_at').eq('event', 'chat_route_metrics').gte('created_at', since24h).order('created_at', { ascending: false }).limit(600),
-        admin.from('admin_audit_log').select('actor_email, action, details, created_at').order('created_at', { ascending: false }).limit(24),
+        admin.from('admin_audit_log').select('actor_email, action, details, created_at').order('created_at', { ascending: false }).limit(20),
     ]) as [
-        CountQueryResult,
-        CountQueryResult,
-        CountQueryResult,
-        CountQueryResult,
-        CountQueryResult,
-        CountQueryResult,
-        DataQueryResult<ActiveUserRow[]>,
-        DataQueryResult<RecentChatRow[]>,
+        CountQueryResult, CountQueryResult, CountQueryResult, CountQueryResult,
+        CountQueryResult, CountQueryResult, CountQueryResult,
+        DataQueryResult<ActiveUserRow[]>, DataQueryResult<RecentChatRow[]>,
         DataQueryResult<RuntimeSettingsRow>,
-        DataQueryResult<RouteMetricRow[]>,
-        DataQueryResult<AuditRow[]>,
+        DataQueryResult<RouteMetricRow[]>, DataQueryResult<AuditRow[]>,
     ]
+
     const [
-        { count: usersCount, error: usersError },
-        { count: proUsersCount, error: proUsersError },
-        { count: lowCostUsersCount, error: lowCostUsersError },
-        { count: chatsCount, error: chatsError },
-        { count: chats24hCount, error: chats24hError },
-        { count: memoriesCount, error: memoriesError },
-        { data: activeUsersRows, error: activeUsersError },
-        { data: recentChatRows, error: recentChatError },
+        { count: usersCount },
+        { count: proUsersCount },
+        { count: basicUsersCount },
+        { count: lowCostUsersCount },
+        { count: chatsCount },
+        { count: chats24hCount },
+        { count: memoriesCount },
+        { data: activeUsersRows },
+        { data: recentChatRows },
         { data: runtimeSettingsRow, error: runtimeSettingsError },
         { data: routeMetricRows, error: routeMetricsError },
         { data: auditRows, error: auditError },
     ] = results
 
-    const hasAnyError = !!(
-        usersError
-        || proUsersError
-        || lowCostUsersError
-        || chatsError
-        || chats24hError
-        || memoriesError
-        || activeUsersError
-        || recentChatError
-        || (runtimeSettingsError && runtimeSettingsError.code !== 'PGRST205' && runtimeSettingsError.code !== '42P01')
-        || (routeMetricsError && routeMetricsError.code !== 'PGRST205' && routeMetricsError.code !== '42P01')
-        || (auditError && auditError.code !== 'PGRST205' && auditError.code !== '42P01')
-    )
-
-    const metrics: ChatRouteMetricMetadata[] = (routeMetricRows || []).map((row) => metricFromMetadata(row.metadata))
-    const totalRouteCalls24h = metrics.length
-    const capacityBlocked24h = metrics.filter((m) => m.status === 429 && m.providerCapacityBlocked).length
-    const hardFailures24h = metrics.filter((m) => m.status === 500).length
+    const metrics: ChatRouteMetricMetadata[] = (routeMetricRows || []).map((r) => metricFromMetadata(r.metadata))
+    const totalRouteCalls = metrics.length
+    const capacityBlocked = metrics.filter((m) => m.status === 429 && m.providerCapacityBlocked).length
+    const hardFailures = metrics.filter((m) => m.status === 500).length
     const avgLatencyMs = metrics.length > 0
-        ? Math.round(metrics.reduce((sum, m) => sum + (m.elapsedMs || 0), 0) / metrics.length)
+        ? Math.round(metrics.reduce((s, m) => s + (m.elapsedMs || 0), 0) / metrics.length)
         : 0
     const sourceMix = {
         user: metrics.filter((m) => m.source === 'user').length,
         autonomous: metrics.filter((m) => m.source === 'autonomous').length,
-        autonomousIdle: metrics.filter((m) => m.source === 'autonomous_idle').length,
+        idle: metrics.filter((m) => m.source === 'autonomous_idle').length,
     }
     const providerMix = {
         openrouter: metrics.filter((m) => m.providerUsed === 'openrouter').length,
         fallback: metrics.filter((m) => m.providerUsed === 'fallback').length,
     }
-
-    const uniqueActiveUsers24h = new Set(
-        (activeUsersRows || [])
-            .map((row) => row.user_id)
-            .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    const uniqueActiveUsers = new Set(
+        (activeUsersRows || []).map((r) => r.user_id).filter((v): v is string => typeof v === 'string')
     ).size
+
     const globalLowCostOverride = !!runtimeSettingsRow?.global_low_cost_override
+    const hasErrors = !!(
+        (runtimeSettingsError && runtimeSettingsError.code !== 'PGRST205' && runtimeSettingsError.code !== '42P01') ||
+        (routeMetricsError && routeMetricsError.code !== 'PGRST205' && routeMetricsError.code !== '42P01') ||
+        (auditError && auditError.code !== 'PGRST205' && auditError.code !== '42P01')
+    )
+
+    // Health score: red if 500s > 5% of calls, amber if capacity blocked > 10%
+    const healthStatus = hardFailures > 0 && totalRouteCalls > 0 && (hardFailures / totalRouteCalls) > 0.05
+        ? 'critical'
+        : capacityBlocked > 0 && totalRouteCalls > 0 && (capacityBlocked / totalRouteCalls) > 0.1
+            ? 'degraded'
+            : 'healthy'
 
     return (
-        <section className="space-y-5">
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1fr]">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-5">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-300/70">Overview</p>
-                    <h1 className="mt-2 text-3xl font-black leading-tight text-slate-100">
-                        Live Runtime Control
-                        <span className="block text-emerald-300">and Capacity Intelligence</span>
-                    </h1>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-300/80">
-                        Track provider pressure, user activity, and production quality. Apply global controls quickly without leaving the dashboard.
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        <Link
-                            href="/admin/users"
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition-colors hover:bg-cyan-400/16"
-                        >
-                            User Controls
-                            <ArrowRight size={13} />
-                        </Link>
-                    </div>
+        <div className="space-y-6">
+            {/* Page header */}
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Overview</p>
+                    <h1 className="mt-1 text-2xl font-black text-slate-100">Live Runtime</h1>
                 </div>
-
-                <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-5">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Shield size={14} className="text-amber-200" />
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-300/70">Global Cost Control</p>
-                    </div>
-                    <p className="text-sm font-semibold text-slate-100">
-                        Override is {globalLowCostOverride ? 'ON' : 'OFF'}
-                    </p>
-                    <p className="mt-1 text-[11px] text-slate-300/80">
-                        Forces low-cost behavior for every chat request.
-                    </p>
-                    {runtimeSettingsRow?.updated_at && (
-                        <p className="mt-2 text-[11px] text-slate-300/70">
-                            Updated by {runtimeSettingsRow?.updated_by || 'system'} at {new Date(runtimeSettingsRow.updated_at).toLocaleString()}
-                        </p>
-                    )}
-                    <form action={setGlobalLowCostOverride} className="mt-3">
-                        <input type="hidden" name="enabled" value={globalLowCostOverride ? 'false' : 'true'} />
-                        <input type="hidden" name="returnTo" value="/admin/overview" />
-                        <button
-                            type="submit"
-                            aria-pressed={globalLowCostOverride}
-                            aria-label={globalLowCostOverride ? 'Disable global low-cost override' : 'Enable global low-cost override'}
-                            className={`w-full rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] ${globalLowCostOverride
-                                ? 'border-emerald-300/35 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/16'
-                                : 'border-amber-300/35 bg-amber-400/10 text-amber-100 hover:bg-amber-400/16'
-                                }`}
-                        >
-                            {globalLowCostOverride ? 'Disable Override' : 'Enable Override'}
-                        </button>
-                    </form>
+                <div className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+                    healthStatus === 'healthy' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' :
+                    healthStatus === 'degraded' ? 'border-amber-400/30 bg-amber-400/10 text-amber-300' :
+                    'border-rose-400/30 bg-rose-400/10 text-rose-300'
+                }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${
+                        healthStatus === 'healthy' ? 'bg-emerald-400' :
+                        healthStatus === 'degraded' ? 'bg-amber-400' : 'bg-rose-400'
+                    }`} />
+                    {healthStatus === 'healthy' ? 'Healthy' : healthStatus === 'degraded' ? 'Degraded' : 'Critical'}
                 </div>
             </div>
 
+            {/* Notices */}
             {notice && (
-                <div className={`rounded-2xl border px-3 py-2 text-xs ${notice.tone === 'error'
-                    ? 'border-destructive/40 bg-destructive/10 text-destructive'
-                    : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-100'
-                    }`}
-                >
+                <div className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+                    notice.tone === 'error'
+                        ? 'border-rose-400/30 bg-rose-400/10 text-rose-200'
+                        : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                }`}>
+                    {notice.tone === 'error' ? <CircleAlert size={14} /> : <CheckCircle2 size={14} />}
                     {notice.text}
                 </div>
             )}
-
-            {hasAnyError && (
-                <div className="rounded-2xl border border-amber-400/35 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-                    Some metrics could not be loaded completely. Check server logs for query details.
+            {hasErrors && (
+                <div className="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+                    <AlertTriangle size={14} />
+                    Some metrics failed to load. Check server logs.
                 </div>
             )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Users</p>
-                    <p className="mt-1 text-2xl font-black text-slate-100">{formatNumber(usersCount)}</p>
-                    <p className="text-[11px] text-slate-300/75">{formatNumber(proUsersCount)} pro, {formatNumber(lowCostUsersCount)} low-cost</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Chat Rows</p>
-                    <p className="mt-1 text-2xl font-black text-slate-100">{formatNumber(chatsCount)}</p>
-                    <p className="text-[11px] text-slate-300/75">{formatNumber(chats24hCount)} in last 24h</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Active Users (24h)</p>
-                    <p className="mt-1 text-2xl font-black text-slate-100">{formatNumber(uniqueActiveUsers24h)}</p>
-                    <p className="text-[11px] text-slate-300/75">Distinct user IDs with chat activity</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-300/70">Memories</p>
-                    <p className="mt-1 text-2xl font-black text-slate-100">{formatNumber(memoriesCount)}</p>
-                    <p className="text-[11px] text-slate-300/75">Vector records stored</p>
-                </div>
+            {/* KPI strip */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {[
+                    { label: 'Total Users', value: fmt(usersCount), sub: `${fmt(proUsersCount)} pro · ${fmt(basicUsersCount)} basic`, icon: UsersRound, color: 'text-cyan-300' },
+                    { label: 'Active (24h)', value: fmt(uniqueActiveUsers), sub: 'distinct users with chat', icon: Radio, color: 'text-emerald-300' },
+                    { label: 'Messages (24h)', value: fmt(chats24hCount), sub: `${fmt(chatsCount)} total all time`, icon: TrendingUp, color: 'text-violet-300' },
+                    { label: 'Avg Latency', value: `${fmt(avgLatencyMs)}ms`, sub: `${fmt(totalRouteCalls)} route calls`, icon: Activity, color: 'text-amber-300' },
+                ].map(({ label, value, sub, icon: Icon, color }) => (
+                    <div key={label} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+                            <Icon size={13} className={color} />
+                        </div>
+                        <p className="text-2xl font-black text-slate-100">{value}</p>
+                        <p className="mt-1 text-[11px] text-slate-500">{sub}</p>
+                    </div>
+                ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.2fr_1fr]">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Zap size={14} className="text-fuchsia-200" />
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/75">Quick Operations</p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <form action={setAllUsersLowCostMode}>
-                            <input type="hidden" name="returnTo" value="/admin/overview" />
-                            <input type="hidden" name="enabled" value="true" />
-                            <button
-                                type="submit"
-                                className="h-full w-full rounded-xl border border-emerald-300/35 bg-emerald-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-100 transition-colors hover:bg-emerald-400/16"
-                            >
-                                Enable Low-Cost For All
-                            </button>
-                        </form>
-                        <form action={setAllUsersLowCostMode}>
-                            <input type="hidden" name="returnTo" value="/admin/overview" />
-                            <input type="hidden" name="enabled" value="false" />
-                            <button
-                                type="submit"
-                                className="h-full w-full rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100 transition-colors hover:bg-cyan-400/16"
-                            >
-                                Disable Low-Cost For All
-                            </button>
-                        </form>
-                        <form action={resetAllUserDailyUsage}>
+            {/* Main grid */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
+                {/* LEFT: Cost control + route health */}
+                <div className="space-y-4">
+
+                    {/* Global override */}
+                    <div className={`rounded-2xl border p-5 ${globalLowCostOverride ? 'border-amber-400/30 bg-amber-400/[0.06]' : 'border-white/[0.08] bg-white/[0.03]'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <Shield size={14} className={globalLowCostOverride ? 'text-amber-300' : 'text-slate-500'} />
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Cost Override</p>
+                            </div>
+                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
+                                globalLowCostOverride ? 'bg-amber-400/20 text-amber-200' : 'bg-white/[0.06] text-slate-500'
+                            }`}>
+                                {globalLowCostOverride ? 'ACTIVE' : 'OFF'}
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                            {globalLowCostOverride
+                                ? `Override is live. All requests use low-cost AI. Set by ${runtimeSettingsRow?.updated_by || 'system'}.`
+                                : 'Normal operation. Toggle to force low-cost AI for all requests immediately.'}
+                        </p>
+                        <form action={setGlobalLowCostOverride}>
+                            <input type="hidden" name="enabled" value={globalLowCostOverride ? 'false' : 'true'} />
                             <input type="hidden" name="returnTo" value="/admin/overview" />
                             <button
                                 type="submit"
-                                className="h-full w-full rounded-xl border border-blue-300/35 bg-blue-400/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-100 transition-colors hover:bg-blue-400/16"
+                                className={`w-full rounded-xl border px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                                    globalLowCostOverride
+                                        ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/18'
+                                        : 'border-amber-400/30 bg-amber-400/10 text-amber-200 hover:bg-amber-400/18'
+                                }`}
                             >
-                                Reset All Daily Counters
+                                {globalLowCostOverride ? 'Disable Override' : 'Enable Override'}
                             </button>
                         </form>
                     </div>
-                </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Activity size={14} className="text-emerald-200" />
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/75">Route Health (24h)</p>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                        <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span className="text-slate-300/80">Route calls</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(totalRouteCalls24h)}</span>
+                    {/* Route health */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Server size={13} className="text-slate-500" />
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Route Health (24h)</p>
                         </div>
-                        <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span className="text-slate-300/80">Capacity blocks (429)</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(capacityBlocked24h)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span className="text-slate-300/80">500s</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(hardFailures24h)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span className="text-slate-300/80">Avg latency</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(avgLatencyMs)}ms</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Gauge size={14} className="text-cyan-200" />
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/75">Source Mix (24h)</p>
-                    </div>
-                    <div className="space-y-2 text-xs text-slate-300/90">
-                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span>User</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(sourceMix.user)}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span>Autonomous</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(sourceMix.autonomous)}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span>Autonomous Idle</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(sourceMix.autonomousIdle)}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                        <UsersRound size={14} className="text-violet-200" />
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/75">Provider Mix (24h)</p>
-                    </div>
-                    <div className="space-y-2 text-xs text-slate-300/90">
-                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span>OpenRouter</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(providerMix.openrouter)}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
-                            <span>Fallback</span>
-                            <span className="font-semibold text-slate-100">{formatNumber(providerMix.fallback)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Clock4 size={14} className="text-emerald-200" />
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/75">Recent Chat Activity</p>
-                    </div>
-                    {recentChatRows && recentChatRows.length > 0 ? (
-                        <div className="space-y-1.5">
-                            {recentChatRows.slice(0, 12).map((row, index: number) => (
-                                <div key={`${row.user_id}-${row.created_at}-${index}`} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-slate-300/85">
-                                    <span className="font-semibold text-slate-100">{row.speaker}</span>
-                                    {' '}| user {(row.user_id || 'guest').slice(0, 8)}...
-                                    {' '}| {new Date(row.created_at).toLocaleString()}
+                        <div className="space-y-2">
+                            {[
+                                { label: 'Calls', value: fmt(totalRouteCalls), accent: 'text-slate-100' },
+                                { label: 'Capacity 429s', value: fmt(capacityBlocked), accent: capacityBlocked > 0 ? 'text-amber-300' : 'text-slate-100' },
+                                { label: 'Hard 500s', value: fmt(hardFailures), accent: hardFailures > 0 ? 'text-rose-300' : 'text-slate-100' },
+                                { label: 'Memories stored', value: fmt(memoriesCount), accent: 'text-slate-100' },
+                                { label: 'Low-cost users', value: fmt(lowCostUsersCount), accent: 'text-slate-100' },
+                            ].map(({ label, value, accent }) => (
+                                <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/[0.05] last:border-0">
+                                    <span className="text-xs text-slate-500">{label}</span>
+                                    <span className={`text-xs font-bold ${accent}`}>{value}</span>
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <p className="text-xs text-slate-300/80">No recent rows available.</p>
-                    )}
+                    </div>
+
+                    {/* Source + provider mix */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Activity size={13} className="text-slate-500" />
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Traffic Mix (24h)</p>
+                        </div>
+                        <div className="space-y-2 mb-4">
+                            {[
+                                { label: 'User', value: sourceMix.user },
+                                { label: 'Autonomous', value: sourceMix.autonomous },
+                                { label: 'Idle', value: sourceMix.idle },
+                            ].map(({ label, value }) => {
+                                const total = sourceMix.user + sourceMix.autonomous + sourceMix.idle
+                                const pct = total > 0 ? Math.round((value / total) * 100) : 0
+                                return (
+                                    <div key={label}>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[11px] text-slate-500">{label}</span>
+                                            <span className="text-[11px] font-bold text-slate-300">{fmt(value)} <span className="text-slate-600">({pct}%)</span></span>
+                                        </div>
+                                        <div className="h-1 rounded-full bg-white/[0.06]">
+                                            <div className="h-1 rounded-full bg-emerald-400/50" style={{ width: `${pct}%` }} />
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                        <div className="pt-3 border-t border-white/[0.06] space-y-1.5">
+                            <div className="flex justify-between text-[11px]">
+                                <span className="text-slate-500">OpenRouter</span>
+                                <span className="font-bold text-slate-300">{fmt(providerMix.openrouter)}</span>
+                            </div>
+                            <div className="flex justify-between text-[11px]">
+                                <span className="text-slate-500">Fallback</span>
+                                <span className={`font-bold ${providerMix.fallback > 0 ? 'text-amber-300' : 'text-slate-300'}`}>{fmt(providerMix.fallback)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick ops */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Zap size={13} className="text-slate-500" />
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Bulk Operations</p>
+                        </div>
+                        <div className="space-y-2">
+                            <form action={setAllUsersLowCostMode}>
+                                <input type="hidden" name="returnTo" value="/admin/overview" />
+                                <input type="hidden" name="enabled" value="true" />
+                                <button type="submit" className="w-full rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300 hover:bg-emerald-400/12 transition-colors text-left">
+                                    Enable Low-Cost For All Users
+                                </button>
+                            </form>
+                            <form action={setAllUsersLowCostMode}>
+                                <input type="hidden" name="returnTo" value="/admin/overview" />
+                                <input type="hidden" name="enabled" value="false" />
+                                <button type="submit" className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors text-left">
+                                    Disable Low-Cost For All Users
+                                </button>
+                            </form>
+                            <form action={resetAllUserDailyUsage}>
+                                <input type="hidden" name="returnTo" value="/admin/overview" />
+                                <button type="submit" className="w-full rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-300 hover:bg-cyan-400/10 transition-colors text-left">
+                                    Reset All Daily Counters
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                        <Shield size={14} className="text-amber-200" />
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-300/75">Admin Audit Log</p>
-                    </div>
-                    {auditRows && auditRows.length > 0 ? (
-                        <div className="space-y-1.5">
-                            {auditRows.slice(0, 12).map((row, index: number) => (
-                                <div key={`${row.created_at}-${row.action}-${index}`} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-slate-300/85">
-                                    <span className="font-semibold text-slate-100">{row.action}</span>
-                                    {' '}| {row.actor_email}
-                                    {' '}| {new Date(row.created_at).toLocaleString()}
-                                </div>
-                            ))}
+                {/* RIGHT: Activity feeds — span 2 cols */}
+                <div className="lg:col-span-2 space-y-4">
+
+                    {/* Recent chat feed */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Clock4 size={13} className="text-slate-500" />
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Recent Activity</p>
                         </div>
-                    ) : (
-                        <p className="text-xs text-slate-300/80">No audit actions recorded yet.</p>
-                    )}
+                        {recentChatRows && recentChatRows.length > 0 ? (
+                            <div className="space-y-1">
+                                {recentChatRows.slice(0, 15).map((row, i) => (
+                                    <div key={`${row.user_id}-${row.created_at}-${i}`} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[10px] font-bold text-slate-400">
+                                            {row.speaker.slice(0, 1).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-xs font-semibold text-slate-300">{row.speaker}</span>
+                                            <span className="text-xs text-slate-600 ml-2 font-mono">{(row.user_id || '').slice(0, 8)}</span>
+                                        </div>
+                                        <span className="text-[11px] text-slate-600 shrink-0">{relativeTime(row.created_at)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-600">No recent activity.</p>
+                        )}
+                    </div>
+
+                    {/* Audit log */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Shield size={13} className="text-slate-500" />
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Audit Log</p>
+                        </div>
+                        {auditRows && auditRows.length > 0 ? (
+                            <div className="space-y-1">
+                                {auditRows.slice(0, 15).map((row, i) => (
+                                    <div key={`${row.created_at}-${i}`} className="flex items-start gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-xs font-semibold text-slate-200">{row.action.replace(/_/g, ' ')}</span>
+                                            <span className="block text-[11px] text-slate-600 mt-0.5 truncate">{row.actor_email}</span>
+                                        </div>
+                                        <span className="text-[11px] text-slate-600 shrink-0 mt-0.5">{relativeTime(row.created_at)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-600">No audit actions recorded yet.</p>
+                        )}
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
     )
 }
