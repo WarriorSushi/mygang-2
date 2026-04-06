@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateWywaForUser, type WywaResult } from '@/lib/ai/wywa'
 import type { SubscriptionTier } from '@/lib/billing'
 import { isTurnstileServerEnabled, verifyTurnstileToken } from '@/lib/turnstile'
+import { sendTierChangeEmail } from '@/lib/email'
 
 function buildLoginAttemptKey(email: string, ip: string) {
     return `admin-login:${email.trim().toLowerCase()}:${ip}`
@@ -321,6 +322,20 @@ export async function setUserSubscriptionTier(formData: FormData) {
         console.error('Failed updating user subscription tier:', error)
         redirect(buildRedirectUrl(returnTo, 'error', 'user_update_failed'))
     }
+
+    // Send tier change email (non-blocking)
+    void (async () => {
+        try {
+            const { data: authUser } = await admin.auth.admin.getUserById(userId)
+            const email = authUser?.user?.email
+            if (email) {
+                const prevTier = (current?.subscription_tier || 'free') as SubscriptionTier
+                await sendTierChangeEmail({ to: email, newTier: nextTier, prevTier })
+            }
+        } catch (err) {
+            console.error('[admin] Failed to send tier change email:', err)
+        }
+    })()
 
     await insertAdminAudit('user_subscription_tier_set', session.email, {
         user_id: userId,
