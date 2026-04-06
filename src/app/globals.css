@@ -447,6 +447,7 @@
   transform: scale(0.94);
   filter: brightness(0.88);
 }
+.pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
