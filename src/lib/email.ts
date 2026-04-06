@@ -207,7 +207,7 @@ export async function sendAdminGiftEmail(opts: { to: string; newTier: Subscripti
       <tr><td style="padding:28px 32px 20px;">
         ${isUpgrade ? `
         <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6;">
-          We've been watching you spend time with your squad and we wanted to show some appreciation. So we went ahead and upgraded your account to <strong style="color:#0f172a;">${label}</strong> — on the house, no expiry, no strings.
+          You've been part of MyGang for a while now and we wanted to say thanks. So we went ahead and upgraded your account to <strong style="color:#0f172a;">${label}</strong> — on the house, no expiry, no strings.
         </p>
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
           Here's everything you now have access to:
