@@ -383,11 +383,27 @@ export const POST = Webhooks({
         const isNew = await logBillingEvent(userId, 'subscription.expired', webhookId, data)
         if (!isNew) return
 
+        // Check status BEFORE updating — only downgrade and email if the sub was cancelled_pending.
+        // If status was 'active', this expiry fired before an auto-renewal; don't touch the tier or email.
+        const { data: existingSub } = await getAdminClient()
+            .from('subscriptions')
+            .select('status')
+            .eq('id', subscriptionId)
+            .maybeSingle()
+
+        const wasCancelledPending = existingSub?.status === 'cancelled_pending'
+
         const { error } = await getAdminClient().from('subscriptions').update({
             status: 'expired',
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
         if (error) console.error('[webhook] Expiration update failed:', error)
+
+        // Only downgrade and notify if the user had actually cancelled (not a renewal cycle boundary)
+        if (!wasCancelledPending) {
+            console.log(`[webhook] subscription.expired for ${subscriptionId} was status=${existingSub?.status ?? 'unknown'} — skipping downgrade and email (likely pre-renewal)`)
+            return
+        }
 
         // Read prev tier before downgrading so we can reference it in the email
         const { data: preProfile } = await getAdminClient().from('profiles').select('subscription_tier').eq('id', userId).single()
