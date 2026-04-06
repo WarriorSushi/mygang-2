@@ -4,6 +4,12 @@ import type { Database } from '@/lib/database.types'
 import { TIER_LIMITS } from '@/lib/billing'
 import { backfillMemoryEmbeddings } from '@/lib/ai/memory'
 import { waitUntil } from '@vercel/functions'
+import {
+    sendPurchaseEmail,
+    sendPlanChangedEmail,
+    sendCancellationEmail,
+    sendSubscriptionExpiredEmail,
+} from '@/lib/email'
 
 // M2 FIX: Lazy init to avoid module-scope crash on missing env vars
 function getAdminClient() {
@@ -91,6 +97,15 @@ async function upsertSubscription(subscriptionId: string, userId: string, produc
 async function updateProfileTier(userId: string, tier: string) {
     const { error } = await getAdminClient().from('profiles').update({ subscription_tier: tier }).eq('id', userId)
     if (error) throw new Error(`updateProfileTier failed: ${error.message}`)
+}
+
+async function getUserEmail(userId: string): Promise<string | null> {
+    try {
+        const { data } = await getAdminClient().auth.admin.getUserById(userId)
+        return data?.user?.email ?? null
+    } catch {
+        return null
+    }
 }
 
 async function updatePurchaseCelebration(userId: string, plan: 'basic' | 'pro') {
@@ -255,6 +270,12 @@ export const POST = Webhooks({
 
         console.log(`[analytics] checkout_completed: user=${userId}, plan=${plan}, subscription=${subscriptionId}`)
 
+        // Send purchase confirmation email (non-blocking)
+        waitUntil((async () => {
+            const email = await getUserEmail(userId)
+            if (email) await sendPurchaseEmail({ to: email, plan: plan as 'basic' | 'pro' })
+        })())
+
         // Backfill embeddings for memories stored during free tier (background)
         waitUntil(backfillMemoryEmbeddings(userId, getAdminClient()).catch(err =>
             console.error('[webhook] Memory backfill error (non-fatal):', err)
@@ -327,6 +348,16 @@ export const POST = Webhooks({
         }).eq('id', subscriptionId)
         if (error) console.error('[webhook] Cancellation update failed:', error)
         // Do NOT downgrade tier or set pending_squad_downgrade — let onSubscriptionExpired handle it
+
+        // Notify user of cancellation (grace period still active) — non-blocking
+        waitUntil((async () => {
+            const email = await getUserEmail(userId)
+            if (email) {
+                const { data: profile } = await getAdminClient().from('profiles').select('subscription_tier').eq('id', userId).single()
+                const plan = (profile?.subscription_tier === 'pro' || profile?.subscription_tier === 'basic') ? profile.subscription_tier : null
+                if (plan) await sendCancellationEmail({ to: email, plan, periodEnd })
+            }
+        })())
     },
 
     onSubscriptionExpired: async (payload) => {
@@ -357,8 +388,21 @@ export const POST = Webhooks({
             updated_at: new Date().toISOString(),
         }).eq('id', subscriptionId)
         if (error) console.error('[webhook] Expiration update failed:', error)
+
+        // Read prev tier before downgrading so we can reference it in the email
+        const { data: preProfile } = await getAdminClient().from('profiles').select('subscription_tier').eq('id', userId).single()
+        const prevPlan = (preProfile?.subscription_tier === 'pro' || preProfile?.subscription_tier === 'basic') ? preProfile.subscription_tier : null
+
         await updateProfileTier(userId, 'free')
         await getAdminClient().from('profiles').update({ pending_squad_downgrade: true }).eq('id', userId)
+
+        // Notify user their plan has expired — non-blocking
+        if (prevPlan) {
+            waitUntil((async () => {
+                const email = await getUserEmail(userId)
+                if (email) await sendSubscriptionExpiredEmail({ to: email, prevPlan })
+            })())
+        }
     },
 
     onPaymentSucceeded: async (payload) => {
@@ -457,6 +501,10 @@ export const POST = Webhooks({
 
         console.log(`[analytics] subscription_changed: user=${userId}, new_tier=${newTier}, subscription=${subscriptionId}`)
 
+        // Read prev tier before updating so we can reference it in the email
+        const { data: preChangeProfile } = await getAdminClient().from('profiles').select('subscription_tier').eq('id', userId).single()
+        const prevTierForEmail = (preChangeProfile?.subscription_tier as 'free' | 'basic' | 'pro' | null) ?? 'free'
+
         await getAdminClient().from('profiles').update({
             subscription_tier: newTier,
             pending_squad_downgrade: newTier === 'free',
@@ -469,6 +517,12 @@ export const POST = Webhooks({
             status: 'active',
             updated_at: new Date().toISOString(),
         })
+
+        // Send plan change email — non-blocking
+        waitUntil((async () => {
+            const email = await getUserEmail(userId)
+            if (email) await sendPlanChangedEmail({ to: email, newTier: newTier as 'free' | 'basic' | 'pro', prevTier: prevTierForEmail })
+        })())
 
         // Backfill embeddings when upgrading to a paid tier (background)
         if (newTier === 'basic' || newTier === 'pro') {
