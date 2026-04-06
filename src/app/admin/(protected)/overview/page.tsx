@@ -4,6 +4,7 @@ import {
     Activity, Zap, Shield, UsersRound, Clock4, AlertTriangle,
     CheckCircle2, CircleAlert, TrendingUp, Server, Radio
 } from 'lucide-react'
+import { SubmitButton } from '@/components/admin/submit-button'
 
 type OverviewPageProps = {
     searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -227,16 +228,16 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
                         <form action={setGlobalLowCostOverride}>
                             <input type="hidden" name="enabled" value={globalLowCostOverride ? 'false' : 'true'} />
                             <input type="hidden" name="returnTo" value="/admin/overview" />
-                            <button
-                                type="submit"
-                                className={`w-full rounded-xl border px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                            <SubmitButton
+                                className={`w-full rounded-xl border px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] transition-all ${
                                     globalLowCostOverride
                                         ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/18'
                                         : 'border-amber-400/30 bg-amber-400/10 text-amber-200 hover:bg-amber-400/18'
                                 }`}
+                                pendingText={globalLowCostOverride ? 'Disabling…' : 'Enabling…'}
                             >
                                 {globalLowCostOverride ? 'Disable Override' : 'Enable Override'}
-                            </button>
+                            </SubmitButton>
                         </form>
                     </div>
 
@@ -311,22 +312,22 @@ export default async function AdminOverviewPage({ searchParams }: OverviewPagePr
                             <form action={setAllUsersLowCostMode}>
                                 <input type="hidden" name="returnTo" value="/admin/overview" />
                                 <input type="hidden" name="enabled" value="true" />
-                                <button type="submit" className="w-full rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300 hover:bg-emerald-400/12 transition-colors text-left">
+                                <SubmitButton className="w-full rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300 hover:bg-emerald-400/12 transition-all text-left" pendingText="Enabling…">
                                     Enable Low-Cost For All Users
-                                </button>
+                                </SubmitButton>
                             </form>
                             <form action={setAllUsersLowCostMode}>
                                 <input type="hidden" name="returnTo" value="/admin/overview" />
                                 <input type="hidden" name="enabled" value="false" />
-                                <button type="submit" className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors text-left">
+                                <SubmitButton className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-all text-left" pendingText="Disabling…">
                                     Disable Low-Cost For All Users
-                                </button>
+                                </SubmitButton>
                             </form>
                             <form action={resetAllUserDailyUsage}>
                                 <input type="hidden" name="returnTo" value="/admin/overview" />
-                                <button type="submit" className="w-full rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-300 hover:bg-cyan-400/10 transition-colors text-left">
+                                <SubmitButton className="w-full rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-300 hover:bg-cyan-400/10 transition-all text-left" pendingText="Resetting…">
                                     Reset All Daily Counters
-                                </button>
+                                </SubmitButton>
                             </form>
                         </div>
                     </div>

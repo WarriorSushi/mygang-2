@@ -10,6 +10,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { UsersTable } from '@/components/admin/users-table'
 import type { AdminUserRow } from '@/components/admin/user-drawer'
+import { SubmitButton } from '@/components/admin/submit-button'
 import { Search, CheckCircle2, CircleAlert, AlertTriangle, UsersRound, TrendingUp, Gauge, Zap } from 'lucide-react'
 
 const PAGE_SIZE = 30
@@ -154,22 +155,22 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                 <form action={setAllUsersLowCostMode}>
                     <input type="hidden" name="returnTo" value={usersReturnTo} />
                     <input type="hidden" name="enabled" value="true" />
-                    <button type="submit" className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-300 hover:bg-emerald-400/12 transition-colors">
+                    <SubmitButton className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-300 hover:bg-emerald-400/12 transition-all" pendingText="Enabling…">
                         Enable Low-Cost All
-                    </button>
+                    </SubmitButton>
                 </form>
                 <form action={setAllUsersLowCostMode}>
                     <input type="hidden" name="returnTo" value={usersReturnTo} />
                     <input type="hidden" name="enabled" value="false" />
-                    <button type="submit" className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors">
+                    <SubmitButton className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-all" pendingText="Disabling…">
                         Disable Low-Cost All
-                    </button>
+                    </SubmitButton>
                 </form>
                 <form action={resetAllUserDailyUsage}>
                     <input type="hidden" name="returnTo" value={usersReturnTo} />
-                    <button type="submit" className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-cyan-300 hover:bg-cyan-400/10 transition-colors">
+                    <SubmitButton className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-cyan-300 hover:bg-cyan-400/10 transition-all" pendingText="Resetting…">
                         Reset All Daily Counters
-                    </button>
+                    </SubmitButton>
                 </form>
             </div>
 

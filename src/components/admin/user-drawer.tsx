@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { X, Crown, Gauge, Trash2, Zap, RotateCcw, ChevronRight } from 'lucide-react'
+import { X, Crown, Trash2, Zap, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { WywaResult } from '@/lib/ai/wywa'
 import { TIER_LIMITS } from '@/lib/billing'
+import { SubmitButton } from '@/components/admin/submit-button'
 
 export type AdminUserRow = {
     id: string
@@ -176,12 +177,12 @@ export function UserDrawer({ user, onClose, usersReturnTo, setTierAction, setLow
                                 <option value="basic">Basic</option>
                                 <option value="pro">Pro</option>
                             </select>
-                            <button
-                                type="submit"
+                            <SubmitButton
                                 className="rounded-lg border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-cyan-300 hover:bg-cyan-400/14 transition-colors"
+                                pendingText="Saving…"
                             >
                                 Set
-                            </button>
+                            </SubmitButton>
                         </form>
                     </div>
 
@@ -190,33 +191,33 @@ export function UserDrawer({ user, onClose, usersReturnTo, setTierAction, setLow
                         <input type="hidden" name="returnTo" value={usersReturnTo} />
                         <input type="hidden" name="userId" value={user.id} />
                         <input type="hidden" name="enabled" value={user.low_cost_mode ? 'false' : 'true'} />
-                        <button
-                            type="submit"
+                        <SubmitButton
                             className={cn(
                                 'w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold transition-colors',
                                 user.low_cost_mode
                                     ? 'border-amber-400/25 bg-amber-400/[0.07] text-amber-300 hover:bg-amber-400/12'
                                     : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06]'
                             )}
+                            pendingText="Saving…"
                         >
                             <span>Low-Cost Mode</span>
                             <span className={cn('text-[10px] font-black uppercase tracking-widest', user.low_cost_mode ? 'text-amber-300' : 'text-slate-600')}>
                                 {user.low_cost_mode ? 'ON — Click to disable' : 'OFF — Click to enable'}
                             </span>
-                        </button>
+                        </SubmitButton>
                     </form>
 
                     {/* Reset daily */}
                     <form action={resetDailyAction}>
                         <input type="hidden" name="returnTo" value={usersReturnTo} />
                         <input type="hidden" name="userId" value={user.id} />
-                        <button
-                            type="submit"
+                        <SubmitButton
                             className="w-full flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
+                            pendingText="Resetting…"
                         >
                             <span>Reset Daily Counter</span>
                             <RotateCcw size={14} />
-                        </button>
+                        </SubmitButton>
                     </form>
 
                     {/* WYWA (paid only) */}
@@ -265,9 +266,9 @@ export function UserDrawer({ user, onClose, usersReturnTo, setTierAction, setLow
                                 <form action={deleteChatAction} className="flex gap-2">
                                     <input type="hidden" name="returnTo" value={usersReturnTo} />
                                     <input type="hidden" name="userId" value={user.id} />
-                                    <button type="submit" className="flex-1 rounded-lg border border-rose-400/40 bg-rose-500/20 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-200 hover:bg-rose-500/30 transition-colors">
+                                    <SubmitButton className="flex-1 rounded-lg border border-rose-400/40 bg-rose-500/20 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-200 hover:bg-rose-500/30 transition-colors" pendingText="Deleting…">
                                         Confirm Delete
-                                    </button>
+                                    </SubmitButton>
                                     <button type="button" onClick={() => setDeleteConfirm(false)} className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:bg-white/[0.08] transition-colors">
                                         Cancel
                                     </button>
