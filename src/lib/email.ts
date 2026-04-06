@@ -373,7 +373,7 @@ export async function sendUpgradeNudgeEmail(opts: { to: string; username?: strin
       ${header('👀', `you're getting the most out of Free`, `which means you're probably ready for more.`, '#3b82f6')}
       <tr><td style="padding:28px 32px 20px;">
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-          ${name}, you've been chatting a lot — which is awesome. but we keep seeing you hit the 25 msg/hr limit and have to wait. here's what Basic unlocks for $4.99/mo:
+          ${name}, you've been chatting a lot — which is awesome. but we keep seeing you hit the 25 msg/hr limit and have to wait. here's what Basic unlocks for $14.99/mo:
         </p>
 
         <!-- Comparison table -->
@@ -411,10 +411,10 @@ export async function sendUpgradeNudgeEmail(opts: { to: string; username?: strin
         </table>
 
         <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;line-height:1.6;">
-          want even more? Pro is $9.99/mo and removes all limits entirely — unlimited messages, up to 6 squad members, full memory.
+          want even more? Pro is $19.99/mo and removes all limits entirely — unlimited messages, up to 6 squad members, full memory.
         </p>
       </td></tr>
-      ${cta('upgrade for $4.99/mo →', 'https://mygang.ai/pricing', '#3b82f6')}
+      ${cta('upgrade for $14.99/mo →', 'https://mygang.ai/pricing', '#3b82f6')}
     `)
 
     try {

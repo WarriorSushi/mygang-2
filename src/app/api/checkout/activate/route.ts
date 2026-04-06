@@ -201,7 +201,7 @@ export async function POST(req: Request) {
                     || headerBag.get('x-real-ip')
                     || 'unknown'
                 const userAgent = headerBag.get('user-agent') || ''
-                const planValue = plan === 'pro' ? 9.99 : 4.99
+                const planValue = plan === 'pro' ? 19.99 : 14.99
                 const eventId = generateEventId()
                 await sendCAPIEvent([
                     buildPurchaseEvent({
