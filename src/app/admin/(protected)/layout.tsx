@@ -13,7 +13,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
             <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_0%_0%,rgba(29,78,216,0.18),transparent_40%),radial-gradient(ellipse_at_100%_5%,rgba(16,185,129,0.12),transparent_40%)]" />
 
             {/* Sidebar */}
-            <aside className="relative z-20 hidden lg:flex w-56 shrink-0 flex-col border-r border-white/[0.08] bg-[rgba(7,12,20,0.85)] backdrop-blur-xl">
+            <aside className="fixed z-20 hidden lg:flex w-56 top-0 left-0 h-dvh flex-col border-r border-white/[0.08] bg-[rgba(7,12,20,0.85)] backdrop-blur-xl">
                 {/* Logo */}
                 <div className="px-5 pt-6 pb-5 border-b border-white/[0.07]">
                     <div className="flex items-center gap-2.5">
@@ -73,7 +73,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
             </div>
 
             {/* Main content */}
-            <main className="relative z-10 flex-1 min-w-0 lg:overflow-auto">
+            <main className="relative z-10 flex-1 min-w-0 lg:pl-56 lg:overflow-auto">
                 <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8 lg:py-8 pt-20 lg:pt-8">
                     {children}
                 </div>
